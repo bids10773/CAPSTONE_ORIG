@@ -61,6 +61,8 @@ export default function AppointmentsIndex() {
         switch (status) {
             case 'pending':
                 return 'bg-yellow-100 text-yellow-800';
+            case 'accepted':
+                return 'bg-indigo-100 text-indigo-800';
             case 'arrived':
                 return 'bg-blue-100 text-blue-800';
             case 'completed':
@@ -76,6 +78,8 @@ export default function AppointmentsIndex() {
         switch (status) {
             case 'pending':
                 return <Clock className="w-4 h-4" />;
+            case 'accepted':
+                return <CheckCircle className="w-4 h-4 text-indigo-600" />;
             case 'arrived':
                 return <CheckCircle className="w-4 h-4" />;
             case 'completed':
@@ -163,6 +167,7 @@ export default function AppointmentsIndex() {
                             <option value="arrived">Arrived</option>
                             <option value="completed">Completed</option>
                             <option value="cancelled">Cancelled</option>
+                            <option value="accepted">Accepted</option>
                         </select>
                         <select
                             value={typeFilter}

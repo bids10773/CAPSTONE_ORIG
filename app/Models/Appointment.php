@@ -78,20 +78,7 @@ class Appointment extends Model
         return $this->hasOne(XrayReport::class);
     }
 
-    /**
-     * Get the patient profile through the user.
-     */
-    public function patientProfile(): HasOne
-    {
-        return $this->hasOneThrough(
-            PatientProfile::class,
-            User::class,
-            'id',
-            'user_id',
-            'user_id',
-            'id'
-        );
-    }
+  
 
     /**
      * Get status badge color.
@@ -100,6 +87,7 @@ class Appointment extends Model
     {
         return match($this->status) {
             'pending' => 'yellow',
+            'accepted' => 'indigo',
             'arrived' => 'blue',
             'completed' => 'green',
             'cancelled' => 'red',

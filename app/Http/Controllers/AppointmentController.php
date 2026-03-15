@@ -24,7 +24,12 @@ class AppointmentController extends Controller
         
         $user = $request->user();
         
-        $query = Appointment::with(['user', 'company']);
+        $query = Appointment::with([
+    'user' => function ($q) {
+$q->with('patientProfile');
+    },
+    'company'
+]);
         
         // If patient, show only their appointments
         if ($user->role === 'patient') {
@@ -180,8 +185,9 @@ class AppointmentController extends Controller
     public function updateStatus(Request $request, Appointment $appointment)
     {
         $validator = Validator::make($request->all(), [
-            'status' => ['required', 'string', 'in:pending,arrived,completed,cancelled'],
+            'status' => ['required', 'string', 'in:pending,accepted,arrived,completed,cancelled'],
         ]);
+
         
         if ($validator->fails()) {
             return back()->withErrors($validator);
@@ -193,6 +199,7 @@ class AppointmentController extends Controller
         
         return back()->with('success', 'Appointment status updated.');
     }
+
 
     /**
      * Handle bulk appointment creation from CSV (for Company HR).
@@ -285,7 +292,9 @@ class AppointmentController extends Controller
         $dateFrom = $request->get('date_from', '');
         $dateTo = $request->get('date_to', '');
         
-        $query = Appointment::with(['user', 'company']);
+$query = Appointment::with(['user.patientProfile', 'company']);
+
+
         
         if ($search) {
             $query->whereHas('user', function ($q) use ($search) {
