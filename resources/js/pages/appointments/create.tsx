@@ -10,9 +10,11 @@ interface Company {
 }
 
 export default function CreateAppointment() {
-  const { companies, serviceTypes, appointmentTypes } = usePage().props as any;
+const { companies, doctors, serviceTypes, appointmentTypes } = usePage().props as any;
 
   const [formData, setFormData] = useState({
+    doctor_id: '',
+    start_time: '',
     type: 'individual',
     company_id: '',
     appointment_date: '',
@@ -102,11 +104,12 @@ export default function CreateAppointment() {
     setIsSubmitting(true);
     setErrors({});
 
-    router.post('/appointments', formData, {
+router.post('/appointments', formData, {
       onError: (errors: any) => {
         setErrors(errors);
         setIsSubmitting(false);
       },
+      preserveScroll: true,
     });
   };
 
@@ -137,6 +140,68 @@ export default function CreateAppointment() {
 
         <div className="max-w-3xl">
           <form onSubmit={handleSubmit} className="space-y-6">
+  {/* Doctor & Time Selection */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Doctor Selection */}
+              <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
+                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                  Select Doctor
+                </h2>
+                <select
+                  name="doctor_id"
+                  value={formData.doctor_id}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Choose doctor...</option>
+                  {(doctors || []).map((doctor: any) => (
+                    <option key={doctor.id} value={doctor.id}>
+                      Dr. {doctor.first_name} {doctor.last_name}
+                      {doctor.specialization && ` - ${doctor.specialization}`}
+                    </option>
+                  ))}
+                </select>
+                {errors.doctor_id && <p className="mt-1 text-sm text-red-600">{errors.doctor_id}</p>}
+              </div>
+
+              {/* Date & Time */}
+              <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
+                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Date & Time
+                </h2>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Date *
+                    </label>
+                    <input
+                      type="date"
+                      name="appointment_date"
+                      value={formData.appointment_date}
+                      onChange={handleChange}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    {errors.appointment_date && <p className="mt-1 text-sm text-red-600">{errors.appointment_date}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Time *
+                    </label>
+                    <input
+                      type="time"
+                      name="start_time"
+                      value={formData.start_time}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    {errors.start_time && <p className="mt-1 text-sm text-red-600">{errors.start_time}</p>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Appointment Type */}
             <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
               <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">

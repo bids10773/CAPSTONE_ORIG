@@ -70,6 +70,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'is_active' => 'boolean',
+            'availability' => 'array',
         ];
     }
 
@@ -89,6 +90,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * Get appointments assigned to this doctor.
+     */
+    public function doctorAppointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class, 'doctor_id');
     }
 
     /**

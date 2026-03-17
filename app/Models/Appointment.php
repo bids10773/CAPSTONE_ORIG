@@ -17,6 +17,9 @@ class Appointment extends Model
     protected $fillable = [
         'user_id',
         'company_id',
+        'doctor_id',
+        'start_time',
+        'end_time',
         'appointment_date',
         'type',
         'status',
@@ -35,6 +38,8 @@ class Appointment extends Model
     {
         return [
             'appointment_date' => 'datetime',
+            'start_time' => 'datetime:H:i',
+            'end_time' => 'datetime:H:i',
         ];
     }
 
@@ -52,6 +57,14 @@ class Appointment extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * Get the doctor assigned to this appointment.
+     */
+    public function doctor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'doctor_id');
     }
 
     /**

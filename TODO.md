@@ -1,8 +1,1 @@
-# Admin Creation TODO - COMPLETE
-
-- [x] Edit create_admin.php to add email_verified_at
-- [x] Run `php create_admin.php`
-- [x] Verify with `php check_admin.php`
-- [ ] Start server with `php artisan serve` and test login /admin/dashboard
-
-Admin created: admin@lmic.com / admin123 (verified)
+# Task: Fix "Route [doctor.dashboard] not defined" error\n\n## Steps:\n- [x] Step 1: Edit routes/web.php to add ->name('doctor.dashboard') to the doctor dashboard route\n- [ ] Step 2: Execute php artisan route:clear and php artisan route:cache\n- [ ] Step 3: Test the doctor availability form submission\n- [ ] Step 4: Verify no other routes broken and cleanup TODO.md\n\n**Status: Completed Step 1. Proceeding to Step 2**

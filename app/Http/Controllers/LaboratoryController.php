@@ -2,73 +2,60 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\LabResult;
 use App\Models\Appointment;
+use App\Models\LabResult;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class LaboratoryController extends Controller
 {
-    public function create($appointmentId): Response
+    /**
+     * Show lab result form for appointment.
+     */
+    public function create(Appointment $appointment): Response
     {
-        $appointment = Appointment::with(['user', 'labResult'])->findOrFail($appointmentId);
+        $appointment->load('user', 'patientProfile');
         
         return Inertia::render('medtech/lab-results-form', [
             'appointment' => $appointment,
-            'labResult' => $appointment->labResult,
-            'normalValues' => LabResult::getNormalValues(),
         ]);
     }
 
-    public function store(Request $request, $appointmentId)
+    /**
+     * Store lab result.
+     */
+    public function store(Request $request, Appointment $appointment)
     {
         $request->validate([
-            'hemoglobin' => 'nullable|numeric',
-            'hematocrit' => 'nullable|numeric',
-            'wbc_count' => 'nullable|numeric',
-            'rbc_count' => 'nullable|numeric',
-            'platelet' => 'nullable|numeric',
-            'segmenters' => 'nullable|numeric',
-            'lymphocytes' => 'nullable|numeric',
-            'monocytes' => 'nullable|numeric',
-            'eosinophils' => 'nullable|numeric',
-            'basophils' => 'nullable|numeric',
-            'uri_color' => 'nullable|string|max:50',
-            'uri_transparency' => 'nullable|string|max:50',
-            'uri_ph' => 'nullable|numeric',
-            'uri_sp_gravity' => 'nullable|string',
-            'uri_sugar' => 'nullable|string|max:50',
-            'uri_protein' => 'nullable|string|max:50',
-            'uri_wbc' => 'nullable|numeric',
-            'uri_rbc' => 'nullable|numeric',
-            'uri_bacteria' => 'nullable|string|max:100',
-            'uri_epithelial_cells' => 'nullable|string|max:100',
-            'fecal_color' => 'nullable|string|max:50',
-            'fecal_consistency' => 'nullable|string|max:50',
-            'fecal_pus_cells' => 'nullable|numeric',
-            'fecal_rbc' => 'nullable|numeric',
-            'fecal_parasites' => 'nullable|string|max:100',
-            'drug_test_shabu' => 'nullable|string|max:50',
-            'drug_test_thc' => 'nullable|string|max:50',
-            'hepa_b_sag' => 'nullable|string|max:50',
-            'hepa_b_cab' => 'nullable|string|max:50',
-            'pregnancy_test' => 'nullable|string|max:50',
-            'fbs' => 'nullable|numeric',
+            'cbc' => 'nullable|array',
+            'cbc.*' => 'nullable|string|max:255',
+            'urinalysis' => 'nullable|array',
+            'urinalysis.*' => 'nullable|string|max:255',
+            'fecalysis' => 'nullable|array',
+            'fecalysis.*' => 'nullable|string|max:255',
+            'blood_sugar' => 'nullable|string|max:255',
+            'pregnancy_test' => 'nullable|string|max:255',
+            'drug_test' => 'nullable|string|max:255',
+            'hepatitis_b' => 'nullable|string|max:255',
             'remarks' => 'nullable|string|max:1000',
         ]);
 
-        LabResult::updateOrCreate(
-            ['appointment_id' => $appointmentId],
-            array_merge($request->only(array_keys($request->validate())),
-                          [
-                              'encoded_by' => auth()->id(),
-                              'is_completed' => true,
-                          ])
-        );
+        LabResult::create([
+            'appointment_id' => $appointment->id,
+            'cbc' => $request->cbc,
+            'urinalysis' => $request->urinalysis,
+            'fecalysis' => $request->fecalysis,
+            'blood_sugar' => $request->blood_sugar,
+            'pregnancy_test' => $request->pregnancy_test,
+            'drug_test' => $request->drug_test,
+            'hepatitis_b' => $request->hepatitis_b,
+            'remarks' => $request->remarks,
+            'encoded_by' => auth()->id(),
+        ]);
 
-        return redirect()->back()->with('success', 'Lab results saved successfully.');
+        return redirect()->route('medtech.appointments.index')
+            ->with('success', 'Lab results encoded successfully.');
     }
 }
 

@@ -8,8 +8,11 @@ use App\Http\Controllers\DoctorDashboardController;
 use App\Http\Controllers\MedTechDashboardController;
 use App\Http\Controllers\PatientDashboardController;
 use App\Http\Controllers\RadTechDashboardController;
+use App\Http\Controllers\LaboratoryController;
+use App\Http\Controllers\DoctorAvailabilityController;
 use App\Http\Controllers\PhysicalExamController;
 use App\Http\Controllers\StaffController;
+use App\Http\Controllers\XrayController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -27,7 +30,7 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
 
     // Dashboard Routes
     Route::get('/admin/dashboard', [AdminDashboardController::class, '__invoke'])->middleware('role:admin');
-    Route::get('/doctor/dashboard', [DoctorDashboardController::class, '__invoke'])->middleware('role:doctor');
+Route::get('/doctor/dashboard', [DoctorDashboardController::class, '__invoke'])->middleware('role:doctor')->name('doctor.dashboard');
     Route::get('/medtech/dashboard', [MedTechDashboardController::class, '__invoke'])->middleware('role:medtech');
     Route::get('/radtech/dashboard', [RadTechDashboardController::class, '__invoke'])->middleware('role:radtech');
     Route::get('/company/dashboard', [CompanyDashboardController::class, '__invoke'])->middleware('role:company');
@@ -36,6 +39,8 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
     // Doctor Routes
     Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(function () {
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor');
+        Route::get('/availability', [DoctorAvailabilityController::class, 'index'])->name('availability.index');
+        Route::patch('/availability', [DoctorAvailabilityController::class, 'update'])->name('availability.update');
         Route::get('/physical-exam-form/{appointmentid}', [PhysicalExamController::class, 'create'])->name('physical-exams.create');
         Route::post('/physical-exam-form/{appointmentid}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
         Route::get('/physical-exam-form/{appointmentid}/final', [PhysicalExamController::class, 'final'])->name('physical-exams.final');
@@ -66,6 +71,9 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
     
     // API for companies dropdown
     Route::get('/api/companies', [AppointmentController::class, 'getCompanies'])->name('api.companies');
+
+    // API for doctor availability
+    Route::get('/api/available-doctors', [AppointmentController::class, 'availableDoctors'])->name('api.available-doctors');
 
     // Admin Staff Management Routes
     Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {

@@ -82,9 +82,15 @@ $q->with('patientProfile');
         $companies = Company::where('is_active', true)
             ->orderBy('company_name')
             ->get(['id', 'company_name']);
+
+        $doctors = User::where('role', 'doctor')
+            ->where('is_active', true)
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name', 'specialization']);
         
         return Inertia::render('appointments/create', [
             'companies' => $companies,
+            'doctors' => $doctors,
             'serviceTypes' => Appointment::getServiceTypeOptions(),
             'appointmentTypes' => Appointment::getTypeOptions(),
         ]);
@@ -97,7 +103,9 @@ $q->with('patientProfile');
     {
         $user = $request->user();
         
-        $rules = [
+$rules = [
+            'doctor_id' => ['required', 'exists:users,id'],
+            'start_time' => ['required', 'date_format:H:i'],
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
             'company_id' => ['nullable', 'exists:companies,id'],
             'appointment_date' => ['required', 'date', 'after_or_equal:today'],
@@ -137,7 +145,42 @@ $q->with('patientProfile');
         }
         
         $data = $validator->validated();
-        
+
+        // Validate doctor availability
+        $doctor = User::findOrFail($data['doctor_id']);
+        if ($doctor->role !== 'doctor' || !$doctor->is_active) {
+            return back()->withErrors(['doctor_id' => 'Invalid doctor selected.'])->withInput();
+        }
+
+        $appointmentDate = new \DateTime($data['appointment_date']);
+        $dayKey = strtolower($appointmentDate->format('D'));
+        $availSlot = collect($doctor->availability ?? [])->firstWhere('day', $dayKey);
+
+        if (!$availSlot) {
+            return back()->withErrors(['doctor_id' => "Doctor not available on {$appointmentDate->format('l')}."])->withInput();
+        }
+
+        $startTime = new \DateTime($data['appointment_date'] . ' ' . $data['start_time']);
+        $endTime = clone $startTime;
+        $endTime->add(new \DateInterval('PT30M'));  // 30min slot
+
+        if ($startTime->format('H:i') < $availSlot['start'] || $endTime->format('H:i') > $availSlot['end']) {
+            return back()->withErrors(['start_time' => 'Selected time outside doctor\'s availability.'])->withInput();
+        }
+
+        // Check for overlapping appointments
+        $overlap = Appointment::where('doctor_id', $doctor->id)
+            ->whereDate('appointment_date', $data['appointment_date'])
+            ->where(function ($q) use ($startTime, $endTime) {
+                $q->whereBetween('start_time', [$startTime->format('H:i'), $endTime->format('H:i')])
+                  ->orWhereBetween('end_time', [$startTime->format('H:i'), $endTime->format('H:i')]);
+            })
+            ->exists();
+
+        if ($overlap) {
+            return back()->withErrors(['start_time' => 'Time slot already booked.'])->withInput();
+        }
+
         // Generate referral code for company referrals
         if ($data['type'] === 'company_referral') {
             $data['referral_code'] = $data['referral_code'] ?? strtoupper(Str::random(8));
@@ -147,6 +190,9 @@ $q->with('patientProfile');
         $appointment = Appointment::create([
             'user_id' => $user->id,
             'company_id' => $data['company_id'] ?? null,
+            'doctor_id' => $data['doctor_id'],
+            'start_time' => $startTime->format('H:i'),
+            'end_time' => $endTime->format('H:i'),
             'appointment_date' => $data['appointment_date'],
             'type' => $data['type'],
             'status' => 'pending',
@@ -284,6 +330,36 @@ $q->with('patientProfile');
     }
 
     /**
+     * Get available doctors and slots for a date (API).
+     */
+    public function availableDoctors(Request $request)
+    {
+        $date = $request->get('date', today()->format('Y-m-d'));
+        $dayKey = strtolower(date('D', strtotime($date)));
+
+        $doctors = User::where('role', 'doctor')
+            ->where('is_active', true)
+            ->whereJsonContains('availability->*.day', $dayKey)
+            ->withCount(['doctorAppointments as booked_slots' => function ($q) use ($date) {
+                $q->whereDate('appointment_date', $date)
+                  ->whereIn('status', ['accepted', 'arrived']);
+            }])
+            ->get(['id', 'first_name', 'last_name', 'specialization']);
+
+        $doctors->each(function ($doctor) use ($dayKey, $date) {
+            $avail = collect($doctor->availability)->firstWhere('day', $dayKey);
+            if ($avail) {
+                $doctor->availability_slot = $avail;
+                // Simple free slots estimate:  (end - start hours * 2) - booked
+                $hours = (strtotime($avail['end']) - strtotime($avail['start'])) / 3600;
+                $doctor->free_slots = max(0, intval($hours * 2) - $doctor->booked_slots_count);
+            }
+        });
+
+        return response()->json($doctors->filter(fn($d) => ($d->free_slots ?? 0) > 0));
+    }
+
+    /**
      * Get available companies for dropdown (API).
      */
     public function getCompanies(Request $request)
@@ -364,7 +440,12 @@ $query = Appointment::with(['user.patientProfile', 'company']);
         $companies = Company::where('is_active', true)
             ->orderBy('company_name')
             ->get(['id', 'company_name']);
-        
+
+        $doctors = User::where('role', 'doctor')
+            ->where('is_active', true)
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name', 'specialization']);
+
         $patients = User::where('role', 'patient')
             ->where('is_active', true)
             ->orderBy('first_name')
@@ -372,6 +453,7 @@ $query = Appointment::with(['user.patientProfile', 'company']);
         
         return Inertia::render('admin/appointments/create', [
             'companies' => $companies,
+            'doctors' => $doctors,
             'patients' => $patients,
             'serviceTypes' => Appointment::getServiceTypeOptions(),
             'appointmentTypes' => Appointment::getTypeOptions(),

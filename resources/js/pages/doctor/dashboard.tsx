@@ -1,5 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Calendar, HeartPulse, Users, Activity } from 'lucide-react';
+import { LayoutGrid, Calendar, HeartPulse, Users, Activity, Clock } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -7,11 +7,12 @@ interface Props {
     pendingCount: number;
     todayCount: number;
     totalPatients: number;
+    availabilityDays: number;
 }
 
 export default function DoctorDashboard(props: Props) {
     const { auth } = usePage().props as any;
-    const { pendingCount, todayCount, totalPatients } = props;
+    const { pendingCount, todayCount, totalPatients, availabilityDays } = props;
 
     return (
         <>
@@ -107,12 +108,12 @@ export default function DoctorDashboard(props: Props) {
                         </Card>
                     </Link>
 
-                    <Link href="/settings/profile" className="block">
-                        <Card className="h-48 hover:shadow-lg transition-shadow cursor-pointer border-2 border-dashed border-gray-200 hover:border-purple-300 group">
+<Link href="/doctor/availability" className="block">
+                        <Card className="h-48 hover:shadow-lg transition-shadow cursor-pointer border-2 border-dashed border-gray-200 hover:border-emerald-300 group">
                             <CardContent className="p-8 flex flex-col items-center justify-center text-center group-hover:scale-105 transition-transform">
-                                <Activity className="w-16 h-16 text-purple-500 mb-4" />
-                                <h3 className="text-xl font-bold text-gray-900 mb-2">View Schedule</h3>
-                                <p className="text-gray-500">Weekly overview & calendar</p>
+                                <Clock className="w-16 h-16 text-emerald-500 mb-4 group-hover:rotate-12 transition-transform" />
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">Manage Availability</h3>
+                                <p className="text-gray-500">{availabilityDays} days available this week</p>
                             </CardContent>
                         </Card>
                     </Link>
