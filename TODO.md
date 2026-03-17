@@ -1,1 +1,8 @@
-# Task: Fix "Route [doctor.dashboard] not defined" error\n\n## Steps:\n- [x] Step 1: Edit routes/web.php to add ->name('doctor.dashboard') to the doctor dashboard route\n- [ ] Step 2: Execute php artisan route:clear and php artisan route:cache\n- [ ] Step 3: Test the doctor availability form submission\n- [ ] Step 4: Verify no other routes broken and cleanup TODO.md\n\n**Status: Completed Step 1. Proceeding to Step 2**
+# Add Toast Success in Staff Create.tsx
+
+## Steps:
+- [ ] 1. Create TODO.md with implementation plan (current)
+- [ ] 2. Update resources/js/pages/admin/staff/create.tsx to add local toast success notification on form submission
+- [ ] 3. Test form submission shows green toast 'Staff member created successfully!' for 3 seconds
+- [ ] 4. Complete task
+

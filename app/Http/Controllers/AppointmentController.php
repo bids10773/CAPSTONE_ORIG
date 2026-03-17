@@ -83,14 +83,8 @@ $q->with('patientProfile');
             ->orderBy('company_name')
             ->get(['id', 'company_name']);
 
-        $doctors = User::where('role', 'doctor')
-            ->where('is_active', true)
-            ->orderBy('first_name')
-            ->get(['id', 'first_name', 'last_name', 'specialization']);
-        
         return Inertia::render('appointments/create', [
             'companies' => $companies,
-            'doctors' => $doctors,
             'serviceTypes' => Appointment::getServiceTypeOptions(),
             'appointmentTypes' => Appointment::getTypeOptions(),
         ]);

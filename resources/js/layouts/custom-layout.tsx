@@ -4,6 +4,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs';
 import type { AppLayoutProps } from '@/types';
 import { motion } from 'framer-motion';
 
+
 export default function ClinicDashboardLayout({ children, breadcrumbs = [] }: AppLayoutProps) {
     return (
         /* 1. WRAPPER BACKGROUND (The Gap/Sidebar color) - Dark mode aware */

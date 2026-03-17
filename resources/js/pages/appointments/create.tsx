@@ -3,6 +3,7 @@ import { Head, usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Calendar, ArrowLeft, Save, Users, FileText, Upload, HeartPulse } from 'lucide-react';
 import { Link } from '@inertiajs/react';
+import { AvailableDoctor } from '@/types';
 
 interface Company {
   id: number;
@@ -10,7 +11,11 @@ interface Company {
 }
 
 export default function CreateAppointment() {
-const { companies, doctors, serviceTypes, appointmentTypes } = usePage().props as any;
+const { companies, serviceTypes, appointmentTypes } = usePage().props as any;
+
+const [availableDoctors, setAvailableDoctors] = useState<AvailableDoctor[]>([]);
+const [isLoadingDoctors, setIsLoadingDoctors] = useState(false);
+const [selectedDayName, setSelectedDayName] = useState('');
 
   const [formData, setFormData] = useState({
     doctor_id: '',
@@ -88,6 +93,40 @@ const { companies, doctors, serviceTypes, appointmentTypes } = usePage().props a
     }
   };
 
+  const fetchAvailableDoctors = async () => {
+    if (!formData.appointment_date) {
+      setAvailableDoctors([]);
+      setSelectedDayName('');
+      return;
+    }
+
+    setIsLoadingDoctors(true);
+    try {
+      const date = formData.appointment_date;
+      const dayDate = new Date(date);
+      const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'long' });
+      setSelectedDayName(dayName);
+
+      const response = await fetch(`/api/available-doctors?date=${date}`);
+      if (!response.ok) throw new Error('Failed to fetch');
+      const doctors: AvailableDoctor[] = await response.json();
+      setAvailableDoctors(doctors);
+      if (doctors.length === 0) {
+        setErrors(prev => ({ ...prev, doctor_id: `No doctors available on ${dayName}` }));
+      }
+    } catch (error) {
+      console.error('Error fetching doctors:', error);
+      setErrors(prev => ({ ...prev, doctor_id: 'Error loading available doctors' }));
+      setAvailableDoctors([]);
+    } finally {
+      setIsLoadingDoctors(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAvailableDoctors();
+  }, [formData.appointment_date]);
+
   const handleCompanySelect = (company: Company) => {
     setFormData((prev) => ({ ...prev, company_id: company.id.toString() }));
     setCompanySearch(company.company_name);
@@ -145,23 +184,30 @@ router.post('/appointments', formData, {
               {/* Doctor Selection */}
               <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
                 <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                  Select Doctor
+                  Select Doctor {selectedDayName && `- Available on ${selectedDayName}`}
                 </h2>
                 <select
                   name="doctor_id"
                   value={formData.doctor_id}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={!formData.appointment_date || isLoadingDoctors}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="">Choose doctor...</option>
-                  {(doctors || []).map((doctor: any) => (
+                  <option value="">
+                    {isLoadingDoctors ? 'Loading available doctors...' : formData.appointment_date ? 'Choose available doctor...' : 'Select date first'}
+                  </option>
+                  {availableDoctors.map((doctor) => (
                     <option key={doctor.id} value={doctor.id}>
                       Dr. {doctor.first_name} {doctor.last_name}
                       {doctor.specialization && ` - ${doctor.specialization}`}
+                      {doctor.free_slots !== undefined && ` (${doctor.free_slots} slots left)`}
                     </option>
                   ))}
                 </select>
                 {errors.doctor_id && <p className="mt-1 text-sm text-red-600">{errors.doctor_id}</p>}
+                {formData.appointment_date && availableDoctors.length === 0 && !isLoadingDoctors && (
+                  <p className="mt-1 text-sm text-yellow-600">No doctors available on this day. Try another date.</p>
+                )}
               </div>
 
               {/* Date & Time */}
@@ -556,25 +602,7 @@ router.post('/appointments', formData, {
               )}
             </div>
 
-            {/* Appointment Date */}
-            <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                Schedule
-              </h2>
 
-              <input
-                type="datetime-local"
-                name="appointment_date"
-                value={formData.appointment_date}
-                onChange={handleChange}
-                min={new Date().toISOString().slice(0, 16)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-
-              {errors.appointment_date && (
-                <p className="mt-1 text-sm text-red-600">{errors.appointment_date}</p>
-              )}
-            </div>
 
             {/* Notes */}
             <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">

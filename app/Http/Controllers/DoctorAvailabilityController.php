@@ -5,19 +5,33 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
 
 class DoctorAvailabilityController extends Controller
 {
     /**
-     * Display doctor's availability form.
+     * Display admin doctor availability management form.
      */
-    public function index(Request $request): Response
+    public function adminIndex(Request $request): Response
     {
-        $doctor = $request->user();
+        $doctorId = $request->query('doctor_id');
 
-        return Inertia::render('doctor/availability', [
-            'availability' => $doctor->availability ?? [],
+        // Get all doctors
+        $doctors = \App\Models\User::where('role', 'doctor')
+            ->orderBy('first_name')
+            ->get([
+                'id',
+                'first_name',
+                'last_name',
+                'specialization',
+                'availability'
+            ]);
+
+        // Pre-selected doctor
+        $selectedDoctor = $doctorId ? $doctors->firstWhere('id', $doctorId) : $doctors->first();
+
+        return Inertia::render('admin/doctor-availability/index', [
+            'doctors' => $doctors,
             'days' => [
                 'mon' => 'Monday',
                 'tue' => 'Tuesday',
@@ -27,28 +41,33 @@ class DoctorAvailabilityController extends Controller
                 'sat' => 'Saturday',
                 'sun' => 'Sunday',
             ],
+            'selectedDoctorId' => $selectedDoctor?->id ?? null,
         ]);
     }
 
-
     /**
-     * Update doctor's availability.
+     * Update doctor availability by admin.
      */
-    public function update(Request $request): \Illuminate\Http\RedirectResponse
+    public function adminUpdate(Request $request): \Illuminate\Http\RedirectResponse
     {
         $request->validate([
-            'availability' => 'required|array',
+            'doctor_id' => [
+                'required',
+                Rule::exists('users', 'id')->where(fn($query) => $query->where('role', 'doctor')),
+            ],
+            'availability' => 'nullable|array',
             'availability.*.day' => 'required|string|in:mon,tue,wed,thu,fri,sat,sun',
             'availability.*.start' => 'required|date_format:H:i',
             'availability.*.end' => 'required|date_format:H:i|after:availability.*.start',
         ]);
 
-        $doctor = $request->user();
-        $doctor->update(['availability' => $request->availability]);
+        $doctor = \App\Models\User::role('doctor')->findOrFail($request->doctor_id);
 
-        return redirect()->route('doctor.dashboard')
-            ->with('success', 'Availability updated successfully.');
+        // Update availability (empty array if none)
+        $doctor->update([
+            'availability' => $request->availability ?? [],
+        ]);
+
+        return back()->with('success', 'Doctor availability updated successfully.');
     }
-
 }
-

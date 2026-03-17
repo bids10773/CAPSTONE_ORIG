@@ -35,6 +35,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'signature_path',
         'company_id',
         'is_active',
+        'availability', // ✅ add this
     ];
 
     /**

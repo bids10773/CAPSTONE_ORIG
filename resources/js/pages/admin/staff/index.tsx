@@ -1,5 +1,5 @@
 import AppLayout from '@/layouts/app-layout';
-import { Users, Plus, Search, Edit, Trash2, ToggleLeft, UserCheck, UserX } from 'lucide-react';
+import { Users, Plus, Search, Edit, Trash2, ToggleLeft, UserCheck, UserX, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 
@@ -216,9 +216,19 @@ export default function StaffIndex() {
                                             </td>
 
                                             <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
-                                                    {getRoleLabel(member.role)}
-                                                </span>
+
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
+                                    {getRoleLabel(member.role)}
+                                </span>
+                               {member.role === 'doctor' && props.auth.user.role === 'admin' && (
+  <Link
+    href={`/admin/doctor-availability?doctor_id=${member.id}`}
+    className="ml-2 p-1.5 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+  >
+    <Clock className="w-3 h-3 text-blue-600" />
+  </Link>
+)}
+
                                             </td>
 
                                             <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">

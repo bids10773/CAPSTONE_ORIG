@@ -7,12 +7,14 @@ interface Props {
     pendingCount: number;
     todayCount: number;
     totalPatients: number;
-    availabilityDays: number;
 }
 
 export default function DoctorDashboard(props: Props) {
     const { auth } = usePage().props as any;
-    const { pendingCount, todayCount, totalPatients, availabilityDays } = props;
+    const { pendingCount, todayCount, totalPatients } = props;
+
+    // Get availability days from authenticated doctor
+    const availabilityDays = auth?.user?.availability?.length || 0;
 
     return (
         <>
@@ -78,8 +80,8 @@ export default function DoctorDashboard(props: Props) {
                                     <Activity className="w-8 h-8" />
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-indigo-100 text-sm">Completed This Week</p>
-                                    <p className="text-3xl font-bold">24</p>
+                                    <p className="text-indigo-100 text-sm">Available Days This Week</p>
+                                    <p className="text-3xl font-bold">{availabilityDays}</p>
                                 </div>
                             </div>
                         </div>
@@ -108,7 +110,7 @@ export default function DoctorDashboard(props: Props) {
                         </Card>
                     </Link>
 
-<Link href="/doctor/availability" className="block">
+                    <Link href="/doctor/availability" className="block">
                         <Card className="h-48 hover:shadow-lg transition-shadow cursor-pointer border-2 border-dashed border-gray-200 hover:border-emerald-300 group">
                             <CardContent className="p-8 flex flex-col items-center justify-center text-center group-hover:scale-105 transition-transform">
                                 <Clock className="w-16 h-16 text-emerald-500 mb-4 group-hover:rotate-12 transition-transform" />
@@ -124,5 +126,3 @@ export default function DoctorDashboard(props: Props) {
 }
 
 DoctorDashboard.layout = (page: any) => <AppLayout>{page}</AppLayout>;
-
-

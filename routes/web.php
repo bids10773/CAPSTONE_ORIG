@@ -39,8 +39,10 @@ Route::get('/doctor/dashboard', [DoctorDashboardController::class, '__invoke'])-
     // Doctor Routes
     Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(function () {
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor');
-        Route::get('/availability', [DoctorAvailabilityController::class, 'index'])->name('availability.index');
-        Route::patch('/availability', [DoctorAvailabilityController::class, 'update'])->name('availability.update');
+
+        Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
+        Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');
+
         Route::get('/physical-exam-form/{appointmentid}', [PhysicalExamController::class, 'create'])->name('physical-exams.create');
         Route::post('/physical-exam-form/{appointmentid}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
         Route::get('/physical-exam-form/{appointmentid}/final', [PhysicalExamController::class, 'final'])->name('physical-exams.final');
@@ -76,8 +78,12 @@ Route::get('/doctor/dashboard', [DoctorDashboardController::class, '__invoke'])-
     Route::get('/api/available-doctors', [AppointmentController::class, 'availableDoctors'])->name('api.available-doctors');
 
     // Admin Staff Management Routes
+
     Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
+        Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');
         Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
+
         Route::get('/staff/create', [StaffController::class, 'create'])->name('staff.create');
         Route::post('/staff', [StaffController::class, 'store'])->name('staff.store');
         Route::get('/staff/{staff}/edit', [StaffController::class, 'edit'])->name('staff.edit');
