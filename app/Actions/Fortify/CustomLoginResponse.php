@@ -8,21 +8,23 @@ class CustomLoginResponse implements LoginResponseContract
 {
     public function toResponse($request)
     {
-        $user = $request->user();
+        // Refresh user from database
+        $user = $request->user()->fresh();
 
         // Check if user's email is verified
         if (!$user->hasVerifiedEmail()) {
-            return redirect('/email/verify');
+            return redirect('/email/verify')
+            ->with('error', 'Please verify your email first.');
         }
 
-        // Always redirect based on user role - ignore intended URL to prevent race conditions
+        // Role-based redirect
         return match($user->role) {
             'admin' => redirect('/admin/dashboard'),
             'doctor' => redirect('/doctor/dashboard'),
             'medtech' => redirect('/medtech/dashboard'),
             'radtech' => redirect('/radtech/dashboard'),
             'company' => redirect('/company/dashboard'),
-            default => redirect('/dashboard'), // patient - redirect to dashboard
+            default => redirect('/dashboard'),
         };
     }
 }

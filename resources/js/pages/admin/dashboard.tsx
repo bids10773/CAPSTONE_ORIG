@@ -288,23 +288,22 @@ export default function AdminDashboard() {
 
                         {(monthlyTrends || []).map((trend: any, index: number) => {
 
-                            const trendCounts = monthlyTrends.map((t: any) => t.count);
-                            const maxCount = Math.max(...trendCounts, 1);
-                            const heightPercent = (trend.count / maxCount) * 100;
+                             const counts = (monthlyTrends || []).map((t: any) => t.count);
+                            const maxCount = Math.max(...counts, 1);
+                            const heightPercent = maxCount > 0 ? (trend.count / maxCount) * 100 : 0;
 
-                            return (
-                                <div key={index} className="flex-1 flex flex-col items-center">
+                           return (
+                                <div key={index} className="flex-1 flex flex-col items-center gap-2">
 
                                     <motion.div
-                                        className="w-full bg-blue-500 rounded-t"
+                                        className="w-full bg-blue-500 rounded-t-md transition-all hover:bg-blue-600"
                                         initial={{ height: 0 }}
-                                        animate={{ height: `${heightPercent}%` }}
+                                        animate={{ height: `${heightPercent}%`, minHeight: trend.count > 0 ? '10px' : '0' }}
+                                        title={`${trend.count} appointments`}
                                         transition={{ duration: 0.6 }}
                                     />
 
-                                    <span className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                                        {trend.month}
-                                    </span>
+                                    <span className="text-xs text-gray-500">{trend.month?.substring(0, 3)}</span>
 
                                 </div>
                             );

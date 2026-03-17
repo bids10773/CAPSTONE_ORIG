@@ -119,6 +119,14 @@ class PhysicalExam extends Model
     }
 
     /**
+     * Get the medical history for this physical exam.
+     */
+    public function medicalHistory(): HasOne
+    {
+        return $this->hasOne(MedicalHistory::class, 'appointment_id');
+    }
+
+    /**
      * Get classification options.
      */
     public static function getClassificationOptions(): array

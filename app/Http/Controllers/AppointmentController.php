@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\Company;
 use App\Models\User;
+use App\Models\MedicalHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -103,6 +104,13 @@ $q->with('patientProfile');
             'service_type' => ['required', 'string'],
             'referral_code' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'present_illness' => ['nullable', 'string', 'max:1000'],
+            'past_medical_history' => ['nullable', 'string', 'max:1000'],
+            'operations_accidents' => ['nullable', 'string', 'max:1000'],
+            'family_history' => ['nullable', 'string', 'max:1000'],
+            'allergies' => ['nullable', 'string', 'max:1000'],
+            'personal_social_history' => ['nullable', 'string', 'max:1000'],
+            'ob_menstrual_history' => ['nullable', 'string', 'max:1000'],
         ];
 
         // Conditional fields for individual/company_referral
@@ -145,6 +153,18 @@ $q->with('patientProfile');
             'service_type' => $data['service_type'],
             'referral_code' => $data['referral_code'] ?? null,
             'notes' => $data['notes'] ?? null,
+        ]);
+
+        // Create medical history if provided
+        MedicalHistory::create([
+            'appointment_id' => $appointment->id,
+            'present_illness' => $data['present_illness'] ?? null,
+            'past_medical_history' => $data['past_medical_history'] ?? null,
+            'operations_accidents' => $data['operations_accidents'] ?? null,
+            'family_history' => $data['family_history'] ?? null,
+            'allergies' => $data['allergies'] ?? null,
+            'personal_social_history' => $data['personal_social_history'] ?? null,
+            'ob_menstrual_history' => $data['ob_menstrual_history'] ?? null,
         ]);
 
         // Create or update patient profile for individual/referral
@@ -433,12 +453,11 @@ $query = Appointment::with(['user.patientProfile', 'company']);
         $search = $request->get('search', '');
         $status = $request->get('status', 'pending'); // Default to pending
 
-        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport'])
-            ->where('status', $status);
+        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport']);
 
         // Role-specific filtering
         if ($role === 'doctor') {
-            // Doctors see all pending appointments
+            $query->where('status', 'accepted');
             $query->whereDoesntHave('physicalExam', function ($q) {
                 $q->where('is_completed', true);
             });

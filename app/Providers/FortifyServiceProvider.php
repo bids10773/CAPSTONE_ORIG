@@ -15,6 +15,8 @@ use Laravel\Fortify\Fortify;
 use App\Actions\Fortify\CustomLoginResponse;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\RegisteredUserResponse;
+use Laravel\Fortify\Contracts\VerifyEmailResponse;
+use Illuminate\Support\Facades\Auth;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -27,21 +29,23 @@ class FortifyServiceProvider extends ServiceProvider
     $this->app->singleton(LoginResponseContract::class, CustomLoginResponse::class);
 
     // Custom verify email redirect
-    $this->app->singleton(VerifyEmailResponseContract::class, function () {
-        return new class implements VerifyEmailResponseContract {
+    $this->app->singleton(VerifyEmailResponse::class, function () {
+    return new class implements VerifyEmailResponse {
 
-            public function toResponse($request)
-            {
-                Auth::guard('web')->logout();
+        public function toResponse($request)
+        {
+            // Ensure user is updated
+            $request->user()->refresh();
 
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
+            // Optional: logout user (safe)
+            Auth::logout();
 
-                return redirect('/login?verified=1');
-            }
+            // Redirect to login with success flag
+            return redirect('/login?verified=1');
+        }
 
-        };
-    });
+    };
+});
 }
 
     /**

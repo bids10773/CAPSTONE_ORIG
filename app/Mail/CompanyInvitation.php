@@ -57,4 +57,3 @@ class CompanyInvitation extends Mailable
         return [];
     }
 }
-

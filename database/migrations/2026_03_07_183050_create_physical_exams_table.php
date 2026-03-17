@@ -24,6 +24,30 @@ return new class extends Migration
 
     $table->string('blood_pressure')->nullable();
 
+    $table->integer('pulse_rate')->nullable();
+    $table->integer('respiration_rate')->nullable();
+
+    /* ======================
+       PHYSICAL FINDINGS
+    ======================*/
+
+    $table->string('head_scalp')->nullable();
+    $table->string('eyes')->nullable();
+    $table->string('ears')->nullable();
+    $table->string('nose_sinuses')->nullable();
+    $table->string('mouth_throat')->nullable();
+    $table->string('neck_thyroid')->nullable();
+    $table->string('chest_breast')->nullable();
+    $table->string('lungs')->nullable();
+    $table->string('heart')->nullable();
+    $table->string('abdomen')->nullable();
+    $table->string('back')->nullable();
+    $table->string('anus')->nullable();
+    $table->string('genitals')->nullable();
+    $table->string('extremities')->nullable();
+    $table->string('skin')->nullable();
+    $table->string('dental')->nullable();
+
     $table->boolean('is_lungs_normal')->default(true);
 
     $table->text('lungs_remarks')->nullable();

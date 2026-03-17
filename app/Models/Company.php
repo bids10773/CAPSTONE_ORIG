@@ -100,8 +100,8 @@ class Company extends Model
         $this->temp_password = $tempPassword;
         $this->save();
 
-        // Send invitation email
-        Mail::to($this->representative_email)->send(new CompanyInvitation($this, $tempPassword));
+        // Send invitation email - DISABLED
+        // Mail::to($this->representative_email)->send(new CompanyInvitation($this, $tempPassword));
 
         return $user;
     }

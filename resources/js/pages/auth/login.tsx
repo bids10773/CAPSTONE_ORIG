@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, usePage, router } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,20 @@ type Props = {
 
 export default function Login({ status, canResetPassword, canRegister }: Props) {
     const [showVerifyModal, setShowVerifyModal] = useState(false);
+    const { flash } = usePage().props as any;
+    const { auth } = usePage().props as any;
+
+useEffect(() => {
+    if (auth?.user) {
+        router.visit('/dashboard');
+    }
+}, []);
+
+{flash?.error && (
+    <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-semibold text-center">
+        {flash.error}
+    </div>
+)}
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -63,9 +77,9 @@ export default function Login({ status, canResetPassword, canRegister }: Props) 
                 <h2 className="text-4xl font-black text-gray-900 mb-6 tracking-tight uppercase">Verified!</h2>
                 
                 <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-6 mb-10 text-center">
-                    <p className="text-gray-700 text-lg leading-relaxed font-medium italic">
-                        "Remember your email and/or username and password which are required upon signing in."
-                    </p>
+                    <p className="text-gray-700 text-lg leading-relaxed font-medium">
+    Your email has been successfully verified. You may now securely log in to your account.
+</p>
                 </div>
 
                 <Button 

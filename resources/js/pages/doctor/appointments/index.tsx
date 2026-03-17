@@ -224,7 +224,7 @@ router.visit(`/doctor/physical-exam-form/${appointmentId}`);
                                                 <Link href={`/appointments/${appointment.id}`} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-lg inline-flex items-center">
                                                     <Eye className="w-4 h-4" />
                                                 </Link>
-                                                {appointment.status === 'pending' && !appointment.physicalExam && (
+{appointment.status === 'accepted' && !appointment.physicalExam && (
                                                     <button
                                                         onClick={() => startExam(appointment.id)}
                                                         className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg inline-flex items-center"

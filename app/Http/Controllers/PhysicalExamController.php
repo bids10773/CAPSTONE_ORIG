@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PhysicalExam;
 use App\Models\Appointment;
+use App\Models\MedicalHistory;
+use App\Models\PhysicalExam;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -12,7 +13,7 @@ class PhysicalExamController extends Controller
 {
     public function create($appointmentId): Response
     {
-        $appointment = Appointment::with(['user', 'physicalExam'])->findOrFail($appointmentId);
+        $appointment = Appointment::with(['user', 'physicalExam', 'medicalHistory'])->findOrFail($appointmentId);
         
         return Inertia::render('doctor/physical-exam-form', [
             'appointment' => $appointment,
@@ -29,6 +30,14 @@ class PhysicalExamController extends Controller
             'pulse_rate' => 'nullable|numeric',
             'temperature' => 'nullable|numeric',
             'remarks' => 'nullable|string',
+            // Medical History fields
+            'present_illness' => 'nullable|string',
+            'past_medical_history' => 'nullable|string',
+            'operations_accidents' => 'nullable|string',
+            'family_history' => 'nullable|string',
+            'allergies' => 'nullable|string',
+            'personal_social_history' => 'nullable|string',
+            'ob_menstrual_history' => 'nullable|string',
         ]);
 
         PhysicalExam::updateOrCreate(
@@ -41,10 +50,31 @@ class PhysicalExamController extends Controller
                 'pulse_rate' => $request->pulse_rate,
                 'temperature' => $request->temperature,
                 'remarks' => $request->remarks,
+                'present_illness' => $request->present_illness,
+                'past_medical_history' => $request->past_medical_history,
+                'operations_accidents' => $request->operations_accidents,
+                'family_history' => $request->family_history,
+                'allergies' => $request->allergies,
+                'personal_social_history' => $request->personal_social_history,
+                'ob_menstrual_history' => $request->ob_menstrual_history,
             ]
         );
 
-        return redirect()->back()->with('success', 'Physical exam saved.');
+        // Save medical history separately
+        MedicalHistory::updateOrCreate(
+            ['appointment_id' => $appointment],
+            $request->only([
+                'present_illness',
+                'past_medical_history',
+                'operations_accidents',
+                'family_history',
+                'allergies',
+                'personal_social_history',
+                'ob_menstrual_history',
+            ])
+        );
+
+        return redirect()->back()->with('success', 'Physical exam and medical history saved.');
     }
 
     public function final($appointment): Response

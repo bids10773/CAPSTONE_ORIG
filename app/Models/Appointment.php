@@ -78,7 +78,13 @@ class Appointment extends Model
         return $this->hasOne(XrayReport::class);
     }
 
-  
+    /**
+     * Get the medical history for this appointment.
+     */
+    public function medicalHistory(): HasOne
+    {
+        return $this->hasOne(MedicalHistory::class, 'appointment_id');
+    }
 
     /**
      * Get status badge color.

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { Calendar, ArrowLeft, Save, Users, FileText, Upload } from 'lucide-react';
+import { Calendar, ArrowLeft, Save, Users, FileText, Upload, HeartPulse } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 
 interface Company {
@@ -25,15 +25,23 @@ export default function CreateAppointment() {
     address: '',
     emergency_contact_name: '',
     emergency_contact_no: '',
+    // Medical history
+    present_illness: '',
+    past_medical_history: '',
+    operations_accidents: '',
+    family_history: '',
+    allergies: '',
+    personal_social_history: '',
+    ob_menstrual_history: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-    const [companySearch, setCompanySearch] = useState('');
-    const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
-    const [filteredCompanies, setFilteredCompanies] = useState<Company[]>(companies || []);
-    const [calculatedAge, setCalculatedAge] = useState('-');
-    const [selectedCompanyName, setSelectedCompanyName] = useState('');
+  const [companySearch, setCompanySearch] = useState('');
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [filteredCompanies, setFilteredCompanies] = useState<Company[]>(companies || []);
+  const [calculatedAge, setCalculatedAge] = useState('-');
+  const [selectedCompanyName, setSelectedCompanyName] = useState('');
 
   useEffect(() => {
     if (companySearch) {
@@ -78,7 +86,7 @@ export default function CreateAppointment() {
     }
   };
 
-    const handleCompanySelect = (company: Company) => {
+  const handleCompanySelect = (company: Company) => {
     setFormData((prev) => ({ ...prev, company_id: company.id.toString() }));
     setCompanySearch(company.company_name);
     setSelectedCompanyName(company.company_name);
@@ -166,66 +174,66 @@ export default function CreateAppointment() {
               </div>
             </div>
              {/* Company Selection (for Referral/Bulk) */}
-                        {showCompanyField && (
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                                <h2 className="text-lg font-semibold mb-4">Company Information</h2>
-                                <div className="relative">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Select Company *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="company_search"
-                                        value={companySearch}
-                                        onChange={(e) => {
-                                            setCompanySearch(e.target.value);
-                                            setShowCompanyDropdown(true);
-                                        }}
-                                        onFocus={() => setShowCompanyDropdown(true)}
-                                        placeholder="Search for a company..."
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                        autoComplete="off"
-                                    />
-                                    <input type="hidden" name="company_id" value={formData.company_id} />
-                                    
-                                    {showCompanyDropdown && filteredCompanies.length > 0 && (
-                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                            {filteredCompanies.map((company: Company) => (
-                                                <button
-                                                    key={company.id}
-                                                    type="button"
-                                                    onClick={() => handleCompanySelect(company)}
-                                                    className="w-full px-4 py-2 text-left hover:bg-blue-50 transition-colors"
-                                                >
-                                                    {company.company_name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {errors.company_id && (
-                                        <p className="mt-1 text-sm text-red-600">{errors.company_id}</p>
-                                    )}
-                                </div>
+            {showCompanyField && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold mb-4">Company Information</h2>
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Select Company *
+                  </label>
+                  <input
+                    type="text"
+                    name="company_search"
+                    value={companySearch}
+                    onChange={(e) => {
+                      setCompanySearch(e.target.value);
+                      setShowCompanyDropdown(true);
+                    }}
+                    onFocus={() => setShowCompanyDropdown(true)}
+                    placeholder="Search for a company..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoComplete="off"
+                  />
+                  <input type="hidden" name="company_id" value={formData.company_id} />
+                  
+                  {showCompanyDropdown && filteredCompanies.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredCompanies.map((company: Company) => (
+                        <button
+                          key={company.id}
+                          type="button"
+                          onClick={() => handleCompanySelect(company)}
+                          className="w-full px-4 py-2 text-left hover:bg-blue-50 transition-colors"
+                        >
+                          {company.company_name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {errors.company_id && (
+                    <p className="mt-1 text-sm text-red-600">{errors.company_id}</p>
+                  )}
+                </div>
 
-                                {showReferralCode && (
-                                    <div className="mt-4">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Referral Code
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="referral_code"
-                                            value={formData.referral_code}
-                                            onChange={handleChange}
-                                            placeholder="Enter referral code (optional)"
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                {showReferralCode && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Referral Code
+                    </label>
+                    <input
+                      type="text"
+                      name="referral_code"
+                      value={formData.referral_code}
+                      onChange={handleChange}
+                      placeholder="Enter referral code (optional)"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
-            {/* Patient Details - for individual/company_referral */}
+            {/* Patient Details & Medical History - for individual/company_referral */}
             {showPatientDetails && (
               <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
                 <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
@@ -344,6 +352,116 @@ export default function CreateAppointment() {
                     {errors.emergency_contact_no && <p className="mt-1 text-sm text-red-600">{errors.emergency_contact_no}</p>}
                   </div>
 
+                </div>
+
+                {/* Medical History Section */}
+                <div className="mt-8 pt-8 border-t border-gray-200 dark:border-neutral-700">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+                    <HeartPulse className="w-5 h-5 text-red-500" />
+                    Medical History
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                    Please provide your medical history (optional but recommended for Full PME)
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Present Illness
+                      </label>
+                      <textarea
+                        name="present_illness"
+                        value={formData.present_illness}
+                        onChange={handleChange}
+                        rows={3}
+                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Current complaints or symptoms..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Past Medical History
+                      </label>
+                      <textarea
+                        name="past_medical_history"
+                        value={formData.past_medical_history}
+                        onChange={handleChange}
+                        rows={3}
+                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Previous illnesses, hospitalizations..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Operations / Accidents
+                      </label>
+                      <textarea
+                        name="operations_accidents"
+                        value={formData.operations_accidents}
+                        onChange={handleChange}
+                        rows={2}
+                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Surgeries, major injuries..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Family History
+                      </label>
+                      <textarea
+                        name="family_history"
+                        value={formData.family_history}
+                        onChange={handleChange}
+                        rows={2}
+                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Hereditary conditions in family..."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Allergies
+                      </label>
+                      <textarea
+                        name="allergies"
+                        value={formData.allergies}
+                        onChange={handleChange}
+                        rows={2}
+                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Medications, food, environmental allergies..."
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Personal / Social History
+                      </label>
+                      <textarea
+                        name="personal_social_history"
+                        value={formData.personal_social_history}
+                        onChange={handleChange}
+                        rows={3}
+                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Smoking, alcohol use, exercise habits, occupation..."
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        OB / Menstrual History (Female patients)
+                      </label>
+                      <textarea
+                        name="ob_menstrual_history"
+                        value={formData.ob_menstrual_history}
+                        onChange={handleChange}
+                        rows={3}
+                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Gravida/Para, menstrual cycle details..."
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

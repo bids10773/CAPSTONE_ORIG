@@ -29,6 +29,14 @@ export default function PhysicalExamForm(props: Props) {
         pulse_rate: physicalExam?.pulse_rate || '',
         temperature: physicalExam?.temperature || '',
         remarks: physicalExam?.remarks || '',
+        // Medical history fields removed from doctor form
+        present_illness: '',
+        past_medical_history: '',
+        operations_accidents: '',
+        family_history: '',
+        allergies: '',
+        personal_social_history: '',
+        ob_menstrual_history: '',
     });
 
     const [bmi, setBmi] = useState<number | null>(null);
@@ -182,6 +190,8 @@ export default function PhysicalExamForm(props: Props) {
 
                             {errors.remarks && <p className="text-sm text-red-600">{errors.remarks}</p>}
                         </div>
+
+                        {/* Medical history section removed from doctor form per request */}
 
                         {/* BUTTONS */}
                         <div className="flex gap-4 pt-4">
