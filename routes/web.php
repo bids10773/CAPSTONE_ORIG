@@ -17,14 +17,24 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
-Route::inertia('/', 'welcome', [
-    'canRegister' => Features::enabled(Features::registration()),
-])->name('home');
+
 
 // Appointment route - accessible by all users (guests will be redirected to login)
 Route::get('/appointment', [AppointmentController::class, 'create'])->name('appointment.create');
 
 Route::middleware(['auth', 'staff.verified'])->group(function () {
+    // Role-based home redirect for authenticated users
+    Route::get('/', function () {
+        $user = auth()->user();
+        return match($user->role) {
+            'admin' => redirect('/admin/dashboard'),
+            'doctor' => redirect('/doctor/dashboard'),
+            'medtech' => redirect('/medtech/dashboard'),
+            'radtech' => redirect('/radtech/dashboard'),
+            'company' => redirect('/company/dashboard'),
+            default => redirect('/dashboard'),
+        };
+    })->name('home');
 
 
 
@@ -34,7 +44,7 @@ Route::get('/doctor/dashboard', [DoctorDashboardController::class, '__invoke'])-
     Route::get('/medtech/dashboard', [MedTechDashboardController::class, '__invoke'])->middleware('role:medtech');
     Route::get('/radtech/dashboard', [RadTechDashboardController::class, '__invoke'])->middleware('role:radtech');
     Route::get('/company/dashboard', [CompanyDashboardController::class, '__invoke'])->middleware('role:company');
-    Route::get('/dashboard', [PatientDashboardController::class, '__invoke']); // default patient
+    Route::get('/dashboard', [PatientDashboardController::class, '__invoke'])->middleware('role:patient'); // default patient
 
     // Doctor Routes
     Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(function () {

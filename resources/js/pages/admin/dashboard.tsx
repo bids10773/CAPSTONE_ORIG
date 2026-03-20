@@ -10,6 +10,15 @@ import {
 import { motion } from "framer-motion";
 
 import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem, SharedData } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Admin Dashboard',
+        href: "",
+    },
+];
+
 
 interface AppointmentData {
     id: number;
@@ -97,7 +106,7 @@ export default function AdminDashboard() {
             <Head title="Admin Dashboard" />
 
             <motion.div
-                className="p-6 space-y-6"
+                className="space-y-6"
                 variants={container}
                 initial="hidden"
                 animate="show"
@@ -107,11 +116,11 @@ export default function AdminDashboard() {
 
                 <motion.div variants={item}>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        Admin Dashboard
+                       
                     </h1>
 
                     <p className="text-gray-600 dark:text-gray-300 mt-1">
-                        Manage your clinic operations and view analytics
+                      
                     </p>
                 </motion.div>
 
@@ -376,6 +385,7 @@ export default function AdminDashboard() {
     );
 }
 
+
 AdminDashboard.layout = (page: any) => {
-    return <AppLayout>{page}</AppLayout>;
+    return <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
 };

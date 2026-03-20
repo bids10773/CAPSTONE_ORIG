@@ -9,7 +9,17 @@ import { router } from '@inertiajs/react';
 
 export default function Welcome() {
     const { auth } = usePage().props;
-    const isAuthenticated = !!auth?.user;
+const isAuthenticated = !!auth?.user;
+
+    const roleDashboardMap: Record<string, string> = {
+        admin: '/admin/dashboard',
+        doctor: '/doctor/dashboard',
+        medtech: '/medtech/dashboard',
+        radtech: '/radtech/dashboard',
+        company: '/company/dashboard',
+    };
+
+    const dashboardHref = auth?.user ? roleDashboardMap[auth.user.role ?? ''] ?? '/dashboard' : '/login';
 
     const handleLogout = () => {
         router.post('/logout');
@@ -59,7 +69,7 @@ export default function Welcome() {
 
                         {/* Right Side: Login Button */}
                         <Link
-                            href={isAuthenticated ? '/dashboard' : '/login'}
+                            href={dashboardHref}
                             className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-all shadow-md font-medium"
                         >
                             {isAuthenticated ? 'Dashboard' : 'Login'}

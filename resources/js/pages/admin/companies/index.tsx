@@ -11,6 +11,14 @@ import {
     ChevronRight
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem, SharedData } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Companies',
+        href: "",
+    },
+];
 
 interface Company {
     id: number;
@@ -224,6 +232,6 @@ export default function AdminCompaniesIndex() {
 }
 
 AdminCompaniesIndex.layout = (page: any) => {
-    return <AppLayout>{page}</AppLayout>;
+    return <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
 };
 

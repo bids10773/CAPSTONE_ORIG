@@ -4,6 +4,14 @@ import AppLayout from '@/layouts/app-layout';
 import { Users, ArrowLeft, Save, Lock, Eye, EyeOff } from 'lucide-react';
 import InputError from '@/components/input-error';
 import { Label } from '@/components/ui/label';
+import type { BreadcrumbItem, SharedData } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Create Staff',
+        href: "",
+    },
+];
 
 export default function CreateStaff() {
 
@@ -331,5 +339,5 @@ export default function CreateStaff() {
 }
 
 CreateStaff.layout = (page: any) => {
-    return <AppLayout>{page}</AppLayout>;
+    return <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
 };

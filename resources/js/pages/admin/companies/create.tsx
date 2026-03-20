@@ -2,6 +2,14 @@ import { useState } from 'react'
 import { Head, router, Link } from '@inertiajs/react'
 import AppLayout from '@/layouts/app-layout'
 import { Building2, ArrowLeft, Save, Mail, Phone, User } from 'lucide-react'
+import type { BreadcrumbItem, SharedData } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Create Companies',
+        href: "",
+    },
+];
 
 export default function AdminCreateCompany() {
 
@@ -323,6 +331,6 @@ export default function AdminCreateCompany() {
 }
 
 AdminCreateCompany.layout = (page: any) => {
-    return <AppLayout>{page}</AppLayout>
+    return <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>
 }
 

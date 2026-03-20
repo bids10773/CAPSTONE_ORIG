@@ -3,6 +3,14 @@ import { Head, usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Calendar, ArrowLeft, Save, Upload, FileText, Users } from 'lucide-react';
 import { Link } from '@inertiajs/react';
+import type { BreadcrumbItem, SharedData } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Create Appointment',
+        href: "",
+    },
+];
 
 interface Company {
     id: number;
@@ -508,6 +516,6 @@ export default function AdminCreateAppointment() {
 }
 
 AdminCreateAppointment.layout = (page: any) => {
-    return <AppLayout>{page}</AppLayout>;
+    return <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
 };
 

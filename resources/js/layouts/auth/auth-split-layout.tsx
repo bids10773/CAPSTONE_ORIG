@@ -3,9 +3,25 @@ import { home } from '@/routes';
 import type { AuthLayoutProps } from '@/types';
 import bgImage from '/public/images/bglogin.jpg';
 import logo from '/public/images/full_logo.png';
-import { motion } from 'framer-motion'; // [1] Import Framer Motion
+import { motion } from 'framer-motion'; // [1] Import Framer Motion\
+import { usePage } from '@inertiajs/react';
+
 
 export default function AuthSplitLayout({ children, title, description }: AuthLayoutProps) {
+    
+const { auth } = usePage().props as any;
+const user = auth?.user;
+const roleDashboardMap: Record<string, string> = {
+    admin: '/admin/dashboard',
+    doctor: '/doctor/dashboard',
+    medtech: '/medtech/dashboard',
+    radtech: '/radtech/dashboard',
+};
+
+const dashboardRoute = user?.role
+    ? roleDashboardMap[user.role] || '/dashboard'
+    : '/';
+
     return (
         <div 
             className="relative h-dvh grid grid-cols-1 lg:grid-cols-2 bg-cover bg-center bg-no-repeat overflow-hidden dark:bg-[#0a0f1a]"
@@ -26,7 +42,7 @@ export default function AuthSplitLayout({ children, title, description }: AuthLa
     </h1>
 
     {/* LOGO & CLINIC NAME COMBO */}
-    <Link href={home()} className="flex flex-col items-center gap-4 mb-10 group">
+    <Link href={dashboardRoute} className="flex flex-col items-center gap-4 mb-10 group">
         <motion.img 
             src={logo} 
             alt="LMC Logo" 
@@ -66,9 +82,9 @@ export default function AuthSplitLayout({ children, title, description }: AuthLa
     >
        
                     {/* Mobile logo */}
-                    <Link href={home()} className="flex items-center justify-center lg:hidden mb-4">
-                        <img src={logo} alt="LMC Logo" className="h-12 w-auto" />
-                    </Link>
+                    <Link href={dashboardRoute} className="flex items-center justify-center lg:hidden mb-4">
+    <img src={logo} alt="LMC Logo" className="h-12 w-auto" />
+</Link>
 
                     {/* Page title & description */}
                     <div className="flex flex-col items-start gap-2 text-left sm:items-center sm:text-center text-white">

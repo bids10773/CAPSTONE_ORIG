@@ -23,6 +23,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Appointments',
+        href: "",
+    },
+];
 
 interface PatientProfile {
   birthdate?: string;
@@ -369,5 +377,5 @@ Accept Appointment
 }
 
 AdminAppointmentsIndex.layout = (page: any) => {
-return <AppLayout>{page}</AppLayout>;
+return <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
 };
