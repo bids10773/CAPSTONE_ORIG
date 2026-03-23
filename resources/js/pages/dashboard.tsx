@@ -241,7 +241,7 @@ function Section({ id, title, children, bgColor = "bg-white" }: { id: string, ti
 function PatientDashboard({ user }: { user: any }) {
     return (
         <>
-            <Head title="My Dashboard" />
+            <Head title="Dashboard" />
             
             {/* Hero Section - Same as Welcome but with user logged in */}
             <HeroSection user={user} isLoggedIn={true} />

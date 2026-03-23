@@ -7,11 +7,12 @@ import { initializeTheme } from './hooks/use-appearance';
 import { LogoutModalProvider } from './contexts/logout-modal-context';
 import LogoutModal from './components/logout-modal';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+// Pulls from VITE_APP_NAME in .env or defaults to 'LMIC'
+const appName = import.meta.env.VITE_APP_NAME || 'LMIC';
 
 createInertiaApp({
-    // This template handles how titles look across the whole site
-    title: (title) => title ? `${title} - LMIC` : 'LMIC',
+    // Template: "Page Title - LMIC" or just "LMIC" if no title is set
+     title: (title) => `${title} - LMIC`,
     resolve: (name) => resolvePageComponent(`./Pages/${name}.tsx`, import.meta.glob('./Pages/**/*.tsx')),
     setup({ el, App, props }) {
         const root = createRoot(el);
@@ -25,5 +26,5 @@ createInertiaApp({
         );
     },
 });
-// This will set light / dark mode on load...
+
 initializeTheme();

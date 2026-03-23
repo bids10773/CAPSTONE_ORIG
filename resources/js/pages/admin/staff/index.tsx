@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { Users, Plus, Search, Edit, Trash2, ToggleLeft, UserCheck, UserX, Clock } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, usePage, router } from '@inertiajs/react';
 import { motion } from "framer-motion";
 import type { BreadcrumbItem} from '@/types';
 
@@ -54,41 +54,25 @@ export default function StaffIndex() {
     const { staff, filters, roles } = props;
     const [search, setSearch] = useState(filters?.search || '');
     const [selectedRole, setSelectedRole] = useState(filters?.role || '');
-    const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
-
     useEffect(() => {
-        if (searchTimeout) {
-            clearTimeout(searchTimeout);
-        }
-
-        const timeout = setTimeout(() => {
-            const url = new URL(window.location.href);
-            url.searchParams.set('search', search);
-
-            if (selectedRole) {
-                url.searchParams.set('role', selectedRole);
-            } else {
-                url.searchParams.delete('role');
-            }
-
-            window.location.href = url.toString();
-        }, 500);
-
-        setSearchTimeout(timeout);
+        router.get('/admin/staff', { 
+            search: search || undefined, 
+            role: selectedRole || undefined 
+        }, {
+            preserveState: true,
+            preserveScroll: true
+        });
     }, [search, selectedRole]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        const url = new URL(window.location.href);
-        url.searchParams.set('search', search);
-
-        if (selectedRole) {
-            url.searchParams.set('role', selectedRole);
-        } else {
-            url.searchParams.delete('role');
-        }
-
-        window.location.href = url.toString();
+        router.get('/admin/staff', { 
+            search: search || undefined, 
+            role: selectedRole || undefined 
+        }, {
+            preserveState: true,
+            preserveScroll: true
+        });
     };
 
     const getRoleBadgeColor = (role: string) => {
@@ -327,13 +311,9 @@ export default function StaffIndex() {
                                                             className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                                                             onClick={() => {
                                                                 if (confirm('Are you sure you want to delete this staff member?')) {
-                                                                    fetch(`/admin/staff/${member.id}`, {
-                                                                        method: 'DELETE',
-                                                                        headers: {
-                                                                            'X-CSRF-TOKEN':
-                                                                                document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                                                                        },
-                                                                    }).then(() => window.location.reload());
+                                                                    router.delete(`/admin/staff/${member.id}`, {
+                                                                        onSuccess: () => router.reload({ only: ['staff'] })
+                                                                    });
                                                                 }
                                                             }}
                                                         >
