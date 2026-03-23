@@ -18,10 +18,10 @@ export default function ClinicDashboardLayout({ children, breadcrumbs = [] }: Ap
                 <div className="absolute top-0 right-0 w-96 h-96 bg-[#246AFE]/5 dark:bg-[#246AFE]/10 blur-[100px] pointer-events-none" />
 
                 {/* HEADER (Reduced height slightly) */}
-                <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 px-6">
+                <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 px-10 ">
                     <div className="flex w-full items-center gap-2 rounded-2xl border border-white/60 dark:border-white/10 bg-white/40 dark:bg-white/5 px-4 py-2 shadow-sm backdrop-blur-md">
                         <SidebarTrigger className="-ml-1 text-[#246AFE] dark:text-blue-400" />
-                        <div className="h-4 w-px bg-blue-100 dark:bg-blue-800 mx-2" />
+                        <div className="h-4 w-px bg-blue-100 dark:bg-blue-800 mx-" />
                         <Breadcrumbs breadcrumbs={breadcrumbs} />
                     </div>
                 </header>
@@ -31,7 +31,7 @@ export default function ClinicDashboardLayout({ children, breadcrumbs = [] }: Ap
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4 }}
-                    className="flex-1 lg:px-10"
+                    className="flex-1 lg:px-5"
                 >
                     <div className="mx-auto w-full max-w-7xl">
                         {children}

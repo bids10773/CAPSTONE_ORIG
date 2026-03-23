@@ -146,14 +146,7 @@ export default function StaffIndex() {
                                 ))}
                             </select>
 
-                            
-                            
-                            <button
-                                type="submit"
-                                className="px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors"
-                            >
-                                Search
-                            </button>
+                        
 
                             <Link
                                 href="/admin/staff/create"

@@ -3,7 +3,7 @@ import { Head, usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Calendar, ArrowLeft, Save, Users, FileText, Upload, HeartPulse } from 'lucide-react';
 import { Link } from '@inertiajs/react';
-import { AvailableDoctor } from '@/types';
+import { AvailableDoctor, Doctor, DoctorAvailabilityResponse } from '@/types/availability';
 
 interface Company {
   id: number;
@@ -13,8 +13,10 @@ interface Company {
 export default function CreateAppointment() {
 const { companies, serviceTypes, appointmentTypes } = usePage().props as any;
 
-const [availableDoctors, setAvailableDoctors] = useState<AvailableDoctor[]>([]);
+const [doctors, setDoctors] = useState<Doctor[]>([]);
+const [doctorAvailability, setDoctorAvailability] = useState<DoctorAvailabilityResponse | null>(null);
 const [isLoadingDoctors, setIsLoadingDoctors] = useState(false);
+const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
 const [selectedDayName, setSelectedDayName] = useState('');
 
   const [formData, setFormData] = useState({
@@ -93,39 +95,55 @@ const [selectedDayName, setSelectedDayName] = useState('');
     }
   };
 
-  const fetchAvailableDoctors = async () => {
-    if (!formData.appointment_date) {
-      setAvailableDoctors([]);
-      setSelectedDayName('');
-      return;
-    }
-
+  const fetchDoctors = async () => {
     setIsLoadingDoctors(true);
     try {
-      const date = formData.appointment_date;
-      const dayDate = new Date(date);
-      const dayName = dayDate.toLocaleDateString('en-US', { weekday: 'long' });
-      setSelectedDayName(dayName);
-
-      const response = await fetch(`/api/available-doctors?date=${date}`);
-      if (!response.ok) throw new Error('Failed to fetch');
-      const doctors: AvailableDoctor[] = await response.json();
-      setAvailableDoctors(doctors);
-      if (doctors.length === 0) {
-        setErrors(prev => ({ ...prev, doctor_id: `No doctors available on ${dayName}` }));
-      }
+      const response = await fetch('/api/doctors');
+      if (!response.ok) throw new Error('Failed to fetch doctors');
+      const data: Doctor[] = await response.json();
+      setDoctors(data);
     } catch (error) {
       console.error('Error fetching doctors:', error);
-      setErrors(prev => ({ ...prev, doctor_id: 'Error loading available doctors' }));
-      setAvailableDoctors([]);
     } finally {
       setIsLoadingDoctors(false);
     }
   };
 
+  const fetchDoctorAvailability = async (doctorId: string, date?: string) => {
+    setIsLoadingAvailability(true);
+    try {
+      const url = `/api/doctors/${doctorId}/availability${date ? `?date=${date}` : ''}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch availability');
+      const data: DoctorAvailabilityResponse = await response.json();
+      setDoctorAvailability(data);
+      
+      if (date) {
+        const dayDate = new Date(date);
+        setSelectedDayName(dayDate.toLocaleDateString('en-US', { weekday: 'long' }));
+      }
+    } catch (error) {
+      console.error('Error fetching doctor availability:', error);
+      setDoctorAvailability(null);
+      setErrors(prev => ({ ...prev, doctor_id: 'Doctor not available' }));
+    } finally {
+      setIsLoadingAvailability(false);
+    }
+  };
+
+  // Load all doctors on mount
   useEffect(() => {
-    fetchAvailableDoctors();
-  }, [formData.appointment_date]);
+    fetchDoctors();
+  }, []);
+
+  // Fetch availability when doctor or date changes
+  useEffect(() => {
+    if (formData.doctor_id) {
+      fetchDoctorAvailability(formData.doctor_id, formData.appointment_date || undefined);
+    } else {
+      setDoctorAvailability(null);
+    }
+  }, [formData.doctor_id, formData.appointment_date]);
 
   const handleCompanySelect = (company: Company) => {
     setFormData((prev) => ({ ...prev, company_id: company.id.toString() }));
@@ -190,24 +208,24 @@ router.post('/appointments', formData, {
                   name="doctor_id"
                   value={formData.doctor_id}
                   onChange={handleChange}
-                  disabled={!formData.appointment_date || isLoadingDoctors}
+                  disabled={isLoadingDoctors}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">
-                    {isLoadingDoctors ? 'Loading available doctors...' : formData.appointment_date ? 'Choose available doctor...' : 'Select date first'}
+                    {isLoadingDoctors ? 'Loading doctors...' : 'Select a doctor first'}
                   </option>
-                  {availableDoctors.map((doctor) => (
-                    <option key={doctor.id} value={doctor.id}>
+                  {doctors.map((doctor) => (
+                    <option key={doctor.id} value={doctor.id.toString()}>
                       Dr. {doctor.first_name} {doctor.last_name}
                       {doctor.specialization && ` - ${doctor.specialization}`}
-                      {doctor.free_slots !== undefined && ` (${doctor.free_slots} slots left)`}
                     </option>
                   ))}
                 </select>
                 {errors.doctor_id && <p className="mt-1 text-sm text-red-600">{errors.doctor_id}</p>}
-                {formData.appointment_date && availableDoctors.length === 0 && !isLoadingDoctors && (
-                  <p className="mt-1 text-sm text-yellow-600">No doctors available on this day. Try another date.</p>
+                {!doctorAvailability && !isLoadingAvailability && formData.doctor_id && (
+                  <p className="mt-1 text-sm text-yellow-600">No availability for this doctor. Please select another doctor.</p>
                 )}
+                {errors.doctor_id && <p className="mt-1 text-sm text-red-600">{errors.doctor_id}</p>}
               </div>
 
               {/* Date & Time */}
@@ -221,27 +239,44 @@ router.post('/appointments', formData, {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Date *
                     </label>
-                    <input
-                      type="date"
+                    <select
                       name="appointment_date"
                       value={formData.appointment_date}
                       onChange={handleChange}
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
+                      disabled={!doctorAvailability || isLoadingAvailability}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {isLoadingAvailability ? 'Loading dates...' : doctorAvailability ? 'Select available date' : 'Select doctor first'}
+                      </option>
+                      {doctorAvailability?.availableDates.map((date) => (
+                        <option key={date} value={date}>
+                          {new Date(date).toLocaleDateString()}
+                        </option>
+                      ))}
+                    </select>
                     {errors.appointment_date && <p className="mt-1 text-sm text-red-600">{errors.appointment_date}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Time *
                     </label>
-                    <input
-                      type="time"
+                    <select
                       name="start_time"
                       value={formData.start_time}
                       onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
+                      disabled={!doctorAvailability?.availableTimes.length || isLoadingAvailability}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {isLoadingAvailability ? 'Loading times...' : doctorAvailability?.availableTimes.length ? 'Select available time (30min slots)' : 'Select date first'}
+                      </option>
+                      {doctorAvailability?.availableTimes.map((time) => (
+                        <option key={time} value={time}>
+                          {time}
+                        </option>
+                      ))}
+                    </select>
                     {errors.start_time && <p className="mt-1 text-sm text-red-600">{errors.start_time}</p>}
                   </div>
                 </div>

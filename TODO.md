@@ -1,11 +1,7 @@
-# Fix Admin Dashboard 403 Issue on Welcome Page
+# Breadcrumb Length Update Task
 
-## Problem
-Admin clicking Dashboard button on welcome page gets 403 because it redirects to '/dashboard' (patient-only route).
+- [ ] Step 1: Create TODO.md with plan steps (done)
+- [ ] Step 2: Edit resources/js/components/breadcrumbs.tsx to add max-width (200px) and truncation for shorter length
+- [ ] Step 3: Verify changes (visual check in dev server)
+- [ ] Step 4: Complete task
 
-## Steps
-- [x] 1. Update routes/web.php: Protect root '/' route with auth/staff.verified middleware and add role-based redirect
-- [x] 2. Update resources/js/pages/welcome.tsx: Make navbar Dashboard button role-aware (admin -> '/admin/dashboard')
-- [ ] 3. Run `php artisan route:clear &amp;&amp; php artisan config:clear &amp;&amp; npm run dev`
-- [ ] 4. Test: Login as admin, visit /, click Dashboard button, direct /admin/dashboard
-- [ ] 5. Mark complete

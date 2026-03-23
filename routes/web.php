@@ -86,6 +86,10 @@ Route::get('/doctor/dashboard', [DoctorDashboardController::class, '__invoke'])-
 
     // API for doctor availability
     Route::get('/api/available-doctors', [AppointmentController::class, 'availableDoctors'])->name('api.available-doctors');
+    
+    // New APIs for doctor-first flow
+    Route::get('/api/doctors', [AppointmentController::class, 'getDoctors'])->name('api.doctors');
+    Route::get('/api/doctors/{doctorId}/availability', [AppointmentController::class, 'getDoctorAvailability'])->name('api.doctor.availability');
 
     // Admin Staff Management Routes
 

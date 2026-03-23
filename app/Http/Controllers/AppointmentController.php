@@ -372,6 +372,95 @@ $rules = [
     }
 
     /**
+     * Get all active doctors (API).
+     */
+    public function getDoctors(Request $request)
+    {
+        $doctors = User::where('role', 'doctor')
+            ->where('is_active', true)
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name', 'specialization']);
+        return response()->json($doctors);
+    }
+
+    /**
+     * Get specific doctor's availability (API).
+     */
+    public function getDoctorAvailability(Request $request, $doctorId)
+    {
+        $doctor = User::where('role', 'doctor')->where('is_active', true)->findOrFail($doctorId);
+        
+        $availability = $doctor->availability ?? [];
+        $slots = collect($availability)->keyBy('day');
+        
+        $date = $request->get('date');
+        $availableDates = [];
+        
+        // Next 30 days available dates
+        $startDate = now();
+        for ($i = 0; $i < 30; $i++) {
+            $checkDate = $startDate->copy()->addDays($i);
+            $dayKey = strtolower($checkDate->format('D'));
+            if (isset($slots[$dayKey])) {
+                $availableDates[] = $checkDate->format('Y-m-d');
+            }
+        }
+        
+        $availableTimes = [];
+        if ($date) {
+            $dayKey = strtolower(date('D', strtotime($date)));
+            $slot = $slots->get($dayKey);
+            if ($slot) {
+                $availableTimes = $this->generateAvailableTimes($slot['start'], $slot['end'], $doctorId, $date);
+            }
+        }
+        
+        return response()->json([
+            'doctor' => [
+                'id' => $doctor->id,
+                'name' => $doctor->first_name . ' ' . $doctor->last_name,
+                'specialization' => $doctor->specialization,
+            ],
+            'slots' => $slots->toArray(),
+            'availableDates' => $availableDates,
+            'availableTimes' => $availableTimes,
+        ]);
+    }
+
+    /**
+     * Generate available 30min time slots for doctor on date.
+     */
+    private function generateAvailableTimes($start, $end, $doctorId, $date)
+    {
+        $times = [];
+        $current = new \DateTime($start);
+        $endTime = new \DateTime($end);
+        
+        while ($current < $endTime) {
+            $startStr = $current->format('H:i');
+            $endStr = (clone $current)->add(new \DateInterval('PT30M'))->format('H:i');
+            
+            // Check overlap with booked appointments
+            $overlap = Appointment::where('doctor_id', $doctorId)
+                ->whereDate('appointment_date', $date)
+                ->whereIn('status', ['accepted', 'arrived', 'pending'])  // include pending
+                ->where(function($q) use ($startStr, $endStr) {
+                    $q->where('start_time', '<=', $endStr)
+                      ->where('end_time', '>', $startStr);
+                })
+                ->exists();
+            
+            if (!$overlap) {
+                $times[] = $startStr;
+            }
+            
+            $current->add(new \DateInterval('PT30M'));
+        }
+        
+        return $times;
+    }
+
+    /**
      * Admin: Display all appointments with advanced filtering.
      */
     public function adminIndex(Request $request): Response
@@ -382,7 +471,7 @@ $rules = [
         $dateFrom = $request->get('date_from', '');
         $dateTo = $request->get('date_to', '');
         
-$query = Appointment::with(['user.patientProfile', 'company']);
+$query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
 
 
         
