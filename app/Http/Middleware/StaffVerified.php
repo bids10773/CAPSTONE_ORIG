@@ -31,7 +31,7 @@ class StaffVerified
         }
         
         // Staff roles created by admin are pre-verified - allow access
-        $staffRoles = ['doctor', 'medtech', 'radtech', 'admin'];
+        $staffRoles = ['doctor', 'medtech', 'radtech', 'admin' , 'company'];
         if (in_array($user->role, $staffRoles)) {
             return $next($request);
         }

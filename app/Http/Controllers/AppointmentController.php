@@ -611,6 +611,50 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
     }
 
     /**
+     * Bulk upload appointments from CSV for company users (simple file upload).
+     */
+    public function companyBulkStore(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt|max:2048',
+        ]);
+
+        $user = $request->user();
+        $company = $user->company ?? $user->company_id ? Company::find($user->company_id) : null;
+        
+        if (!$company) {
+            return back()->with('error', 'No company association found.');
+        }
+
+        $path = $request->file('file')->getRealPath();
+        $data = fopen($path, 'r');
+
+        $created = 0;
+
+        $header = fgetcsv($data); // Skip header
+        while (($row = fgetcsv($data)) !== false) {
+            if (count($row) < 4) continue;
+
+            [$employeeName, $date, $time, $type] = array_map('trim', $row);
+
+            Appointment::create([
+                'company_id' => $company->id,
+                'patient_name' => $employeeName,
+                'appointment_date' => $date,
+                'appointment_time' => $time,
+                'appointment_type' => $type,
+                'status' => 'pending',
+            ]);
+
+            $created++;
+        }
+
+        fclose($data);
+
+        return back()->with('success', "Created {$created} pending appointments successfully!");
+    }
+
+    /**
      * Staff appointment list - filtered by role and status/service_type.
      */
     public function staffIndex(Request $request, string $role): Response

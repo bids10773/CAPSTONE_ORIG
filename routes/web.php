@@ -43,7 +43,8 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
 Route::get('/doctor/dashboard', [DoctorDashboardController::class, '__invoke'])->middleware('role:doctor')->name('doctor.dashboard');
     Route::get('/medtech/dashboard', [MedTechDashboardController::class, '__invoke'])->middleware('role:medtech');
     Route::get('/radtech/dashboard', [RadTechDashboardController::class, '__invoke'])->middleware('role:radtech');
-    Route::get('/company/dashboard', [CompanyDashboardController::class, '__invoke'])->middleware('role:company');
+    Route::get('/company/dashboard', [CompanyDashboardController::class, '__invoke'])->middleware('role:company')->name('company.dashboard');
+    Route::post('/company/appointments/bulk', [AppointmentController::class, 'companyBulkStore'])->middleware('role:company')->name('company.appointments.bulk');
     Route::get('/dashboard', [PatientDashboardController::class, '__invoke'])->middleware('role:patient'); // default patient
 
     // Doctor Routes

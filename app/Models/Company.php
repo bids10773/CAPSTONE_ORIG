@@ -77,32 +77,35 @@ class Company extends Model
     /**
      * Create company user account and send invitation.
      */
-    public function createRepresentativeUser(): User
-    {
-        // Generate temporary password
-        $tempPassword = substr(md5(uniqid(rand(), true)), 0, 8);
-        
-        // Create user with 'company' role - FIX: last_name required
-        $user = User::create([
-            'first_name' => $this->representative_name,
-            'middle_name' => null,
-            'last_name' => 'Company Representative', // Required field
-            'email' => $this->representative_email,
-            'contact' => $this->representative_contact,
-            'password' => Hash::make($tempPassword),
-            'role' => 'company',
-            'company_id' => $this->id,
-            'is_active' => true,
-            'email_verified_at' => now(), // Auto-verify since admin created this
-        ]);
+   public function createRepresentativeUser(): User
+{
+    // Generate temporary password
+    $tempPassword = substr(md5(uniqid(rand(), true)), 0, 8);
 
-        // Store temp password temporarily
-        $this->temp_password = $tempPassword;
-        $this->save();
+    // Create user with 'company' role
+    $user = User::create([
+        'first_name' => $this->representative_name,
+        'middle_name' => null,
+        'last_name' => 'Company Representative', // required
+        'email' => $this->representative_email,
+        'contact' => $this->representative_contact,
+        'password' => Hash::make($tempPassword),
+        'role' => 'company',
+        'company_id' => $this->id,
+        'is_active' => true,
+        // 'email_verified_at' => now(), // remove this from create
+    ]);
 
-        // Send invitation email (queued)
-        Mail::to($this->representative_email)->queue(new CompanyInvitation($this, $tempPassword));
+    // Mark email as verified explicitly
+    $user->markEmailAsVerified(); // this sets email_verified_at and saves
 
-        return $user;
-    }
+    // Store temp password in company table
+    $this->temp_password = $tempPassword;
+    $this->save();
+
+    // Send invitation email
+    Mail::to($this->representative_email)->send(new CompanyInvitation($this, $tempPassword));
+
+    return $user;
+}
 }
