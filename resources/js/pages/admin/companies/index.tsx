@@ -10,6 +10,8 @@ import {
     ChevronLeft,
     ChevronRight
 } from 'lucide-react';
+import { toast } from 'sonner'; // ✅ ADD THIS
+import { useEffect } from 'react'; // ✅ ADD THIS
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem, SharedData } from '@/types';
 
@@ -46,7 +48,18 @@ interface Props {
 
 export default function AdminCompaniesIndex() {
     const props = usePage().props as any;
-    const { companies, filters } = props;
+    const { companies, filters, flash } = props; // ✅ INCLUDE flash
+
+    // ✅ ADD THIS BLOCK (VERY IMPORTANT)
+    useEffect(() => {
+        if (flash?.success) {
+            toast.success(flash.success);
+        }
+
+        if (flash?.error) {
+            toast.error(flash.error);
+        }
+    }, [flash]);
 
     return (
         <>

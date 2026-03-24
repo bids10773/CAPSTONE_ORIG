@@ -160,6 +160,28 @@ export default function AdminEditCompany() {
                             </div>
                         )}
 
+                        {/* Resend Invitation Section */}
+                        {company.representative_email && (
+                            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
+                                <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-3 flex items-center gap-2">
+                                    <Mail className="w-5 h-5" />
+                                    Company Representative
+                                </h3>
+                                <div className="space-y-2 text-sm">
+                                    <p><span className="font-medium">Name:</span> {company.representative_name}</p>
+                                    <p><span className="font-medium">Email:</span> {company.representative_email}</p>
+                                    <p><span className="font-medium">Contact:</span> {company.representative_contact}</p>
+                                </div>
+                                <button
+                                    onClick={() => router.post(`/admin/companies/${company.id}/resend-invitation`)}
+                                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+                                >
+                                    <Mail className="w-4 h-4" />
+                                    Resend Invitation Email
+                                </button>
+                            </div>
+                        )}
+
                         {/* Submit Button */}
                         <div className="flex justify-end gap-4">
                             <Link
@@ -183,6 +205,8 @@ export default function AdminEditCompany() {
         </>
     );
 }
+
+import { Mail } from 'lucide-react';
 
 AdminEditCompany.layout = (page: any) => {
     return <AppLayout>{page}</AppLayout>;

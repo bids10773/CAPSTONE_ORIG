@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
 
 class CompanyController extends Controller
 {
@@ -85,9 +89,15 @@ class CompanyController extends Controller
         // Create representative user and send invitation
         if ($sendInvitation && $company->representative_email) {
             try {
-                $company->createRepresentativeUser();
+                $user = $company->createRepresentativeUser();
+
+                if (!$user->hasRole('company')) {
+                    $user->assignRole('company');
+                }
+                \Log::info('Company invitation sent to: ' . $company->representative_email);
                 $message = 'Company created successfully! Invitation email sent to representative.';
             } catch (\Exception $e) {
+                \Log::error('Company invitation failed for ' . $company->representative_email . ': ' . $e->getMessage());
                 $message = 'Company created successfully! But failed to send invitation email: ' . $e->getMessage();
             }
         } else {
@@ -157,5 +167,42 @@ class CompanyController extends Controller
 
         return back()->with('success', "Company {$status} successfully!");
     }
+
+    /**
+     * Resend invitation email to company representative.
+     */
+    public function resendInvitation(Company $company)
+    {
+        if (!$company->representative_email) {
+            return back()->with('error', 'No representative email found.');
+        }
+
+        try {
+            // Generate new temp password
+            $tempPassword = substr(md5(uniqid(rand(), true)), 0, 8);
+            
+            // Update user password
+            $user = $company->users()->where('role', 'company')->first();
+            if ($user) {
+                $user->update([
+                    'password' => Hash::make($tempPassword),
+                ]);
+            }
+
+            // Store temp password and send email
+            $company->temp_password = $tempPassword;
+            $company->save();
+
+            Mail::to($company->representative_email)->send(new CompanyInvitation($company, $tempPassword));
+            
+            \Log::info('Company invitation resent to: ' . $company->representative_email);
+            
+            return back()->with('success', 'Invitation email resent successfully!');
+        } catch (\Exception $e) {
+            \Log::error('Resend invitation failed for ' . $company->representative_email . ': ' . $e->getMessage());
+            return back()->with('error', 'Failed to resend invitation: ' . $e->getMessage());
+        }
+    }
 }
+
 

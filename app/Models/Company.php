@@ -82,11 +82,11 @@ class Company extends Model
         // Generate temporary password
         $tempPassword = substr(md5(uniqid(rand(), true)), 0, 8);
         
-        // Create user with 'company' role
+        // Create user with 'company' role - FIX: last_name required
         $user = User::create([
             'first_name' => $this->representative_name,
             'middle_name' => null,
-            'last_name' => null,
+            'last_name' => 'Company Representative', // Required field
             'email' => $this->representative_email,
             'contact' => $this->representative_contact,
             'password' => Hash::make($tempPassword),
@@ -96,12 +96,12 @@ class Company extends Model
             'email_verified_at' => now(), // Auto-verify since admin created this
         ]);
 
-        // Store temp password temporarily (could be sent via email)
+        // Store temp password temporarily
         $this->temp_password = $tempPassword;
         $this->save();
 
-        // Send invitation email - DISABLED
-        // Mail::to($this->representative_email)->send(new CompanyInvitation($this, $tempPassword));
+        // Send invitation email (queued)
+        Mail::to($this->representative_email)->queue(new CompanyInvitation($this, $tempPassword));
 
         return $user;
     }

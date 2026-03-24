@@ -121,6 +121,7 @@ Route::get('/doctor/dashboard', [DoctorDashboardController::class, '__invoke'])-
         Route::put('/companies/{company}', [CompanyController::class, 'update'])->name('companies.update');
         Route::delete('/companies/{company}', [CompanyController::class, 'destroy'])->name('companies.destroy');
         Route::patch('/companies/{company}/toggle-active', [CompanyController::class, 'toggleActive'])->name('companies.toggle-active');
+        Route::post('/companies/{company}/resend-invitation', [CompanyController::class, 'resendInvitation'])->name('companies.resend-invitation');
 
         // Admin Analytics
         Route::get('/analytics', [AdminDashboardController::class, 'analytics'])->name('analytics');

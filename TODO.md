@@ -1,7 +1,7 @@
-# Breadcrumb Length Update Task
+# Company Success Toast Implementation
 
-- [ ] Step 1: Create TODO.md with plan steps (done)
-- [ ] Step 2: Edit resources/js/components/breadcrumbs.tsx to add max-width (200px) and truncation for shorter length
-- [ ] Step 3: Verify changes (visual check in dev server)
-- [ ] Step 4: Complete task
+## Steps:
+- [x] 1. Add toast success handling in `resources/js/pages/admin/companies/index.tsx` for flash message after company creation.
+- [ ] 2. Test the implementation by creating a company.
+- [ ] 3. Mark complete and cleanup TODO.md if needed.
 
