@@ -75,7 +75,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
     return (
         <motion.div
-    className="px-4 py-6 min-h-screen bg-gray-50 dark:bg-gray-950 rounded-2xl p-6 shadow-sm"
+    className="p-6"
     initial="hidden"
     animate="show"
     variants={container}

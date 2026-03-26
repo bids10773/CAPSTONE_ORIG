@@ -99,7 +99,7 @@ export default function StaffIndex() {
             <Head title="Staff Management" />
 
             <motion.div
-                className="space-y-6"
+                className="p-6"
                 variants={container}
                 initial="hidden"
                 animate="show"

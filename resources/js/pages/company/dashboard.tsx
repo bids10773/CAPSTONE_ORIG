@@ -15,18 +15,32 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import AppLayout from '@/layouts/app-layout'
+import InputError from '@/components/input-error'
+import { BreadcrumbItem } from '@/types'
+
+interface Appointment {
+  id: number | string
+  patient_name?: string
+  appointment_date: string
+  status: string
+  service_type?: string
+  appointment_type?: string
+}
+
+interface Stats {
+  total: number
+  upcoming: number
+  completed: number
+}
 
 interface CompanyDashboardProps {
-  appointments: any[]
-  stats: {
-    total: number
-    upcoming: number
-    completed: number
-  }
+  appointments: Appointment[]
+  stats: Stats
+  user: any
   company: any
 }
 
-const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats }) => {
+const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats, user, company }) => {
   const { data, setData, processing, errors } = useForm({
     file: null as File | null,
   })
@@ -126,12 +140,13 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats
   }
 
   return (
-    <motion.div
-      className="space-y-6"
-      variants={container}
-      initial="hidden"
-      animate="show"
-    >
+    <AppLayout>
+      <motion.div
+        className="space-y-6"
+        variants={container}
+        initial="hidden"
+        animate="show"
+      >
       <Head title="Company Dashboard" />
 
       {/* HEADER */}
@@ -150,7 +165,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
       >
         {/* TOTAL */}
-        <motion.div variants={card} whileHover={{ scale: 1.04 }} className="card-ui">
+        <motion.div variants={card} whileHover={{ scale: 1.04 }} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-300">Total</p>
@@ -161,7 +176,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats
         </motion.div>
 
         {/* UPCOMING */}
-        <motion.div variants={card} whileHover={{ scale: 1.04 }} className="card-ui">
+        <motion.div variants={card} whileHover={{ scale: 1.04 }} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-300">Upcoming</p>
@@ -172,7 +187,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats
         </motion.div>
 
         {/* ✅ FIXED COMPLETED */}
-        <motion.div variants={card} whileHover={{ scale: 1.04 }} className="card-ui">
+        <motion.div variants={card} whileHover={{ scale: 1.04 }} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-300">Completed</p>
@@ -186,7 +201,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats
       {/* CHARTS */}
       <motion.div variants={container} className="grid lg:grid-cols-2 gap-6">
         {/* STATUS */}
-        <motion.div variants={card} className="card-ui p-6">
+        <motion.div variants={card} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
           <h3 className="flex items-center gap-2 font-semibold mb-4">
             <BarChart3 className="w-5 h-5" /> Status
           </h3>
@@ -212,7 +227,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats
         </motion.div>
 
         {/* TYPE */}
-        <motion.div variants={card} className="card-ui p-6">
+        <motion.div variants={card} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
           <h3 className="flex items-center gap-2 font-semibold mb-4">
             <BarChart3 className="w-5 h-5" /> Type
           </h3>
@@ -242,14 +257,19 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats
       </motion.div>
 
       {/* UPLOAD */}
-      <motion.div variants={card} className="card-ui p-6">
+      <motion.div variants={card} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
         <form onSubmit={submitBulkUpload} className="space-y-4">
-          <Input
-            key={fileKey}
-            type="file"
-            accept=".csv"
-            onChange={handleFileUpload}
-          />
+          <div className="space-y-2">
+            <Label htmlFor="csv-file">CSV File</Label>
+            <Input
+              id="csv-file"
+              key={fileKey}
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+            />
+            <InputError message={errors.file} className="mt-2" />
+          </div>
           <Button type="submit" disabled={processing}>
             {processing ? 'Uploading...' : 'Upload CSV'}
           </Button>
@@ -257,20 +277,20 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats
       </motion.div>
 
       {/* RECENT */}
-      <motion.div variants={card} className="card-ui p-6">
+      <motion.div variants={card} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
         <h3 className="mb-4 font-semibold">Recent Appointments</h3>
 
         {appointments.slice(0, 5).map((a) => (
           <div
             key={a.id}
-            onClick={() => router.visit(`/appointments/${a.id}`)}
-            className="p-3 border rounded mb-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+            onClick={() => router.visit('/company/appointments')}
+            className={`p-3 border rounded mb-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${getStatusBadge(a.status)}`}
           >
             <p className="font-medium">
               {a.patient_name || 'N/A'}
             </p>
             <p className="text-sm text-gray-500">
-              {formatDate(a.appointment_date)}
+              {formatDate(a.appointment_date)} • {a.status}
             </p>
           </div>
         ))}
@@ -278,14 +298,15 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats
 
       {/* ACTIONS */}
       <div className="flex gap-4">
-        <Link href="/appointments/create">
-          <Button variant="outline">Create</Button>
+        <Link href="/company/appointments/create">
+          <Button variant="outline">Create Appointment</Button>
         </Link>
-        <Link href="/appointments">
+        <Link href="/company/appointments">
           <Button>View All</Button>
         </Link>
       </div>
     </motion.div>
+    </AppLayout>
   )
 }
 
