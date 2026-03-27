@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { Calendar, Plus, Search, Eye, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { 
+    Calendar, Plus, Search, Eye, CheckCircle, 
+    XCircle, Clock, Filter, Building2, User 
+} from 'lucide-react';
 import type { BreadcrumbItem } from '@/types';
+import { cn } from '@/lib/utils';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Appointments',
-        href: "",
-    },
+    { title: 'Appointments', href: "" },
 ];
 
 interface AppointmentData {
@@ -18,16 +19,8 @@ interface AppointmentData {
     status: string;
     service_type: string;
     referral_code: string | null;
-    user: {
-        id: number;
-        first_name: string;
-        last_name: string;
-        email: string;
-    };
-    company: {
-        id: number;
-        name: string;
-    } | null;
+    user: { id: number; first_name: string; last_name: string; email: string; };
+    company: { id: number; name: string; } | null;
 }
 
 export default function AppointmentsIndex() {
@@ -39,244 +32,203 @@ export default function AppointmentsIndex() {
     const [typeFilter, setTypeFilter] = useState(filters?.type || '');
     const [loading, setLoading] = useState(false);
 
-    // ✅ AUTO SEARCH (Debounced)
     useEffect(() => {
         setLoading(true);
-
         const delayDebounce = setTimeout(() => {
             router.get('/appointments', {
-                search,
-                status: statusFilter,
-                type: typeFilter,
+                search, status: statusFilter, type: typeFilter,
             }, {
-                preserveState: true,
-                replace: true,
+                preserveState: true, replace: true,
                 onFinish: () => setLoading(false),
             });
         }, 500);
-
         return () => clearTimeout(delayDebounce);
     }, [search, statusFilter, typeFilter]);
 
-    const getStatusBadge = (status: string) => {
+    const getStatusStyles = (status: string) => {
         switch (status) {
-            case 'pending':
-                return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-            case 'accepted':
-                return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
-            case 'arrived':
-                return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-            case 'completed':
-                return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-            case 'cancelled':
-                return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-            default:
-                return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+            case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800';
+            case 'accepted': return 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800';
+            case 'arrived': return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800';
+            case 'completed': return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800';
+            case 'cancelled': return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800';
+            default: return 'bg-slate-50 text-slate-700 border-slate-200';
         }
     };
 
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'pending':
-                return <Clock className="w-4 h-4" />;
-            case 'accepted':
-                return <CheckCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
-            case 'arrived':
-                return <CheckCircle className="w-4 h-4" />;
-            case 'completed':
-                return <CheckCircle className="w-4 h-4" />;
-            case 'cancelled':
-                return <XCircle className="w-4 h-4" />;
-            default:
-                return null;
-        }
-    };
-
-    const getTypeLabel = (type: string) => {
-        switch (type) {
-            case 'individual':
-                return 'Individual';
-            case 'company_referral':
-                return 'Company Referral';
-            case 'company_bulk':
-                return 'Bulk Booking';
-            default:
-                return type;
-        }
-    };
-
-    const formatDate = (date: string) => {
-        return new Date(date).toLocaleDateString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return {
+            main: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        };
     };
 
     return (
         <>
             <Head title="Appointments" />
 
-            <div className="p-6">
-
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-
-                    
+            <div className="p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
+                {/* PAGE HEADER */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Appointments</h1>
+                        <p className="text-muted-foreground mt-1">Manage and track all patient clinical visits.</p>
+                    </div>
+                    {can?.create && (
+                        <Link
+                            href="/appointments/create"
+                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-sm transition-all active:scale-95"
+                        >
+                            <Plus className="w-4 h-4" />
+                            <span className="font-semibold">New Appointment</span>
+                        </Link>
+                    )}
                 </div>
 
-                {/* Filters */}
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
-                    <div className="flex flex-col md:flex-row gap-4">
-
-                        {/* Search */}
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                {/* SEARCH & FILTERS TOOLBAR */}
+                <div className="bg-white dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm">
+                    <div className="flex flex-col lg:flex-row gap-4">
+                        <div className="relative flex-1 group">
+                            <Search className={cn(
+                                "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors",
+                                loading ? "text-blue-500" : "text-gray-400 group-focus-within:text-blue-500"
+                            )} />
                             <input
                                 type="text"
-                                placeholder="Search by patient name..."
+                                placeholder="Search by patient name or email..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 
-                                border border-gray-300 dark:border-gray-600 
-                                bg-white dark:bg-gray-700 
-                                text-gray-900 dark:text-gray-100 
-                                rounded-lg focus:ring-2 focus:ring-blue-500"
+                                className="w-full pl-10 pr-12 py-2.5 bg-gray-50 dark:bg-gray-900 border-transparent focus:border-blue-500 focus:ring-0 rounded-xl transition-all"
                             />
                             {loading && (
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                                    Searching...
-                                </span>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                </div>
                             )}
                         </div>
 
-                        {/* Status */}
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 dark:border-gray-600 
-                            bg-white dark:bg-gray-700 
-                            text-gray-900 dark:text-gray-100 
-                            rounded-lg focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="arrived">Arrived</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                            <option value="accepted">Accepted</option>
-                        </select>
+                        <div className="flex flex-wrap gap-3">
+                            <div className="flex items-center gap-2 px-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-transparent focus-within:border-blue-500">
+                                <Filter className="w-4 h-4 text-gray-400" />
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="bg-transparent border-none py-2.5 focus:ring-0 text-sm font-medium cursor-pointer"
+                                >
+                                    <option value="">All Statuses</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="arrived">Arrived</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
 
-                        {/* Type */}
-                        <select
-                            value={typeFilter}
-                            onChange={(e) => setTypeFilter(e.target.value)}
-                            className="px-4 py-2 border border-gray-300 dark:border-gray-600 
-                            bg-white dark:bg-gray-700 
-                            text-gray-900 dark:text-gray-100 
-                            rounded-lg focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="">All Types</option>
-                            <option value="individual">Individual</option>
-                            <option value="company_referral">Company Referral</option>
-                            <option value="company_bulk">Bulk Booking</option>
-                        </select>
-
-
-                        {can?.create && (
-                        <Link
-                            href="/appointments/create"
-                            className="mt-4 md:mt-0 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                        >
-                            <Plus className="w-4 h-4" />
-                            Book Appointment
-                        </Link>
-                    )}
-
+                            <div className="flex items-center gap-2 px-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-transparent focus-within:border-blue-500">
+                                <Building2 className="w-4 h-4 text-gray-400" />
+                                <select
+                                    value={typeFilter}
+                                    onChange={(e) => setTypeFilter(e.target.value)}
+                                    className="bg-transparent border-none py-2.5 focus:ring-0 text-sm font-medium cursor-pointer"
+                                >
+                                    <option value="">All Booking Types</option>
+                                    <option value="individual">Individual</option>
+                                    <option value="company_referral">Company Referral</option>
+                                    <option value="company_bulk">Bulk Booking</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                {/* Table */}
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                {/* TABLE CONTAINER */}
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full">
-
-                            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs text-gray-500 dark:text-gray-300 uppercase">Date & Time</th>
-                                    <th className="px-6 py-3 text-left text-xs text-gray-500 dark:text-gray-300 uppercase">Patient</th>
-                                    <th className="px-6 py-3 text-left text-xs text-gray-500 dark:text-gray-300 uppercase">Service</th>
-                                    <th className="px-6 py-3 text-left text-xs text-gray-500 dark:text-gray-300 uppercase">Type</th>
-                                    <th className="px-6 py-3 text-left text-xs text-gray-500 dark:text-gray-300 uppercase">Company</th>
-                                    <th className="px-6 py-3 text-left text-xs text-gray-500 dark:text-gray-300 uppercase">Status</th>
-                                    <th className="px-6 py-3 text-right text-xs text-gray-500 dark:text-gray-300 uppercase">Actions</th>
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Patient Details</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Date & Time</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Service / Type</th>
+                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Status</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500">Actions</th>
                                 </tr>
                             </thead>
-
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                                 {appointments?.data?.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-                                            No appointments found
+                                        <td colSpan={5} className="px-6 py-20 text-center">
+                                            <div className="flex flex-col items-center justify-center space-y-3">
+                                                <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-full text-gray-400">
+                                                    <Calendar className="w-8 h-8" />
+                                                </div>
+                                                <p className="text-gray-500 font-medium">No appointments match your criteria</p>
+                                            </div>
                                         </td>
                                     </tr>
                                 ) : (
-                                    appointments.data.map((appointment: AppointmentData) => (
-                                        <tr key={appointment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-
-                                            <td className="px-6 py-4 text-gray-900 dark:text-gray-100">
-                                                {formatDate(appointment.appointment_date)}
-                                            </td>
-
-                                            <td className="px-6 py-4">
-                                                <div className="font-medium text-gray-900 dark:text-gray-100">
-                                                    {appointment.user.first_name} {appointment.user.last_name}
-                                                </div>
-                                                <div className="text-sm text-gray-500 dark:text-gray-400">
-                                                    {appointment.user.email}
-                                                </div>
-                                            </td>
-
-                                            <td className="px-6 py-4 text-gray-900 dark:text-gray-100">
-                                                {appointment.service_type}
-                                            </td>
-
-                                            <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                                                {getTypeLabel(appointment.type)}
-                                            </td>
-
-                                            <td className="px-6 py-4 text-gray-900 dark:text-gray-100">
-                                                {appointment.company?.name || '-'}
-                                            </td>
-
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(appointment.status)}`}>
-                                                    {getStatusIcon(appointment.status)}
-                                                    {appointment.status}
-                                                </span>
-                                            </td>
-
-                                            <td className="px-6 py-4 text-right">
-                                                <Link
-                                                    href={`/appointments/${appointment.id}`}
-                                                    className="text-blue-600 dark:text-blue-400 hover:underline"
-                                                >
-                                                    <Eye className="w-4 h-4 inline" /> View
-                                                </Link>
-                                            </td>
-
-                                        </tr>
-                                    ))
+                                    appointments.data.map((appointment: AppointmentData) => {
+                                        const dateInfo = formatDate(appointment.appointment_date);
+                                        return (
+                                            <tr key={appointment.id} className="group hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm border border-blue-200 dark:border-blue-800">
+                                                            {appointment.user.first_name[0]}{appointment.user.last_name[0]}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-bold text-gray-900 dark:text-white">
+                                                                {appointment.user.first_name} {appointment.user.last_name}
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground">{appointment.user.email}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm">
+                                                    <div className="font-medium text-gray-900 dark:text-white">{dateInfo.main}</div>
+                                                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                                        <Clock className="w-3 h-3" /> {dateInfo.time}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{appointment.service_type}</div>
+                                                    <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight">
+                                                        {appointment.type.replace('_', ' ')}
+                                                    </div>
+                                                    {appointment.company && (
+                                                        <div className="mt-1 flex items-center gap-1 text-[11px] text-blue-600 font-medium">
+                                                            <Building2 className="w-3 h-3" /> {appointment.company.name}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={cn(
+                                                        "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors",
+                                                        getStatusStyles(appointment.status)
+                                                    )}>
+                                                        {appointment.status === 'pending' && <Clock className="w-3 h-3" />}
+                                                        {appointment.status === 'completed' && <CheckCircle className="w-3 h-3" />}
+                                                        {appointment.status === 'cancelled' && <XCircle className="w-3 h-3" />}
+                                                        <span className="capitalize">{appointment.status}</span>
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <Link
+                                                        href={`/appointments/${appointment.id}`}
+                                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                        Details
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
-
                         </table>
                     </div>
                 </div>
-
             </div>
         </>
     );

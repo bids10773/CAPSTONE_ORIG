@@ -21,61 +21,64 @@ class PhysicalExamController extends Controller
         ]);
     }
 
-    public function store(Request $request, $appointment)
-    {
-        $request->validate([
-            'height' => 'nullable|numeric',
-            'weight' => 'nullable|numeric',
-            'blood_pressure' => 'nullable|string',
-            'pulse_rate' => 'nullable|numeric',
-            'temperature' => 'nullable|numeric',
-            'remarks' => 'nullable|string',
-            // Medical History fields
-            'present_illness' => 'nullable|string',
-            'past_medical_history' => 'nullable|string',
-            'operations_accidents' => 'nullable|string',
-            'family_history' => 'nullable|string',
-            'allergies' => 'nullable|string',
-            'personal_social_history' => 'nullable|string',
-            'ob_menstrual_history' => 'nullable|string',
-        ]);
+    // app/Http/Controllers/PhysicalExamController.php
 
-        PhysicalExam::updateOrCreate(
-            ['appointment_id' => $appointment],
-            [
-                'doctor_id' => auth()->id(),
-                'height' => $request->height,
-                'weight' => $request->weight,
-                'blood_pressure' => $request->blood_pressure,
-                'pulse_rate' => $request->pulse_rate,
-                'temperature' => $request->temperature,
-                'remarks' => $request->remarks,
-                'present_illness' => $request->present_illness,
-                'past_medical_history' => $request->past_medical_history,
-                'operations_accidents' => $request->operations_accidents,
-                'family_history' => $request->family_history,
-                'allergies' => $request->allergies,
-                'personal_social_history' => $request->personal_social_history,
-                'ob_menstrual_history' => $request->ob_menstrual_history,
-            ]
-        );
+public function store(Request $request, $appointmentId)
+{
+    $appointment = Appointment::findOrFail($appointmentId);
 
-        // Save medical history separately
-        MedicalHistory::updateOrCreate(
-            ['appointment_id' => $appointment],
-            $request->only([
-                'present_illness',
-                'past_medical_history',
-                'operations_accidents',
-                'family_history',
-                'allergies',
-                'personal_social_history',
-                'ob_menstrual_history',
-            ])
-        );
+    $request->validate([
+        'height' => 'nullable|numeric',
+        'weight' => 'nullable|numeric',
+        'blood_pressure' => 'nullable|string',
+        'pulse_rate' => 'nullable|numeric',
+        'temperature' => 'nullable|numeric',
+        'remarks' => 'nullable|string',
+    ]);
 
-        return redirect()->back()->with('success', 'Physical exam and medical history saved.');
+    $fieldsMap = [
+        'head_scalp' => 'head', 'eyes' => 'eyes', 'ears' => 'ears',
+        'nose_sinuses' => 'nose', 'mouth_throat' => 'mouth', 'neck_thyroid' => 'neck',
+        'chest_breast' => 'chest', 'lungs' => 'lungs', 'heart' => 'heart',
+        'abdomen' => 'abdomen', 'extremities' => 'extremities',
+    ];
+
+    $physicalFindings = [];
+    foreach ($fieldsMap as $frontendKey => $modelPrefix) {
+        $status = $request->input("{$frontendKey}_status");
+        $physicalFindings["is_{$modelPrefix}_normal"] = ($status === 'normal');
+        $physicalFindings["{$modelPrefix}_remarks"] = $request->input($frontendKey);
     }
+
+    PhysicalExam::updateOrCreate(
+        ['appointment_id' => $appointment->id],
+        array_merge($physicalFindings, [
+            'doctor_id' => auth()->id(),
+            'height' => $request->height,
+            'weight' => $request->weight,
+            'blood_pressure' => $request->blood_pressure,
+            'pulse_rate' => $request->pulse_rate,
+            'temperature' => $request->temperature,
+            'remarks' => $request->remarks,
+            'classification' => 'Pending',
+        ])
+    );
+
+    MedicalHistory::updateOrCreate(
+        ['appointment_id' => $appointment->id],
+        $request->only([
+            'present_illness', 'past_medical_history', 'operations_accidents',
+            'family_history', 'allergies', 'personal_social_history', 'ob_menstrual_history',
+        ])
+    );
+
+    // ✅ MATCH THIS STATUS WITH MEDTECH CONTROLLER
+    $appointment->update([
+        'status' => 'pending_diagnostics' 
+    ]);
+
+    return redirect()->back()->with('success', 'Physical Examination complete! Patient forwarded to Lab.');
+}
 
     public function final($appointment): Response
     {

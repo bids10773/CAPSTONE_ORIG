@@ -1,297 +1,178 @@
-import { Head, Link, useForm, router } from '@inertiajs/react';
+import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import React, { useState, useEffect } from 'react';
-import { HeartPulse, Scale, Activity, Save, ArrowLeft, CheckCircle } from 'lucide-react';
+import { HeartPulse, Activity, Save, ArrowLeft, Scale, Thermometer } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface Props {
     appointment: {
         id: number;
-        user: {
-            first_name: string;
-            last_name: string;
-        };
+        user: { first_name: string; last_name: string; };
     };
     physicalExam: any;
 }
 
-export default function PhysicalExamForm(props: Props) {
-    const { appointment, physicalExam } = props;
-    
+export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
+    const { flash } = usePage().props as any;
 
-    const { data, setData, post, processing, errors } = useForm({
+    useEffect(() => {
+        if (flash?.success) toast.success(flash.success);
+    }, [flash]);
+
+    const { data, setData, post, processing } = useForm<any>({
         height: physicalExam?.height || '',
         weight: physicalExam?.weight || '',
         blood_pressure: physicalExam?.blood_pressure || '',
         pulse_rate: physicalExam?.pulse_rate || '',
         temperature: physicalExam?.temperature || '',
         remarks: physicalExam?.remarks || '',
-        // Medical history fields removed from doctor form
-        present_illness: '',
-        past_medical_history: '',
-        operations_accidents: '',
-        family_history: '',
-        allergies: '',
-        personal_social_history: '',
-        ob_menstrual_history: '',
+        ...Object.fromEntries([
+            'head_scalp', 'eyes', 'ears', 'nose_sinuses', 'mouth_throat', 
+            'neck_thyroid', 'chest_breast', 'lungs', 'heart', 'abdomen', 
+            'back', 'anus', 'genitals', 'extremities', 'skin', 'dental'
+        ].flatMap(field => [
+            [field, physicalExam?.[field] || ''],
+            [`${field}_status`, physicalExam?.[field] ? 'with_findings' : 'normal']
+        ]))
     });
 
-    const [bmi, setBmi] = useState<number | null>(null);
-    const [bmiCategory, setBmiCategory] = useState<string>('');
+    const bodyParts = [
+        { label: 'Head/Scalp', field: 'head_scalp' },
+        { label: 'Eyes', field: 'eyes' },
+        { label: 'Ears', field: 'ears' },
+        { label: 'Nose/Sinuses', field: 'nose_sinuses' },
+        { label: 'Mouth/Throat', field: 'mouth_throat' },
+        { label: 'Neck/Thyroid', field: 'neck_thyroid' },
+        { label: 'Chest/Breasts', field: 'chest_breast' },
+        { label: 'Lungs', field: 'lungs' },
+        { label: 'Heart', field: 'heart' },
+        { label: 'Abdomen', field: 'abdomen' },
+        { label: 'Extremities', field: 'extremities' },
+    ];
 
-    const getBmiCategory = (value: number): string => {
-        if (value < 18.5) return 'Underweight';
-        if (value < 25.0) return 'Normal';
-        if (value < 30.0) return 'Overweight';
-        return 'Obese';
-    };
+    // --- BMI CALCULATION LOGIC ---
+    const [bmi, setBmi] = useState<number | null>(null);
 
     useEffect(() => {
-        const heightCm = parseFloat(data.height || '0');
-        const weightKg = parseFloat(data.weight || '0');
-
-        if (heightCm > 0 && weightKg > 0) {
-            const heightM = heightCm / 100;
-            const calculatedBmi = weightKg / (heightM * heightM);
-            setBmi(Number(calculatedBmi.toFixed(1)));
-            setBmiCategory(getBmiCategory(calculatedBmi));
+        const h = parseFloat(data.height); // in cm
+        const w = parseFloat(data.weight); // in kg
+        if (h > 0 && w > 0) {
+            const bmiValue = w / ((h / 100) ** 2);
+            setBmi(Number(bmiValue.toFixed(1)));
         } else {
             setBmi(null);
-            setBmiCategory('');
         }
     }, [data.height, data.weight]);
+
+    const getBMICategory = (val: number) => {
+        if (val < 18.5) return { label: 'Underweight', color: 'text-blue-500' };
+        if (val < 25) return { label: 'Normal', color: 'text-green-600' };
+        if (val < 30) return { label: 'Overweight', color: 'text-orange-500' };
+        return { label: 'Obese', color: 'text-red-600' };
+    };
 
     const onSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         post(`/doctor/physical-exam-form/${appointment.id}`);
     };
 
-    const goBack = () => {
-        router.visit('/doctor/appointments');
-    };
-
     return (
-        <>
-            <Head title="Physical Exam Form - Doctor" />
-
-            <div className="p-6 max-w-4xl mx-auto">
-
-                {/* HEADER */}
-                <div className="flex items-center gap-4 mb-8">
-                    <button
-                        onClick={goBack}
-                        className="p-2 text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition"
-                    >
+        <div className="p-6 max-w-5xl mx-auto space-y-6">
+            <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-xl border shadow-sm">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" onClick={() => router.visit('/doctor/dashboard')}>
                         <ArrowLeft className="w-5 h-5" />
-                    </button>
-
+                    </Button>
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                            Physical Examination
-                        </h1>
-
-                        <p className="text-gray-500 dark:text-gray-300">
-                            Patient: {appointment.user.first_name} {appointment.user.last_name}
-                        </p>
+                        <h1 className="text-xl font-bold">Physical Examination</h1>
+                        <p className="text-sm text-gray-500 font-medium">Patient: {appointment.user.first_name} {appointment.user.last_name}</p>
                     </div>
                 </div>
-
-                {/* VITAL SIGNS */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <HeartPulse className="w-5 h-5" />
-                            Vital Signs
-                        </CardTitle>
-                        <CardDescription>
-                            Record the patient's vital signs
-                        </CardDescription>
-                    </CardHeader>
-
-                    <CardContent className="space-y-6">
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                            <div className="space-y-2">
-                                <Label htmlFor="height">Height (cm)</Label>
-                                <Input
-                                    id="height"
-                                    type="number"
-                                    step="0.1"
-                                    value={data.height}
-                                    onChange={(e) => setData('height', e.target.value)}
-                                />
-                                {errors.height && <p className="text-sm text-red-600">{errors.height}</p>}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="weight">Weight (kg)</Label>
-                                <Input
-                                    id="weight"
-                                    type="number"
-                                    step="0.1"
-                                    value={data.weight}
-                                    onChange={(e) => setData('weight', e.target.value)}
-                                />
-                                {errors.weight && <p className="text-sm text-red-600">{errors.weight}</p>}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="blood_pressure">Blood Pressure</Label>
-                                <Input
-                                    id="blood_pressure"
-                                    placeholder="120/80"
-                                    value={data.blood_pressure}
-                                    onChange={(e) => setData('blood_pressure', e.target.value)}
-                                />
-                                {errors.blood_pressure && <p className="text-sm text-red-600">{errors.blood_pressure}</p>}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="pulse_rate">Pulse Rate (bpm)</Label>
-                                <Input
-                                    id="pulse_rate"
-                                    type="number"
-                                    value={data.pulse_rate}
-                                    onChange={(e) => setData('pulse_rate', e.target.value)}
-                                />
-                                {errors.pulse_rate && <p className="text-sm text-red-600">{errors.pulse_rate}</p>}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="temperature">Temperature (°C)</Label>
-                                <Input
-                                    id="temperature"
-                                    type="number"
-                                    step="0.1"
-                                    value={data.temperature}
-                                    onChange={(e) => setData('temperature', e.target.value)}
-                                />
-                                {errors.temperature && <p className="text-sm text-red-600">{errors.temperature}</p>}
-                            </div>
-
-                        </div>
-
-                        {/* REMARKS */}
-                        <div className="space-y-2">
-                            <Label htmlFor="remarks">Remarks / Notes</Label>
-
-                            <textarea
-                                id="remarks"
-                                rows={4}
-                                value={data.remarks}
-                                onChange={(e) => setData('remarks', e.target.value)}
-                                className="w-full p-3 border rounded-lg bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-blue-500"
-                                placeholder="Additional observations..."
-                            />
-
-                            {errors.remarks && <p className="text-sm text-red-600">{errors.remarks}</p>}
-                        </div>
-
-                        {/* Medical history section removed from doctor form per request */}
-
-                        {/* BUTTONS */}
-                        <div className="flex gap-4 pt-4">
-
-                            <Button onClick={onSubmit} disabled={processing} className="flex items-center gap-2">
-                                <Save className="w-4 h-4" />
-                                {processing ? 'Saving...' : 'Save Physical Exam'}
-                            </Button>
-
-                            <Button variant="outline" onClick={goBack} disabled={processing}>
-                                Cancel
-                            </Button>
-
-                        </div>
-
-                    </CardContent>
-                </Card>
-
-                {/* BMI + FINAL */}
-                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                    {/* BMI */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Activity className="w-5 h-5" />
-                                BMI Calculation
-                            </CardTitle>
-                        </CardHeader>
-
-                        <CardContent className="p-6">
-
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                                Live BMI calculation from height and weight.
-                            </p>
-
-                            {bmi ? (
-                                <div
-                                    className={`p-6 rounded-2xl border-2 text-center ${
-                                        bmiCategory === 'Normal'
-                                            ? 'bg-green-50 border-green-400 text-green-900'
-                                            : bmiCategory === 'Underweight'
-                                            ? 'bg-yellow-50 border-yellow-400 text-yellow-900'
-                                            : bmiCategory === 'Overweight'
-                                            ? 'bg-orange-50 border-orange-400 text-orange-900'
-                                            : 'bg-red-50 border-red-400 text-red-900'
-                                    }`}
-                                >
-                                    <p className="text-4xl font-black">{bmi}</p>
-                                    <p className="text-xl font-bold">{bmiCategory}</p>
-                                    <p className="text-sm opacity-70">Body Mass Index</p>
-                                </div>
-                            ) : (
-                                <div className="p-6 bg-gray-50 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl text-center">
-
-                                    <Scale className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-
-                                    <p className="text-lg font-semibold text-gray-600 dark:text-gray-300">
-                                        Ready to Calculate
-                                    </p>
-
-                                    <p className="text-gray-500 dark:text-gray-400">
-                                        Enter height and weight above
-                                    </p>
-                                </div>
-                            )}
-
-                        </CardContent>
-                    </Card>
-
-                    {/* FINAL DIAGNOSIS */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <HeartPulse className="w-5 h-5" />
-                                Final Diagnosis
-                            </CardTitle>
-                        </CardHeader>
-
-                        <CardContent className="p-6">
-
-                            <Button asChild size="lg" className="w-full">
-
-                                <Link href={`/doctor/physical-exams/${appointment.id}/final`}>
-                                    <CheckCircle className="w-5 h-5 mr-2" />
-                                    Complete Final Evaluation
-                                </Link>
-
-                            </Button>
-
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                                Mark appointment as completed after physical exam
-                            </p>
-
-                        </CardContent>
-                    </Card>
-
-                </div>
+                <Button onClick={onSubmit} disabled={processing} className="bg-blue-600 hover:bg-blue-700">
+                    <Save className="w-4 h-4 mr-2" /> Save & Forward to Lab
+                </Button>
             </div>
-        </>
+
+            {/* Vitals & BMI Section */}
+            <Card className="overflow-hidden">
+                <CardHeader className="bg-gray-50 dark:bg-gray-900 border-b">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-blue-600" /> Vitals Indicators
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                        <div className="md:col-span-8 grid grid-cols-2 md:grid-cols-5 gap-4">
+                            {['height', 'weight', 'blood_pressure', 'pulse_rate', 'temperature'].map((v) => (
+                                <div key={v} className="space-y-1.5">
+                                    <Label className="capitalize text-[11px] font-bold text-gray-500">{v.replace('_', ' ')}</Label>
+                                    <Input 
+                                        type={['height', 'weight', 'temperature'].includes(v) ? 'number' : 'text'}
+                                        value={data[v]} 
+                                        onChange={e => setData(v, e.target.value)} 
+                                        className="h-9 focus:ring-blue-500"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Automatic BMI Result Display */}
+                        <div className="md:col-span-4 flex flex-col items-center justify-center border-l dark:border-gray-700 pl-6 h-full">
+                            <Label className="text-[10px] uppercase font-bold text-gray-400 mb-1">Body Mass Index (BMI)</Label>
+                            <div className="text-4xl font-black text-gray-900 dark:text-white">
+                                {bmi || '--.-'}
+                            </div>
+                            {bmi && (
+                                <span className={`mt-1 text-xs font-bold px-2 py-0.5 rounded-full bg-opacity-10 ${getBMICategory(bmi).color}`}>
+                                    {getBMICategory(bmi).label}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Systems Review */}
+            <Card>
+                <CardHeader><CardTitle className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="w-4 h-4 text-red-500" /> Systems Review</CardTitle></CardHeader>
+                <CardContent className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {bodyParts.map((part) => (
+                        <div key={part.field} className="py-3 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                            <Label className="md:col-span-3 text-sm font-medium">{part.label}</Label>
+                            <div className="md:col-span-3 flex gap-4">
+                                {['normal', 'with_findings'].map((status) => (
+                                    <label key={status} className="flex items-center gap-2 cursor-pointer text-xs">
+                                        <input 
+                                            type="radio" 
+                                            checked={data[`${part.field}_status`] === status}
+                                            onChange={() => {
+                                                setData(`${part.field}_status`, status);
+                                                if (status === 'normal') setData(part.field, '');
+                                            }}
+                                            className="w-3.5 h-3.5 text-blue-600"
+                                        />
+                                        {status === 'normal' ? 'Normal' : 'Findings'}
+                                    </label>
+                                ))}
+                            </div>
+                            <div className="md:col-span-6">
+                                <Input 
+                                    placeholder="Enter findings if abnormal..."
+                                    value={data[part.field]}
+                                    disabled={data[`${part.field}_status`] === 'normal'}
+                                    onChange={e => setData(part.field, e.target.value)}
+                                    className="h-8 text-sm"
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+        </div>
     );
 }
 

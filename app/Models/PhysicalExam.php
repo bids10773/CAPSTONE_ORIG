@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class PhysicalExam extends Model
 {
@@ -13,82 +14,39 @@ class PhysicalExam extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'appointment_id',
-        'doctor_id',
-        
-        // Vital Signs
-        'height',
-        'weight',
-        'blood_pressure',
-        'pulse_rate',
-        'respiratory_rate',
-        'temperature',
-        
-        // Medical History
-        'present_illness',
-        'past_medical_history',
-        'operations_accidents',
-        'family_history',
-        'allergies',
-        'ob_menstrual_history',
-        
-        // System Review - General
-        'is_general_normal',
-        'general_remarks',
-        
-        // System Review - Head/Scalp
-        'is_head_normal',
-        'head_remarks',
-        
-        // System Review - Eyes
-        'is_eyes_normal',
-        'eyes_remarks',
-        
-        // System Review - Ears
-        'is_ears_normal',
-        'ears_remarks',
-        
-        // System Review - Nose/Sinuses
-        'is_nose_normal',
-        'nose_remarks',
-        
-        // System Review - Mouth/Throat
-        'is_mouth_normal',
-        'mouth_remarks',
-        
-        // System Review - Neck/Thyroid
-        'is_neck_normal',
-        'neck_remarks',
-        
-        // System Review - Chest/Breasts
-        'is_chest_normal',
-        'chest_remarks',
-        
-        // System Review - Lungs
-        'is_lungs_normal',
-        'lungs_remarks',
-        
-        // System Review - Heart
-        'is_heart_normal',
-        'heart_remarks',
-        
-        // System Review - Abdomen
-        'is_abdomen_normal',
-        'abdomen_remarks',
-        
-        // System Review - Extremities
-        'is_extremities_normal',
-        'extremities_remarks',
-        
-        // Classification
-        'classification',
-        
-        // Doctor Remarks
-        'doctor_remarks',
-        
-        // Status
-        'is_completed',
-    ];
+    'appointment_id',
+    'doctor_id',
+
+    // Vital Signs
+    'height',
+    'weight',
+    'blood_pressure',
+    'pulse_rate',
+    'temperature',
+    'remarks',
+
+    // ✅ PHYSICAL FINDINGS (ADD THESE)
+    'head_scalp',
+    'eyes',
+    'ears',
+    'nose_sinuses',
+    'mouth_throat',
+    'neck_thyroid',
+    'chest_breast',
+    'lungs',
+    'heart',
+    'abdomen',
+    'back',
+    'anus',
+    'genitals',
+    'extremities',
+    'skin',
+    'dental',
+
+    // Classification
+    'classification',
+    'doctor_remarks',
+];
 
     /**
      * The attributes that should be cast.
@@ -99,6 +57,9 @@ class PhysicalExam extends Model
     {
         return [
             'is_completed' => 'boolean',
+            'height' => 'decimal:2',
+            'weight' => 'decimal:2',
+            'temperature' => 'decimal:2',
         ];
     }
 

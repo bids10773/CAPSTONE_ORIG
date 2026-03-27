@@ -1,20 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Head, usePage, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { Users, ArrowLeft, Save, Lock, Eye, EyeOff } from 'lucide-react';
+import { 
+    Users, ArrowLeft, Save, Lock, Eye, EyeOff, 
+    User, Mail, Phone, BadgeCheck, Stethoscope 
+} from 'lucide-react';
 import InputError from '@/components/input-error';
 import { Label } from '@/components/ui/label';
-import type { BreadcrumbItem, SharedData } from '@/types';
+import { Button } from '@/components/ui/button';
+import type { BreadcrumbItem } from '@/types';
+import { motion } from "framer-motion";
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Create Staff',
-        href: "",
-    },
+    { title: 'Staff Management', href: "/admin/staff" },
+    { title: 'Create Staff', href: "" },
 ];
 
 export default function CreateStaff() {
-
     const props = usePage().props as any;
     const { roles } = props;
 
@@ -37,29 +39,16 @@ export default function CreateStaff() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-
-        if (errors[name]) {
-            setErrors((prev) => ({
-                ...prev,
-                [name]: '',
-            }));
-        }
+        setFormData((prev) => ({ ...prev, [name]: value }));
+        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-
         setIsSubmitting(true);
-        setErrors({});
-
         router.post('/admin/staff', formData, {
-            onError: (errors) => {
-                setErrors(errors);
+            onError: (err) => {
+                setErrors(err);
                 setIsSubmitting(false);
             },
         });
@@ -68,272 +57,173 @@ export default function CreateStaff() {
     const showSpecialization = formData.role === 'doctor';
     const showLicense = formData.role !== 'company';
 
-    const inputStyle =
-        "w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
+    const inputStyle = "w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none";
+    const selectStyle = "w-full px-4 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none cursor-pointer";
 
     return (
         <>
             <Head title="Add Staff Member" />
 
-            <div className="p-6">
-
-                {/* Header */}
-                <div className="flex items-center gap-4 mb-6">
-
-                    <Link
-                        href="/admin/staff"
-                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    >
-                        <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                    </Link>
-
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Users className="w-6 h-6 text-blue-600" />
-                            Add Staff Member
-                        </h1>
-
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                            Create a new staff account for the clinic
-                        </p>
+            <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="max-w-4xl mx-auto p-6"
+            >
+                {/* Header Section */}
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                        <Link href="/admin/staff" className="p-2 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shadow-sm">
+                            <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                        </Link>
+                        <div>
+                            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Add New Staff</h1>
+                            <p className="text-sm text-muted-foreground">Register a new medical or administrative professional.</p>
+                        </div>
                     </div>
-
                 </div>
 
-                <div className="max-w-3xl mx-auto">
-
-
-                    <form onSubmit={handleSubmit} className="space-y-6">
-
-                        {/* Role Selection */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-
-                            <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-                                Role Selection
-                            </h2>
-
-                            <select
-                                name="role"
-                                value={formData.role}
-                                onChange={handleChange}
-                                className={inputStyle}
-                            >
-                                {(Object.entries(roles) as [string, string][]).map(([value, label]) => (
-                                    <option key={value} value={value}>
-                                        {label}
-                                    </option>
-                                ))}
-                            </select>
-
-                            {errors.role && (
-                                <p className="mt-1 text-sm text-red-600">
-                                    {errors.role}
-                                </p>
-                            )}
-
-                        </div>
-
-                        {/* Personal Information */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-
-                            <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-                                Personal Information
-                            </h2>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                                <input
-                                    type="text"
-                                    name="first_name"
-                                    value={formData.first_name}
-                                    onChange={handleChange}
-                                    className={inputStyle}
-                                    placeholder="Enter first name"
-                                />
-
-                                <input
-                                    type="text"
-                                    name="middle_name"
-                                    value={formData.middle_name}
-                                    onChange={handleChange}
-                                    className={inputStyle}
-                                    placeholder="Enter middle name"
-                                />
-
-                                <input
-                                    type="text"
-                                    name="last_name"
-                                    value={formData.last_name}
-                                    onChange={handleChange}
-                                    className={inputStyle}
-                                    placeholder="Enter last name"
-                                />
-
-                                <input
-                                    type="tel"
-                                    name="contact"
-                                    value={formData.contact}
-                                    onChange={handleChange}
-                                    maxLength={11}
-                                    pattern="[0-9]*"
-                                    className={inputStyle}
-                                    placeholder="Enter contact number (max 11 digits)"
-                                />
-
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        {/* Left Column: Role & Credentials */}
+                        <div className="lg:col-span-1 space-y-6">
+                            <div className="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                                <div className="flex items-center gap-2 mb-4 text-blue-600 dark:text-blue-400">
+                                    <BadgeCheck className="w-4 h-4" />
+                                    <h2 className="text-sm font-bold uppercase tracking-wider">Access Role</h2>
+                                </div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">System Role</Label>
+                                        <select name="role" value={formData.role} onChange={handleChange} className={selectStyle}>
+                                            {(Object.entries(roles) as [string, string][]).map(([val, label]) => (
+                                                <option key={val} value={val} className="dark:bg-gray-950">{label}</option>
+                                            ))}
+                                        </select>
+                                        {errors.role && <InputError message={errors.role} />}
+                                    </div>
+                                </div>
                             </div>
 
+                            <div className="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                                <div className="flex items-center gap-2 mb-4 text-amber-600 dark:text-amber-400">
+                                    <Lock className="w-4 h-4" />
+                                    <h2 className="text-sm font-bold uppercase tracking-wider">Security</h2>
+                                </div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Password</Label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                            <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} className={inputStyle} placeholder="••••••••" />
+                                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500">
+                                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+                                        {errors.password && <InputError message={errors.password} />}
+                                    </div>
+                                    <div>
+                                        <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Confirm Password</Label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                            <input type={showPassword ? "text" : "password"} name="password_confirmation" value={formData.password_confirmation} onChange={handleChange} className={inputStyle} placeholder="••••••••" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Professional Information */}
-                        {formData.role !== 'patient' && (
-
-                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-
-                                <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-                                    Professional Information
-                                </h2>
+                        {/* Right Column: Personal & Professional Info */}
+                        <div className="lg:col-span-2 space-y-6">
+                            <div className="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                                <div className="flex items-center gap-2 mb-6 text-emerald-600 dark:text-emerald-400">
+                                    <User className="w-4 h-4" />
+                                    <h2 className="text-sm font-bold uppercase tracking-wider">Profile Information</h2>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                    <div className="relative">
+                                        <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">First Name</Label>
+                                        <User className="absolute left-3 top-[38px] w-4 h-4 text-gray-400" />
+                                        <input name="first_name" value={formData.first_name} onChange={handleChange} className={inputStyle} placeholder="John" />
+                                        {errors.first_name && <InputError message={errors.first_name} />}
+                                    </div>
+                                    <div>
+                                        <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Middle Name</Label>
+                                        <input name="middle_name" value={formData.middle_name} onChange={handleChange} className={inputStyle.replace('pl-10', 'pl-4')} placeholder="Quincy" />
+                                    </div>
+                                    <div>
+                                        <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Last Name</Label>
+                                        <input name="last_name" value={formData.last_name} onChange={handleChange} className={inputStyle.replace('pl-10', 'pl-4')} placeholder="Doe" />
+                                        {errors.last_name && <InputError message={errors.last_name} />}
+                                    </div>
+                                </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                                    {showLicense && (
-                                        <input
-                                            type="text"
-                                            name="license_no"
-                                            value={formData.license_no}
-                                            onChange={handleChange}
-                                            maxLength={7}
-                                            pattern="[0-9]*"
-                                            className={inputStyle}
-                                            placeholder="PRC license (max 7 digits)"
-                                        />
-                                    )}
-
-                                    {showSpecialization && (
-                                        <select
-                                            name="specialization"
-                                            value={formData.specialization}
-                                            onChange={handleChange}
-                                            className={inputStyle}
-                                        >
-                                            <option value="">Select specialization</option>
-                                            <option value="General Medicine">General Medicine</option>
-                                            <option value="Internal Medicine">Internal Medicine</option>
-                                            <option value="Cardiology">Cardiology</option>
-                                            <option value="Pediatrics">Pediatrics</option>
-                                            <option value="Surgery">Surgery</option>
-                                        </select>
-                                    )}
-
+                                    <div className="relative">
+                                        <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Email Address</Label>
+                                        <Mail className="absolute left-3 top-[38px] w-4 h-4 text-gray-400" />
+                                        <input type="email" name="email" value={formData.email} onChange={handleChange} className={inputStyle} placeholder="john.doe@clinic.com" />
+                                        {errors.email && <InputError message={errors.email} />}
+                                    </div>
+                                    <div className="relative">
+                                        <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Contact Number</Label>
+                                        <Phone className="absolute left-3 top-[38px] w-4 h-4 text-gray-400" />
+                                        <input type="tel" name="contact" value={formData.contact} onChange={handleChange} className={inputStyle} placeholder="09123456789" />
+                                    </div>
                                 </div>
-
                             </div>
 
-                        )}
-
-                        {/* Credentials */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-
-                            <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-                                Account Credentials
-                            </h2>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="email" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                        Email Address
-                                    </Label>
-                                    <div className="relative">
-                                        <input
-                                            id="email"
-                                            type="email"
-                                            name="email"
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                            className={inputStyle}
-                                            placeholder="Enter email address"
-                                        />
+                            {formData.role !== 'company' && (
+                                <div className="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                                    <div className="flex items-center gap-2 mb-6 text-purple-600 dark:text-purple-400">
+                                        <Stethoscope className="w-4 h-4" />
+                                        <h2 className="text-sm font-bold uppercase tracking-wider">Professional Credentials</h2>
                                     </div>
-                                    {errors.email && <InputError message={errors.email} />}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="password" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                        Password
-                                    </Label>
-                                    <div className="relative">
-                                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                        <input
-                                            id="password"
-                                            type={showPassword ? "text" : "password"}
-                                            name="password"
-                                            value={formData.password}
-                                            onChange={handleChange}
-                                            className={`${inputStyle} pl-10 pr-10`}
-                                            placeholder="Enter password"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                        >
-                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                        </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {showLicense && (
+                                            <div className="relative">
+                                                <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">PRC License No.</Label>
+                                                <BadgeCheck className="absolute left-3 top-[38px] w-4 h-4 text-gray-400" />
+                                                <input name="license_no" value={formData.license_no} onChange={handleChange} className={inputStyle} placeholder="7-digit License #" />
+                                            </div>
+                                        )}
+                                        {showSpecialization && (
+                                            <div>
+                                                <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Specialization</Label>
+                                                <select name="specialization" value={formData.specialization} onChange={handleChange} className={selectStyle}>
+                                                    <option value="" className="dark:bg-gray-950">Select Specialization</option>
+                                                    <option value="General Medicine" className="dark:bg-gray-950">General Medicine</option>
+                                                    <option value="Internal Medicine" className="dark:bg-gray-950">Internal Medicine</option>
+                                                    <option value="Cardiology" className="dark:bg-gray-950">Cardiology</option>
+                                                    <option value="Pediatrics" className="dark:bg-gray-950">Pediatrics</option>
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
-                                    {errors.password && <InputError message={errors.password} />}
                                 </div>
-
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="password_confirmation" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                        Confirm Password
-                                    </Label>
-                                    <div className="relative">
-                                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                        <input
-                                            id="password_confirmation"
-                                            type={showPassword ? "text" : "password"}
-                                            name="password_confirmation"
-                                            value={formData.password_confirmation}
-                                            onChange={handleChange}
-                                            className={`${inputStyle} pl-10`}
-                                            placeholder="Confirm password"
-                                        />
-                                    </div>
-                                    {errors.password_confirmation && <InputError message={errors.password_confirmation} />}
-                                </div>
-
-
-                            </div>
-
+                            )}
                         </div>
+                    </div>
 
-                        {/* Buttons */}
-                        <div className="flex justify-end gap-4">
-
-                            <Link
-                                href="/admin/staff"
-                                className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                            >
-                                Cancel
-                            </Link>
-
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                            >
-                                <Save className="w-4 h-4" />
-                                {isSubmitting ? 'Creating...' : 'Create Staff Member'}
-                            </button>
-
-                        </div>
-
-                    </form>
-
-                </div>
-
-            </div>
+                    {/* Submit Actions */}
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                        <Link href="/admin/staff" className="px-6 py-2 text-sm font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+                            Cancel
+                        </Link>
+                        <Button type="submit" disabled={isSubmitting} className="h-11 px-8 gap-2 shadow-lg shadow-blue-500/20">
+                            {isSubmitting ? (
+                                <>Processing...</>
+                            ) : (
+                                <>
+                                    <Save className="w-4 h-4" />
+                                    Create Staff Account
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </form>
+            </motion.div>
         </>
     );
 }

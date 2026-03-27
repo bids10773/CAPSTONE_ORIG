@@ -47,18 +47,19 @@ Route::get('/doctor/dashboard', [DoctorDashboardController::class, '__invoke'])-
     Route::post('/company/appointments/bulk', [AppointmentController::class, 'companyBulkStore'])->middleware('role:company')->name('company.appointments.bulk');
     Route::get('/dashboard', [PatientDashboardController::class, '__invoke'])->middleware('role:patient'); // default patient
 
-    // Doctor Routes
-    Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(function () {
-        Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor');
+   // Doctor Routes
+Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(function () {
+    Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor');
 
-        Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
-        Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');
+    Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
+    Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');
 
-        Route::get('/physical-exam-form/{appointmentid}', [PhysicalExamController::class, 'create'])->name('physical-exams.create');
-        Route::post('/physical-exam-form/{appointmentid}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
-        Route::get('/physical-exam-form/{appointmentid}/final', [PhysicalExamController::class, 'final'])->name('physical-exams.final');
-        Route::post('/physical-exam-form/{appointmentid}/final', [PhysicalExamController::class, 'finalStore'])->name('physical-exams.final-store');
-    });
+    // Change {appointmentid} to {appointmentId}
+    Route::get('/physical-exam-form/{appointmentId}', [PhysicalExamController::class, 'create'])->name('physical-exams.create');
+    Route::post('/physical-exam-form/{appointmentId}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
+    Route::get('/physical-exam-form/{appointmentId}/final', [PhysicalExamController::class, 'final'])->name('physical-exams.final');
+    Route::post('/physical-exam-form/{appointmentId}/final', [PhysicalExamController::class, 'finalStore'])->name('physical-exams.final-store');
+});
 
     // MedTech Routes
     Route::middleware('role:medtech')->prefix('medtech')->name('medtech.')->group(function () {

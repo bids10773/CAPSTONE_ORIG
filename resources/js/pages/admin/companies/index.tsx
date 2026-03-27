@@ -66,26 +66,6 @@ export default function AdminCompaniesIndex() {
             <Head title="Companies - Admin" />
 
             <div className="p-6">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Building2 className="w-6 h-6" />
-                            Companies
-                        </h1>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1">
-                            Manage registered companies
-                        </p>
-                    </div>
-                    <Link
-                        href="/admin/companies/create"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Add Company
-                    </Link>
-                </div>
-
                 {/* Filters */}
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
                     <form method="GET" className="flex flex-wrap gap-4">
@@ -117,6 +97,14 @@ export default function AdminCompaniesIndex() {
                             <Filter className="w-4 h-4" />
                             Filter
                         </button>
+
+                        <Link
+                        href="/admin/companies/create"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Add Company
+                    </Link>
                     </form>
                 </div>
 
