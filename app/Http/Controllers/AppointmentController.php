@@ -657,53 +657,53 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
     /**
      * Staff appointment list - filtered by role and status/service_type.
      */
-    public function staffIndex(Request $request, string $role): Response
-    {
-        $search = $request->get('search', '');
-        $status = $request->get('status', 'pending'); // Default to pending
+   public function staffIndex(Request $request, string $role): Response
+{
+    $search = $request->get('search', '');
+    
+    $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport']);
 
-        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport']);
+    // THE RELAY LOGIC
+    if ($role === 'doctor') {
+        // Doctor sees patients waiting for physical exam
+        $query->whereIn('status', ['accepted', 'arrived'])
+              ->whereDoesntHave('physicalExam');
 
-        // Role-specific filtering
-        if ($role === 'doctor') {
-            $query->where('status', 'accepted');
-            $query->whereDoesntHave('physicalExam', function ($q) {
-                $q->where('is_completed', true);
-            });
-        } elseif ($role === 'medtech') {
-            // MedTech sees pending appointments requiring lab (service_type match)
-            $labServices = ['CBC', 'Urinalysis', 'Fecalysis', 'Drug Test', 'Hepatitis', 'FBS', 'Pregnancy Test'];
-            $query->whereIn('service_type', $labServices)
-                  ->whereDoesntHave('labResult');
-        } elseif ($role === 'radtech') {
-            // RadTech sees pending X-Ray appointments
-            $query->where('service_type', 'like', '%X-Ray%')
-                  ->whereDoesntHave('xrayReport');
-        }
+    } elseif ($role === 'medtech') {
+        // MedTech sees patients forwarded by the Doctor
+        $query->where('status', 'pending_diagnostics')
+              ->whereDoesntHave('labResult');
 
-        if ($search) {
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%");
-            });
-        }
-
-        $appointments = $query->orderBy('appointment_date', 'asc')
-            ->paginate(15)
-            ->withQueryString();
-
-        $pageTitle = ucfirst($role) . ' Appointments';
-
-        return Inertia::render("{$role}/appointments/index", [
-            'appointments' => $appointments,
-            'filters' => [
-                'search' => $search,
-                'status' => $status,
-                'role' => $role,
-            ],
-            'pageTitle' => $pageTitle,
-        ]);
+    } elseif ($role === 'radtech') {
+        // RadTech sees patients forwarded by the MedTech
+        $query->where('status', 'pending_xray')
+              ->whereDoesntHave('xrayReport');
     }
+
+    // Search logic
+    if ($search) {
+        $query->whereHas('user', function ($q) use ($search) {
+            $q->where('first_name', 'like', "%{$search}%")
+              ->orWhere('last_name', 'like', "%{$search}%");
+        });
+    }
+
+    $appointments = $query->orderBy('updated_at', 'desc')->paginate(15)->withQueryString();
+
+    // Map the role to the correct Inertia page path based on your routes
+    $pagePath = match($role) {
+        'doctor' => 'doctor/appointments/index', // Adjust if your file is elsewhere
+        'medtech' => 'medtech/appointments/index',
+        'radtech' => 'radtech/appointments/index',
+        default => "{$role}/appointments/index"
+    };
+
+    return Inertia::render($pagePath, [
+        'appointments' => $appointments,
+        'filters' => ['search' => $search, 'role' => $role],
+        'pageTitle' => ucfirst($role) . ' Queue',
+    ]);
+}
 }
 
 

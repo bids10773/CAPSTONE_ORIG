@@ -51,7 +51,9 @@ class XrayController extends Controller
             }
         }
 
-        return redirect()->back()->with('success', 'X-ray report saved successfully.');
+        // Inside your store method:
+$appointment->update(['status' => 'pending_final_evaluation']);
+return redirect()->route('radtech.dashboard')->with('success', 'Sent back to Doctor for final review');
     }
 }
 

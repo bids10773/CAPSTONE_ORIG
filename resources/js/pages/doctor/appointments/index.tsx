@@ -29,7 +29,7 @@ interface Appointment {
     company: {
         company_name: string;
     } | null;
-    physicalExam?: any;
+    physical_exam?: any; // Changed to match common Laravel snake_case relationship naming
 }
 
 interface Props {
@@ -53,7 +53,8 @@ export default function DoctorAppointmentsIndex(props: Props) {
     const { appointments, filters, pageTitle } = props;
 
     const getStatusBadge = (status: string) => {
-        switch (status) {
+        const s = status.toLowerCase();
+        switch (s) {
             case 'pending':
                 return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
             case 'accepted':
@@ -70,10 +71,11 @@ export default function DoctorAppointmentsIndex(props: Props) {
     };
 
     const getStatusIcon = (status: string) => {
-        switch (status) {
+        const s = status.toLowerCase();
+        switch (s) {
             case 'pending':
                 return <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />;
-    case 'accepted':
+            case 'accepted':
                 return <CheckCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
             case 'arrived':
                 return <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
@@ -111,7 +113,7 @@ export default function DoctorAppointmentsIndex(props: Props) {
     };
 
     const startExam = (appointmentId: number) => {
-router.visit(`/doctor/physical-exam-form/${appointmentId}`);
+        router.visit(`/doctor/physical-exam-form/${appointmentId}`);
     };
 
     return (
@@ -167,27 +169,13 @@ router.visit(`/doctor/physical-exam-form/${appointmentId}`);
                         <table className="w-full">
                             <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Patient
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Date & Time
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Service
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Type
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Company
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Status
-                                    </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Actions
-                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Patient</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date & Time</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Service</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Type</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Company</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -220,11 +208,17 @@ router.visit(`/doctor/physical-exam-form/${appointmentId}`);
                                                     {appointment.status}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-right space-x-2">
-                                                <Link href={`/appointments/${appointment.id}`} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-lg inline-flex items-center">
+                                            <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                                                <Link 
+                                                    href={`/appointments/${appointment.id}`} 
+                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-lg inline-flex items-center"
+                                                    title="View Details"
+                                                >
                                                     <Eye className="w-4 h-4" />
                                                 </Link>
-{appointment.status === 'accepted' && !appointment.physicalExam && (
+
+                                                {/* FIXED LOGIC: Show exam button if status is accepted/arrived AND no exam exists */}
+                                                {(['accepted', 'arrived'].includes(appointment.status.toLowerCase())) && !appointment.physical_exam?.id && (
                                                     <button
                                                         onClick={() => startExam(appointment.id)}
                                                         className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg inline-flex items-center"
@@ -257,14 +251,6 @@ router.visit(`/doctor/physical-exam-form/${appointmentId}`);
                     {appointments.links && appointments.links.length > 3 && (
                         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
                             <nav className="flex items-center justify-between">
-                                <div className="flex flex-1 justify-between sm:hidden">
-                                    <Link
-                                        href={appointments.links[0]?.url || ''}
-                                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                    >
-                                        Previous
-                                    </Link>
-                                </div>
                                 <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                                     <div>
                                         <p className="text-sm text-gray-700 dark:text-gray-300">
@@ -272,31 +258,20 @@ router.visit(`/doctor/physical-exam-form/${appointmentId}`);
                                             <span className="font-medium">{appointments.total}</span> results
                                         </p>
                                     </div>
-                                    <div>
+                                    <div className="flex gap-1">
                                         {appointments.links.map((link, index) => (
                                             <Link
                                                 key={index}
                                                 href={link.url || ''}
+                                                dangerouslySetInnerHTML={{ __html: link.label }}
                                                 className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium rounded-md focus:z-20 focus:outline-none ${
                                                     link.active
                                                         ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
                                                         : 'bg-white text-gray-500 hover:bg-gray-50 border-gray-300'
                                                 } ${!link.url && 'pointer-events-none text-gray-400'}`}
-                                            >
-                                                {link.label === 'Previous' && <ChevronLeft className="w-5 h-5" />}
-                                                {link.label === 'Next' && <ChevronRight className="w-5 h-5" />}
-                                                {link.label.replace(/\\w/g, '')}
-                                            </Link>
+                                            />
                                         ))}
                                     </div>
-                                </div>
-                                <div className="flex flex-1 justify-end sm:hidden">
-                                    <Link
-                                        href={appointments.links[appointments.links.length - 1]?.url || ''}
-                                        className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                    >
-                                        Next
-                                    </Link>
                                 </div>
                             </nav>
                         </div>
@@ -310,4 +285,3 @@ router.visit(`/doctor/physical-exam-form/${appointmentId}`);
 DoctorAppointmentsIndex.layout = (page: any) => {
     return <AppLayout>{page}</AppLayout>;
 };
-

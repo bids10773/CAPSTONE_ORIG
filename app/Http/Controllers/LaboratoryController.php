@@ -15,10 +15,11 @@ class LaboratoryController extends Controller
      */
     public function index(Request $request): Response
     {
-        // We fetch appointments that are specifically sent by the doctor
-        $query = Appointment::with(['user', 'company', 'labResult'])
-            ->whereIn('status', ['pending_diagnostics', 'arrived']); // 'arrived' for direct lab walk-ins
+        $query = Appointment::with(['user', 'company'])
+            ->where('status', 'pending_diagnostics') 
+            ->orderBy('updated_at', 'desc');
 
+        // ✅ SEARCH LOGIC (Moved up so it actually runs)
         if ($request->search) {
             $query->whereHas('user', function($q) use ($request) {
                 $q->where('first_name', 'like', "%{$request->search}%")
@@ -28,57 +29,68 @@ class LaboratoryController extends Controller
 
         return Inertia::render('medtech/index', [
             'appointments' => $query->paginate(10)->withQueryString(),
-            'filters' => $request->only(['search', 'status']),
+            'filters' => $request->only(['search']),
             'pageTitle' => 'Laboratory Queue'
         ]);
     }
 
     public function create(Appointment $appointment): Response
     {
-        $appointment->load('user', 'patientProfile');
+        $appointment->load('user', 'company'); // patientProfile changed to company based on index
         
         return Inertia::render('medtech/lab-results-form', [
             'appointment' => $appointment,
+            'labResult' => LabResult::where('appointment_id', $appointment->id)->first(),
         ]);
     }
 
     public function store(Request $request, Appointment $appointment)
-    {
-        $request->validate([
-            'cbc' => 'nullable|array',
-            'urinalysis' => 'nullable|array',
-            'fecalysis' => 'nullable|array',
-            'blood_sugar' => 'nullable|string|max:255',
-            'pregnancy_test' => 'nullable|string|max:255',
-            'drug_test' => 'nullable|string|max:255',
-            'hepatitis_b' => 'nullable|string|max:255',
-            'remarks' => 'nullable|string|max:1000',
-        ]);
+{
+    $validated = $request->validate([
+        'cbc_status' => 'nullable|string',
+        'cbc_remarks' => 'nullable|string',
+        'urinalysis_status' => 'nullable|string',
+        'urinalysis_remarks' => 'nullable|string',
+        'fecalysis_status' => 'nullable|string',
+        'fecalysis_remarks' => 'nullable|string',
+        'hepa_b_status' => 'nullable|string',
+        'hepa_a_status' => 'nullable|string',
+        'pregnancy_test_status' => 'nullable|string',
+        'meth_status' => 'nullable|string',
+        'marijuana_status' => 'nullable|string',
+    ]);
 
-        // 1. Save results (using updateOrCreate to prevent duplicates)
+    LabResult::updateOrCreate(
+        ['appointment_id' => $appointment->id],
+        array_merge($validated, [
+            'encoded_by' => auth()->id(),
+        ])
+    );
+
+    // After Lab, move to X-Ray (RadTech)
+    $appointment->update(['status' => 'pending_xray']);
+
+    return redirect()->route('medtech.appointments')->with('success', 'Laboratory results saved and forwarded to X-Ray.');
+
+
+        // ✅ Map request data to your actual Database Columns
         LabResult::updateOrCreate(
             ['appointment_id' => $appointment->id],
-            [
-                'cbc' => $request->cbc,
-                'urinalysis' => $request->urinalysis,
-                'fecalysis' => $request->fecalysis,
-                'blood_sugar' => $request->blood_sugar,
-                'pregnancy_test' => $request->pregnancy_test,
-                'drug_test' => $request->drug_test,
-                'hepatitis_b' => $request->hepatitis_b,
-                'remarks' => $request->remarks,
+            array_merge($request->all(), [
                 'encoded_by' => auth()->id(),
-            ]
+                'is_completed' => true
+            ])
         );
 
         // 2. ✅ Update Status
-        // Move to X-ray stage. If your clinic doesn't require X-ray for everyone,
-        // you could change this to 'ready_for_final_evaluation'.
+        // If they go to X-ray next: 'pending_xray'
+        // If they go back to Doctor: 'pending_final_evaluation'
         $appointment->update([
             'status' => 'pending_xray' 
         ]);
 
-        return redirect()->route('medtech.appointments.index')
-            ->with('success', 'Lab results encoded. Patient moved to X-ray queue.');
+       // Inside your store method:
+$appointment->update(['status' => 'pending_xray']);
+return redirect()->route('medtech.dashboard')->with('success', 'Forwarded to X-Ray');
     }
 }

@@ -12,32 +12,36 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('lab_results', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('appointment_id')->constrained()->onDelete('cascade');
+            $table->foreignId('encoded_by')->constrained('users');
 
-    $table->id();
+            // --- Section A: CBC ---
+            $table->string('cbc_status')->default('normal'); // 'normal' or 'findings'
+            $table->text('cbc_findings')->nullable();
 
-    $table->foreignId('appointment_id')->constrained();
+            // --- Section B: Urinalysis ---
+            $table->string('urinalysis_status')->default('normal');
+            $table->text('urinalysis_findings')->nullable();
 
-    $table->foreignId('encoded_by')->constrained('users');
+            // --- Section C: Fecalysis ---
+            $table->string('fecalysis_status')->default('normal');
+            $table->text('fecalysis_findings')->nullable();
 
-    // CBC
-    $table->decimal('hemoglobin',8,2)->nullable();
-    $table->decimal('hematocrit',8,2)->nullable();
-    $table->decimal('wbc_count',8,2)->nullable();
-    $table->decimal('rbc_count',8,2)->nullable();
-    $table->decimal('platelet',8,2)->nullable();
+            // --- Section D-F: Rapid Tests ---
+            $table->string('hepa_b_status')->default('non-reactive');
+            $table->string('hepa_a_status')->default('non-reactive');
+            $table->string('pregnancy_test')->default('negative');
 
-    // Urinalysis
-    $table->string('uri_color')->nullable();
-    $table->string('uri_transparency')->nullable();
-    $table->decimal('uri_ph',3,1)->nullable();
-    $table->decimal('uri_sp_gravity',4,3)->nullable();
+            // --- Section G: Drug Test ---
+            $table->string('meth_status')->default('negative');
+            $table->string('marijuana_status')->default('negative');
 
-    // Others
-    $table->string('drug_test_shabu')->nullable();
-    $table->string('hepa_b_sag')->nullable();
+            // --- Final Remarks ---
+            $table->text('remarks')->nullable();
 
-    $table->timestamps();
-});
+            $table->timestamps();
+        });
     }
 
     /**

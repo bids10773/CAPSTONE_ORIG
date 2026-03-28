@@ -73,11 +73,9 @@ public function store(Request $request, $appointmentId)
     );
 
     // ✅ MATCH THIS STATUS WITH MEDTECH CONTROLLER
-    $appointment->update([
-        'status' => 'pending_diagnostics' 
-    ]);
+    $appointment->update(['status' => 'pending_diagnostics']);
+return redirect()->route('doctor.dashboard')->with('success', 'Forwarded to Lab');
 
-    return redirect()->back()->with('success', 'Physical Examination complete! Patient forwarded to Lab.');
 }
 
     public function final($appointment): Response
