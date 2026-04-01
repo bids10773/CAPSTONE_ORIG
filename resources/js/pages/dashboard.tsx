@@ -8,6 +8,7 @@ import logo from '/resources/images/full_logo.png';
 import { useLogoutModal } from '@/contexts/logout-modal-context';
 import { Calendar, Settings, LogOut } from 'lucide-react';
 
+
 // Check if this is a patient dashboard (has appointments data)
 function isPatientDashboard(props: any): boolean {
     return props.appointments !== undefined || props.stats !== undefined;
@@ -147,7 +148,7 @@ function HeroSection({ user, isLoggedIn = false }: { user?: any, isLoggedIn?: bo
             >
                 <div className="max-w-xl text-white">
                     <p className="text-lg opacity-80 mb-2 text-blue-400">
-                        {isLoggedIn ? `Welcome back, ${user?.first_name}!` : "Well Beyond Care"}
+                        {isLoggedIn ? `Welcome back and` : "Well Beyond Care"}
                     </p>
 
                     <h1 className="text-5xl font-bold leading-tight uppercase">
@@ -316,17 +317,17 @@ function WelcomePage() {
     );
 }
 
-// Main Dashboard Component - switches between patient dashboard and welcome page
 export default function Dashboard() {
-    const { auth } = usePage().props as any;
-    const props = usePage().props as any;
+    // ✅ HOOKS MUST BE AT THE TOP OF THE COMPONENT BODY
+    const { auth, appointments, stats } = usePage().props as any;
 
-    // If user is logged in and has appointments data, show patient dashboard (same UI as welcome)
-    if (auth?.user && isPatientDashboard(props)) {
-        return <PatientDashboard user={props.user} />;
+    // 3. Logic to decide which view to show
+    // If we have a user and they are a patient (checked by data presence)
+    if (auth?.user) {
+        return <PatientDashboard user={auth.user} />;
     }
 
-    // Otherwise show welcome page
+    // 4. Default to Welcome for Guests
     return <WelcomePage />;
 }
 

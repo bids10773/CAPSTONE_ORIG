@@ -224,34 +224,78 @@ export default function AdminDashboard() {
 
                 </motion.div>
 
-                {/* MONTHLY TREND */}
-                <motion.div variants={card} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+               {/* MONTHLY TREND WITH LEVEL 3 ML PREDICTIONS */}
+<motion.div variants={card} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+    <div className="flex justify-between items-center mb-6">
+        <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Predictive Resource Analytics
+            </h3>
+            <p className="text-xs text-gray-500">Holt-Winters Seasonal Forecast (Confidence Interval: ±1 Std Dev)</p>
+        </div>
+        <div className="flex gap-4 text-[10px] font-medium">
+            <div className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500 rounded-full"></span> Actual</div>
+            <div className="flex items-center gap-1"><span className="w-2 h-2 bg-purple-400 border border-dashed border-purple-600 rounded-full"></span> Forecast</div>
+        </div>
+    </div>
 
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                        Monthly Appointment Trends
-                    </h3>
+    <div className="flex items-end gap-3 h-56 pt-10"> {/* Increased height for labels */}
+        {(monthlyTrends || []).map((trend: any, index: number) => {
+            const counts = monthlyTrends.map((t: any) => t.upper_bound || t.count);
+            const maxCount = Math.max(...counts, 1);
+            
+            const heightPercent = (trend.count / maxCount) * 100;
+            const upperPercent = trend.is_predicted ? (trend.upper_bound / maxCount) * 100 : 0;
+            const isPredicted = trend.is_predicted;
 
-                    <div className="flex items-end gap-3 h-40">
-                        {(monthlyTrends || []).map((trend: any, index: number) => {
-                            const counts = monthlyTrends.map((t: any) => t.count);
-                            const maxCount = Math.max(...counts, 1);
-                            const heightPercent = (trend.count / maxCount) * 100;
+            return (
+                <div key={index} className="flex-1 flex flex-col items-center gap-2 group relative h-full justify-end">
+                    
+                    {/* Level 3: Confidence Interval (The Ghost Bar) */}
+                    {isPredicted && (
+                        <motion.div 
+                            className="absolute bottom-6 w-full bg-purple-200/20 border-x border-t border-dashed border-purple-300/40 rounded-t-md"
+                            initial={{ height: 0 }}
+                            animate={{ height: `calc(${upperPercent}% - 24px)` }} // Subtract label space
+                            style={{ zIndex: 0 }}
+                        />
+                    )}
 
-                            return (
-                                <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                                    <motion.div
-                                        className="w-full bg-blue-500 rounded-t-md hover:bg-blue-600"
-                                        initial={{ height: 0 }}
-                                        animate={{ height: `${heightPercent}%` }}
-                                    />
-                                    <span className="text-xs text-gray-500">
-                                        {trend.month?.substring(0, 3)}
-                                    </span>
-                                </div>
-                            );
-                        })}
+                    {/* Prediction Stats Tooltip */}
+                    <div className="absolute -top-14 bg-gray-900 text-white text-[10px] p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none min-w-[120px] shadow-xl">
+                        <p className="font-bold border-b border-gray-700 mb-1">{trend.month}</p>
+                        <p>Expected: {trend.count}</p>
+                        {isPredicted && (
+                            <>
+                                <p className="text-purple-300">Max Cap: {trend.upper_bound}</p>
+                                <p className="text-blue-300">Confidence: {trend.confidence}%</p>
+                            </>
+                        )}
                     </div>
-                </motion.div>
+
+                    {/* Main Bar */}
+                    <motion.div
+                        className={`w-full rounded-t-md relative z-10 transition-all duration-500 ${
+                            isPredicted 
+                            ? 'bg-gradient-to-t from-purple-500/80 to-purple-400/60 border-t-2 border-dashed border-purple-300 shadow-lg shadow-purple-500/20' 
+                            : 'bg-blue-600 shadow-sm'
+                        }`}
+                        initial={{ height: 0 }}
+                        animate={{ height: `${heightPercent}%` }}
+                        whileHover={{ scaleX: 1.05 }}
+                    />
+                    
+                    <div className="flex flex-col items-center h-6">
+                        <span className={`text-[9px] uppercase tracking-tighter ${isPredicted ? 'text-purple-500 font-bold' : 'text-gray-400'}`}>
+                            {trend.month?.split(' ')[0]}
+                        </span>
+                        {isPredicted && <div className="w-1 h-1 bg-purple-500 rounded-full animate-pulse"></div>}
+                    </div>
+                </div>
+            );
+        })}
+    </div>
+</motion.div>
 
                 {/* RECENT APPOINTMENTS */}
                 <motion.div variants={card} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">

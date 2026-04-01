@@ -19,34 +19,41 @@ use Laravel\Fortify\Features;
 
 
 
-// Appointment route - accessible by all users (guests will be redirected to login)
+Route::get('/dashboard', [PatientDashboardController::class, '__invoke'])->name('dashboard');
 Route::get('/appointment', [AppointmentController::class, 'create'])->name('appointment.create');
 
-Route::middleware(['auth', 'staff.verified'])->group(function () {
-    // Role-based home redirect for authenticated users
-    Route::get('/', function () {
-        $user = auth()->user();
-        return match($user->role) {
-            'admin' => redirect('/admin/dashboard'),
-            'doctor' => redirect('/doctor/dashboard'),
-            'medtech' => redirect('/medtech/dashboard'),
-            'radtech' => redirect('/radtech/dashboard'),
-            'company' => redirect('/company/dashboard'),
-            default => redirect('/dashboard'),
+// 2. SMART REDIRECTS
+Route::get('/', function () {
+    if (auth()->check()) {
+        // Redirect patients/staff to their correct spots
+        return match(auth()->user()->role) {
+            'admin'    => redirect('/admin/dashboard'),
+            'doctor'   => redirect('/doctor/dashboard'),
+            'medtech'  => redirect('/medtech/dashboard'),
+            'radtech'  => redirect('/radtech/dashboard'),
+            'company'  => redirect('/company/dashboard'),
+            // Patients or anyone else goes to the unified dashboard
+            default    => redirect('/dashboard'),
         };
-    })->name('home');
+    }
+
+    // Guest: Go to the public dashboard (Landing Page)
+    return redirect('/dashboard'); 
+})->name('home');
 
 
+
+
+Route::middleware(['auth', 'staff.verified'])->group(function () {
 
     // Dashboard Routes
     Route::get('/admin/dashboard', [AdminDashboardController::class, '__invoke'])->middleware('role:admin');
-Route::get('/doctor/dashboard', [DoctorDashboardController::class, '__invoke'])->middleware('role:doctor')->name('doctor.dashboard');
+    Route::get('/doctor/dashboard', [DoctorDashboardController::class, '__invoke'])->middleware('role:doctor')->name('doctor.dashboard');
     Route::get('/medtech/dashboard', [MedTechDashboardController::class, '__invoke'])->middleware('role:medtech');
     Route::get('/radtech/dashboard', [RadTechDashboardController::class, '__invoke'])->middleware('role:radtech');
     Route::get('/company/dashboard', [CompanyDashboardController::class, '__invoke'])->middleware('role:company')->name('company.dashboard');
     Route::post('/company/appointments/bulk', [AppointmentController::class, 'companyBulkStore'])->middleware('role:company')->name('company.appointments.bulk');
-    Route::get('/dashboard', [PatientDashboardController::class, '__invoke'])->middleware('role:patient'); // default patient
-
+    
    // Doctor Routes
 Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(function () {
     Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor');

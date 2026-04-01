@@ -5,8 +5,6 @@ import {
     Calendar, Clock, TestTube, Image 
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { NavFooter } from '@/components/nav-footer';
-import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import logo from '/public/images/full_logo.png';
 import {

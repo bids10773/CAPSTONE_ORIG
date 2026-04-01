@@ -18,10 +18,7 @@ const roleDashboardMap: Record<string, string> = {
     radtech: '/radtech/dashboard',
 };
 
-const dashboardRoute = user?.role
-    ? roleDashboardMap[user.role] || '/dashboard'
-    : '/';
-
+ const dashboardRoute = user?.role ? (roleDashboardMap[user.role] || '/dashboard') : '/dashboard';
     return (
         <div 
             className="relative h-dvh grid grid-cols-1 lg:grid-cols-2 bg-cover bg-center bg-no-repeat overflow-hidden dark:bg-[#0a0f1a]"

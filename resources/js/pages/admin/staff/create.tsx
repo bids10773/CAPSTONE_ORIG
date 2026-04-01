@@ -38,10 +38,25 @@ export default function CreateStaff() {
     const [showPassword, setShowPassword] = useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
-        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
-    };
+  const { name, value } = e.target;
+
+  // Add 'license_no' to the numeric-only check
+  if (name === 'contact' || name === 'license_no') {
+    // This regex strips out any character that is NOT a number (0-9)
+    const onlyNums = value.replace(/[^0-9]/g, '');
+    
+    setFormData(prev => ({ 
+        ...prev, 
+        [name]: onlyNums 
+    }));
+  } else {
+    // Everything else (name, email, specialization) stays as is
+    setFormData(prev => ({ 
+        ...prev, 
+        [name]: value 
+    }));
+  }
+};
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -169,40 +184,90 @@ export default function CreateStaff() {
                                     <div className="relative">
                                         <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Contact Number</Label>
                                         <Phone className="absolute left-3 top-[38px] w-4 h-4 text-gray-400" />
-                                        <input type="tel" name="contact" value={formData.contact} onChange={handleChange} className={inputStyle} placeholder="09123456789" />
+                                        <input type="tel" name="contact" value={formData.contact} onChange={handleChange} className={`${inputStyle} pl-10`} pattern="[0-9]*" minLength={11}
+            maxLength={11} placeholder="09123456789" required/>
                                     </div>
                                 </div>
                             </div>
 
-                            {formData.role !== 'company' && (
-                                <div className="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
-                                    <div className="flex items-center gap-2 mb-6 text-purple-600 dark:text-purple-400">
-                                        <Stethoscope className="w-4 h-4" />
-                                        <h2 className="text-sm font-bold uppercase tracking-wider">Professional Credentials</h2>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {showLicense && (
-                                            <div className="relative">
-                                                <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">PRC License No.</Label>
-                                                <BadgeCheck className="absolute left-3 top-[38px] w-4 h-4 text-gray-400" />
-                                                <input name="license_no" value={formData.license_no} onChange={handleChange} className={inputStyle} placeholder="7-digit License #" />
-                                            </div>
-                                        )}
-                                        {showSpecialization && (
-                                            <div>
-                                                <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Specialization</Label>
-                                                <select name="specialization" value={formData.specialization} onChange={handleChange} className={selectStyle}>
-                                                    <option value="" className="dark:bg-gray-950">Select Specialization</option>
-                                                    <option value="General Medicine" className="dark:bg-gray-950">General Medicine</option>
-                                                    <option value="Internal Medicine" className="dark:bg-gray-950">Internal Medicine</option>
-                                                    <option value="Cardiology" className="dark:bg-gray-950">Cardiology</option>
-                                                    <option value="Pediatrics" className="dark:bg-gray-950">Pediatrics</option>
-                                                </select>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
+                           {['doctor', 'radtech', 'medtech'].includes(formData.role) && (
+    <div className="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm transition-all">
+        {/* Section Header */}
+        <div className="flex items-center gap-2 mb-6 text-purple-600 dark:text-purple-400">
+            <Stethoscope className="w-4 h-4" />
+            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                Professional Credentials
+            </h2>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* PRC License Input */}
+            <div className="space-y-2">
+                <Label className="text-[11px] font-bold uppercase text-muted-foreground ml-1">
+                    PRC License No.
+                </Label>
+                <div className="relative group">
+                    <BadgeCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+                    <input 
+                        type="text"
+                        name="license_no" 
+                        value={formData.license_no} 
+                        onChange={handleChange} 
+                        className={`${inputStyle} pl-10 focus:ring-2 focus:ring-purple-500/20`} 
+                        placeholder="7-digit License #" 
+                        maxLength={7}
+                        pattern="\d{7}" // Validates exactly 7 digits
+                        required
+                    />
+                </div>
+            </div>
+
+            {/* Specialization Selection */}
+            <div className="space-y-2">
+                <Label className="text-[11px] font-bold uppercase text-muted-foreground ml-1">
+                    Specialization
+                </Label>
+                <select 
+                    name="specialization" 
+                    value={formData.specialization} 
+                    onChange={handleChange} 
+                    className={`${selectStyle} cursor-pointer focus:ring-2 focus:ring-purple-500/20`}
+                    required
+                >
+                    <option value="" disabled className="text-gray-400">Select Department</option>
+                    
+                    {/* Role-specific logic: Doctors */}
+                    {formData.role === 'doctor' && (
+                        <>
+                            <option value="General Medicine">General Medicine</option>
+                            <option value="Occupational Health">Occupational Health (Industrial)</option>
+                            <option value="Internal Medicine">Internal Medicine</option>
+                            <option value="Cardiology">Cardiology</option>
+                        </>
+                    )}
+
+                    {/* Role-specific logic: RadTechs */}
+                    {formData.role === 'radtech' && (
+                        <>
+                            <option value="Diagnostic Radiography">Diagnostic Radiography</option>
+                            <option value="CT/MRI Specialist">CT/MRI Specialist</option>
+                            <option value="X-Ray Specialist">X-Ray Specialist</option>
+                        </>
+                    )}
+
+                    {/* Role-specific logic: MedTechs */}
+                    {formData.role === 'medtech' && (
+                        <>
+                            <option value="Hematology">Hematology</option>
+                            <option value="Clinical Microscopy">Clinical Microscopy</option>
+                            <option value="Bacteriology">Bacteriology</option>
+                        </>
+                    )}
+                </select>
+            </div>
+        </div>
+    </div>
+)}
                         </div>
                     </div>
 
