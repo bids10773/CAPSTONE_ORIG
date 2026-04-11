@@ -66,6 +66,7 @@ export default function AdminDashboard() {
     const props = usePage().props as any;
     const { stats, recentAppointments, appointmentsByStatus, appointmentsByType, monthlyTrends } = props;
 
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'pending':

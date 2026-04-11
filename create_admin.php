@@ -21,7 +21,7 @@ $admin = \App\Models\User::create([
     'contact' => '1234567890',
     'password' => 'admin123', // Laravel will hash this automatically due to 'hashed' cast
     'role' => 'admin',
-'is_active' => true,
+    'is_active' => true,
     'email_verified_at' => now(),
 ]);
 
