@@ -103,7 +103,7 @@ $rules = [
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
             'company_id' => ['nullable', 'exists:companies,id'],
             'appointment_date' => ['required', 'date', 'after_or_equal:today'],
-            'service_type' => ['required', 'string'],
+            'service_types' => ['required', 'array'],
             'referral_code' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string', 'max:500'],
             'present_illness' => ['nullable', 'string', 'max:1000'],
@@ -190,7 +190,7 @@ $rules = [
             'appointment_date' => $data['appointment_date'],
             'type' => $data['type'],
             'status' => 'pending',
-            'service_type' => $data['service_type'],
+            'service_types' => json_encode($data['service_types']),
             'referral_code' => $data['referral_code'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
@@ -666,8 +666,17 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
     // THE RELAY LOGIC
     if ($role === 'doctor') {
         // Doctor sees patients waiting for physical exam
-        $query->whereIn('status', ['accepted', 'arrived'])
-              ->whereDoesntHave('physicalExam');
+        $query->where(function ($q) {
+    $q->where(function ($q2) {
+        // For Physical Exam
+        $q2->whereIn('status', ['accepted', 'arrived'])
+           ->whereDoesntHave('physicalExam');
+    })
+    ->orWhere(function ($q2) {
+        // For FINAL EVALUATION
+        $q2->where('status', 'pending_final_evaluation');
+    });
+});
 
     } elseif ($role === 'medtech') {
         // MedTech sees patients forwarded by the Doctor

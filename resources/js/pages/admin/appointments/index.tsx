@@ -133,7 +133,7 @@ export default function AdminAppointmentsIndex() {
 
     return (
         <>
-            <Head title="Admin - Appointment Vetting" />
+            <Head title="Admin - Appointment Setting" />
             <div className="p-6">
                 {/* Search and Filters */}
                 <div className="flex flex-col md:flex-row gap-4 mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl border">
@@ -204,7 +204,7 @@ export default function AdminAppointmentsIndex() {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <Button variant="outline" size="sm" onClick={() => setSelectedAppointment(apt)} className="gap-2">
-                                            <Eye className="w-4 h-4" /> Vetting
+                                            <Eye className="w-4 h-4" /> View
                                         </Button>
                                     </td>
                                 </tr>

@@ -91,8 +91,8 @@ class CompanyController extends Controller
             try {
                 $user = $company->createRepresentativeUser();
 
-                if (!$user->hasRole('company')) {
-                    $user->assignRole('company');
+if ($user->role !== 'company') {
+$user->update(['role' => 'company']);
                 }
                 \Log::info('Company invitation sent to: ' . $company->representative_email);
                 $message = 'Company created successfully! Invitation email sent to representative.';

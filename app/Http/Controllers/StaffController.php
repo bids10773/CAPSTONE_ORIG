@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
-use Spatie\Permission\Models\Role;
+
 
 class StaffController extends Controller
 {
@@ -35,7 +35,7 @@ class StaffController extends Controller
             $query->where('role', $role);
         }
 
-$staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech'])
+$staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'])
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -72,7 +72,7 @@ $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech'])
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'contact' => ['nullable', 'string', 'max:20'],
-            'role' => ['required', 'string', 'in:doctor,medtech,radtech'],
+            'role' => ['required', 'string', 'in:doctor,medtech,radtech,receptionist'],
             'license_no' => ['nullable', 'string', 'max:255'],
             'specialization' => ['nullable', 'string', 'max:255'],
             'password' => ['required', 'confirmed', Password::defaults()],
@@ -101,7 +101,7 @@ $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech'])
         ]);
 
         $user->markEmailAsVerified();
-        $user->assignRole($data['role']);
+        $user->update(['role' => $data['role']]);
 
         return redirect()->route('admin.staff.index')
             ->with('success', "{$user->name} has been created successfully.");
@@ -129,7 +129,7 @@ $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech'])
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $staff->id],
             'contact' => ['nullable', 'string', 'max:20'],
-'role' => ['required', 'string', 'in:doctor,medtech,radtech'],
+'role' => ['required', 'string', 'in:doctor,medtech,radtech,receptionist'],
             'license_no' => ['nullable', 'string', 'max:255'],
             'specialization' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'confirmed', Password::defaults()],
@@ -163,7 +163,7 @@ $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech'])
         }
 
         // Update role
-        $staff->syncRoles([$data['role']]);
+$staff->update(['role' => $data['role']]);
 
         return redirect()->route('admin.staff.index')
             ->with('success', "{$staff->name} has been updated successfully.");

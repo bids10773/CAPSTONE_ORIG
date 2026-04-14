@@ -33,7 +33,7 @@ export default function DoctorAvailability(props: Props) {
         if (exists) {
             setData('availability', data.availability.filter((slot: any) => slot.day !== day));
         } else {
-            setData('availability', [...data.availability, { day, start: '09:00', end: '17:00' }]);
+            setData('availability', [...data.availability, { day, start: '8:00', end: '5:00' }]);
         }
     };
 

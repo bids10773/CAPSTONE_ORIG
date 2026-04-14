@@ -16,6 +16,7 @@ use App\Http\Controllers\XrayController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
+use App\Http\Controllers\WalkInController;
 
 
 
@@ -64,20 +65,27 @@ Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(funct
     // Change {appointmentid} to {appointmentId}
     Route::get('/physical-exam-form/{appointmentId}', [PhysicalExamController::class, 'create'])->name('physical-exams.create');
     Route::post('/physical-exam-form/{appointmentId}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
-    Route::get('/physical-exam-form/{appointmentId}/final', [PhysicalExamController::class, 'final'])->name('physical-exams.final');
-    Route::post('/physical-exam-form/{appointmentId}/final', [PhysicalExamController::class, 'finalStore'])->name('physical-exams.final-store');
+    Route::get('/final-evaluation/{appointmentId}', [PhysicalExamController::class, 'final'])
+    ->name('final-evaluation');
+
+Route::post('/final-evaluation/{appointmentId}', [PhysicalExamController::class, 'finalStore'])
+    ->name('final-evaluation.store');
 });
 
     // MedTech Routes
     Route::middleware('role:medtech')->prefix('medtech')->name('medtech.')->group(function () {
-        Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'medtech');
+        Route::get('/appointments', [AppointmentController::class, 'staffIndex'])
+    ->defaults('role', 'medtech')
+    ->name('appointments');
         Route::get('/lab-results/{appointment}', [LaboratoryController::class, 'create'])->name('lab-results.create');
         Route::post('/lab-results/{appointment}', [LaboratoryController::class, 'store'])->name('lab-results.store');
     });
 
     // RadTech Routes
     Route::middleware('role:radtech')->prefix('radtech')->name('radtech.')->group(function () {
-        Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'radtech');
+       Route::get('/appointments', [AppointmentController::class, 'staffIndex'])
+    ->defaults('role', 'radtech')
+    ->name('appointments');
         Route::get('/xrays/{appointment}', [XrayController::class, 'create'])->name('xrays.create');
         Route::post('/xrays/{appointment}', [XrayController::class, 'store'])->name('xrays.store');
     });
@@ -137,7 +145,10 @@ Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(funct
         
         // Admin Reports
         Route::get('/reports', [AdminDashboardController::class, 'reports'])->name('reports');
+
+      
     });
+
 });
 
 require __DIR__.'/settings.php';

@@ -5,10 +5,8 @@ import { Building2, ArrowLeft, Save, Mail, Phone, User } from 'lucide-react'
 import type { BreadcrumbItem, SharedData } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Create Companies',
-        href: "",
-    },
+    { title: 'Companies Management', href: "/admin/companies" },
+    { title: 'Create Company', href: "" },
 ];
 
 export default function AdminCreateCompany() {

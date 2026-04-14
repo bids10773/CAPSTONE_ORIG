@@ -67,8 +67,6 @@ class LabResult extends Model
         // FBS
         'fbs',
         
-        // Status
-        'is_completed',
     ];
 
     /**

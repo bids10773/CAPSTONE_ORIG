@@ -16,10 +16,7 @@ import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem, SharedData } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Companies',
-        href: "",
-    },
+    { title: 'Companies Management', href: "/admin/companies" },
 ];
 
 interface Company {

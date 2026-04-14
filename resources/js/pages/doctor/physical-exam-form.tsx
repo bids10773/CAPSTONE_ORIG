@@ -24,21 +24,34 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
     }, [flash]);
 
     const { data, setData, post, processing } = useForm<any>({
-        height: physicalExam?.height || '',
-        weight: physicalExam?.weight || '',
-        blood_pressure: physicalExam?.blood_pressure || '',
-        pulse_rate: physicalExam?.pulse_rate || '',
-        temperature: physicalExam?.temperature || '',
-        remarks: physicalExam?.remarks || '',
-        ...Object.fromEntries([
-            'head_scalp', 'eyes', 'ears', 'nose_sinuses', 'mouth_throat', 
-            'neck_thyroid', 'chest_breast', 'lungs', 'heart', 'abdomen', 
+    height: physicalExam?.height || '',
+    weight: physicalExam?.weight || '',
+    blood_pressure: physicalExam?.blood_pressure || '',
+    pulse_rate: physicalExam?.pulse_rate || '',
+    temperature: physicalExam?.temperature || '',
+    remarks: physicalExam?.remarks || '',
+
+    // ✅ ADD MEDICAL HISTORY HERE
+    present_illness: physicalExam?.present_illness || '',
+    past_medical_history: physicalExam?.past_medical_history || '',
+    operations_accidents: physicalExam?.operations_accidents || '',
+    family_history: physicalExam?.family_history || '',
+    allergies: physicalExam?.allergies || '',
+    personal_social_history: physicalExam?.personal_social_history || '',
+    ob_menstrual_history: physicalExam?.ob_menstrual_history || '',
+
+    // Body Systems (your existing dynamic fields)
+    ...Object.fromEntries(
+        [
+            'head_scalp', 'eyes', 'ears', 'nose_sinuses', 'mouth_throat',
+            'neck_thyroid', 'chest_breast', 'lungs', 'heart', 'abdomen',
             'back', 'anus', 'genitals', 'extremities', 'skin', 'dental'
         ].flatMap(field => [
             [field, physicalExam?.[field] || ''],
             [`${field}_status`, physicalExam?.[field] ? 'with_findings' : 'normal']
-        ]))
-    });
+        ])
+    )
+});
 
     const bodyParts = [
         { label: 'Head/Scalp', field: 'head_scalp' },
@@ -96,6 +109,81 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
                     <Save className="w-4 h-4 mr-2" /> Save & Forward to Lab
                 </Button>
             </div>
+
+             {/* Medical History Section */}
+<div className="mt-8 pt-8 border-t border-gray-200 dark:border-neutral-700">
+  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+    <HeartPulse className="w-5 h-5 text-red-500" />
+    Medical History
+  </h3>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+    <div>
+      <label className="text-sm font-medium">Present Illness</label>
+      <textarea
+        value={data.present_illness}
+        onChange={(e) => setData('present_illness', e.target.value)}
+        className="w-full p-2 border rounded"
+      />
+    </div>
+
+    <div>
+      <label className="text-sm font-medium">Past Medical History</label>
+      <textarea
+        value={data.past_medical_history}
+        onChange={(e) => setData('past_medical_history', e.target.value)}
+        className="w-full p-2 border rounded"
+      />
+    </div>
+
+    <div>
+      <label className="text-sm font-medium">Operations / Accidents</label>
+      <textarea
+        value={data.operations_accidents}
+        onChange={(e) => setData('operations_accidents', e.target.value)}
+        className="w-full p-2 border rounded"
+      />
+    </div>
+
+    <div>
+      <label className="text-sm font-medium">Family History</label>
+      <textarea
+        value={data.family_history}
+        onChange={(e) => setData('family_history', e.target.value)}
+        className="w-full p-2 border rounded"
+      />
+    </div>
+
+    <div>
+      <label className="text-sm font-medium">Allergies</label>
+      <textarea
+        value={data.allergies}
+        onChange={(e) => setData('allergies', e.target.value)}
+        className="w-full p-2 border rounded"
+      />
+    </div>
+
+    <div className="md:col-span-2">
+      <label className="text-sm font-medium">Personal / Social History</label>
+      <textarea
+        value={data.personal_social_history}
+        onChange={(e) => setData('personal_social_history', e.target.value)}
+        className="w-full p-2 border rounded"
+      />
+    </div>
+
+    <div className="md:col-span-2">
+      <label className="text-sm font-medium">OB / Menstrual History</label>
+      <textarea
+        value={data.ob_menstrual_history}
+        onChange={(e) => setData('ob_menstrual_history', e.target.value)}
+        className="w-full p-2 border rounded"
+      />
+    </div>
+
+  </div>
+</div>
 
             {/* Vitals & BMI Section */}
             <Card className="overflow-hidden">

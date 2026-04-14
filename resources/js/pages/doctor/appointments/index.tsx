@@ -65,6 +65,14 @@ export default function DoctorAppointmentsIndex(props: Props) {
                 return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
             case 'cancelled':
                 return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+                case 'pending_diagnostics':
+    return 'bg-purple-100 text-purple-800';
+
+case 'pending_xray':
+    return 'bg-orange-100 text-orange-800';
+
+case 'pending_final_evaluation':
+    return 'bg-blue-100 text-blue-800';
             default:
                 return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
         }
@@ -227,6 +235,17 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                         <Play className="w-4 h-4" />
                                                     </button>
                                                 )}
+
+                                                 {/* ✅ FINAL EVALUATION */}
+    {appointment.status.toLowerCase() === 'pending_final_evaluation' && (
+        <button
+            onClick={() => router.visit(`/doctor/final-evaluation/${appointment.id}`)}
+            className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg inline-flex items-center"
+            title="Final Evaluation"
+        >
+            <Stethoscope className="w-4 h-4" />
+        </button>
+    )}
                                             </td>
                                         </tr>
                                     ))

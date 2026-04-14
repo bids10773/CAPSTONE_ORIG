@@ -5,10 +5,8 @@ import { ArrowLeft, Save, Mail } from 'lucide-react';
 import { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Edit Company',
-        href: "",
-    },
+    { title: 'Companies Management', href: "/admin/companies" },
+    { title: 'Edit Company', href: "" },
 ];
 
 interface Company {

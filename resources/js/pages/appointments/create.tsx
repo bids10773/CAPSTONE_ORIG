@@ -25,7 +25,7 @@ const [selectedDayName, setSelectedDayName] = useState('');
     type: 'individual',
     company_id: '',
     appointment_date: '',
-    service_type: '',
+    service_types: [] as string[],
     referral_code: '',
     notes: '',
     birthdate: '',
@@ -64,36 +64,54 @@ const [selectedDayName, setSelectedDayName] = useState('');
   }, [companySearch, companies]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = e.target;
+  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+) => {
+  const { name, value, type } = e.target;
+
+  // ✅ HANDLE MULTIPLE CHECKBOX (SERVICE TYPES)
+  if (type === 'checkbox' && name === 'service_types') {
+    const checked = (e.target as HTMLInputElement).checked;
 
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+      service_types: checked
+        ? [...prev.service_types, value]
+        : prev.service_types.filter((v) => v !== value),
     }));
 
-    // Calculate age from birthdate
-    if (name === 'birthdate' && value) {
-      const birthDate = new Date(value);
-      const today = new Date();
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-      }
-      setCalculatedAge(age.toString());
-    } else if (name === 'birthdate') {
-      setCalculatedAge('-');
+    return;
+  }
+
+  setFormData((prev) => ({
+    ...prev,
+    [name]: type === 'checkbox'
+      ? (e.target as HTMLInputElement).checked
+      : value,
+  }));
+
+  // Age calculation
+  if (name === 'birthdate' && value) {
+    const birthDate = new Date(value);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
     }
 
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: '',
-      }));
-    }
-  };
+    setCalculatedAge(age.toString());
+  } else if (name === 'birthdate') {
+    setCalculatedAge('-');
+  }
+
+  if (errors[name]) {
+    setErrors((prev) => ({
+      ...prev,
+      [name]: '',
+    }));
+  }
+};
 
   const fetchDoctors = async () => {
     setIsLoadingDoctors(true);
@@ -197,7 +215,47 @@ router.post('/appointments', formData, {
 
         <div className="max-w-3xl">
           <form onSubmit={handleSubmit} className="space-y-6">
-  {/* Doctor & Time Selection */}
+
+            {/* Appointment Type */}
+             
+            <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
+              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-600" />
+                Appointment Type
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(Object.entries(appointmentTypes) as [string, string][]).map(([value, label]) => (
+                  <label
+                    key={value}
+                    className={`relative flex items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      formData.type === value
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                        : 'border-gray-200 dark:border-neutral-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="type"
+                      value={value}
+                      checked={formData.type === value}
+                      onChange={handleChange}
+                      className="sr-only"
+                    />
+                    <div className="text-center">
+                      {value === 'individual' && <Users className="w-6 h-6 mx-auto mb-2 text-gray-700 dark:text-gray-300" />}
+                      {value === 'company_referral' && <FileText className="w-6 h-6 mx-auto mb-2 text-gray-700 dark:text-gray-300" />}
+                      {value === 'company_bulk' && <Upload className="w-6 h-6 mx-auto mb-2 text-gray-700 dark:text-gray-300" />}
+                      <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                        {label}
+                      </span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+         {/* Doctor & Time Selection */}
+         
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
               {/* Doctor Selection */}
               <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
@@ -283,42 +341,6 @@ router.post('/appointments', formData, {
               </div>
             </div>
 
-            {/* Appointment Type */}
-            <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
-                <FileText className="w-5 h-5 text-blue-600" />
-                Appointment Type
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {(Object.entries(appointmentTypes) as [string, string][]).map(([value, label]) => (
-                  <label
-                    key={value}
-                    className={`relative flex items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      formData.type === value
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
-                        : 'border-gray-200 dark:border-neutral-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="type"
-                      value={value}
-                      checked={formData.type === value}
-                      onChange={handleChange}
-                      className="sr-only"
-                    />
-                    <div className="text-center">
-                      {value === 'individual' && <Users className="w-6 h-6 mx-auto mb-2 text-gray-700 dark:text-gray-300" />}
-                      {value === 'company_referral' && <FileText className="w-6 h-6 mx-auto mb-2 text-gray-700 dark:text-gray-300" />}
-                      {value === 'company_bulk' && <Upload className="w-6 h-6 mx-auto mb-2 text-gray-700 dark:text-gray-300" />}
-                      <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                        {label}
-                      </span>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
              {/* Company Selection (for Referral/Bulk) */}
             {showCompanyField && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -499,161 +521,47 @@ router.post('/appointments', formData, {
                   </div>
 
                 </div>
-
-                {/* Medical History Section */}
-                <div className="mt-8 pt-8 border-t border-gray-200 dark:border-neutral-700">
-                  <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
-                    <HeartPulse className="w-5 h-5 text-red-500" />
-                    Medical History
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                    Please provide your medical history (optional but recommended for Full PME)
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Present Illness
-                      </label>
-                      <textarea
-                        name="present_illness"
-                        value={formData.present_illness}
-                        onChange={handleChange}
-                        rows={3}
-                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Current complaints or symptoms..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Past Medical History
-                      </label>
-                      <textarea
-                        name="past_medical_history"
-                        value={formData.past_medical_history}
-                        onChange={handleChange}
-                        rows={3}
-                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Previous illnesses, hospitalizations..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Operations / Accidents
-                      </label>
-                      <textarea
-                        name="operations_accidents"
-                        value={formData.operations_accidents}
-                        onChange={handleChange}
-                        rows={2}
-                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Surgeries, major injuries..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Family History
-                      </label>
-                      <textarea
-                        name="family_history"
-                        value={formData.family_history}
-                        onChange={handleChange}
-                        rows={2}
-                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Hereditary conditions in family..."
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Allergies
-                      </label>
-                      <textarea
-                        name="allergies"
-                        value={formData.allergies}
-                        onChange={handleChange}
-                        rows={2}
-                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Medications, food, environmental allergies..."
-                      />
-                    </div>
-
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Personal / Social History
-                      </label>
-                      <textarea
-                        name="personal_social_history"
-                        value={formData.personal_social_history}
-                        onChange={handleChange}
-                        rows={3}
-                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Smoking, alcohol use, exercise habits, occupation..."
-                      />
-                    </div>
-
-                    <div className="space-y-2 md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        OB / Menstrual History (Female patients)
-                      </label>
-                      <textarea
-                        name="ob_menstrual_history"
-                        value={formData.ob_menstrual_history}
-                        onChange={handleChange}
-                        rows={3}
-                        className="w-full p-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Gravida/Para, menstrual cycle details..."
-                      />
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
 
             {/* Service Type */}
-            <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                Service Type
-              </h2>
+<div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
+  <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+    Service Type (Select one or more)
+  </h2>
 
-              <select
-                name="service_type"
-                value={formData.service_type}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select a service</option>
-                {(Object.entries(serviceTypes) as [string, string][]).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    {(Object.entries(serviceTypes) as [string, string][]).map(([value, label]) => (
+      <label
+        key={value}
+        className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition
+        ${
+          formData.service_types.includes(value)
+            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+            : 'border-gray-200 dark:border-neutral-700 hover:border-gray-300'
+        }`}
+      >
+        <input
+          type="checkbox"
+          name="service_types"
+          value={value}
+          checked={formData.service_types.includes(value)}
+          onChange={handleChange}
+          className="w-4 h-4"
+        />
+        <span className="text-gray-800 dark:text-gray-200">{label}</span>
+      </label>
+    ))}
+  </div>
 
-              {errors.service_type && (
-                <p className="mt-1 text-sm text-red-600">{errors.service_type}</p>
-              )}
-            </div>
+  {errors.service_types && (
+    <p className="mt-1 text-sm text-red-600">{errors.service_types}</p>
+  )}
+</div>
 
 
 
-            {/* Notes */}
-            <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                Additional Information
-              </h2>
-
-              <textarea
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                rows={3}
-                placeholder="Any special requests or information..."
-                className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+           
 
             {/* Buttons */}
             <div className="flex justify-end gap-4">

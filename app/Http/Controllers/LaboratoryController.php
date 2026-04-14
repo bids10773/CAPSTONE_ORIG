@@ -60,37 +60,21 @@ class LaboratoryController extends Controller
         'marijuana_status' => 'nullable|string',
     ]);
 
+    // ✅ SAVE LAB RESULT (ONLY ONCE)
     LabResult::updateOrCreate(
         ['appointment_id' => $appointment->id],
         array_merge($validated, [
             'encoded_by' => auth()->id(),
+            'is_completed' => true
         ])
     );
 
-    // After Lab, move to X-Ray (RadTech)
-    $appointment->update(['status' => 'pending_xray']);
+    // ✅ MOVE TO XRAY
+    $appointment->update([
+        'status' => 'pending_xray'
+    ]);
 
-    return redirect()->route('medtech.appointments')->with('success', 'Laboratory results saved and forwarded to X-Ray.');
-
-
-        // ✅ Map request data to your actual Database Columns
-        LabResult::updateOrCreate(
-            ['appointment_id' => $appointment->id],
-            array_merge($request->all(), [
-                'encoded_by' => auth()->id(),
-                'is_completed' => true
-            ])
-        );
-
-        // 2. ✅ Update Status
-        // If they go to X-ray next: 'pending_xray'
-        // If they go back to Doctor: 'pending_final_evaluation'
-        $appointment->update([
-            'status' => 'pending_xray' 
-        ]);
-
-       // Inside your store method:
-$appointment->update(['status' => 'pending_xray']);
-return redirect()->route('medtech.dashboard')->with('success', 'Forwarded to X-Ray');
-    }
+    return redirect()->route('medtech.appointments')
+        ->with('success', 'Laboratory results saved and forwarded to X-Ray.');
+}
 }

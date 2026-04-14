@@ -61,7 +61,11 @@ class DoctorAvailabilityController extends Controller
             'availability.*.end' => 'required|date_format:H:i|after:availability.*.start',
         ]);
 
-        $doctor = \App\Models\User::role('doctor')->findOrFail($request->doctor_id);
+        $doctor = \App\Models\User::findOrFail($request->doctor_id);
+
+if ($doctor->role !== 'doctor') {
+    abort(403, 'Invalid doctor selected.');
+}
 
         // Update availability (empty array if none)
         $doctor->update([

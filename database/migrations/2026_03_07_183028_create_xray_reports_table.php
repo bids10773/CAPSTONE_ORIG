@@ -13,21 +13,21 @@ return new class extends Migration
     {
         Schema::create('xray_reports', function (Blueprint $table) {
 
-    $table->id();
+            $table->id();
 
-    $table->foreignId('appointment_id')->constrained();
+            $table->foreignId('appointment_id')->constrained();
 
-    $table->text('findings');
+            $table->text('findings')->nullable();     // ✅ allow normal case
+            $table->text('impression')->nullable();   // ✅ allow normal case
 
-    $table->text('impression');
+            $table->foreignId('radiologist_id')->constrained('users');
 
-    $table->foreignId('radiologist_id')->constrained('users');
+            // ❌ REMOVED: view column
 
-    $table->string('view')->default('Chest PA');
+            $table->boolean('is_completed')->default(false); // ✅ optional but recommended
 
-    $table->timestamps();
-
-});
+            $table->timestamps();
+        });
     }
 
     /**

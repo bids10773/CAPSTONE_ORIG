@@ -23,7 +23,7 @@ class Appointment extends Model
         'appointment_date',
         'type',
         'status',
-        'service_type',
+        'service_types',
         'referral_code',
         'notes',
         'batch_id',
@@ -40,6 +40,7 @@ class Appointment extends Model
             'appointment_date' => 'datetime',
             'start_time' => 'datetime:H:i',
             'end_time' => 'datetime:H:i',
+            'service_types' => 'array',
         ];
     }
 
@@ -50,6 +51,12 @@ class Appointment extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+
+public function patientProfile(): HasOne
+{
+    return $this->hasOne(\App\Models\PatientProfile::class, 'user_id', 'user_id');
+}
 
     /**
      * Get the company associated with this appointment.
@@ -129,6 +136,7 @@ class Appointment extends Model
     /**
      * Get service type options.
      */
+      // ✅ ADD THIS BACK (IMPORTANT)
     public static function getServiceTypeOptions(): array
     {
         return [
@@ -145,5 +153,11 @@ class Appointment extends Model
             'Pregnancy Test' => 'Pregnancy Test',
             'Custom' => 'Custom/Package',
         ];
+    }
+
+    // ✅ helper for display
+    public function getServiceTypesListAttribute(): string
+    {
+        return implode(', ', $this->service_types ?? []);
     }
 }

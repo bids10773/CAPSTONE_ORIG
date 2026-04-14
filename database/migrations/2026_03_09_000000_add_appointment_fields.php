@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('appointments', function (Blueprint $table) {
             // Add service type for the appointment
-            $table->string('service_type')->nullable()->after('company_id');
+            $table->json('service_types')->nullable()->after('company_id');
             
             // Add referral code for company referrals
             $table->string('referral_code')->nullable()->after('service_type');

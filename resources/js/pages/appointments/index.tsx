@@ -73,7 +73,7 @@ export default function AppointmentsIndex() {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Appointments</h1>
-                        <p className="text-muted-foreground mt-1">Manage and track all patient clinical visits.</p>
+                        <p className="text-muted-foreground mt-1"></p>
                     </div>
                     {can?.create && (
                         <Link
