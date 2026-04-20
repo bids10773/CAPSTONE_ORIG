@@ -2,10 +2,15 @@ import { Head, useForm, router } from '@inertiajs/react';
 import { Image, Save, ArrowLeft, Upload } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { BreadcrumbItem } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'RadTech Queue', href: "/doctor/appointments" },
+    { title: 'X-Ray Examination', href: "" },
+];
+
 
 interface Props {
   appointment: {

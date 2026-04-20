@@ -5,22 +5,24 @@ import {
     Filter, 
     Eye, 
     Image,
-    CheckCircle,
-    XCircle,
-    Clock,
     AlertCircle,
     ChevronLeft,
     ChevronRight,
     Play
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'RadTech Queue', href: "/admin/companies" },
+];
 
 interface Appointment {
     id: number;
     appointment_date: string;
     status: string;
     type: string;
-    service_type: string;
+    service_types: string;
     user: {
         first_name: string;
         last_name: string;
@@ -54,35 +56,15 @@ export default function RadTechAppointmentsIndex(props: Props) {
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case 'pending':
+            case 'for_xray':
                 return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-            case 'accepted':
-                return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
-            case 'arrived':
-                return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-            case 'completed':
-                return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-            case 'cancelled':
-                return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-            default:
-                return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
         }
     };
 
     const getStatusIcon = (status: string) => {
         switch (status) {
-            case 'pending':
-                return <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />;
-            case 'accepted':
-                return <CheckCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
-            case 'arrived':
-                return <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
-            case 'completed':
-                return <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />;
-            case 'cancelled':
-                return <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />;
-            default:
-                return null;
+            case 'for_xray':
+                return <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
         }
     };
 
@@ -109,6 +91,24 @@ export default function RadTechAppointmentsIndex(props: Props) {
                 return type;
         }
     };
+
+    const formatService = (service: any) => {
+    try {
+        const parsed = typeof service === 'string' ? JSON.parse(service) : service;
+        return Array.isArray(parsed) ? parsed.join(', ') : parsed;
+    } catch {
+        return service;
+    }
+};
+
+const getStatusLabel = (status: string) => {
+    switch (status) {
+        case 'for_diagnostics': return 'Laboratory';
+        case 'for_xray': return 'X-Ray';
+        case 'for_final_evaluation': return 'Final Evaluation';
+        default: return status.replace('_', ' ');
+    }
+};
 
     const startXray = (appointmentId: number) => {
         router.visit(`/radtech/xrays/${appointmentId}`);
@@ -206,34 +206,41 @@ export default function RadTechAppointmentsIndex(props: Props) {
                                                 {formatDate(appointment.appointment_date)}
                                             </td>
                                             <td className="px-6 py-4 text-gray-900 dark:text-white">
-                                                {appointment.service_type}
+                                                {formatService(appointment.service_types)}
                                             </td>
                                             <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
                                                 {getTypeLabel(appointment.type)}
                                             </td>
                                             <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                                                {appointment.company?.company_name || '-'}
+                                                {appointment.company?.company_name || 'N/A'}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(appointment.status)}`}>
                                                     {getStatusIcon(appointment.status)}
-                                                    {appointment.status}
+                                                    {getStatusLabel(appointment.status)}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-right space-x-2">
-                                                <Link href={`/appointments/${appointment.id}`} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-gray-100 rounded-lg inline-flex items-center">
-                                                    <Eye className="w-4 h-4" />
-                                                </Link>
-                                                {appointment.status === 'pending_xray' && !appointment.xrayReport && (
-                                                    <button
-                                                        onClick={() => startXray(appointment.id)}
-                                                        className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg inline-flex items-center"
-                                                        title="Start X-Ray"
-                                                    >
-                                                        <Play className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                            </td>
+                                            {/* ACTION */}
+                        <td className="px-6 py-4 text-right flex justify-end gap-2">
+
+                            {appointment.status === 'for_xray' && !appointment.xrayReport && (
+                                <button
+                                    onClick={() => startXray(appointment.id)}
+                                    className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1 shadow"
+                                >
+                                    <Play className="w-3 h-3" />
+                                    Start
+                                </button>
+                            )}
+
+                            <Link
+                                href={`/appointments/${appointment.id}`}
+                                className="p-2 rounded-lg border hover:bg-gray-100 dark:hover:bg-gray-700"
+                            >
+                                <Eye className="w-4 h-4" />
+                            </Link>
+
+                        </td>
                                         </tr>
                                     ))
                                 ) : (
@@ -301,6 +308,6 @@ export default function RadTechAppointmentsIndex(props: Props) {
 }
 
 RadTechAppointmentsIndex.layout = (page: any) => {
-    return <AppLayout>{page}</AppLayout>;
+    return <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
 };
 

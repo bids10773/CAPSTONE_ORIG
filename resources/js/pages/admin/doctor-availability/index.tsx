@@ -37,11 +37,22 @@ export default function AdminDoctorAvailability({ doctors, days }: Props) {
   const queryDoctorId = props.selectedDoctorId || 0;
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const dayOrder = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  const [hasChanges, setHasChanges] = useState(false);
 
   const { data, setData, patch, processing, errors } = useForm({
     doctor_id: 0,
     availability: [] as any[],
   });
+
+  const formatTime = (time: string) => {
+  if (!time) return '';
+
+  const [hour, minute] = time.split(':').map(Number);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const formattedHour = hour % 12 || 12;
+
+  return `${formattedHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
+};
 
   useEffect(() => {
     if (doctors.length > 0 && queryDoctorId) {
@@ -62,36 +73,47 @@ export default function AdminDoctorAvailability({ doctors, days }: Props) {
     return <div className="flex h-screen items-center justify-center text-muted-foreground animate-pulse">Initializing schedule...</div>;
 
   const updateSlot = (day: string, field: 'start' | 'end', value: string) => {
-    setData('availability', data.availability.map(slot => (slot.day === day ? { ...slot, [field]: value } : slot)));
-  };
+  setData(
+    'availability',
+    data.availability.map(slot =>
+      slot.day === day ? { ...slot, [field]: value } : slot
+    )
+  );
+
+  setHasChanges(true); // ✅ user edited
+};
 
   const toggleDay = (day: string) => {
-    const exists = data.availability.some(slot => slot.day === day);
-    if (exists) {
-      setData('availability', data.availability.filter(slot => slot.day !== day));
-    } else {
-      setData('availability', [...data.availability, { day, start: '09:00', end: '17:00' }]);
-    }
-  };
+  const exists = data.availability.some(slot => slot.day === day);
+
+  if (exists) {
+    setData('availability', data.availability.filter(slot => slot.day !== day));
+  } else {
+    setData('availability', [
+      ...data.availability,
+      { day, start: '08:00', end: '17:00' }
+    ]);
+  }
+
+  setHasChanges(true); // ✅ user changed something
+};
 
   // Your original Reset logic: Clears availability in the DB
   const resetAvailability = () => {
     if (!selectedDoctor) return;
     if (!confirm('Are you sure you want to clear all availability for this doctor? This cannot be undone.')) return;
 
-    router.patch(
-      '/admin/doctor-availability',
-      {
-        doctor_id: selectedDoctor.id,
-        availability: [],
-      },
+    router.patch('/admin/doctor-availability', {
+  doctor_id: selectedDoctor.id,
+  availability: [],
+  action: 'clear'
+    },
       {
         preserveState: true,
         onSuccess: () => {
-          toast.success('Doctor availability cleared successfully!');
-          setData('availability', []);
-          router.reload({ only: ['doctors'] });
-        },
+  setData('availability', []);
+  router.reload({ only: ['doctors'] });
+}
       }
     );
   };
@@ -103,12 +125,15 @@ export default function AdminDoctorAvailability({ doctors, days }: Props) {
   };
 
   const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    patch('/admin/doctor-availability', {
-      preserveState: true,
-      onSuccess: () => toast.success('Schedule updated successfully!'),
-    });
-  };
+  e.preventDefault();
+
+  patch('/admin/doctor-availability', {
+    preserveState: true,
+    onSuccess: () => {
+      setHasChanges(false); // 🔒 lock after saving
+    },
+  });
+};
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
@@ -143,9 +168,12 @@ export default function AdminDoctorAvailability({ doctors, days }: Props) {
                 Discard
             </Button>
 
-            <Button form="availability-form" disabled={processing} className="px-8 shadow-lg shadow-primary/20">
-              {processing ? 'Saving...' : 'Save Schedule'}
-            </Button>
+            <Button
+  form="availability-form"
+  disabled={processing || !hasChanges}
+>
+  {processing ? 'Saving...' : hasChanges ? 'Save Schedule' : 'Saved'}
+</Button>
           </div>
         </div>
 
@@ -189,7 +217,7 @@ export default function AdminDoctorAvailability({ doctors, days }: Props) {
                       <div className="flex items-center gap-3 flex-1 max-w-xs">
                         <Input
                           type="time"
-                          value={slot?.start || '09:00'}
+                          value={slot?.start || '08:00'}
                           onChange={e => updateSlot(dayKey, 'start', e.target.value)}
                           className="bg-background h-10"
                         />
@@ -229,7 +257,7 @@ export default function AdminDoctorAvailability({ doctors, days }: Props) {
                     {data.availability.map((s: any) => (
                       <div key={s.day} className="flex justify-between text-sm border-b border-blue-100 dark:border-blue-800 pb-2">
                         <span className="font-bold capitalize">{days[s.day]}</span>
-                        <span className="text-blue-700 dark:text-blue-300 font-mono">{s.start} - {s.end}</span>
+                        <span className="text-blue-700 dark:text-blue-300 font-mono">{formatTime(s.start)} - {formatTime(s.end)}</span>
                       </div>
                     ))}
                   </div>

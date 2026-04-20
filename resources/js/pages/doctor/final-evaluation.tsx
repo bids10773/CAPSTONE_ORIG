@@ -2,6 +2,12 @@ import { Head, useForm } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import type { BreadcrumbItem } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Doctor Queue', href: "/doctor/appointments" },
+    { title: 'Final Evaluation', href: "" },
+];
 
 interface Props {
     appointment: any;
@@ -140,10 +146,15 @@ export default function FinalEvaluation({ appointment }: Props) {
         },
     ];
 
-    const isNeg = (s?: string) =>
-        s?.toLowerCase().includes('negative') ||
-        s?.toLowerCase().includes('non-reactive') ||
-        s?.toLowerCase().includes('normal');
+    const isNeg = (s?: string): boolean =>
+    !!(
+        s &&
+        (
+            s.toLowerCase().includes('negative') ||
+            s.toLowerCase().includes('non-reactive') ||
+            s.toLowerCase().includes('normal')
+        )
+    );
 
     const classItems = [
         {
@@ -893,4 +904,4 @@ function CheckBox({ checked }: { checked: boolean }) {
     );
 }
 
-FinalEvaluation.layout = (page: any) => <AppLayout>{page}</AppLayout>;
+FinalEvaluation.layout = (page: any) => <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;

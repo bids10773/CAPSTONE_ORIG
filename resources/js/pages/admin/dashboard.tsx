@@ -64,7 +64,7 @@ const card = {
 export default function AdminDashboard() {
 
     const props = usePage().props as any;
-    const { stats, recentAppointments, appointmentsByStatus, appointmentsByType, monthlyTrends } = props;
+    const { stats, historyAppointments, recentAppointments, todayAppointments, appointmentsByStatus, appointmentsByType, monthlyTrends } = props;
 
 
     const getStatusBadge = (status: string) => {
@@ -298,48 +298,104 @@ export default function AdminDashboard() {
     </div>
 </motion.div>
 
-                {/* RECENT APPOINTMENTS */}
-                <motion.div variants={card} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
-
-                    <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            Recent Appointments
+                {/* TODAY */}
+                <motion.div variants={card} className="bg-white border border-blue-300 rounded-xl shadow-sm">
+                    <div className="p-6 border-b border-blue-300">
+                        <h3 className="text-lg font-semibold text-blue-600">
+                            Today's Appointments
                         </h3>
-
-                        <Link
-                            href="/admin/appointments"
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                            View All <ArrowRight className="w-4 h-4"/>
-                        </Link>
                     </div>
 
-                    <motion.div variants={container} className="p-6 space-y-4">
-                        {recentAppointments?.map((appointment: AppointmentData) => (
-                            <motion.div
-                                key={appointment.id}
-                                variants={item}
-                                whileHover={{ scale: 1.02 }}
-                                className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-4 rounded-lg"
-                            >
-                                <div>
-                                    <p className="font-medium text-gray-900 dark:text-white">
-                                        {appointment.user.first_name} {appointment.user.last_name}
-                                    </p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        {formatDate(appointment.appointment_date)}
-                                    </p>
-                                </div>
+                    <div className="p-6 space-y-4 max-h-[250px] overflow-y-auto">
+                        {todayAppointments?.length > 0 ? (
+                            todayAppointments.map((appointment: AppointmentData) => (
+                                <div key={appointment.id} className="flex justify-between bg-blue-50 p-4 rounded-lg">
+                                    <div>
+                                        <p className="font-medium">
+                                            {appointment.user.first_name} {appointment.user.last_name}
+                                        </p>
+                                        <p className="text-sm text-gray-500">
+                                            {formatDate(appointment.appointment_date)}
+                                        </p>
+                                    </div>
 
-                                <span className={`px-3 py-1 rounded-full text-xs ${getStatusBadge(appointment.status)}`}>
-                                    {appointment.status}
-                                </span>
-                            </motion.div>
-                        ))}
-                    </motion.div>
+                                    <span className={`px-3 py-1 text-xs rounded-full ${getStatusBadge(appointment.status)}`}>
+                                        {appointment.status}
+                                    </span>
+                                </div>
+                            ))
+                        ) : (
+                            <p>No appointments today.</p>
+                        )}
+                    </div>
                 </motion.div>
 
+                {/* RECENT + HISTORY */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                    {/* RECENT */}
+                    <motion.div variants={card} className="bg-white rounded-xl shadow-sm">
+                        <div className="p-6 border-b flex justify-between">
+                            <h3 className="text-lg font-semibold">Recent Appointments</h3>
+                            <Link href="/admin/appointments" className="text-blue-600 flex items-center gap-2">
+                                View All <ArrowRight className="w-4 h-4"/>
+                            </Link>
+                        </div>
+
+                        <div className="p-6 space-y-4 max-h-[250px] overflow-y-auto">
+                            {recentAppointments?.map((appointment: AppointmentData) => (
+                                <div key={appointment.id} className="flex justify-between bg-gray-50 p-4 rounded-lg">
+                                    <div>
+                                        <p className="font-medium">
+                                            {appointment.user.first_name} {appointment.user.last_name}
+                                        </p>
+                                        <p className="text-sm text-gray-500">
+                                            {formatDate(appointment.appointment_date)}
+                                        </p>
+                                    </div>
+
+                                    <span className={`px-3 py-1 text-xs rounded-full ${getStatusBadge(appointment.status)}`}>
+                                        {appointment.status}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+
+                    {/* HISTORY */}
+                    <motion.div variants={card} className="bg-white border border-green-300 rounded-xl shadow-sm">
+                        <div className="p-6 border-b border-green-300">
+                            <h3 className="text-lg font-semibold text-green-600">
+                                Appointment History
+                            </h3>
+                        </div>
+
+                        <div className="p-6 space-y-4 max-h-[250px] overflow-y-auto">
+                            {historyAppointments?.length > 0 ? (
+                                historyAppointments.map((appointment: AppointmentData) => (
+                                    <div key={appointment.id} className="flex justify-between bg-green-50 p-4 rounded-lg">
+                                        <div>
+                                            <p className="font-medium">
+                                                {appointment.user.first_name} {appointment.user.last_name}
+                                            </p>
+                                            <p className="text-sm text-gray-500">
+                                                {formatDate(appointment.appointment_date)}
+                                            </p>
+                                        </div>
+
+                                        <span className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                                            completed
+                                        </span>
+                                    </div>
+                                ))
+                            ) : (
+                                <p>No history yet.</p>
+                            )}
+                        </div>
+                    </motion.div>
+            </div>
             </motion.div>
+            
         </>
     );
 }

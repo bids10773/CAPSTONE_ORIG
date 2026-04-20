@@ -1,10 +1,8 @@
 import AppLayout from '@/layouts/app-layout';
 import { 
-    Users, Plus, Search, Trash2, ToggleLeft, 
-    UserCheck, UserX, Clock, Filter
+    Users, Plus, Search, Trash2, ToggleLeft, Clock, Filter
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
+import { useState, useEffect} from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import { motion, AnimatePresence } from "framer-motion";
 import type { BreadcrumbItem } from '@/types';
@@ -39,7 +37,7 @@ interface StaffMember {
 
 export default function StaffIndex() {
     const props = usePage().props as any;
-    const { staff, filters, roles, flash, auth } = props;
+    const { staff, filters, roles, auth } = props;
     const [search, setSearch] = useState(filters?.search || '');
     const [selectedRole, setSelectedRole] = useState(filters?.role || '');
 
@@ -53,10 +51,6 @@ export default function StaffIndex() {
         return () => clearTimeout(delayDebounceFn);
     }, [search, selectedRole]);
 
-    useEffect(() => {
-        if (flash?.success) toast.success(flash.success);
-        if (flash?.error) toast.error(flash.error);
-    }, [flash]);
 
     const getRoleBadgeColor = (role: string) => {
         const colors: Record<string, string> = {

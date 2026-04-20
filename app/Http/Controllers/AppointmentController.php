@@ -102,9 +102,9 @@ $rules = [
             'start_time' => ['required', 'date_format:H:i'],
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
             'company_id' => ['nullable', 'exists:companies,id'],
+            'company_name' => ['nullable', 'string', 'max:255'],
             'appointment_date' => ['required', 'date', 'after_or_equal:today'],
             'service_types' => ['required', 'array'],
-            'referral_code' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string', 'max:500'],
             'present_illness' => ['nullable', 'string', 'max:1000'],
             'past_medical_history' => ['nullable', 'string', 'max:1000'],
@@ -130,9 +130,9 @@ $rules = [
         $validator = Validator::make($request->all(), $rules);
         
         // For company referral, company is required
-        if ($request->type === 'company_referral' && !$request->company_id) {
-            $validator->errors()->add('company_id', 'Company is required for company referral.');
-        }
+        if ($request->type === 'company_referral' && !$request->company_id && !$request->company_name) {
+    $validator->errors()->add('company_name', 'Company is required.');
+}
         
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
@@ -175,16 +175,16 @@ $rules = [
             return back()->withErrors(['start_time' => 'Time slot already booked.'])->withInput();
         }
 
-        // Generate referral code for company referrals
         if ($data['type'] === 'company_referral') {
-            $data['referral_code'] = $data['referral_code'] ?? strtoupper(Str::random(8));
-        }
+    $data['referral_code'] = 'REF-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4));
+}
 
         // Create appointment first
         $appointment = Appointment::create([
             'user_id' => $user->id,
             'company_id' => $data['company_id'] ?? null,
-            'doctor_id' => $data['doctor_id'],
+            'company_name' => $data['company_name']
+                ?? ($data['company_id'] ? Company::find($data['company_id'])->company_name : null),            'doctor_id' => $data['doctor_id'],
             'start_time' => $startTime->format('H:i'),
             'end_time' => $endTime->format('H:i'),
             'appointment_date' => $data['appointment_date'],
@@ -193,18 +193,6 @@ $rules = [
             'service_types' => json_encode($data['service_types']),
             'referral_code' => $data['referral_code'] ?? null,
             'notes' => $data['notes'] ?? null,
-        ]);
-
-        // Create medical history if provided
-        MedicalHistory::create([
-            'appointment_id' => $appointment->id,
-            'present_illness' => $data['present_illness'] ?? null,
-            'past_medical_history' => $data['past_medical_history'] ?? null,
-            'operations_accidents' => $data['operations_accidents'] ?? null,
-            'family_history' => $data['family_history'] ?? null,
-            'allergies' => $data['allergies'] ?? null,
-            'personal_social_history' => $data['personal_social_history'] ?? null,
-            'ob_menstrual_history' => $data['ob_menstrual_history'] ?? null,
         ]);
 
         // Create or update patient profile for individual/referral
@@ -224,7 +212,12 @@ $rules = [
         }
         
         return redirect()->route('appointments.index')
-            ->with('success', 'Appointment booked successfully!');
+    ->with('success', 
+        'Appointment booked successfully!' . 
+        ($data['type'] === 'company_referral' 
+            ? ' Referral Code: ' . $data['referral_code'] 
+            : '')
+    );
     }
 
     /**
@@ -245,7 +238,7 @@ $rules = [
     public function updateStatus(Request $request, Appointment $appointment)
     {
         $validator = Validator::make($request->all(), [
-            'status' => ['required', 'string', 'in:pending,accepted,arrived,completed,cancelled'],
+            'status' => ['required', 'string', 'in:pending,accepted,arrived,for_diagnostics,for_xray,for_final_evaluation,completed,cancelled'],
         ]);
 
         
@@ -257,7 +250,13 @@ $rules = [
             'status' => $request->status,
         ]);
         
-        return back()->with('success', 'Appointment status updated.');
+        return back()->with('success', match ($request->status) {
+            'accepted' => 'Appointment accepted and forwarded to doctor.',
+            'arrived' => 'Patient marked as arrived.',
+            'completed' => 'Appointment marked as completed.',
+            'cancelled' => 'Appointment has been cancelled.',
+            default => 'Appointment status updated.',
+        });
     }
 
 
@@ -476,12 +475,25 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
 
         
         if ($search) {
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
+    $query->where(function ($query) use ($search) {
+
+        // 🔍 Search by patient name/email
+        $query->whereHas('user', function ($q) use ($search) {
+            $q->where('first_name', 'like', "%{$search}%")
+              ->orWhere('last_name', 'like', "%{$search}%")
+              ->orWhere('email', 'like', "%{$search}%");
+        })
+
+        // 🔍 Search by doctor name
+        ->orWhereHas('doctor', function ($q) use ($search) {
+            $q->where('first_name', 'like', "%{$search}%")
+              ->orWhere('last_name', 'like', "%{$search}%");
+        })
+
+        // 🔍 Search by appointment date
+        ->orWhere('appointment_date', 'like', "%{$search}%");
+    });
+}
         
         if ($status) {
             $query->where('status', $status);
@@ -499,9 +511,22 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
             $query->whereDate('appointment_date', '<=', $dateTo);
         }
         
-        $appointments = $query->orderBy('appointment_date', 'desc')
-            ->paginate(15)
-            ->withQueryString();
+        $appointments = $query
+    ->orderByRaw("
+        CASE 
+            WHEN status = 'pending' THEN 1
+            WHEN status = 'accepted' THEN 2
+            WHEN status = 'arrived' THEN 3
+            WHEN status = 'pending_diagnostics' THEN 4
+            WHEN status = 'pending_xray' THEN 5
+            WHEN status = 'completed' THEN 6
+            WHEN status = 'cancelled' THEN 7
+            ELSE 8
+        END
+    ")
+    ->orderBy('appointment_date', 'asc') // optional: earliest first
+    ->paginate(15)
+    ->withQueryString();
         
         return Inertia::render('admin/appointments/index', [
             'appointments' => $appointments,
@@ -554,7 +579,6 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
             'company_id' => ['nullable', 'exists:companies,id'],
             'appointment_date' => ['required', 'date'],
             'service_type' => ['required', 'string'],
-            'referral_code' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
 
@@ -660,34 +684,33 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
    public function staffIndex(Request $request, string $role): Response
 {
     $search = $request->get('search', '');
+    $status = $request->get('status', '');
+
     
     $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport']);
 
-    // THE RELAY LOGIC
+
     if ($role === 'doctor') {
-        // Doctor sees patients waiting for physical exam
-        $query->where(function ($q) {
-    $q->where(function ($q2) {
-        // For Physical Exam
-        $q2->whereIn('status', ['accepted', 'arrived'])
-           ->whereDoesntHave('physicalExam');
-    })
-    ->orWhere(function ($q2) {
-        // For FINAL EVALUATION
-        $q2->where('status', 'pending_final_evaluation');
+    $query->where(function ($q) {
+        $q->where(function ($sub) {
+            $sub->whereIn('status', ['accepted', 'arrived'])
+                ->whereDoesntHave('physicalExam');
+        })
+        ->orWhere('status', 'for_final_evaluation');
     });
-});
 
-    } elseif ($role === 'medtech') {
-        // MedTech sees patients forwarded by the Doctor
-        $query->where('status', 'pending_diagnostics')
-              ->whereDoesntHave('labResult');
+} elseif ($role === 'medtech') {
+    $query->where('status', 'for_diagnostics')
+          ->whereDoesntHave('labResult');
 
-    } elseif ($role === 'radtech') {
-        // RadTech sees patients forwarded by the MedTech
-        $query->where('status', 'pending_xray')
-              ->whereDoesntHave('xrayReport');
-    }
+} elseif ($role === 'radtech') {
+    $query->where('status', 'for_xray')
+          ->whereDoesntHave('xrayReport');
+}
+
+if ($status) {
+    $query->where('status', $status);
+}
 
     // Search logic
     if ($search) {
@@ -709,7 +732,7 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
 
     return Inertia::render($pagePath, [
         'appointments' => $appointments,
-        'filters' => ['search' => $search, 'role' => $role],
+        'filters' => ['search' => $search,'status' => $status, 'role' => $role],
         'pageTitle' => ucfirst($role) . ' Queue',
     ]);
 }

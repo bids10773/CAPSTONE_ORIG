@@ -45,7 +45,7 @@ class XrayController extends Controller
         $appointment = Appointment::findOrFail($appointmentId);
 
         $appointment->update([
-            'status' => 'pending_final_evaluation'
+            'status' => 'for_final_evaluation'
         ]);
 
         return redirect()->route('radtech.appointments')

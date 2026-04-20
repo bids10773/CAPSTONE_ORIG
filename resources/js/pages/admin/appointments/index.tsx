@@ -1,13 +1,9 @@
-import { Head, Link, usePage, router } from '@inertiajs/react';
+import { Head, usePage, router } from '@inertiajs/react';
 import { 
-    Calendar, 
-    Plus, 
     Eye, 
     CheckCircle,
     CheckCircle2,
     XCircle,
-    Clock,
-    AlertCircle,
     Search,
     UserCheck,
     FileWarning,
@@ -48,6 +44,8 @@ interface PatientProfile {
 interface Appointment {
     id: number;
     appointment_date: string;
+    start_time: string;   // 👈 ADD THIS
+    end_time: string; 
     status: string;
     type: string;
     service_type: string;
@@ -116,15 +114,30 @@ export default function AdminAppointmentsIndex() {
     };
 
     const getStatusStyle = (status: string) => {
-        switch (status) {
-            case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-            case 'accepted': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-            case 'arrived': return 'bg-blue-100 text-blue-800 border-blue-200';
-            case 'pending_diagnostics': return 'bg-purple-100 text-purple-800 border-purple-200';
-            case 'completed': return 'bg-green-100 text-green-800 border-green-200';
-            default: return 'bg-gray-100 text-gray-800 border-gray-200';
-        }
-    };
+    switch (status) {
+        case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        case 'accepted': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+        case 'arrived': return 'bg-blue-100 text-blue-800 border-blue-200';
+
+        case 'for_diagnostics': return 'bg-purple-100 text-purple-800 border-purple-200';
+        case 'for_xray': return 'bg-pink-100 text-pink-800 border-pink-200';
+        case 'for_final_evaluation': return 'bg-orange-100 text-orange-800 border-orange-200';
+
+        case 'completed': return 'bg-green-100 text-green-800 border-green-200';
+        case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+
+        default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+};
+
+const getStatusLabel = (status: string) => {
+    switch (status) {
+        case 'for_diagnostics': return 'Laboratory';
+        case 'for_xray': return 'X-Ray';
+        case 'for_final_evaluation': return 'Final Evaluation';
+        default: return status.replace('_', ' ');
+    }
+};
 
     const getAge = (birthdate?: string) => {
         if (!birthdate) return 'N/A';
@@ -156,10 +169,9 @@ export default function AdminAppointmentsIndex() {
                         <option value="pending">Pending Review</option>
                         <option value="accepted">Accepted (To Doctor)</option>
                         <option value="pending_diagnostics">At Laboratory</option>
+                        <option value="completed">Completed</option>
+                        <option value="pending_xray">Pending Xray</option>
                     </select>
-                    <Link href="/admin/appointments/create" className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700">
-                        <Plus className="w-4 h-4" /> New Appointment
-                    </Link>
                 </div>
 
                 {/* Main Table */}
@@ -170,6 +182,8 @@ export default function AdminAppointmentsIndex() {
                                 <th className="px-6 py-4">Patient Profile</th>
                                 <th className="px-6 py-4">Readiness</th>
                                 <th className="px-6 py-4">Schedule</th>
+                                <th className="px-6 py-4">Appointment type</th>
+                                <th className="px-6 py-4">Doctor</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4 text-right">Action</th>
                             </tr>
@@ -195,17 +209,52 @@ export default function AdminAppointmentsIndex() {
                                         )}
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                        {new Date(apt.appointment_date).toLocaleDateString()}
+                                        <div className="flex flex-col">
+                                            <span>
+                                                {new Date(apt.appointment_date).toLocaleDateString()}
+                                            </span>
+                                            <span className="text-xs text-gray-400">
+                                                {apt.start_time} - {apt.end_time}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
+                                        <span className={`px-2 py-1 text-xs rounded-full font-semibold
+                                            ${
+                                                apt.type === 'individual'
+                                                    ? 'bg-blue-100 text-blue-800'
+                                                    : apt.type === 'company_referral'
+                                                    ? 'bg-purple-100 text-purple-800'
+                                                    : apt.type === 'company_bulk'
+                                                    ? 'bg-orange-100 text-orange-800'
+                                                    : 'bg-gray-100 text-gray-800'
+                                            }
+                                        `}>
+                                            {apt.type.replace('_', ' ')}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                                                    {apt.doctor ? (
+                                                        <span className="font-medium">
+                                                        Dr. {apt.doctor.first_name} {apt.doctor.last_name}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-400 italic">Not Assigned</span>
+                                                    )}
+                                                    </td>
+                                    <td className="px-6 py-4">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-bold border uppercase ${getStatusStyle(apt.status)}`}>
-                                            {apt.status.replace('_', ' ')}
+                                            {getStatusLabel(apt.status)}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <Button variant="outline" size="sm" onClick={() => setSelectedAppointment(apt)} className="gap-2">
+                                        <Button
+                                            size="sm"
+                                            onClick={() => setSelectedAppointment(apt)}
+                                            className="gap-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
+                                            >
                                             <Eye className="w-4 h-4" /> View
-                                        </Button>
+                                            </Button>
                                     </td>
                                 </tr>
                             ))}

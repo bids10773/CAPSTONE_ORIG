@@ -61,21 +61,18 @@ export function AppSidebar({ className }: AppSidebarProps) {
     const doctorNavItems: NavItem[] = [
         { title: 'Dashboard', href: '/doctor/dashboard', icon: LayoutGrid },
         { title: 'Appointments', href: '/doctor/appointments', icon: Calendar },
-        { title: 'Physical Exams', href: '/doctor/physical-exam-forms', icon: HeartPulse },
         { title: 'Settings', href: '/settings/profile', icon: Settings }
     ];
 
     const medtechNavItems: NavItem[] = [
         { title: 'Dashboard', href: '/medtech/dashboard', icon: LayoutGrid },
         { title: 'Appointments', href: '/medtech/appointments', icon: Calendar },
-        { title: 'Lab Results', href: '/medtech/lab-results', icon: TestTube },
         { title: 'Settings', href: '/settings/profile', icon: Settings }
     ];
 
     const radtechNavItems: NavItem[] = [
         { title: 'Dashboard', href: '/radtech/dashboard', icon: LayoutGrid },
         { title: 'Appointments', href: '/radtech/appointments', icon: Calendar },
-        { title: 'X-Ray Reports', href: '/radtech/xrays', icon: Image },
         { title: 'Settings', href: '/settings/profile', icon: Settings }
     ];
 

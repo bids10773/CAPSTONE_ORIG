@@ -72,6 +72,11 @@ if ($doctor->role !== 'doctor') {
             'availability' => $request->availability ?? [],
         ]);
 
-        return back()->with('success', 'Doctor availability updated successfully.');
+       if ($request->action === 'clear') {
+    return back()->with('success', 'Doctor availability cleared successfully.');
+}
+
+return redirect()->route('admin.staff.index')
+    ->with('success', "Dr. {$doctor->first_name} {$doctor->last_name} availability updated successfully.");
     }
 }

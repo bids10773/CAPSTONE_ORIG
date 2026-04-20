@@ -15,7 +15,7 @@ class DoctorDashboardController extends Controller
     {
         $doctor = $request->user();
 
-        $pendingCount = $doctor->doctorAppointments()->where('status', 'pending')->count();
+        $pendingCount = $doctor->doctorAppointments()->where('status', 'accepted')->count();
         $todayCount = $doctor->doctorAppointments()
             ->whereIn('status', ['accepted', 'arrived'])
             ->whereDate('appointment_date', today())

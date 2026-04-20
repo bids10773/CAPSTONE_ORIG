@@ -39,8 +39,21 @@ class AdminDashboardController extends Controller
         ];
         
         $recentAppointments = Appointment::with(['user', 'company'])
+            ->whereNotIn('status', ['completed', 'cancelled'])
             ->orderBy('appointment_date', 'desc')
-            ->limit(10)->get();
+            ->limit(10)
+            ->get();
+
+        $historyAppointments = Appointment::with(['user', 'company'])
+            ->where('status', 'completed')
+            ->orderBy('appointment_date', 'desc')
+            ->limit(10)
+            ->get();
+
+        $todayAppointments = Appointment::with(['user', 'company'])
+            ->whereDate('appointment_date', $today)
+            ->orderBy('appointment_date', 'asc')
+            ->get();
             
         $appointmentsByStatus = Appointment::selectRaw('status, COUNT(*) as count')
             ->groupBy('status')->get()->pluck('count', 'status')->toArray();
@@ -69,6 +82,8 @@ class AdminDashboardController extends Controller
             'user' => $request->user(),
             'stats' => $stats,
             'recentAppointments' => $recentAppointments,
+            'historyAppointments' => $historyAppointments,
+            'todayAppointments' => $todayAppointments,
             'appointmentsByStatus' => $appointmentsByStatus,
             'appointmentsByType' => $appointmentsByType,
             'monthlyTrends' => $monthlyTrends,

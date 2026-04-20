@@ -29,13 +29,17 @@ export default function DoctorAvailability(props: Props) {
     };
 
     const toggleDay = (day: string) => {
-        const exists = data.availability.some((slot: any) => slot.day === day);
-        if (exists) {
-            setData('availability', data.availability.filter((slot: any) => slot.day !== day));
-        } else {
-            setData('availability', [...data.availability, { day, start: '8:00', end: '5:00' }]);
-        }
-    };
+    const exists = data.availability.some((slot: any) => slot.day === day);
+
+    if (exists) {
+        setData('availability', data.availability.filter((slot: any) => slot.day !== day));
+    } else {
+        setData('availability', [
+            ...data.availability,
+            { day, start: '08:00', end: '17:00' } // ✅ FIXED
+        ]);
+    }
+};
 
    const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +91,7 @@ export default function DoctorAvailability(props: Props) {
                                                         <Input
                                                             type="time"
                                                             step="1800"
-                                                            value={slot?.start || '09:00'}
+                                                            value={slot?.start || '08:00'}
                                                             onChange={(e) => updateSlot(dayKey, 'start', e.target.value)}
                                                             className="w-full"
                                                             disabled={processing}

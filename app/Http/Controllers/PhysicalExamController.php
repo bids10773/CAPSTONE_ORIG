@@ -19,7 +19,8 @@ class PhysicalExamController extends Controller
         $appointment = Appointment::with([
             'user',
             'physicalExam',
-            'medicalHistory'
+            'medicalHistory',
+            'patientProfile',
         ])->findOrFail($appointmentId);
 
         return Inertia::render('doctor/physical-exam-form', [
@@ -98,7 +99,7 @@ class PhysicalExamController extends Controller
 
         // ✅ Send to MedTech
         $appointment->update([
-            'status' => 'pending_diagnostics'
+            'status' => 'for_diagnostics'
         ]);
 
         return redirect()->route('doctor.dashboard')

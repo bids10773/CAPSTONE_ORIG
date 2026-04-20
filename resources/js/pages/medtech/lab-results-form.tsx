@@ -8,6 +8,12 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { BreadcrumbItem } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Doctor Queue', href: "/medtech/appointments" },
+    { title: 'Laboratory Examination', href: "" },
+];
 
 interface Props {
     appointment: {
@@ -189,4 +195,4 @@ export default function LabResultsForm({ appointment, labResult }: Props) {
     );
 }
 
-LabResultsForm.layout = (page: any) => <AppLayout>{page}</AppLayout>;
+LabResultsForm.layout = (page: any) => <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;

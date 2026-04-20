@@ -1,7 +1,12 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Calendar, HeartPulse, Users, Activity, Clock } from 'lucide-react';
+import { Calendar, HeartPulse, Users, Activity, Clock } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent } from '@/components/ui/card';
+import type { BreadcrumbItem } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Doctor Dashboard', href: "" },
+];
 
 interface Props {
     pendingCount: number;
@@ -38,7 +43,7 @@ export default function DoctorDashboard(props: Props) {
                                     <Calendar className="w-8 h-8" />
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-blue-100 text-sm">Pending Appointments</p>
+                                    <p className="text-blue-100 text-sm">Accepted Appointments</p>
                                     <p className="text-3xl font-bold">{pendingCount}</p>
                                 </div>
                             </div>
@@ -125,4 +130,4 @@ export default function DoctorDashboard(props: Props) {
     );
 }
 
-DoctorDashboard.layout = (page: any) => <AppLayout>{page}</AppLayout>;
+DoctorDashboard.layout = (page: any) => <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;

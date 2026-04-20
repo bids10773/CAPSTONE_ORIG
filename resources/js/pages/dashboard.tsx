@@ -148,7 +148,6 @@ function HeroSection({ user, isLoggedIn = false }: { user?: any, isLoggedIn?: bo
             >
                 <div className="max-w-xl text-white">
                     <p className="text-lg opacity-80 mb-2 text-blue-400">
-                        {isLoggedIn ? `Welcome back and` : "Well Beyond Care"}
                     </p>
 
                     <h1 className="text-5xl font-bold leading-tight uppercase">
@@ -258,7 +257,7 @@ function PatientDashboard({ user }: { user: any }) {
             {/* SERVICES SECTION */}
             <Section id="dashboard-services" title="Services" bgColor="bg-gray-100">
                 <ul className="list-disc list-inside space-y-2 max-w-2xl text-lg">
-                    <li>General Consultation</li>
+                    <li>Pre-Employment</li>
                     <li>Pediatric Care</li>
                     <li>Dental Services</li>
                     <li>Laboratory Tests</li>

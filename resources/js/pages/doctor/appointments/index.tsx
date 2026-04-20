@@ -1,26 +1,32 @@
-import { Head, Link, usePage, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { 
     Calendar, 
     Search, 
-    Filter, 
     Eye, 
     Stethoscope,
     CheckCircle,
     XCircle,
-    Clock,
     AlertCircle,
-    ChevronLeft,
-    ChevronRight,
     Play
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem} from '@/types';
+import { useState, useEffect } from 'react';
+
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Doctor Queue',
+        href: "",
+    },
+];
 
 interface Appointment {
     id: number;
     appointment_date: string;
     status: string;
     type: string;
-    service_type: string;
+    service_types: string;
     user: {
         first_name: string;
         last_name: string;
@@ -51,6 +57,30 @@ interface Props {
 
 export default function DoctorAppointmentsIndex(props: Props) {
     const { appointments, filters, pageTitle } = props;
+    const [search, setSearch] = useState(filters.search ?? '');
+    const [status, setStatus] = useState(filters.status ?? '');
+
+    const formatService = (service: any) => {
+    try {
+        const parsed = typeof service === 'string' ? JSON.parse(service) : service;
+        return Array.isArray(parsed) ? parsed.join(', ') : parsed;
+    } catch {
+        return service;
+    }
+};
+
+useEffect(() => {
+    const timeout = setTimeout(() => {
+        router.get('/doctor/appointments', { ...filters, search, status}, { 
+            preserveState: true, 
+            preserveScroll: true, 
+            replace: true 
+        });
+    }, 400);
+
+    return () => clearTimeout(timeout);
+}, [search, status]);
+
 
     const getStatusBadge = (status: string) => {
         const s = status.toLowerCase();
@@ -65,18 +95,16 @@ export default function DoctorAppointmentsIndex(props: Props) {
                 return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
             case 'cancelled':
                 return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-                case 'pending_diagnostics':
-    return 'bg-purple-100 text-purple-800';
-
-case 'pending_xray':
-    return 'bg-orange-100 text-orange-800';
-
-case 'pending_final_evaluation':
-    return 'bg-blue-100 text-blue-800';
+            case 'pending_diagnostics':
+                return 'bg-purple-100 text-purple-800';
+            case 'pending_xray':
+                return 'bg-orange-100 text-orange-800';
+            case 'pending_final_evaluation':
+                return 'bg-blue-100 text-blue-800';
             default:
                 return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-        }
-    };
+                    }
+                };
 
     const getStatusIcon = (status: string) => {
         const s = status.toLowerCase();
@@ -85,16 +113,26 @@ case 'pending_final_evaluation':
                 return <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />;
             case 'accepted':
                 return <CheckCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
-            case 'arrived':
-                return <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+            case 'for_final_evaluation':
+                return <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
             case 'completed':
                 return <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />;
             case 'cancelled':
                 return <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />;
+            case 'for_final_evaluation':
             default:
                 return null;
         }
     };
+    
+    const getStatusLabel = (status: string) => {
+    switch (status) {
+        case 'for_diagnostics': return 'Laboratory';
+        case 'for_xray': return 'X-Ray';
+        case 'for_final_evaluation': return 'Final Evaluation';
+        default: return status.replace('_', ' ');
+    }
+};
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString('en-US', {
@@ -137,38 +175,34 @@ case 'pending_final_evaluation':
                             {pageTitle}
                         </h1>
                         <p className="text-gray-500 dark:text-gray-400 mt-1">
-                            Pending appointments ready for physical examination
+                            Accepted appointments ready for physical examination
                         </p>
                     </div>
                 </div>
 
                 {/* Filters */}
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
-                    <form method="GET" className="flex flex-wrap gap-4">
+                    <div className="flex flex-wrap gap-4">
                         <div className="flex-1 min-w-[200px]">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
                                     type="text"
-                                    name="search"
-                                    defaultValue={filters.search}
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
                                     placeholder="Search patient name..."
                                     className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                         </div>
-                        <select name="status" defaultValue={filters.status} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
-                            <option value="pending">Pending Only</option>
+                        <select name="status" value={status}
+                            onChange={(e) => setStatus(e.target.value)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+                            <option value="">All</option>
                             <option value="arrived">Arrived</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
                             <option value="accepted">Accepted</option>
+                            <option value="for_final_evaluation">Final Evaluation</option>
                         </select>
-                        <button type="submit" className="px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors flex items-center gap-2">
-                            <Filter className="w-4 h-4" />
-                            Filter
-                        </button>
-                    </form>
+                    </div>
                 </div>
 
                 {/* Table */}
@@ -202,7 +236,7 @@ case 'pending_final_evaluation':
                                                 {formatDate(appointment.appointment_date)}
                                             </td>
                                             <td className="px-6 py-4 text-gray-900 dark:text-white">
-                                                {appointment.service_type}
+                                                {formatService(appointment.service_types)}
                                             </td>
                                             <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
                                                 {getTypeLabel(appointment.type)}
@@ -213,7 +247,7 @@ case 'pending_final_evaluation':
                                             <td className="px-6 py-4">
                                                 <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(appointment.status)}`}>
                                                     {getStatusIcon(appointment.status)}
-                                                    {appointment.status}
+                                                    {getStatusLabel(appointment.status)}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
@@ -237,7 +271,7 @@ case 'pending_final_evaluation':
                                                 )}
 
                                                  {/* ✅ FINAL EVALUATION */}
-    {appointment.status.toLowerCase() === 'pending_final_evaluation' && (
+    {appointment.status.toLowerCase() === 'for_final_evaluation' && (
         <button
             onClick={() => router.visit(`/doctor/final-evaluation/${appointment.id}`)}
             className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg inline-flex items-center"
@@ -254,11 +288,16 @@ case 'pending_final_evaluation':
                                         <td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                             <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                                             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                                                No pending appointments
-                                            </h3>
-                                            <p className="text-sm">
-                                                All appointments are up to date. Check back later for new bookings.
-                                            </p>
+                                            {status 
+                                                ? `No ${status.replace('_', ' ')} appointments`
+                                                : 'No appointments found'}
+                                        </h3>
+
+                                        <p className="text-sm">
+                                            {status
+                                                ? `There are currently no appointments with status "${status.replace('_', ' ')}".`
+                                                : 'All appointments are up to date. Check back later.'}
+                                        </p>
                                         </td>
                                     </tr>
                                 )}
@@ -302,5 +341,5 @@ case 'pending_final_evaluation':
 }
 
 DoctorAppointmentsIndex.layout = (page: any) => {
-    return <AppLayout>{page}</AppLayout>;
+    return <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
 };

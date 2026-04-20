@@ -127,7 +127,7 @@ public function patientProfile(): HasOne
     public static function getTypeOptions(): array
     {
         return [
-            'individual' => 'Individual (Walk-in)',
+            'individual' => 'Individual',
             'company_referral' => 'Company Referral',
             'company_bulk' => 'Company Bulk Booking',
         ];
@@ -140,18 +140,19 @@ public function patientProfile(): HasOne
     public static function getServiceTypeOptions(): array
     {
         return [
-            'Full PME' => 'Full Physical Medical Examination (PME)',
+            'PE' => 'Physical Medical Examination (PE)',
             'CBC' => 'Complete Blood Count (CBC)',
             'Urinalysis' => 'Urinalysis',
             'Fecalysis' => 'Fecalysis',
-            'X-Ray' => 'X-Ray',
+            'X-Ray' => 'Chest X-Ray',
             'ECG' => 'Electrocardiogram (ECG)',
             'Audiometry' => 'Audiometry',
             'Drug Test' => 'Drug Test',
             'Hepatitis' => 'Hepatitis B Screening',
-            'FBS' => 'Fasting Blood Sugar',
+            'Blood Typing' => 'Blood Typing',
             'Pregnancy Test' => 'Pregnancy Test',
-            'Custom' => 'Custom/Package',
+            'Neuro Psychiatric Test' => 'Neuro Psychiatric Test',
+            
         ];
     }
 

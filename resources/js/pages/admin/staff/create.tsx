@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect} from 'react';
 import { Head, usePage, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { 

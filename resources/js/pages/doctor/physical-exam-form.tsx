@@ -1,57 +1,72 @@
-import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
-import React, { useState, useEffect } from 'react';
-import { HeartPulse, Activity, Save, ArrowLeft, Scale, Thermometer } from 'lucide-react';
+import { useForm, router } from '@inertiajs/react';
+import React, { useState, useEffect} from 'react';
+import { HeartPulse, Activity, Save, ArrowLeft } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { BreadcrumbItem } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Doctor Queue', href: "/doctor/appointments" },
+    { title: 'Physical Examination', href: "" },
+];
 
 interface Props {
     appointment: {
         id: number;
         user: { first_name: string; last_name: string; };
+        patient_profile?: { 
+    sex?: string; 
+    birthdate?: string; 
+    civil_status?: string;
+};
     };
     physicalExam: any;
 }
 
 export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
-    const { flash } = usePage().props as any;
+    const getAge = (birthdate?: string) => {
+    if (!birthdate) return 'N/A';
 
-    useEffect(() => {
-        if (flash?.success) toast.success(flash.success);
-    }, [flash]);
+    const today = new Date();
+    const birth = new Date(birthdate);
+
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+
+    return age;
+};
+
 
     const { data, setData, post, processing } = useForm<any>({
-    height: physicalExam?.height || '',
-    weight: physicalExam?.weight || '',
-    blood_pressure: physicalExam?.blood_pressure || '',
-    pulse_rate: physicalExam?.pulse_rate || '',
-    temperature: physicalExam?.temperature || '',
-    remarks: physicalExam?.remarks || '',
-
-    // ✅ ADD MEDICAL HISTORY HERE
-    present_illness: physicalExam?.present_illness || '',
-    past_medical_history: physicalExam?.past_medical_history || '',
-    operations_accidents: physicalExam?.operations_accidents || '',
-    family_history: physicalExam?.family_history || '',
-    allergies: physicalExam?.allergies || '',
-    personal_social_history: physicalExam?.personal_social_history || '',
-    ob_menstrual_history: physicalExam?.ob_menstrual_history || '',
-
-    // Body Systems (your existing dynamic fields)
-    ...Object.fromEntries(
-        [
-            'head_scalp', 'eyes', 'ears', 'nose_sinuses', 'mouth_throat',
-            'neck_thyroid', 'chest_breast', 'lungs', 'heart', 'abdomen',
-            'back', 'anus', 'genitals', 'extremities', 'skin', 'dental'
+        height: physicalExam?.height || '',
+        weight: physicalExam?.weight || '',
+        blood_pressure: physicalExam?.blood_pressure || '',
+        pulse_rate: physicalExam?.pulse_rate || '',
+        temperature: physicalExam?.temperature || '',
+        remarks: physicalExam?.remarks || '',
+        present_illness: physicalExam?.present_illness || '',
+        past_medical_history: physicalExam?.past_medical_history || '',
+        operations_accidents: physicalExam?.operations_accidents || '',
+        family_history: physicalExam?.family_history || '',
+        allergies: physicalExam?.allergies || '',
+        personal_social_history: physicalExam?.personal_social_history || '',
+        ob_menstrual_history: physicalExam?.ob_menstrual_history || '',
+        ...Object.fromEntries([
+            'head_scalp','eyes','ears','nose_sinuses','mouth_throat',
+            'neck_thyroid','chest_breast','lungs','heart','abdomen',
+            'extremities'
         ].flatMap(field => [
             [field, physicalExam?.[field] || ''],
             [`${field}_status`, physicalExam?.[field] ? 'with_findings' : 'normal']
-        ])
-    )
-});
+        ]))
+    });
 
     const bodyParts = [
         { label: 'Head/Scalp', field: 'head_scalp' },
@@ -67,12 +82,11 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
         { label: 'Extremities', field: 'extremities' },
     ];
 
-    // --- BMI CALCULATION LOGIC ---
     const [bmi, setBmi] = useState<number | null>(null);
 
     useEffect(() => {
-        const h = parseFloat(data.height); // in cm
-        const w = parseFloat(data.weight); // in kg
+        const h = parseFloat(data.height);
+        const w = parseFloat(data.weight);
         if (h > 0 && w > 0) {
             const bmiValue = w / ((h / 100) ** 2);
             setBmi(Number(bmiValue.toFixed(1)));
@@ -94,174 +108,139 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
     };
 
     return (
-        <div className="p-6 max-w-5xl mx-auto space-y-6">
-            <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-xl border shadow-sm">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" onClick={() => router.visit('/doctor/dashboard')}>
-                        <ArrowLeft className="w-5 h-5" />
-                    </Button>
-                    <div>
-                        <h1 className="text-xl font-bold">Physical Examination</h1>
-                        <p className="text-sm text-gray-500 font-medium">Patient: {appointment.user.first_name} {appointment.user.last_name}</p>
+        <div className="p-6 max-w-6xl mx-auto space-y-6">
+
+            {/* HEADER */}
+            <Card className="bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg border-0">
+                <CardContent className="flex justify-between items-center p-5">
+                    <div className="flex items-center gap-4">
+                        <Button variant="ghost" onClick={() => router.visit('/doctor/dashboard')}>
+                            <ArrowLeft />
+                        </Button>
+                        <div>
+                            <h1 className="text-xl font-bold">Physical Examination</h1>
+                            <div className="text-sm opacity-90 grid grid-cols-2 gap-x-6 gap-y-1">
+                                <span><b>Patient:</b> {appointment.user.first_name} {appointment.user.last_name}</span>
+                                <span><b>Gender:</b> {appointment?.patient_profile?.sex || 'N/A'}</span>
+                                <span><b>Age:</b> {getAge(appointment?.patient_profile?.birthdate)}</span>
+                                <span><b>Civil Status:</b> {appointment?.patient_profile?.civil_status || 'N/A'}</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <Button onClick={onSubmit} disabled={processing} className="bg-blue-600 hover:bg-blue-700">
-                    <Save className="w-4 h-4 mr-2" /> Save & Forward to Lab
-                </Button>
-            </div>
+                    <Button onClick={onSubmit} disabled={processing} className="bg-white text-blue-600">
+                        <Save className="mr-2 h-4 w-4"/> Save
+                    </Button>
+                </CardContent>
+            </Card>
 
-             {/* Medical History Section */}
-<div className="mt-8 pt-8 border-t border-gray-200 dark:border-neutral-700">
-  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-    <HeartPulse className="w-5 h-5 text-red-500" />
-    Medical History
-  </h3>
-
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-    <div>
-      <label className="text-sm font-medium">Present Illness</label>
-      <textarea
-        value={data.present_illness}
-        onChange={(e) => setData('present_illness', e.target.value)}
-        className="w-full p-2 border rounded"
-      />
-    </div>
-
-    <div>
-      <label className="text-sm font-medium">Past Medical History</label>
-      <textarea
-        value={data.past_medical_history}
-        onChange={(e) => setData('past_medical_history', e.target.value)}
-        className="w-full p-2 border rounded"
-      />
-    </div>
-
-    <div>
-      <label className="text-sm font-medium">Operations / Accidents</label>
-      <textarea
-        value={data.operations_accidents}
-        onChange={(e) => setData('operations_accidents', e.target.value)}
-        className="w-full p-2 border rounded"
-      />
-    </div>
-
-    <div>
-      <label className="text-sm font-medium">Family History</label>
-      <textarea
-        value={data.family_history}
-        onChange={(e) => setData('family_history', e.target.value)}
-        className="w-full p-2 border rounded"
-      />
-    </div>
-
-    <div>
-      <label className="text-sm font-medium">Allergies</label>
-      <textarea
-        value={data.allergies}
-        onChange={(e) => setData('allergies', e.target.value)}
-        className="w-full p-2 border rounded"
-      />
-    </div>
-
-    <div className="md:col-span-2">
-      <label className="text-sm font-medium">Personal / Social History</label>
-      <textarea
-        value={data.personal_social_history}
-        onChange={(e) => setData('personal_social_history', e.target.value)}
-        className="w-full p-2 border rounded"
-      />
-    </div>
-
-    <div className="md:col-span-2">
-      <label className="text-sm font-medium">OB / Menstrual History</label>
-      <textarea
-        value={data.ob_menstrual_history}
-        onChange={(e) => setData('ob_menstrual_history', e.target.value)}
-        className="w-full p-2 border rounded"
-      />
-    </div>
-
-  </div>
-</div>
-
-            {/* Vitals & BMI Section */}
-            <Card className="overflow-hidden">
-                <CardHeader className="bg-gray-50 dark:bg-gray-900 border-b">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-blue-600" /> Vitals Indicators
+            {/* MEDICAL HISTORY */}
+            <Card className="shadow-sm">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-red-500">
+                        <HeartPulse size={18}/> Medical History
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                        <div className="md:col-span-8 grid grid-cols-2 md:grid-cols-5 gap-4">
-                            {['height', 'weight', 'blood_pressure', 'pulse_rate', 'temperature'].map((v) => (
-                                <div key={v} className="space-y-1.5">
-                                    <Label className="capitalize text-[11px] font-bold text-gray-500">{v.replace('_', ' ')}</Label>
-                                    <Input 
-                                        type={['height', 'weight', 'temperature'].includes(v) ? 'number' : 'text'}
-                                        value={data[v]} 
-                                        onChange={e => setData(v, e.target.value)} 
-                                        className="h-9 focus:ring-blue-500"
-                                    />
-                                </div>
-                            ))}
+                <CardContent className="grid md:grid-cols-2 gap-4">
+                    {[
+                        ['Present Illness','present_illness'],
+                        ['Past Medical History','past_medical_history'],
+                        ['Operations/Accidents','operations_accidents'],
+                        ['Family History','family_history'],
+                        ['Allergies','allergies']
+                    ].map(([label, field]) => (
+                        <div key={field}>
+                            <Label>{label}</Label>
+                            <textarea
+                                className="w-full border rounded-md p-2 mt-1 text-sm focus:ring-2 focus:ring-blue-500"
+                                value={data[field]}
+                                onChange={(e)=>setData(field, e.target.value)}
+                            />
                         </div>
-
-                        {/* Automatic BMI Result Display */}
-                        <div className="md:col-span-4 flex flex-col items-center justify-center border-l dark:border-gray-700 pl-6 h-full">
-                            <Label className="text-[10px] uppercase font-bold text-gray-400 mb-1">Body Mass Index (BMI)</Label>
-                            <div className="text-4xl font-black text-gray-900 dark:text-white">
-                                {bmi || '--.-'}
-                            </div>
-                            {bmi && (
-                                <span className={`mt-1 text-xs font-bold px-2 py-0.5 rounded-full bg-opacity-10 ${getBMICategory(bmi).color}`}>
-                                    {getBMICategory(bmi).label}
-                                </span>
-                            )}
-                        </div>
+                    ))}
+                    <div className="md:col-span-2">
+                        <Label>Personal/Social History</Label>
+                        <textarea
+                            className="w-full border rounded-md p-2 mt-1 text-sm"
+                            value={data.personal_social_history}
+                            onChange={(e)=>setData('personal_social_history', e.target.value)}
+                        />
+                    </div>
+                    <div className="md:col-span-2">
+                        <Label>
+                            OB / Menstrual History
+                        </Label>
+                        <textarea
+                            value={data.ob_menstrual_history}
+                            onChange={(e) => setData('ob_menstrual_history', e.target.value)}
+                            className="w-full border rounded-md  p-2 mt-1 text-sm"
+                        />
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Systems Review */}
+            {/* VITALS */}
             <Card>
-                <CardHeader><CardTitle className="text-sm font-semibold flex items-center gap-2"><HeartPulse className="w-4 h-4 text-red-500" /> Systems Review</CardTitle></CardHeader>
-                <CardContent className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {bodyParts.map((part) => (
-                        <div key={part.field} className="py-3 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                            <Label className="md:col-span-3 text-sm font-medium">{part.label}</Label>
-                            <div className="md:col-span-3 flex gap-4">
-                                {['normal', 'with_findings'].map((status) => (
-                                    <label key={status} className="flex items-center gap-2 cursor-pointer text-xs">
-                                        <input 
-                                            type="radio" 
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-blue-600">
+                        <Activity size={18}/> Vitals & BMI
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="grid md:grid-cols-6 gap-4 items-end">
+                    {['height','weight','blood_pressure','pulse_rate','temperature'].map(v => (
+                        <div key={v}>
+                            <Label className="capitalize">{v.replace('_',' ')}</Label>
+                            <Input
+                                type="text"
+                                value={data[v]}
+                                onChange={(e)=>setData(v,e.target.value)}
+                            />
+                        </div>
+                    ))}
+
+                    <div className="text-center">
+                        <p className="text-xs text-gray-500">BMI</p>
+                        <p className="text-2xl font-bold">{bmi || '--'}</p>
+                        {bmi && <span className={getBMICategory(bmi).color}>{getBMICategory(bmi).label}</span>}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* SYSTEM REVIEW */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-red-500">System Review</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    {bodyParts.map(part => (
+                        <div key={part.field} className="grid md:grid-cols-12 gap-2 items-center border-b pb-2">
+                            <span className="md:col-span-3 text-sm font-medium">{part.label}</span>
+
+                            <div className="md:col-span-3 flex gap-3 text-xs">
+                                {['normal','with_findings'].map(status => (
+                                    <label key={status}>
+                                        <input
+                                            type="radio"
                                             checked={data[`${part.field}_status`] === status}
-                                            onChange={() => {
-                                                setData(`${part.field}_status`, status);
-                                                if (status === 'normal') setData(part.field, '');
-                                            }}
-                                            className="w-3.5 h-3.5 text-blue-600"
-                                        />
-                                        {status === 'normal' ? 'Normal' : 'Findings'}
+                                            onChange={()=>setData(`${part.field}_status`, status)}
+                                        /> {status}
                                     </label>
                                 ))}
                             </div>
+
                             <div className="md:col-span-6">
-                                <Input 
-                                    placeholder="Enter findings if abnormal..."
+                                <Input
+                                    placeholder="Findings..."
                                     value={data[part.field]}
-                                    disabled={data[`${part.field}_status`] === 'normal'}
-                                    onChange={e => setData(part.field, e.target.value)}
-                                    className="h-8 text-sm"
+                                    onChange={(e)=>setData(part.field,e.target.value)}
                                 />
                             </div>
                         </div>
                     ))}
                 </CardContent>
             </Card>
+
         </div>
     );
 }
 
-PhysicalExamForm.layout = (page: any) => <AppLayout>{page}</AppLayout>;
+PhysicalExamForm.layout = (page: any) => <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;

@@ -16,7 +16,7 @@ class LaboratoryController extends Controller
     public function index(Request $request): Response
     {
         $query = Appointment::with(['user', 'company'])
-            ->where('status', 'pending_diagnostics') 
+            ->where('status', 'for_diagnostics') 
             ->orderBy('updated_at', 'desc');
 
         // ✅ SEARCH LOGIC (Moved up so it actually runs)
@@ -71,7 +71,7 @@ class LaboratoryController extends Controller
 
     // ✅ MOVE TO XRAY
     $appointment->update([
-        'status' => 'pending_xray'
+        'status' => 'for_xray'
     ]);
 
     return redirect()->route('medtech.appointments')

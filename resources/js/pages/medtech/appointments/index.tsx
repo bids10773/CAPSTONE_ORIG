@@ -1,21 +1,21 @@
-import { Head, Link, usePage, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { 
-    Calendar, 
     Search, 
     Filter, 
     Eye, 
     TestTube,
     CheckCircle,
-    XCircle,
     Clock,
     AlertCircle,
-    ChevronLeft,
-    ChevronRight,
     Play
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
-import { useEffect } from 'react';
-import { toast } from 'sonner';
+import type { BreadcrumbItem } from '@/types';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    { title: 'Medtech Queue', href: "/admin/companies" },
+];
+
 
 // Define the shape of each appointment
 interface Appointment {
@@ -56,29 +56,12 @@ interface Props {
 }
 
 export default function MedTechAppointmentsIndex({ appointments, filters, pageTitle }: Props) {
-    const { flash } = usePage().props as any;
 
-    // Trigger toast if flash message exists
-    useEffect(() => {
-        if (flash?.success) {
-            toast.success(flash.success);
-        }
-    }, [flash]);
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case 'pending_diagnostics':
+            case 'for_diagnostics':
                 return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-            case 'pending':
-                return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-            case 'arrived':
-                return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
-            case 'completed':
-                return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-            case 'cancelled':
-                return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-            default:
-                return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
         }
     };
 
@@ -86,16 +69,17 @@ export default function MedTechAppointmentsIndex({ appointments, filters, pageTi
         switch (status) {
             case 'pending_diagnostics':
                 return <TestTube className="w-4 h-4 text-purple-600" />;
-            case 'pending':
-                return <AlertCircle className="w-4 h-4 text-yellow-600" />;
-            case 'arrived':
-                return <Clock className="w-4 h-4 text-indigo-600" />;
-            case 'completed':
-                return <CheckCircle className="w-4 h-4 text-green-600" />;
-            default:
-                return <AlertCircle className="w-4 h-4 text-gray-400" />;
         }
     };
+
+    const formatService = (service: any) => {
+    try {
+        const parsed = typeof service === 'string' ? JSON.parse(service) : service;
+        return Array.isArray(parsed) ? parsed.join(', ') : parsed;
+    } catch {
+        return service;
+    }
+};
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString('en-US', {
@@ -106,6 +90,15 @@ export default function MedTechAppointmentsIndex({ appointments, filters, pageTi
             minute: '2-digit',
         });
     };
+
+    const getStatusLabel = (status: string) => {
+    switch (status) {
+        case 'for_diagnostics': return 'Laboratory';
+        case 'for_xray': return 'X-Ray';
+        case 'for_final_evaluation': return 'Final Evaluation';
+        default: return status.replace('_', ' ');
+    }
+};
 
     const startLabTest = (appointmentId: number) => {
         router.visit(`/medtech/lab-results/${appointmentId}`);
@@ -187,7 +180,7 @@ export default function MedTechAppointmentsIndex({ appointments, filters, pageTi
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right space-x-2">
-                                                {apt.status === 'pending_diagnostics' && !apt.labResult && (
+                                                {apt.status === 'for_diagnostics' && !apt.labResult && (
                                                     <button
                                                         onClick={() => startLabTest(apt.id)}
                                                         className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm inline-flex items-center gap-1 transition-colors"
@@ -235,4 +228,4 @@ export default function MedTechAppointmentsIndex({ appointments, filters, pageTi
     );
 }
 
-MedTechAppointmentsIndex.layout = (page: any) => <AppLayout>{page}</AppLayout>;
+MedTechAppointmentsIndex.layout = (page: any) => <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;

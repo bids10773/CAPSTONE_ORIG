@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Calendar, ArrowLeft, Save, Users, FileText, Upload, HeartPulse } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { AvailableDoctor, Doctor, DoctorAvailabilityResponse } from '@/types/availability';
+import { toast } from "sonner";
 
 interface Company {
   id: number;
@@ -11,13 +12,22 @@ interface Company {
 }
 
 export default function CreateAppointment() {
-const { companies, serviceTypes, appointmentTypes } = usePage().props as any;
+const { companies, serviceTypes, appointmentTypes, auth } = usePage().props as any;
 
 const [doctors, setDoctors] = useState<Doctor[]>([]);
 const [doctorAvailability, setDoctorAvailability] = useState<DoctorAvailabilityResponse | null>(null);
 const [isLoadingDoctors, setIsLoadingDoctors] = useState(false);
 const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
 const [selectedDayName, setSelectedDayName] = useState('');
+
+const filteredAppointmentTypes = Object.entries(appointmentTypes).filter(
+  ([value]) => {
+    if (auth.user.role !== 'company') {
+      return value !== 'company_bulk'; // ❌ hide for non-company
+    }
+    return true; // ✅ show all for company
+  }
+);
 
   const [formData, setFormData] = useState({
     doctor_id: '',
@@ -26,7 +36,6 @@ const [selectedDayName, setSelectedDayName] = useState('');
     company_id: '',
     appointment_date: '',
     service_types: [] as string[],
-    referral_code: '',
     notes: '',
     birthdate: '',
     sex: '',
@@ -34,14 +43,6 @@ const [selectedDayName, setSelectedDayName] = useState('');
     address: '',
     emergency_contact_name: '',
     emergency_contact_no: '',
-    // Medical history
-    present_illness: '',
-    past_medical_history: '',
-    operations_accidents: '',
-    family_history: '',
-    allergies: '',
-    personal_social_history: '',
-    ob_menstrual_history: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
@@ -51,6 +52,18 @@ const [selectedDayName, setSelectedDayName] = useState('');
   const [filteredCompanies, setFilteredCompanies] = useState<Company[]>(companies || []);
   const [calculatedAge, setCalculatedAge] = useState('-');
   const [selectedCompanyName, setSelectedCompanyName] = useState('');
+
+  
+ ///TIME FORMAT 
+
+  const formatTime = (time: string) => {
+  const [hour, minute] = time.split(':').map(Number);
+
+  const suffix = hour >= 12 ? 'PM' : 'AM';
+  const formattedHour = hour % 12 || 12;
+
+  return `${formattedHour}:${minute.toString().padStart(2, '0')} ${suffix}`;
+};
 
   useEffect(() => {
     if (companySearch) {
@@ -180,18 +193,40 @@ const [selectedDayName, setSelectedDayName] = useState('');
     setErrors({});
 
 router.post('/appointments', formData, {
-      onError: (errors: any) => {
-        setErrors(errors);
-        setIsSubmitting(false);
-      },
-      preserveScroll: true,
+  onSuccess: () => {
+    toast.success("Appointment booked successfully!");
+    setIsSubmitting(false);
+
+    // optional: reset form
+    setFormData({
+      doctor_id: '',
+      start_time: '',
+      type: 'individual',
+      company_id: '',
+      appointment_date: '',
+      service_types: [],
+      notes: '',
+      birthdate: '',
+      sex: '',
+      civil_status: '',
+      address: '',
+      emergency_contact_name: '',
+      emergency_contact_no: '',
     });
+  },
+  onError: (errors: any) => {
+    setErrors(errors);
+    setIsSubmitting(false);
+
+    toast.error("Failed to book appointment. Please check the form.");
+  },
+  preserveScroll: true,
+});
   };
 
   const showCompanyField = formData.type === 'company_referral' || formData.type === 'company_bulk';
-  const showReferralCode = formData.type === 'company_referral';
   const showPatientDetails = formData.type === 'individual' || formData.type === 'company_referral';
-
+console.log(doctorAvailability);
   return (
     <>
       <Head title="Book Appointment" />
@@ -224,7 +259,7 @@ router.post('/appointments', formData, {
                 Appointment Type
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {(Object.entries(appointmentTypes) as [string, string][]).map(([value, label]) => (
+                {(filteredAppointmentTypes as [string, string][]).map(([value, label]) => (
                   <label
                     key={value}
                     className={`relative flex items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
@@ -253,6 +288,51 @@ router.post('/appointments', formData, {
                 ))}
               </div>
             </div>
+
+
+             {/* Company Selection (for Referral/Bulk) */}
+            {showCompanyField && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold mb-4">Company Information</h2>
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Select Company *
+                  </label>
+                  <input
+                    type="text"
+                    name="company_search"
+                    value={companySearch}
+                    onChange={(e) => {
+                      setCompanySearch(e.target.value);
+                      setShowCompanyDropdown(true);
+                    }}
+                    onFocus={() => setShowCompanyDropdown(true)}
+                    placeholder="Search for a company..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoComplete="off"
+                  />
+                  <input type="hidden" name="company_id" value={formData.company_id} />
+                  
+                  {showCompanyDropdown && filteredCompanies.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {filteredCompanies.map((company: Company) => (
+                        <button
+                          key={company.id}
+                          type="button"
+                          onClick={() => handleCompanySelect(company)}
+                          className="w-full px-4 py-2 text-left hover:bg-blue-50 transition-colors"
+                        >
+                          {company.company_name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {errors.company_id && (
+                    <p className="mt-1 text-sm text-red-600">{errors.company_id}</p>
+                  )}
+                </div>
+  </div>
+            )}
 
          {/* Doctor & Time Selection */}
          
@@ -316,90 +396,47 @@ router.post('/appointments', formData, {
                     {errors.appointment_date && <p className="mt-1 text-sm text-red-600">{errors.appointment_date}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Time *
-                    </label>
-                    <select
-                      name="start_time"
-                      value={formData.start_time}
-                      onChange={handleChange}
-                      disabled={!doctorAvailability?.availableTimes.length || isLoadingAvailability}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <option value="">
-                        {isLoadingAvailability ? 'Loading times...' : doctorAvailability?.availableTimes.length ? 'Select available time (30min slots)' : 'Select date first'}
-                      </option>
-                      {doctorAvailability?.availableTimes.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.start_time && <p className="mt-1 text-sm text-red-600">{errors.start_time}</p>}
-                  </div>
+  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+    Time *
+  </label>
+
+  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+    {doctorAvailability?.availableTimes?.map((time) => {
+      const isSelected = formData.start_time === time;
+
+      return (
+        <button
+          key={time}
+          type="button"
+          onClick={() =>
+            setFormData((prev) => ({ ...prev, start_time: time }))
+          }
+          className={`
+            px-3 py-2 rounded-lg text-sm font-medium transition
+            border
+
+           ${
+            isSelected
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-white dark:bg-neutral-800 text-gray-800 dark:text-gray-200 border-gray-300 hover:border-blue-500 hover:text-blue-600'
+          }
+        `}
+      >
+        {formatTime(time)}
+      </button>
+      );
+    })}
+  </div>
+
+  {errors.start_time && (
+    <p className="mt-1 text-sm text-red-600">{errors.start_time}</p>
+  )}
+</div>
                 </div>
               </div>
             </div>
 
-             {/* Company Selection (for Referral/Bulk) */}
-            {showCompanyField && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold mb-4">Company Information</h2>
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Select Company *
-                  </label>
-                  <input
-                    type="text"
-                    name="company_search"
-                    value={companySearch}
-                    onChange={(e) => {
-                      setCompanySearch(e.target.value);
-                      setShowCompanyDropdown(true);
-                    }}
-                    onFocus={() => setShowCompanyDropdown(true)}
-                    placeholder="Search for a company..."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    autoComplete="off"
-                  />
-                  <input type="hidden" name="company_id" value={formData.company_id} />
-                  
-                  {showCompanyDropdown && filteredCompanies.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {filteredCompanies.map((company: Company) => (
-                        <button
-                          key={company.id}
-                          type="button"
-                          onClick={() => handleCompanySelect(company)}
-                          className="w-full px-4 py-2 text-left hover:bg-blue-50 transition-colors"
-                        >
-                          {company.company_name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {errors.company_id && (
-                    <p className="mt-1 text-sm text-red-600">{errors.company_id}</p>
-                  )}
-                </div>
-
-                {showReferralCode && (
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Referral Code
-                    </label>
-                    <input
-                      type="text"
-                      name="referral_code"
-                      value={formData.referral_code}
-                      onChange={handleChange}
-                      placeholder="Enter referral code (optional)"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+            
 
             {/* Patient Details & Medical History - for individual/company_referral */}
             {showPatientDetails && (
@@ -560,7 +597,22 @@ router.post('/appointments', formData, {
 </div>
 
 
+{/* NOTE SECTION */}
+<div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg p-4">
+  <p className="text-sm text-gray-800 dark:text-gray-200 font-medium">
+    NOTE:
+  </p>
+  <p className="text-sm text-gray-700 dark:text-gray-300">
+    Bring 1x1 I.D. picture and stool sample.
+  </p>
 
+  <p className="text-sm text-gray-800 dark:text-gray-200 font-medium mt-2">
+    PAALALA:
+  </p>
+  <p className="text-sm text-gray-700 dark:text-gray-300">
+    Magdala ng 1x1 I.D. na litrato at dumi.
+  </p>
+</div>
            
 
             {/* Buttons */}
