@@ -12,7 +12,7 @@ class XrayController extends Controller
 {
     public function create($appointmentId): Response
     {
-        $appointment = Appointment::with(['user', 'xrayReport'])->findOrFail($appointmentId);
+        $appointment = Appointment::with(['user', 'xrayReport', 'patientProfile'])->findOrFail($appointmentId);
 
         return Inertia::render('radtech/xray-report-form', [
             'appointment' => $appointment,

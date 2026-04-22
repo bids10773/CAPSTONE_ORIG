@@ -48,7 +48,7 @@ interface Appointment {
     end_time: string; 
     status: string;
     type: string;
-    service_type: string;
+    service_types: string;
     user: {
         first_name: string;
         last_name: string;
@@ -93,6 +93,16 @@ export default function AdminAppointmentsIndex() {
         return fields;
     };
 
+    //for service_types arraay format
+    const formatService = (service: any) => {
+    try {
+        const parsed = typeof service === 'string' ? JSON.parse(service) : service;
+        return Array.isArray(parsed) ? parsed.join(', ') : parsed;
+    } catch {
+        return service;
+    }
+};
+
     const isComplete = (apt: Appointment) => getMissingFields(apt).length === 0;
 
     // 2. Debounced Search
@@ -112,6 +122,16 @@ export default function AdminAppointmentsIndex() {
             onSuccess: () => setSelectedAppointment(null)
         });
     };
+
+    const cancelAppointment = (id: number) => {
+    router.patch(`/admin/appointments/${id}/status`, {
+        status: 'cancelled'
+    }, {
+        onSuccess: () => {
+            setSelectedAppointment(null);
+        }
+    });
+};
 
     const getStatusStyle = (status: string) => {
     switch (status) {
@@ -183,6 +203,7 @@ const getStatusLabel = (status: string) => {
                                 <th className="px-6 py-4">Readiness</th>
                                 <th className="px-6 py-4">Schedule</th>
                                 <th className="px-6 py-4">Appointment type</th>
+                                <th className="px-6 py-4">Service type</th>
                                 <th className="px-6 py-4">Doctor</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4 text-right">Action</th>
@@ -233,6 +254,34 @@ const getStatusLabel = (status: string) => {
                                             {apt.type.replace('_', ' ')}
                                         </span>
                                     </td>
+                                    <td className="px-6 py-4">
+    <div className="flex flex-wrap gap-1">
+        {(() => {
+            try {
+                const parsed = typeof apt.service_types === 'string'
+                    ? JSON.parse(apt.service_types)
+                    : apt.service_types;
+
+                return Array.isArray(parsed)
+                    ? parsed.map((s: string, i: number) => (
+                        <span
+                            key={i}
+                            className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800"
+                        >
+                            {s}
+                        </span>
+                    ))
+                    : <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">{parsed}</span>;
+            } catch {
+                return (
+                    <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                        {apt.service_types}
+                    </span>
+                );
+            }
+        })()}
+    </div>
+</td>
                                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                                                     {apt.doctor ? (
                                                         <span className="font-medium">
@@ -265,7 +314,7 @@ const getStatusLabel = (status: string) => {
                 {/* Vetting Modal */}
                 {selectedAppointment && (
                     <Dialog open={true} onOpenChange={() => setSelectedAppointment(null)}>
-                        <DialogContent className="max-w-3xl">
+                        <DialogContent className="max-w-5xl w-full max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle className="text-xl flex items-center gap-2">
                                     <User className="w-5 h-5 text-blue-600" />
@@ -274,9 +323,9 @@ const getStatusLabel = (status: string) => {
                                 <DialogDescription>Verify all fields before sending to the medical queue.</DialogDescription>
                             </DialogHeader>
 
-                            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 {/* Details Card */}
-                                <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border">
+                                <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl border min-w-0">
                                     <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Personal Data</h4>
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
@@ -299,7 +348,7 @@ const getStatusLabel = (status: string) => {
                                 </div>
 
                                 {/* Checklist Card */}
-                                <div className="p-4 border rounded-xl flex flex-col justify-center bg-white dark:bg-gray-800">
+                                <div className="p-4 border rounded-xl flex flex-col justify-center bg-white dark:bg-gray-800 min-w-0">
                                     <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 text-center">Readiness Checklist</h4>
                                     {isComplete(selectedAppointment) ? (
                                         <div className="text-center space-y-2">
@@ -321,21 +370,44 @@ const getStatusLabel = (status: string) => {
                                 </div>
                             </div>
 
-                            <div className="mt-8 flex gap-3">
-                                <Button variant="ghost" onClick={() => setSelectedAppointment(null)} className="flex-1">Cancel</Button>
-                                
-                                {selectedAppointment.status === 'pending' && (
-                                    <Button 
-                                        onClick={() => acceptAppointment(selectedAppointment.id)}
-                                        disabled={!isComplete(selectedAppointment)}
-                                        className={`flex-1 gap-2 ${isComplete(selectedAppointment) ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                                    >
-                                        <CheckCircle2 className="w-4 h-4" />
-                                        Approve & Forward to Doctor
-                                        <ArrowRight className="w-4 h-4 ml-2" />
-                                    </Button>
-                                )}
-                            </div>
+                            <div className="mt-8 flex flex-wrap justify-end gap-3">
+
+    {/* CLOSE MODAL */}
+    <Button 
+        variant="outline" 
+        onClick={() => setSelectedAppointment(null)} 
+        className="flex-1"
+    >
+        Close
+    </Button>
+
+    {/* ❌ CANCEL APPOINTMENT */}
+    {!['completed', 'cancelled'].includes(selectedAppointment.status) && (
+    <Button
+        variant="destructive"
+        onClick={() => cancelAppointment(selectedAppointment.id)}
+        className="flex-1 gap-2"
+    >
+        <XCircle className="w-4 h-4" />
+        Cancel Appointment
+    </Button>
+)}
+
+    {/* ✅ APPROVE */}
+    {selectedAppointment.status === 'pending' && (
+        <Button 
+            onClick={() => acceptAppointment(selectedAppointment.id)}
+            disabled={!isComplete(selectedAppointment)}
+            className={`flex-1 gap-2 ${
+                isComplete(selectedAppointment) ? 'bg-green-600 hover:bg-green-700' : ''
+            }`}
+        >
+            <CheckCircle2 className="w-4 h-4" />
+            Approve & Forward
+            <ArrowRight className="w-4 h-4 ml-2" />
+        </Button>
+    )}
+</div>
                         </DialogContent>
                     </Dialog>
                 )}

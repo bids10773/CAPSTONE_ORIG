@@ -4,7 +4,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Calendar, ArrowLeft, Save, Users, FileText, Upload, HeartPulse } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { AvailableDoctor, Doctor, DoctorAvailabilityResponse } from '@/types/availability';
-import { toast } from "sonner";
+
 
 interface Company {
   id: number;
@@ -176,6 +176,23 @@ const filteredAppointmentTypes = Object.entries(appointmentTypes).filter(
     }
   }, [formData.doctor_id, formData.appointment_date]);
 
+  useEffect(() => {
+  if (!formData.start_time || !formData.appointment_date) return;
+
+  const now = new Date();
+  const selectedDate = new Date(formData.appointment_date);
+
+  if (selectedDate.toDateString() === now.toDateString()) {
+    const [h, m] = formData.start_time.split(':').map(Number);
+    const selectedTime = new Date();
+    selectedTime.setHours(h, m, 0, 0);
+
+    if (selectedTime <= now) {
+      setFormData((prev) => ({ ...prev, start_time: '' }));
+    }
+  }
+}, [formData.appointment_date]);
+
   const handleCompanySelect = (company: Company) => {
     setFormData((prev) => ({ ...prev, company_id: company.id.toString() }));
     setCompanySearch(company.company_name);
@@ -194,7 +211,6 @@ const filteredAppointmentTypes = Object.entries(appointmentTypes).filter(
 
 router.post('/appointments', formData, {
   onSuccess: () => {
-    toast.success("Appointment booked successfully!");
     setIsSubmitting(false);
 
     // optional: reset form
@@ -217,8 +233,6 @@ router.post('/appointments', formData, {
   onError: (errors: any) => {
     setErrors(errors);
     setIsSubmitting(false);
-
-    toast.error("Failed to book appointment. Please check the form.");
   },
   preserveScroll: true,
 });
@@ -387,11 +401,18 @@ console.log(doctorAvailability);
                       <option value="">
                         {isLoadingAvailability ? 'Loading dates...' : doctorAvailability ? 'Select available date' : 'Select doctor first'}
                       </option>
-                      {doctorAvailability?.availableDates.map((date) => (
-                        <option key={date} value={date}>
-                          {new Date(date).toLocaleDateString()}
-                        </option>
-                      ))}
+                      {doctorAvailability?.availableDates
+  .filter((date) => {
+    const today = new Date();
+    const checkDate = new Date(date);
+
+    return checkDate >= new Date(today.toDateString());
+  })
+  .map((date) => (
+    <option key={date} value={date}>
+      {new Date(date).toLocaleDateString()}
+    </option>
+))}
                     </select>
                     {errors.appointment_date && <p className="mt-1 text-sm text-red-600">{errors.appointment_date}</p>}
                   </div>
@@ -401,21 +422,37 @@ console.log(doctorAvailability);
   </label>
 
   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-    {doctorAvailability?.availableTimes?.map((time) => {
-      const isSelected = formData.start_time === time;
+    {doctorAvailability?.availableTimes
+  ?.filter((time) => {
+    if (!formData.appointment_date) return true;
 
-      return (
-        <button
-          key={time}
-          type="button"
-          onClick={() =>
-            setFormData((prev) => ({ ...prev, start_time: time }))
-          }
-          className={`
-            px-3 py-2 rounded-lg text-sm font-medium transition
-            border
+    const now = new Date();
+    const selectedDate = new Date(formData.appointment_date);
 
-           ${
+    // if not today → allow all times
+    if (selectedDate.toDateString() !== now.toDateString()) {
+      return true;
+    }
+
+    const [hour, minute] = time.split(':').map(Number);
+    const timeDate = new Date();
+    timeDate.setHours(hour, minute, 0, 0);
+
+    return timeDate > now;
+  })
+  .map((time) => {
+    const isSelected = formData.start_time === time;
+
+    return (
+      <button
+        key={time}
+        type="button"
+        onClick={() =>
+          setFormData((prev) => ({ ...prev, start_time: time }))
+        }
+        className={`
+          px-3 py-2 rounded-lg text-sm font-medium transition border
+          ${
             isSelected
               ? 'bg-blue-600 text-white border-blue-600'
               : 'bg-white dark:bg-neutral-800 text-gray-800 dark:text-gray-200 border-gray-300 hover:border-blue-500 hover:text-blue-600'
@@ -424,8 +461,8 @@ console.log(doctorAvailability);
       >
         {formatTime(time)}
       </button>
-      );
-    })}
+    );
+  })}
   </div>
 
   {errors.start_time && (

@@ -6,6 +6,7 @@ import '../css/app.css';
 import { initializeTheme } from './hooks/use-appearance';
 import { LogoutModalProvider } from './contexts/logout-modal-context';
 import LogoutModal from './components/logout-modal';
+import { Toaster } from "sonner";
 
 // Pulls from VITE_APP_NAME in .env or defaults to 'LMIC'
 const appName = import.meta.env.VITE_APP_NAME || 'LMIC';
@@ -21,6 +22,7 @@ createInertiaApp({
                 <LogoutModalProvider>
                     <App {...props} />
                     <LogoutModal />
+                    <Toaster position="top-right" richColors />
                 </LogoutModalProvider>
             </StrictMode>
         );

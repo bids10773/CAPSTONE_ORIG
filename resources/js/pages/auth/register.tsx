@@ -16,6 +16,7 @@ import { X, ShieldCheck, User, Mail, Phone, Lock, Eye, EyeOff } from 'lucide-rea
 export default function Register() {
 const [showPassword, setShowPassword] = useState(false);
 const [showTermsModal, setShowTermsModal] = useState(false);
+const [acceptedTerms, setAcceptedTerms] = useState(false);
 
 return (
     <>
@@ -67,7 +68,10 @@ return (
 
                         <div className="p-6 border-t bg-gray-50 flex justify-end">
                             <Button
-                                onClick={() => setShowTermsModal(false)}
+                                onClick={() => {
+                                setAcceptedTerms(true);  
+                                setShowTermsModal(false);
+                            }}
                                 className="px-10 h-11 bg-[#246AFE] hover:bg-blue-700"
                             >
                                 I Understand & Accept
@@ -187,7 +191,13 @@ return (
 
                         {/* TERMS */}
                         <div className="flex items-start space-x-3 pt-2">
-                            <Checkbox id="terms" name="terms" required/>
+                            <Checkbox
+    id="terms"
+    name="terms"
+    checked={acceptedTerms}
+    onCheckedChange={(value) => setAcceptedTerms(!!value)}
+    required
+/>
                             <Label htmlFor="terms" className="text-sm text-white leading-tight">
                                 I agree to the{" "}
                                 <button type="button" onClick={()=>setShowTermsModal(true)} className="text-black font-semibold hover:underline">

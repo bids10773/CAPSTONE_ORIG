@@ -3,7 +3,7 @@ import { Head, Link, usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { 
     Calendar, Plus, Search, Eye, CheckCircle, 
-    XCircle, Clock, Filter, Building2, User 
+    XCircle, Clock, Filter, Building2
 } from 'lucide-react';
 import type { BreadcrumbItem } from '@/types';
 import { cn } from '@/lib/utils';

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+import { useState, useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'RadTech Queue', href: "/admin/companies" },
@@ -53,6 +54,7 @@ interface Props {
 
 export default function RadTechAppointmentsIndex(props: Props) {
     const { appointments, filters, pageTitle } = props;
+    const [search, setSearch] = useState(filters.search || '');
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -110,13 +112,28 @@ const getStatusLabel = (status: string) => {
     }
 };
 
+useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+        router.get(
+            '/radtech/appointments',
+            { search },
+            {
+                preserveState: true,
+                replace: true,
+            }
+        );
+    }, 500); // ⏱ delay (ms)
+
+    return () => clearTimeout(delayDebounce);
+}, [search]);
+
     const startXray = (appointmentId: number) => {
         router.visit(`/radtech/xrays/${appointmentId}`);
     };
 
     return (
         <>
-            <Head title={`${pageTitle} - RadTech`} />
+            <Head title="Rad Tech Queue"/>
 
             <div className="p-6">
                 {/* Header */}
@@ -140,24 +157,13 @@ const getStatusLabel = (status: string) => {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
                                     type="text"
-                                    name="search"
-                                    defaultValue={filters.search}
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
                                     placeholder="Search patient name..."
                                     className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                         </div>
-                        <select name="status" defaultValue={filters.status} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
-                            <option value="pending">Pending Only</option>
-                            <option value="accepted">Accepted</option>
-                            <option value="arrived">Arrived</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                        <button type="submit" className="px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-900 dark:hover:bg-gray-600 transition-colors flex items-center gap-2">
-                            <Filter className="w-4 h-4" />
-                            Filter
-                        </button>
                     </form>
                 </div>
 
@@ -221,26 +227,33 @@ const getStatusLabel = (status: string) => {
                                                 </span>
                                             </td>
                                             {/* ACTION */}
-                        <td className="px-6 py-4 text-right flex justify-end gap-2">
+                        <td className="px-6 py-4">
+    <div className="flex justify-end items-center gap-2">
 
-                            {appointment.status === 'for_xray' && !appointment.xrayReport && (
-                                <button
-                                    onClick={() => startXray(appointment.id)}
-                                    className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1 shadow"
-                                >
-                                    <Play className="w-3 h-3" />
-                                    Start
-                                </button>
-                            )}
+        {/* START BUTTON */}
+        {appointment.status === 'for_xray' && !appointment.xrayReport && (
+            <button
+                onClick={() => startXray(appointment.id)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg 
+                bg-green-100 text-green-700 hover:bg-green-200 transition-all duration-200"
+            >
+                <Play className="w-3 h-3" />
+                Start
+            </button>
+        )}
 
-                            <Link
-                                href={`/appointments/${appointment.id}`}
-                                className="p-2 rounded-lg border hover:bg-gray-100 dark:hover:bg-gray-700"
-                            >
-                                <Eye className="w-4 h-4" />
-                            </Link>
+        {/* VIEW BUTTON */}
+        <Link
+            href={`/appointments/${appointment.id}`}
+            className="inline-flex items-center justify-center w-9 h-9 rounded-lg 
+            bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 
+            transition-all duration-200"
+        >
+            <Eye className="w-4 h-4" />
+        </Link>
 
-                        </td>
+    </div>
+</td>
                                         </tr>
                                     ))
                                 ) : (

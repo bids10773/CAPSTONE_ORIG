@@ -19,6 +19,7 @@ class LaboratoryController extends Controller
             ->where('status', 'for_diagnostics') 
             ->orderBy('updated_at', 'desc');
 
+            
         // ✅ SEARCH LOGIC (Moved up so it actually runs)
         if ($request->search) {
             $query->whereHas('user', function($q) use ($request) {
@@ -36,7 +37,7 @@ class LaboratoryController extends Controller
 
     public function create(Appointment $appointment): Response
     {
-        $appointment->load('user', 'company'); // patientProfile changed to company based on index
+        $appointment->load('user', 'company' ,'patientProfile'); // patientProfile changed to company based on index
         
         return Inertia::render('medtech/lab-results-form', [
             'appointment' => $appointment,

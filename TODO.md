@@ -2,8 +2,9 @@
 
 ## Steps to Complete:
 
-- [ ] **Step 1:** Remove Spatie package from composer.json and run `composer update`
-- [ ] **Step 2:** Delete Spatie files (config/permission.php, RoleSeeder.php, permission migration)
+- [x] **Step 1:** Remove Spatie package from composer.json and run `composer update`
+- [x] **Step 2:** Delete Spatie files (config/permission.php, RoleSeeder.php, permission migration)
+
 - [ ] **Step 3:** Update app/Models/User.php - remove HasRoles trait
 - [ ] **Step 4:** Update controllers (StaffController.php, CompanyController.php) - replace Spatie methods with native role field
 - [ ] **Step 5:** Update DatabaseSeeder.php - remove RoleSeeder call

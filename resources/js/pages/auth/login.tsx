@@ -23,20 +23,27 @@ type Props = {
 
 export default function Login({ status, canResetPassword, canRegister }: Props) {
     const [showVerifyModal, setShowVerifyModal] = useState(false);
-    const { flash } = usePage().props as any;
-    const { auth } = usePage().props as any;
+    const { auth , errors} = usePage().props as any;
+    const [formError, setFormError] = useState<string | null>(null);
+
+    useEffect(() => {
+    if (errors?.email) {
+        setFormError(errors.email);
+
+        // auto remove after 3 seconds
+        const timer = setTimeout(() => {
+            setFormError(null);
+        }, 3000);
+
+        return () => clearTimeout(timer);
+    }
+}, [errors]);
 
 useEffect(() => {
     if (auth?.user) {
         router.visit('/dashboard');
     }
 }, []);
-
-{flash?.error && (
-    <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-semibold text-center">
-        {flash.error}
-    </div>
-)}
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -107,7 +114,12 @@ useEffect(() => {
                 >
                     {({ processing, errors }) => (
                         <>
-                            <div className="grid gap-6">
+                        {formError && (
+    <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-semibold text-center animate-fade-in">
+        {formError}
+    </div>
+)}
+    <div className="grid gap-6">
                                 <div className="grid gap-2">
                                     <Label htmlFor="email">Email address</Label>
                                     <Input
@@ -119,8 +131,8 @@ useEffect(() => {
                                         tabIndex={1}
                                         autoComplete="email"
                                         placeholder="email@example.com"
+                                        className={errors.email ? 'border-red-500' : ''}
                                     />
-                                    <InputError message={errors.email} />
                                 </div>
 
                                 <div className="grid gap-2">
@@ -139,8 +151,8 @@ useEffect(() => {
                                         tabIndex={2}
                                         autoComplete="current-password"
                                         placeholder="Password"
+                                        className={errors.email ? 'border-red-500' : ''}
                                     />
-                                    <InputError message={errors.password} />
                                 </div>
 
                                 <div className="flex items-center space-x-3">

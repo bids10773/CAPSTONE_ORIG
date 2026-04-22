@@ -4,16 +4,13 @@ import {
     Filter, 
     Eye, 
     TestTube,
-    CheckCircle,
-    Clock,
-    AlertCircle,
     Play
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Medtech Queue', href: "/admin/companies" },
+    { title: 'Med Tech Queue', href: "/admin/companies" },
 ];
 
 
@@ -106,7 +103,7 @@ export default function MedTechAppointmentsIndex({ appointments, filters, pageTi
 
     return (
         <>
-            <Head title={`${pageTitle} - MedTech`} />
+             <Head title="MedTech Queue" />
 
             <div className="p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">

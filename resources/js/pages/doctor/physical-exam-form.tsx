@@ -114,22 +114,57 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
             <Card className="bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg border-0">
                 <CardContent className="flex justify-between items-center p-5">
                     <div className="flex items-center gap-4">
-                        <Button variant="ghost" onClick={() => router.visit('/doctor/dashboard')}>
+                        <Button 
+    variant="ghost" 
+    onClick={() => router.visit('/doctor/dashboard')}
+    className="hover:bg-white/20 hover:text-white transition"
+>
                             <ArrowLeft />
                         </Button>
                         <div>
-                            <h1 className="text-xl font-bold">Physical Examination</h1>
-                            <div className="text-sm opacity-90 grid grid-cols-2 gap-x-6 gap-y-1">
-                                <span><b>Patient:</b> {appointment.user.first_name} {appointment.user.last_name}</span>
-                                <span><b>Gender:</b> {appointment?.patient_profile?.sex || 'N/A'}</span>
-                                <span><b>Age:</b> {getAge(appointment?.patient_profile?.birthdate)}</span>
-                                <span><b>Civil Status:</b> {appointment?.patient_profile?.civil_status || 'N/A'}</span>
-                            </div>
-                        </div>
+    <h1 className="text-xl font-bold mb-2">Physical Examination</h1>
+
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-white/10 p-3 rounded-xl">
+        
+        <div>
+            <p className="text-white/70 text-xs">Patient</p>
+            <p className="font-semibold">
+                {appointment.user.first_name} {appointment.user.last_name}
+            </p>
+        </div>
+
+        <div>
+            <p className="text-white/70 text-xs">Gender</p>
+            <p className="font-semibold">
+                {appointment?.patient_profile?.sex || 'N/A'}
+            </p>
+        </div>
+
+        <div>
+            <p className="text-white/70 text-xs">Age</p>
+            <p className="font-semibold">
+                {getAge(appointment?.patient_profile?.birthdate)}
+            </p>
+        </div>
+
+        <div>
+            <p className="text-white/70 text-xs">Civil Status</p>
+            <p className="font-semibold">
+                {appointment?.patient_profile?.civil_status || 'N/A'}
+            </p>
+        </div>
+
+    </div>
+</div>
                     </div>
-                    <Button onClick={onSubmit} disabled={processing} className="bg-white text-blue-600">
-                        <Save className="mr-2 h-4 w-4"/> Save
-                    </Button>
+                    <Button
+    onClick={onSubmit}
+    disabled={processing}
+    className="bg-white text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+>
+    <Save className="mr-2 h-4 w-4"/> 
+    {processing ? 'Saving...' : 'Save'}
+</Button>
                 </CardContent>
             </Card>
 
