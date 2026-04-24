@@ -118,7 +118,6 @@ export default function AppointmentsIndex() {
                                 >
                                     <option value="">All Statuses</option>
                                     <option value="pending">Pending</option>
-                                    <option value="arrived">Arrived</option>
                                     <option value="completed">Completed</option>
                                     <option value="cancelled">Cancelled</option>
                                 </select>
@@ -134,7 +133,6 @@ export default function AppointmentsIndex() {
                                     <option value="">All Booking Types</option>
                                     <option value="individual">Individual</option>
                                     <option value="company_referral">Company Referral</option>
-                                    <option value="company_bulk">Bulk Booking</option>
                                 </select>
                             </div>
                         </div>

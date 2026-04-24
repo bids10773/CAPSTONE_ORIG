@@ -204,6 +204,14 @@ const filteredAppointmentTypes = Object.entries(appointmentTypes).filter(
     }
   };
 
+  const add30Minutes = (time: string) => {
+  const [h, m] = time.split(':').map(Number);
+  const date = new Date();
+  date.setHours(h, m + 30);
+
+  return date.toTimeString().slice(0,5);
+};
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -262,7 +270,7 @@ console.log(doctorAvailability);
           </div>
         </div>
 
-        <div className="max-w-3xl">
+        <div className="w-full">
           <form onSubmit={handleSubmit} className="space-y-6">
 
             {/* Appointment Type */}
@@ -434,6 +442,8 @@ console.log(doctorAvailability);
       return true;
     }
 
+    
+
     const [hour, minute] = time.split(':').map(Number);
     const timeDate = new Date();
     timeDate.setHours(hour, minute, 0, 0);
@@ -445,22 +455,29 @@ console.log(doctorAvailability);
 
     return (
       <button
-        key={time}
-        type="button"
-        onClick={() =>
-          setFormData((prev) => ({ ...prev, start_time: time }))
-        }
-        className={`
-          px-3 py-2 rounded-lg text-sm font-medium transition border
-          ${
-            isSelected
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white dark:bg-neutral-800 text-gray-800 dark:text-gray-200 border-gray-300 hover:border-blue-500 hover:text-blue-600'
-          }
-        `}
-      >
-        {formatTime(time)}
-      </button>
+  key={time}
+  type="button"
+  onClick={() =>
+    setFormData((prev) => ({ ...prev, start_time: time }))
+  }
+  className={`
+    flex flex-col items-center justify-center
+    px-3 py-3 rounded-xl text-sm font-medium transition border
+    min-h-[70px]
+    ${
+      isSelected
+        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+        : 'bg-white dark:bg-neutral-800 text-gray-800 dark:text-gray-200 border-gray-300 hover:border-blue-500 hover:text-blue-600'
+    }
+  `}
+>
+  <span className="text-base font-semibold">
+    {formatTime(time)}
+  </span>
+  <span className="text-xs opacity-70">
+    – {formatTime(add30Minutes(time))}
+  </span>
+</button>
     );
   })}
   </div>
