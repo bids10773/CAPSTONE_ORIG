@@ -1,5 +1,4 @@
 import { Form, Head, usePage, router } from '@inertiajs/react';
-import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';

@@ -78,17 +78,22 @@ $q->with('patientProfile');
      * Show the form for creating a new appointment.
      */
     public function create(Request $request): Response
-    {
-        $companies = Company::where('is_active', true)
-            ->orderBy('company_name')
-            ->get(['id', 'company_name']);
+{
+    $companies = Company::where('is_active', true)
+        ->orderBy('company_name')
+        ->get(['id', 'company_name']);
 
-        return Inertia::render('appointments/create', [
-            'companies' => $companies,
-            'serviceTypes' => Appointment::getServiceTypeOptions(),
-            'appointmentTypes' => Appointment::getTypeOptions(),
-        ]);
-    }
+    $user = $request->user()->load('patientProfile'); // ✅ LOAD RELATION
+
+    return Inertia::render('appointments/create', [
+        'companies' => $companies,
+        'serviceTypes' => Appointment::getServiceTypeOptions(),
+        'appointmentTypes' => Appointment::getTypeOptions(),
+        'auth' => [
+            'user' => $user // ✅ SEND USER WITH PROFILE
+        ]
+    ]);
+}
 
     /**
      * Store a newly created appointment.

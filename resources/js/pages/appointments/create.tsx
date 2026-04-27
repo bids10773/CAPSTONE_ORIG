@@ -13,6 +13,15 @@ interface Company {
 
 export default function CreateAppointment() {
 const { companies, serviceTypes, appointmentTypes, auth } = usePage().props as any;
+const profile = auth.user.patient_profile;
+
+const hasMedicalData = Boolean(
+  profile?.birthdate &&
+  profile?.sex &&
+  profile?.address &&
+  profile?.emergency_contact_name &&
+  profile?.emergency_contact_no
+);
 
 const [doctors, setDoctors] = useState<Doctor[]>([]);
 const [doctorAvailability, setDoctorAvailability] = useState<DoctorAvailabilityResponse | null>(null);
@@ -247,8 +256,9 @@ router.post('/appointments', formData, {
   };
 
   const showCompanyField = formData.type === 'company_referral' || formData.type === 'company_bulk';
-  const showPatientDetails = formData.type === 'individual' || formData.type === 'company_referral';
-console.log(doctorAvailability);
+  const showPatientDetails =
+  (formData.type === 'individual' || formData.type === 'company_referral') &&
+  !hasMedicalData;
   return (
     <>
       <Head title="Book Appointment" />
@@ -492,128 +502,138 @@ console.log(doctorAvailability);
 
             
 
-            {/* Patient Details & Medical History - for individual/company_referral */}
-            {showPatientDetails && (
-              <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
-                <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
-                  <Users className="w-5 h-5 text-blue-600" />
-                  Patient Medical Details *
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  
-                  {/* Birthdate & Age */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Birthdate *
-                    </label>
-                    <div className="flex gap-3 items-center">
-                      <input
-                        type="date"
-                        name="birthdate"
-                        value={formData.birthdate}
-                        onChange={handleChange}
-                        max={new Date().toISOString().split('T')[0]}
-                        className="flex-1 px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <div className="px-4 py-2 bg-gray-100 dark:bg-neutral-800 rounded-lg text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
-                        Age: {calculatedAge}
-                      </div>
-                    </div>
-                    {errors.birthdate && (
-                      <p className="mt-1 text-sm text-red-600">{errors.birthdate}</p>
-                    )}
-                  </div>
+            {/* Patient Details & Medical History */}
+{!hasMedicalData ? (
+  <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
+    <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+      <Users className="w-5 h-5 text-blue-600" />
+      Patient Medical Details *
+    </h2>
 
-                  {/* Sex */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Sex *
-                    </label>
-                    <select
-                      name="sex"
-                      value={formData.sex}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Select sex</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                    </select>
-                    {errors.sex && <p className="mt-1 text-sm text-red-600">{errors.sex}</p>}
-                  </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      
+      {/* Birthdate & Age */}
+      <div className="md:col-span-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Birthdate *
+        </label>
+        <div className="flex gap-3 items-center">
+          <input
+            type="date"
+            name="birthdate"
+            value={formData.birthdate}
+            onChange={handleChange}
+            max={new Date().toISOString().split('T')[0]}
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          <div className="px-4 py-2 bg-gray-100 dark:bg-neutral-800 rounded-lg text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
+            Age: {calculatedAge}
+          </div>
+        </div>
+        {errors.birthdate && (
+          <p className="mt-1 text-sm text-red-600">{errors.birthdate}</p>
+        )}
+      </div>
 
-                  {/* Civil Status */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Civil Status *
-                    </label>
-                    <select
-                      name="civil_status"
-                      value={formData.civil_status}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Select civil status</option>
-                      <option value="Single">Single</option>
-                      <option value="Married">Married</option>
-                      <option value="Divorced">Divorced</option>
-                      <option value="Widowed">Widowed</option>
-                    </select>
-                    {errors.civil_status && <p className="mt-1 text-sm text-red-600">{errors.civil_status}</p>}
-                  </div>
+      {/* Sex */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Sex *
+        </label>
+        <select
+          name="sex"
+          value={formData.sex}
+          onChange={handleChange}
+          className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="">Select sex</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+        {errors.sex && <p className="mt-1 text-sm text-red-600">{errors.sex}</p>}
+      </div>
 
-                  {/* Address */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Address *
-                    </label>
-                    <textarea
-                      name="address"
-                      value={formData.address}
-                      onChange={handleChange}
-                      rows={2}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Complete address"
-                    />
-                    {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address}</p>}
-                  </div>
+      {/* Civil Status */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Civil Status *
+        </label>
+        <select
+          name="civil_status"
+          value={formData.civil_status}
+          onChange={handleChange}
+          className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="">Select civil status</option>
+          <option value="Single">Single</option>
+          <option value="Married">Married</option>
+          <option value="Divorced">Divorced</option>
+          <option value="Widowed">Widowed</option>
+        </select>
+        {errors.civil_status && <p className="mt-1 text-sm text-red-600">{errors.civil_status}</p>}
+      </div>
 
-                  {/* Emergency Contact Name */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Emergency Contact Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="emergency_contact_name"
-                      value={formData.emergency_contact_name}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Full name"
-                    />
-                    {errors.emergency_contact_name && <p className="mt-1 text-sm text-red-600">{errors.emergency_contact_name}</p>}
-                  </div>
+      {/* Address */}
+      <div className="md:col-span-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Address *
+        </label>
+        <textarea
+          name="address"
+          value={formData.address}
+          onChange={handleChange}
+          rows={2}
+          className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Complete address"
+        />
+        {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address}</p>}
+      </div>
 
-                  {/* Emergency Contact Number */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Emergency Contact Number *
-                    </label>
-                    <input
-                      type="tel"
-                      name="emergency_contact_no"
-                      value={formData.emergency_contact_no}
-                      onChange={handleChange}
-                      maxLength={11}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="09XXXXXXXXX"
-                    />
-                    {errors.emergency_contact_no && <p className="mt-1 text-sm text-red-600">{errors.emergency_contact_no}</p>}
-                  </div>
+      {/* Emergency Contact Name */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Emergency Contact Name *
+        </label>
+        <input
+          type="text"
+          name="emergency_contact_name"
+          value={formData.emergency_contact_name}
+          onChange={handleChange}
+          className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Full name"
+        />
+        {errors.emergency_contact_name && <p className="mt-1 text-sm text-red-600">{errors.emergency_contact_name}</p>}
+      </div>
 
-                </div>
-              </div>
-            )}
+      {/* Emergency Contact Number */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Emergency Contact Number *
+        </label>
+        <input
+          type="tel"
+          name="emergency_contact_no"
+          value={formData.emergency_contact_no}
+          onChange={handleChange}
+          maxLength={11}
+          className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="09XXXXXXXXX"
+        />
+        {errors.emergency_contact_no && <p className="mt-1 text-sm text-red-600">{errors.emergency_contact_no}</p>}
+      </div>
+
+    </div>
+  </div>
+) : (
+  <div className="bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 rounded-xl p-4">
+    <p className="text-sm font-medium text-green-700 dark:text-green-300">
+      Patient information already exists.
+    </p>
+    <p className="text-xs text-green-600 dark:text-green-400">
+      You can proceed directly to booking your appointment.
+    </p>
+  </div>
+)}
 
             {/* Service Type */}
 <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 p-6">
