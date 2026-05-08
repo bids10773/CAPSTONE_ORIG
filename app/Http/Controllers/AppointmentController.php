@@ -78,17 +78,22 @@ $q->with('patientProfile');
      * Show the form for creating a new appointment.
      */
     public function create(Request $request): Response
-    {
-        $companies = Company::where('is_active', true)
-            ->orderBy('company_name')
-            ->get(['id', 'company_name']);
+{
+    $companies = Company::where('is_active', true)
+        ->orderBy('company_name')
+        ->get(['id', 'company_name']);
 
-        return Inertia::render('appointments/create', [
-            'companies' => $companies,
-            'serviceTypes' => Appointment::getServiceTypeOptions(),
-            'appointmentTypes' => Appointment::getTypeOptions(),
-        ]);
-    }
+    $user = $request->user()->load('patientProfile'); // ✅ LOAD RELATION
+
+    return Inertia::render('appointments/create', [
+        'companies' => $companies,
+        'serviceTypes' => Appointment::getServiceTypeOptions(),
+        'appointmentTypes' => Appointment::getTypeOptions(),
+        'auth' => [
+            'user' => $user // ✅ SEND USER WITH PROFILE
+        ]
+    ]);
+}
 
     /**
      * Store a newly created appointment.
@@ -115,17 +120,6 @@ $rules = [
             'ob_menstrual_history' => ['nullable', 'string', 'max:1000'],
         ];
 
-        // Conditional fields for individual/company_referral
-        if (in_array($request->type, ['individual', 'company_referral'])) {
-            $rules = array_merge($rules, [
-                'birthdate' => ['required', 'date', 'before:today'],
-                'sex' => ['required', 'in:Male,Female'],
-                'civil_status' => ['required', 'string', 'max:50'],
-                'address' => ['required', 'string', 'max:500'],
-                'emergency_contact_name' => ['required', 'string', 'max:255'],
-                'emergency_contact_no' => ['required', 'string', 'max:11'],
-            ]);
-        }
 
         $validator = Validator::make($request->all(), $rules);
         
@@ -194,22 +188,6 @@ $rules = [
             'referral_code' => $data['referral_code'] ?? null,
             'notes' => $data['notes'] ?? null,
         ]);
-
-        // Create or update patient profile for individual/referral
-        if (in_array($data['type'], ['individual', 'company_referral'])) {
-            $user->patientProfile()->updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'birthdate' => $data['birthdate'],
-                    'sex' => $data['sex'],
-                    'contact_no' => $user->contact, // Use user contact or override
-                    'civil_status' => $data['civil_status'],
-                    'address' => $data['address'],
-                    'emergency_contact_name' => $data['emergency_contact_name'],
-                    'emergency_contact_no' => $data['emergency_contact_no'],
-                ]
-            );
-        }
         
         return redirect()->route('appointments.index')
     ->with('success', 
@@ -225,7 +203,13 @@ $rules = [
      */
     public function show(Appointment $appointment): Response
     {
-        $appointment->load(['user', 'company', 'physicalExam', 'labResult', 'xrayReport']);
+        $appointment->load([
+    'user.patientProfile',
+    'company',
+    'physicalExam',
+    'labResult',
+    'xrayReport'
+]);
         
         return Inertia::render('appointments/show', [
             'appointment' => $appointment,
@@ -582,17 +566,6 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
             'notes' => ['nullable', 'string', 'max:500'],
         ];
 
-        // Conditional fields for individual/company_referral
-        if (in_array($request->type, ['individual', 'company_referral'])) {
-            $rules = array_merge($rules, [
-                'birthdate' => ['required', 'date', 'before:today'],
-                'sex' => ['required', 'in:Male,Female'],
-                'civil_status' => ['required', 'string', 'max:50'],
-                'address' => ['required', 'string', 'max:500'],
-                'emergency_contact_name' => ['required', 'string', 'max:255'],
-                'emergency_contact_no' => ['required', 'string', 'max:11'],
-            ]);
-        }
 
         $validator = Validator::make($request->all(), $rules);
         
@@ -613,22 +586,6 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
             'notes' => $data['notes'] ?? null,
         ]);
 
-        // Create or update patient profile for individual/referral
-        if (in_array($data['type'], ['individual', 'company_referral'])) {
-            $patient = User::find($data['patient_id']);
-            $patient->patientProfile()->updateOrCreate(
-                ['user_id' => $data['patient_id']],
-                [
-                    'birthdate' => $data['birthdate'],
-                    'sex' => $data['sex'],
-                    'contact_no' => $patient->contact ?? '',
-                    'civil_status' => $data['civil_status'],
-                    'address' => $data['address'],
-                    'emergency_contact_name' => $data['emergency_contact_name'],
-                    'emergency_contact_no' => $data['emergency_contact_no'],
-                ]
-            );
-        }
         
         return redirect()->route('admin.appointments.index')
             ->with('success', 'Appointment created successfully!');

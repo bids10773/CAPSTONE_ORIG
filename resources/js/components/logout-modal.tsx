@@ -4,15 +4,46 @@ import { Button } from '@/components/ui/button';
 import { useLogoutModal } from '@/contexts/logout-modal-context';
 import { router } from '@inertiajs/react';
 import { logout } from '@/routes';
+import { useEffect, useState } from 'react';
 
 export default function LogoutModal() {
     const { isOpen, closeModal } = useLogoutModal();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-    const handleConfirm = () => {
-        router.post(logout());
-        closeModal();
+
+    useEffect(() => {
+    if (isOpen) {
+        document.body.style.overflow = 'hidden';
+    } else {
+        document.body.style.overflow = '';
+    }
+
+    return () => {
+        document.body.style.overflow = '';
     };
+}, [isOpen]);
 
+   const handleConfirm = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+
+    router.post(logout().url, {}, {
+        preserveScroll: false,
+        preserveState: false,
+
+        onSuccess: () => {
+            closeModal();
+        },
+
+        onFinish: () => {
+            setIsLoggingOut(false);
+        },
+    });
+};
     return (
         <AnimatePresence>
             {isOpen && (

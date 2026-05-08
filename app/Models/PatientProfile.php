@@ -16,16 +16,11 @@ class PatientProfile extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'user_id',
-        'birthdate',
-        'sex',
-        'contact_no',
-        'civil_status',
-        'address',
-        'emergency_contact_name',
-        'emergency_contact_no',
-    ];
-
+    'user_id',
+    'birthdate',
+    'sex',
+    'civil_status',
+];
     /**
      * The attributes that should be cast.
      *

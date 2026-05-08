@@ -8,8 +8,9 @@ export default function AuthLayout({
     ...props
 }: {
     children: React.ReactNode;
-    title: string;
-    description: string;
+    title?: string;
+    description?: string;
+    variant?: 'login' | 'register';
 }) {
     return (
         <AuthLayoutTemplate title={title} description={description} {...props}>

@@ -11,6 +11,18 @@
     import AppLayout from '@/layouts/app-layout';
     import type { BreadcrumbItem } from '@/types';
 
+    import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from 'recharts';
+
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Admin Dashboard',
@@ -226,80 +238,51 @@
                     </motion.div>
 
                 {/* MONTHLY TREND WITH LEVEL 3 ML PREDICTIONS */}
-    <motion.div variants={card} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-        <div className="flex justify-between items-center mb-6">
-            <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Predictive Resource Analytics
-                </h3>
-                <p className="text-xs text-gray-500">Holt-Winters Seasonal Forecast (Confidence Interval: ±1 Std Dev)</p>
-            </div>
-            <div className="flex gap-4 text-[10px] font-medium">
-                <div className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500 rounded-full"></span> Actual</div>
-                <div className="flex items-center gap-1"><span className="w-2 h-2 bg-purple-400 border border-dashed border-purple-600 rounded-full"></span> Forecast</div>
-            </div>
-        </div>
+   <motion.div
+  variants={card}
+  className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm"
+>
+  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+    Predictive Monthly Trends
+  </h3>
 
-        <div className="flex items-end gap-3 h-56 pt-10"> {/* Increased height for labels */}
-            {(monthlyTrends || []).map((trend: any, index: number) => {
-                const counts = monthlyTrends.map((t: any) => t.upper_bound || t.count);
-                const maxCount = Math.max(...counts, 1);
-                
-                const heightPercent = (trend.count / maxCount) * 100;
-                const upperPercent = trend.is_predicted ? (trend.upper_bound / maxCount) * 100 : 0;
-                const isPredicted = trend.is_predicted;
+  <ResponsiveContainer width="100%" height={300}>
+    <LineChart data={monthlyTrends}>
+      
+      <CartesianGrid strokeDasharray="3 3" />
 
-                return (
-                    <div key={index} className="flex-1 flex flex-col items-center gap-2 group relative h-full justify-end">
-                        
-                        {/* Level 3: Confidence Interval (The Ghost Bar) */}
-                        {isPredicted && (
-                            <motion.div 
-                                className="absolute bottom-6 w-full bg-purple-200/20 border-x border-t border-dashed border-purple-300/40 rounded-t-md"
-                                initial={{ height: 0 }}
-                                animate={{ height: `calc(${upperPercent}% - 24px)` }} // Subtract label space
-                                style={{ zIndex: 0 }}
-                            />
-                        )}
+      <XAxis dataKey="month" />
+      <YAxis />
 
-                        {/* Prediction Stats Tooltip */}
-                        <div className="absolute -top-14 bg-gray-900 text-white text-[10px] p-2 rounded opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none min-w-[120px] shadow-xl">
-                            <p className="font-bold border-b border-gray-700 mb-1">{trend.month}</p>
-                            <p className={isPredicted ? 'text-purple-300' : 'text-blue-300'}>
-  {isPredicted ? 'Predicted' : 'Actual'}: {trend.count}
-</p>
-                            {isPredicted && (
-    <>
-        <p className="text-purple-300">Max Cap: {trend.upper_bound}</p>
-        <p className="text-red-300">Min Cap: {trend.lower_bound}</p> {/* ✅ ADD THIS */}
-        <p className="text-blue-300">Confidence: {trend.confidence}%</p>
-    </>
-)}
-                        </div>
+      <Tooltip />
 
-                        {/* Main Bar */}
-                        <motion.div
-                            className={`w-full rounded-t-md relative z-10 transition-all duration-500 ${
-                                isPredicted 
-                                ? 'bg-gradient-to-t from-purple-500/80 to-purple-400/60 border-t-2 border-dashed border-purple-300 shadow-lg shadow-purple-500/20' 
-                                : 'bg-blue-600 shadow-sm'
-                            }`}
-                            initial={{ height: 0 }}
-                            animate={{ height: `${heightPercent}%` }}
-                            whileHover={{ scaleX: 1.05 }}
-                        />
-                        
-                        <div className="flex flex-col items-center h-6">
-                            <span className={`text-[9px] uppercase tracking-tighter ${isPredicted ? 'text-purple-500 font-bold' : 'text-gray-400'}`}>
-                                {trend.month?.split(' ')[0]}
-                            </span>
-                            {isPredicted && <div className="w-1 h-1 bg-purple-500 rounded-full animate-pulse"></div>}
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-    </motion.div>
+      {/* ACTUAL */}
+      <Line
+        type="monotone"
+        dataKey="count"
+        stroke="#16a34a"
+        strokeWidth={3}
+      />
+
+      {/* UPPER */}
+      <Line
+        type="monotone"
+        dataKey="upper_bound"
+        stroke="#a855f7"
+        strokeDasharray="5 5"
+      />
+
+      {/* LOWER */}
+      <Line
+        type="monotone"
+        dataKey="lower_bound"
+        stroke="#ef4444"
+        strokeDasharray="5 5"
+      />
+
+    </LineChart>
+  </ResponsiveContainer>
+</motion.div>
 
                     {/* TODAY */}
                     <motion.div variants={card} className="bg-white border border-blue-300 rounded-xl shadow-sm">

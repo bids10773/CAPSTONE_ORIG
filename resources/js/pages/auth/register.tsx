@@ -84,146 +84,215 @@ return (
 
         <AuthLayout
             title="Create an account"
-            description="Join Living Myth Industrial Clinic today"
+            variant="register"   // ← add this
         >
             <Head title="Register" />
 
             <Form
-                {...store.form()}
-                resetOnSuccess={['password', 'password_confirmation']}
-                className="flex flex-col gap-5"
-            >
-                {({ processing, errors }) => (
-                    <div className="space-y-5">
+    {...store.form()}
+    resetOnSuccess={['password', 'password_confirmation']}
+    className="flex flex-col gap-0 w-full"
+>
+    {({ processing, errors }) => (
+        <div className="space-y-3">
 
-                        {/* NAME */}
-                        <div className="grid grid-cols-2 gap-4">
-
-                            <div className="space-y-2">
-                                <Label htmlFor="first_name" className="text-sm font-semibold text-white">
-                                    First Name
-                                </Label>
-                                <div className="relative">
-                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"/>
-                                    <Input id="first_name" name="first_name" required autoFocus placeholder="First name" className="pl-10 h-11"/>
-                                </div>
-                                <InputError message={errors.first_name}/>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="last_name" className="text-sm font-semibold text-white">
-                                    Last Name
-                                </Label>
-                                <div className="relative">
-                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"/>
-                                    <Input id="last_name" name="last_name" required placeholder="Last name" className="pl-10 h-11"/>
-                                </div>
-                                <InputError message={errors.last_name}/>
-                            </div>
-
-                        </div>
-
-                        {/* MIDDLE NAME */}
-                        <div className="space-y-2">
-                            <Label htmlFor="middle_name" className="text-sm font-semibold text-white">
-                                Middle Name <span className="text-gray-300">(Optional)</span>
-                            </Label>
-                            <div className="relative">
-                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"/>
-                                <Input id="middle_name" name="middle_name" placeholder="Middle name" className="pl-10 h-11"/>
-                            </div>
-                            <InputError message={errors.middle_name}/>
-                        </div>
-
-                        {/* EMAIL */}
-                        <div className="space-y-2">
-                            <Label htmlFor="email" className="text-sm font-semibold text-white">
-                                Email Address
-                            </Label>
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"/>
-                                <Input id="email" type="email" name="email" required placeholder="email@example.com" className="pl-10 h-11"/>
-                            </div>
-                            <InputError message={errors.email}/>
-                        </div>
-
-                        {/* CONTACT */}
-                        <div className="space-y-2">
-                            <Label htmlFor="contact" className="text-sm font-semibold text-white">
-                                Contact Number
-                            </Label>
-                            <div className="relative">
-                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"/>
-                                <Input id="contact" type="tel" name="contact" required maxLength={11} placeholder="09XXXXXXXXX" className="pl-10 h-11"/>
-                            </div>
-                            <InputError message={errors.contact}/>
-                        </div>
-
-                        {/* PASSWORD */}
-                        <div className="grid grid-cols-2 gap-4">
-
-                            <div className="space-y-2">
-                                <Label htmlFor="password" className="text-sm font-semibold text-white">
-                                    Password
-                                </Label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"/>
-                                    <Input id="password" name="password" type={showPassword ? "text":"password"} required className="pl-10 pr-10 h-11"/>
-                                    <button type="button" onClick={()=>setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                                        {showPassword ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
-                                    </button>
-                                </div>
-                                <InputError message={errors.password}/>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="password_confirmation" className="text-sm font-semibold text-white">
-                                    Confirm Password
-                                </Label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"/>
-                                    <Input id="password_confirmation" name="password_confirmation" type={showPassword ? "text":"password"} required className="pl-10 h-11"/>
-                                </div>
-                                <InputError message={errors.password_confirmation}/>
-                            </div>
-
-                        </div>
-
-                        {/* TERMS */}
-                        <div className="flex items-start space-x-3 pt-2">
-                            <Checkbox
-    id="terms"
-    name="terms"
-    checked={acceptedTerms}
-    onCheckedChange={(value) => setAcceptedTerms(!!value)}
-    required
-/>
-                            <Label htmlFor="terms" className="text-sm text-white leading-tight">
-                                I agree to the{" "}
-                                <button type="button" onClick={()=>setShowTermsModal(true)} className="text-black font-semibold hover:underline">
-                                    Terms & Privacy Policy
-                                </button>
-                            </Label>
-                        </div>
-
-                        {/* BUTTON */}
-                        <motion.div whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }}>
-                            <Button type="submit" className="w-full h-12 bg-[#246AFE] hover:bg-blue-700 text-white font-bold text-base rounded-xl">
-                                {processing ? <Spinner className="text-white"/> : "Create Account"}
-                            </Button>
-                        </motion.div>
-
-                        {/* LOGIN */}
-                        <div className="text-center text-sm text-white pt-2">
-                            Already have an account?{" "}
-                            <TextLink href={login()} className="text-black font-bold hover:underline">
-                                Sign in
-                            </TextLink>
-                        </div>
-
+            {/* ROW 1 — First + Last name */}
+            <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                    <Label htmlFor="first_name" className="text-xs font-semibold text-gray-700">First Name</Label>
+                    <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
+                        <Input id="first_name" name="first_name" required autoFocus placeholder="First name" className="pl-9 h-9 text-sm"/>
                     </div>
-                )}
-            </Form>
+                    <InputError message={errors.first_name}/>
+                </div>
+                <div className="space-y-1">
+                    <Label htmlFor="last_name" className="text-xs font-semibold text-gray-700">Last Name</Label>
+                    <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
+                        <Input id="last_name" name="last_name" required placeholder="Last name" className="pl-9 h-9 text-sm"/>
+                    </div>
+                    <InputError message={errors.last_name}/>
+                </div>
+            </div>
+
+            {/* ROW 2 — Middle name + Contact */}
+            <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                    <Label htmlFor="middle_name" className="text-xs font-semibold text-gray-700">
+                        Middle Name <span className="text-gray-400 font-normal">(Optional)</span>
+                    </Label>
+                    <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
+                        <Input id="middle_name" name="middle_name" placeholder="Middle name" className="pl-9 h-9 text-sm"/>
+                    </div>
+                    <InputError message={errors.middle_name}/>
+                </div>
+                <div className="space-y-1">
+                    <Label htmlFor="contact" className="text-xs font-semibold text-gray-700">Contact Number</Label>
+                    <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
+                        <Input id="contact" type="tel" name="contact" required maxLength={11} placeholder="09XXXXXXXXX" className="pl-9 h-9 text-sm"/>
+                    </div>
+                    <InputError message={errors.contact}/>
+                </div>
+            </div>
+
+            {/* ROW 3 — Birthdate + Sex + Civil Status */}
+<div className="grid grid-cols-3 gap-3">
+
+    {/* Birthdate */}
+    <div className="space-y-1">
+        <Label
+            htmlFor="birthdate"
+            className="text-xs font-semibold text-gray-700"
+        >
+            Birthdate
+        </Label>
+
+        <Input
+            id="birthdate"
+            type="date"
+            name="birthdate"
+            required
+            max={new Date().toISOString().split('T')[0]}
+            className="h-9 text-sm"
+        />
+
+        <InputError message={errors.birthdate}/>
+    </div>
+
+    {/* Sex */}
+    <div className="space-y-1">
+        <Label
+            htmlFor="sex"
+            className="text-xs font-semibold text-gray-700"
+        >
+            Sex
+        </Label>
+
+        <select
+            id="sex"
+            name="sex"
+            required
+            className="
+                w-full h-9 px-3 text-sm
+                border border-input
+                rounded-md
+                bg-background
+                focus:ring-2 focus:ring-[#0097A7]
+                outline-none
+            "
+        >
+            <option value="">Select</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+        </select>
+
+        <InputError message={errors.sex}/>
+    </div>
+
+    {/* Civil Status */}
+    <div className="space-y-1">
+        <Label
+            htmlFor="civil_status"
+            className="text-xs font-semibold text-gray-700"
+        >
+            Civil Status
+        </Label>
+
+        <select
+            id="civil_status"
+            name="civil_status"
+            required
+            className="
+                w-full h-9 px-3 text-sm
+                border border-input
+                rounded-md
+                bg-background
+                focus:ring-2 focus:ring-[#0097A7]
+                outline-none
+            "
+        >
+            <option value="">Select</option>
+            <option value="Single">Single</option>
+            <option value="Married">Married</option>
+            <option value="Divorced">Divorced</option>
+            <option value="Widowed">Widowed</option>
+        </select>
+
+        <InputError message={errors.civil_status}/>
+    </div>
+</div>
+
+            {/* ROW 3 — Email full width */}
+            <div className="space-y-1">
+                <Label htmlFor="email" className="text-xs font-semibold text-gray-700">Email Address</Label>
+                <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
+                    <Input id="email" type="email" name="email" required placeholder="email@example.com" className="pl-9 h-9 text-sm"/>
+                </div>
+                <InputError message={errors.email}/>
+            </div>
+
+            {/* ROW 4 — Password + Confirm Password */}
+            <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                    <Label htmlFor="password" className="text-xs font-semibold text-gray-700">Password</Label>
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
+                        <Input id="password" name="password" type={showPassword ? "text" : "password"} required className="pl-9 pr-9 h-9 text-sm"/>
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                            {showPassword ? <EyeOff className="h-3.5 w-3.5"/> : <Eye className="h-3.5 w-3.5"/>}
+                        </button>
+                    </div>
+                    <InputError message={errors.password}/>
+                </div>
+                <div className="space-y-1">
+                    <Label htmlFor="password_confirmation" className="text-xs font-semibold text-gray-700">Confirm Password</Label>
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
+                        <Input id="password_confirmation" name="password_confirmation" type={showPassword ? "text" : "password"} required className="pl-9 h-9 text-sm"/>
+                    </div>
+                    <InputError message={errors.password_confirmation}/>
+                </div>
+            </div>
+
+            {/* TERMS */}
+            <div className="flex items-center space-x-2 pt-1">
+                <Checkbox
+                    id="terms"
+                    name="terms"
+                    checked={acceptedTerms}
+                    onCheckedChange={(value) => setAcceptedTerms(!!value)}
+                    required
+                />
+                <Label htmlFor="terms" className="text-xs text-gray-700 leading-tight">
+                    I agree to the{" "}
+                    <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#0097A7] font-semibold hover:underline">
+                        Terms & Privacy Policy
+                    </button>
+                </Label>
+            </div>
+
+            {/* SUBMIT */}
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button type="submit" className="w-full h-10 bg-[#2E7D32] hover:bg-[#6FC276] text-white font-bold text-sm rounded-xl">
+                    {processing ? <Spinner className="text-white"/> : "Create Account"}
+                </Button>
+            </motion.div>
+
+            {/* SIGN IN */}
+            <div className="text-center text-xs text-gray-600 pt-1">
+                Already have an account?{" "}
+                <TextLink href={login()} className="text-[#0097A7] font-bold hover:underline">
+                    Sign in
+                </TextLink>
+            </div>
+
+        </div>
+    )}
+</Form>
         </AuthLayout>
     </>
 );

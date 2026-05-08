@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-
 @import 'tw-animate-css';
 
 @source '../views';
@@ -10,8 +9,7 @@
 @theme {
     --font-sans:
         'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-        'Noto Color Emoji';
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
@@ -19,38 +17,28 @@
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
-
     --color-card: var(--card);
     --color-card-foreground: var(--card-foreground);
-
     --color-popover: var(--popover);
     --color-popover-foreground: var(--popover-foreground);
-
     --color-primary: var(--primary);
     --color-primary-foreground: var(--primary-foreground);
-
     --color-secondary: var(--secondary);
     --color-secondary-foreground: var(--secondary-foreground);
-
     --color-muted: var(--muted);
     --color-muted-foreground: var(--muted-foreground);
-
     --color-accent: var(--accent);
     --color-accent-foreground: var(--accent-foreground);
-
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
-
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
-
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);
     --color-chart-3: var(--chart-3);
     --color-chart-4: var(--chart-4);
     --color-chart-5: var(--chart-5);
-
     --color-sidebar: var(--sidebar);
     --color-sidebar-foreground: var(--sidebar-foreground);
     --color-sidebar-primary: var(--sidebar-primary);
@@ -62,15 +50,12 @@
 }
 
 :root {
-    /* Main Branding */
-    --background: oklch(0.98 0.005 240); /* Very faint blue tint */
-    --foreground: oklch(0.145 0 0);
-    
-    /* Medical Blue (#246AFE) - Primary Action Color */
-    --primary: oklch(0.58 0.23 258.8); 
+    --background: oklch(0.98 0.005 240);
+    --foreground: oklch(0.145 0 0);          /* dark text for light bg */
+
+    --primary: oklch(0.58 0.23 258.8);
     --primary-foreground: oklch(0.985 0 0);
 
-    /* Sidebar - Deep Clinical Navy (#0A192F) */
     --sidebar: oklch(0.18 0.04 256.4);
     --sidebar-foreground: oklch(0.985 0 0);
     --sidebar-primary: oklch(0.58 0.23 258.8);
@@ -79,7 +64,6 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(0.25 0.06 256.4 / 0.2);
 
-    /* Cards & Popovers */
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
@@ -88,18 +72,17 @@
     --secondary: oklch(0.96 0.01 240);
     --secondary-foreground: var(--primary);
     --muted: oklch(0.96 0.01 240);
-    --muted-foreground: oklch(0.556 0 0);
+    --muted-foreground: oklch(0.45 0 0);     /* darker muted so placeholders are visible */
     --accent: oklch(0.94 0.02 240);
     --accent-foreground: var(--primary);
 
     --destructive: oklch(0.577 0.245 27.325);
     --destructive-foreground: oklch(0.985 0 0);
-    
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: var(--primary);
 
-    --radius: 1rem; /* More rounded for a modern healthcare feel */
+    --border: oklch(0.88 0 0);
+    --input: oklch(0.96 0.005 240);          /* light gray input bg */
+    --ring: var(--primary);
+    --radius: 1rem;
 }
 
 .dark {
@@ -110,14 +93,54 @@
     --primary: oklch(0.65 0.2 258);
     --primary-foreground: oklch(0.205 0 0);
     --sidebar: oklch(0.1 0.03 256);
+    --muted-foreground: oklch(0.75 0 0);
+    --input: oklch(0.2 0.02 256);
+    --border: oklch(0.3 0.02 256);
 }
 
 @layer base {
-    * {
-        @apply border-border;
+    * { @apply border-border; }
+    body { @apply bg-background text-foreground; }
+}
+
+/* ─── Auth right panel: force dark text on white bg ─── */
+@layer components {
+    .auth-panel-right {
+        color: oklch(0.145 0 0) !important;
+    }
+    .auth-panel-right label,
+    .auth-panel-right input,
+    .auth-panel-right a,
+    .auth-panel-right p,
+    .auth-panel-right span {
+        color: oklch(0.145 0 0);
+    }
+    .auth-panel-right input::placeholder {
+        color: oklch(0.6 0 0);
+    }
+    .auth-panel-right .text-muted-foreground {
+        color: oklch(0.45 0 0) !important;
+    }
+    /* Input fields: visible bg + dark text */
+    .auth-panel-right input[type="email"],
+    .auth-panel-right input[type="password"],
+    .auth-panel-right input[type="text"] {
+        background-color: oklch(0.96 0.005 240);
+        color: oklch(0.145 0 0);
+        border-color: oklch(0.88 0 0);
     }
 
-    body {
-        @apply bg-background text-foreground;
+    /* ─── Checkbox fix ─── */
+    .auth-panel-right button[role="checkbox"] {
+        border: 2px solid oklch(0.5 0 0) !important;
+        background-color: oklch(0.96 0.005 240) !important;
+    }
+    .auth-panel-right button[role="checkbox"][data-state="checked"] {
+        background-color: #0097A7 !important;
+        border-color: #0097A7 !important;
+    }
+    .auth-panel-right button[role="checkbox"][data-state="checked"] svg {
+        color: white !important;
+        stroke: white !important;
     }
 }

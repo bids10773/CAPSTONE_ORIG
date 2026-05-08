@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
+use App\Models\PatientProfile;
 
 class CreateNewUser implements CreatesNewUsers
 {
@@ -21,14 +22,19 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
-        Validator::make($input, [
-            'first_name' => ['required', 'string', 'max:255'],
-            'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'contact' => ['required', 'string', 'max:11'],
-            'password' => $this->passwordRules(),
-        ])->validate();
+     Validator::make($input, [
+                'first_name' => ['required', 'string', 'max:255'],
+                'middle_name' => ['nullable', 'string', 'max:255'],
+                'last_name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+                'contact' => ['required', 'string', 'max:11'],
+
+                'birthdate' => ['required', 'date'],
+                'sex' => ['required', 'string'],
+                'civil_status' => ['required', 'string'],
+
+                'password' => $this->passwordRules(),
+            ])->validate();
 
         $user = User::create([
             'first_name' => $input['first_name'],
@@ -40,6 +46,13 @@ class CreateNewUser implements CreatesNewUsers
             'role' => 'patient',
             'is_active' => true,
         ]);
+
+        PatientProfile::create([
+    'user_id' => $user->id,
+    'birthdate' => $input['birthdate'],
+    'sex' => $input['sex'],
+    'civil_status' => $input['civil_status'],
+]);
 
         // Send email verification notification
         $user->sendEmailVerificationNotification();

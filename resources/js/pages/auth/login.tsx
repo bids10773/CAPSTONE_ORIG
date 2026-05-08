@@ -1,5 +1,5 @@
 import { Form, Head, usePage, router } from '@inertiajs/react';
-import InputError from '@/components/input-error';
+import { Eye, EyeOff } from 'lucide-react'; // add this
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,7 +10,6 @@ import AuthLayout from '@/layouts/auth-layout';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
-import PasswordInput from '@/components/ui/password-input';
 import { useState, useEffect } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,6 +24,7 @@ export default function Login({ status, canResetPassword, canRegister }: Props) 
     const [showVerifyModal, setShowVerifyModal] = useState(false);
     const { auth , errors} = usePage().props as any;
     const [formError, setFormError] = useState<string | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
     if (errors?.email) {
@@ -91,7 +91,7 @@ useEffect(() => {
 
                 <Button 
                     onClick={() => setShowVerifyModal(false)}
-                    className="w-full py-8 text-xl bg-[#246AFE] hover:bg-blue-700 text-white rounded-2xl font-bold transition-all shadow-xl active:scale-95"
+                    className="w-full py-8 text-xl bg-[#6FC276] hover:bg-blue-700 text-white rounded-2xl font-bold transition-all shadow-xl active:scale-95"
                 >
                     Okay, I'm ready
                 </Button>
@@ -104,6 +104,7 @@ useEffect(() => {
             <AuthLayout
                 title="Log in to your account"
                 description="Enter your email and password below to log in"
+                variant="login"
             >
                 <Head title="Log in" />
 
@@ -136,24 +137,35 @@ useEffect(() => {
                                 </div>
 
                                 <div className="grid gap-2">
-                                    <div className="flex items-center">
-                                        <Label htmlFor="password">Password</Label>
-                                        {canResetPassword && (
-                                            <TextLink href={request()} className="ml-auto text-sm" tabIndex={5}>
-                                                Forgot password?
-                                            </TextLink>
-                                        )}
-                                    </div>
-                                    <PasswordInput
-                                        id="password"
-                                        name="password"
-                                        required
-                                        tabIndex={2}
-                                        autoComplete="current-password"
-                                        placeholder="Password"
-                                        className={errors.email ? 'border-red-500' : ''}
-                                    />
-                                </div>
+    <div className="flex items-center">
+        <Label htmlFor="password">Password</Label>
+        {canResetPassword && (
+            <TextLink href={request()} className="ml-auto text-sm" tabIndex={5}>
+                Forgot password?
+            </TextLink>
+        )}
+    </div>
+    <div className="relative">
+        <Input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            required
+            tabIndex={2}
+            autoComplete="current-password"
+            placeholder="Password"
+            className={errors.email ? 'border-red-500 pr-10' : 'pr-10'}
+        />
+        <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            tabIndex={-1}
+        >
+            {showPassword ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
+        </button>
+    </div>
+</div>
 
                                 <div className="flex items-center space-x-3">
                                     <Checkbox id="remember" name="remember" tabIndex={3} />
@@ -162,7 +174,7 @@ useEffect(() => {
 
                                 <Button
                                     type="submit"
-                                    className="mt-4 w-full bg-[#246AFE] hover:bg-blue-700"
+                                    className="mt-4 w-full bg-[#2E7D32] hover:bg-[#6FC276]"
                                     tabIndex={4}
                                     disabled={processing}
                                     data-test="login-button"

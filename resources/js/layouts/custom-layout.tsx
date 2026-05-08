@@ -27,16 +27,13 @@ export default function ClinicDashboardLayout({ children, breadcrumbs = [] }: Ap
                 </header>
 
                 {/* MAIN CONTENT (FIXED SPACING HERE) */}
-                <motion.main 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4 }}
+                <main 
                     className="flex-1 lg:px-5"
                 >
                     <div className="mx-auto w-full max-w-7xl">
                         {children}
                     </div>
-                </motion.main>
+                </main>
 
             </SidebarInset>
         </SidebarProvider>
