@@ -160,6 +160,7 @@ use HasFactory, Notifiable, TwoFactorAuthenticatable;
             'medtech' => 'Medical Technologist',
             'radtech' => 'Radiologic Technologist',
             'company' => 'Company',
+            'receptionist' => 'Receptionist / Info Staff',
             default => 'Patient',
         };
     }
@@ -173,6 +174,7 @@ use HasFactory, Notifiable, TwoFactorAuthenticatable;
             'doctor' => 'Doctor',
             'medtech' => 'Medical Technologist',
             'radtech' => 'Radiologic Technologist',
+            'receptionist' => 'Receptionist / Info Staff',
         ];
     }
 

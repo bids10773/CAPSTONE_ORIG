@@ -24,6 +24,7 @@ class CustomLoginResponse implements LoginResponseContract
             'medtech' => redirect('/medtech/dashboard'),
             'radtech' => redirect('/radtech/dashboard'),
             'company' => redirect('/company/dashboard'),
+            'receptionist' => redirect('/receptionist/dashboard'), // ← was missing redirect()
             default => redirect('/dashboard'),
         };
     }

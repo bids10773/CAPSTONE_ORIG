@@ -16,12 +16,15 @@ use App\Http\Controllers\XrayController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
-use App\Http\Controllers\WalkInController;
+use App\Http\Controllers\ReceptionistDashboardController;
 
 
 
-Route::get('/dashboard', [PatientDashboardController::class, '__invoke'])->name('dashboard');
-Route::get('/appointment', [AppointmentController::class, 'create'])->name('appointment.create');
+Route::get('/dashboard', [PatientDashboardController::class, '__invoke'])
+    ->middleware(['patient.only'])
+    ->name('dashboard');
+    
+    Route::get('/appointment', [AppointmentController::class, 'create'])->name('appointment.create');
 
 // 2. SMART REDIRECTS
 Route::get('/', function () {
@@ -33,6 +36,7 @@ Route::get('/', function () {
             'medtech'  => redirect('/medtech/dashboard'),
             'radtech'  => redirect('/radtech/dashboard'),
             'company'  => redirect('/company/dashboard'),
+            'receptionist' => redirect('/receptionist/dashboard'),
             // Patients or anyone else goes to the unified dashboard
             default    => redirect('/dashboard'),
         };
@@ -44,6 +48,12 @@ Route::get('/', function () {
 
 
 
+Route::middleware(['auth', 'staff.verified', 'role:receptionist'])
+    ->prefix('receptionist')
+    ->name('receptionist.')
+    ->group(function () {
+        Route::get('/dashboard', [ReceptionistDashboardController::class, '__invoke'])->name('dashboard');
+    });
 
 Route::middleware(['auth', 'staff.verified'])->group(function () {
 

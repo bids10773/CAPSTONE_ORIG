@@ -26,6 +26,7 @@ export default function CreateStaff() {
         last_name: '',
         email: '',
         contact: '',
+        sex: '',
         role: 'doctor',
         license_no: '',
         specialization: '',
@@ -174,7 +175,7 @@ export default function CreateStaff() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="relative">
                                         <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Email Address</Label>
                                         <Mail className="absolute left-3 top-[38px] w-4 h-4 text-gray-400" />
@@ -187,6 +188,25 @@ export default function CreateStaff() {
                                         <input type="tel" name="contact" value={formData.contact} onChange={handleChange} className={`${inputStyle} pl-10`} pattern="[0-9]*" minLength={11}
             maxLength={11} placeholder="09123456789" required/>
                                     </div>
+                                    <div>
+    <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">
+        Sex
+    </Label>
+
+    <select
+        name="sex"
+        value={formData.sex}
+        onChange={handleChange}
+        className={selectStyle}
+        required
+    >
+        <option value="">Select Sex</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+    </select>
+
+    {errors.sex && <InputError message={errors.sex} />}
+</div>
                                 </div>
                             </div>
 

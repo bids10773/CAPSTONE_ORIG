@@ -18,13 +18,11 @@ createInertiaApp({
     setup({ el, App, props }) {
         const root = createRoot(el);
         root.render(
-            <StrictMode>
                 <LogoutModalProvider>
                     <App {...props} />
                     <LogoutModal />
                     <Toaster position="top-right" richColors />
                 </LogoutModalProvider>
-            </StrictMode>
         );
     },
 });

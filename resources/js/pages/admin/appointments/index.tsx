@@ -34,11 +34,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface PatientProfile {
   birthdate?: string;
   sex?: string;
-  contact_no?: string;
   civil_status?: string;
-  address?: string;
-  emergency_contact_name?: string;
-  emergency_contact_no?: string;
 }
 
 interface Appointment {
@@ -53,6 +49,7 @@ interface Appointment {
         first_name: string;
         last_name: string;
         email: string;
+        contact: string;
         patient_profile?: PatientProfile;
     };
     company: {
@@ -88,8 +85,8 @@ export default function AdminAppointmentsIndex() {
         const p = apt.user.patient_profile;
         if (!p?.birthdate) fields.push('Birthdate');
         if (!p?.sex) fields.push('Sex');
-        if (!p?.contact_no) fields.push('Contact Number');
-        if (!p?.address) fields.push('Address');
+        if (!apt.user.contact) fields.push('Contact Number');
+        
         return fields;
     };
 
@@ -339,11 +336,7 @@ const getStatusLabel = (status: string) => {
                                     </div>
                                     <div>
                                         <p className="text-[10px] text-gray-500 flex items-center gap-1"><Phone className="w-3 h-3"/> Contact</p>
-                                        <p className="font-semibold">{selectedAppointment.user.patient_profile?.contact_no || <span className="text-red-500">Missing</span>}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3"/> Address</p>
-                                        <p className="font-semibold text-sm">{selectedAppointment.user.patient_profile?.address || <span className="text-red-500">Missing</span>}</p>
+                                        <p className="font-semibold">{selectedAppointment.user.contact || <span className="text-red-500">Missing</span>}</p>
                                     </div>
                                 </div>
 
