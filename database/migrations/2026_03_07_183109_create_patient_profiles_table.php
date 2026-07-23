@@ -25,12 +25,6 @@ return new class extends Migration
 
     $table->string('civil_status');
 
-    $table->text('address');
-
-    $table->string('emergency_contact_name');
-
-    $table->string('emergency_contact_no');
-
     $table->timestamps();
 });
     }

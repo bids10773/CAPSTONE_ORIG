@@ -1,455 +1,133 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+    Activity,
+    ArrowRight,
+    Bell,
+    CalendarDays,
+    CheckCircle2,
+    ChevronDown,
+    ClipboardCheck,
+    Clock3,
+    FileText,
+    HeartPulse,
+    LogOut,
+    MapPin,
+    Menu,
+    Plus,
+    Settings,
+    ShieldCheck,
+    Stethoscope,
+    UserRound,
+    X,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 import logo from '/resources/images/full_logo.png';
 import { useLogoutModal } from '@/contexts/logout-modal-context';
-import { Calendar, Settings, LogOut, Shield, CheckCircle, Clock } from 'lucide-react';
 
-function UserMenu() {
-    const { auth } = usePage().props as any;
-    const [dropdownOpen, setDropdownOpen] = useState(false);
+type User = { first_name?: string; last_name?: string; name?: string; email?: string };
+type Appointment = {
+    id: number;
+    appointment_date: string;
+    start_time?: string | null;
+    type?: string;
+    status: string;
+    service_types?: string[] | null;
+    company?: { name?: string } | null;
+};
+
+type PageProps = {
+    auth: { user: User };
+    appointments?: Appointment[];
+    upcomingAppointments?: Appointment[];
+    stats?: { total?: number; completed?: number; pending?: number };
+};
+
+const statusStyles: Record<string, string> = {
+    pending: 'border-amber-200 bg-amber-50 text-amber-700',
+    accepted: 'border-blue-200 bg-blue-50 text-blue-700',
+    arrived: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+    completed: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    cancelled: 'border-rose-200 bg-rose-50 text-rose-700',
+};
+
+const statCards: { icon: LucideIcon; value: (stats: PageProps['stats']) => number; label: string; hint: string }[] = [
+    { icon: CalendarDays, value: (stats) => stats?.total ?? 0, label: 'Total appointments', hint: 'Your complete care history' },
+    { icon: Clock3, value: (stats) => stats?.pending ?? 0, label: 'In progress', hint: 'Pending or upcoming visits' },
+    { icon: CheckCircle2, value: (stats) => stats?.completed ?? 0, label: 'Completed visits', hint: 'Care milestones achieved' },
+];
+
+const serviceCards: { icon: LucideIcon; title: string; text: string }[] = [
+    { icon: Stethoscope, title: 'Occupational exams', text: 'PEME, APE and fit-to-work care' },
+    { icon: Activity, title: 'Diagnostics', text: 'Laboratory, X-ray and ECG' },
+    { icon: HeartPulse, title: 'Wellness care', text: 'Vaccination and preventive health' },
+    { icon: MapPin, title: 'Corporate programs', text: 'On-site care for your team' },
+];
+
+function formatDate(date: string) {
+    const value = new Date(date);
+    return Number.isNaN(value.getTime()) ? { day: '—', month: '', long: 'Date to be confirmed', time: '' } : {
+        day: value.toLocaleDateString('en-US', { day: '2-digit' }),
+        month: value.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+        long: value.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
+        time: value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    };
+}
+
+function serviceLabel(appointment: Appointment) {
+    if (Array.isArray(appointment.service_types) && appointment.service_types.length) return appointment.service_types.slice(0, 2).join(' · ');
+    return appointment.type?.replaceAll('_', ' ') || 'Medical examination';
+}
+
+function AccountMenu({ user }: { user: User }) {
+    const [open, setOpen] = useState(false);
     const { openModal } = useLogoutModal();
-    const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : 'U';
+    const initials = `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}` || user.name?.[0] || 'U';
+    return <div className="relative">
+        <button onClick={() => setOpen(!open)} className="flex items-center gap-2 rounded-xl p-1.5 pr-2 text-left transition hover:bg-slate-50" aria-expanded={open} aria-label="Open account menu">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-700 text-xs font-extrabold text-white">{initials.toUpperCase()}</span>
+            <ChevronDown size={15} className={`hidden text-slate-400 transition sm:block ${open ? 'rotate-180' : ''}`} />
+        </button>
+        <AnimatePresence>{open && <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="absolute right-0 top-12 z-50 w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10">
+            <div className="border-b border-slate-100 px-3 py-3"><p className="text-sm font-bold text-slate-950">{user.name || `${user.first_name ?? ''} ${user.last_name ?? ''}`}</p><p className="mt-1 truncate text-xs text-slate-500">{user.email}</p></div>
+            <Link href="/settings/profile" className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-cyan-50 hover:text-cyan-800"><Settings size={16} /> Account settings</Link>
+            <Link href="/appointments" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-cyan-50 hover:text-cyan-800"><CalendarDays size={16} /> My appointments</Link>
+            <button onClick={openModal} className="mt-1 flex w-full items-center gap-3 rounded-xl border-t border-slate-100 px-3 py-2.5 text-sm font-bold text-rose-600 hover:bg-rose-50"><LogOut size={16} /> Sign out</button>
+        </motion.div>}</AnimatePresence>
+    </div>;
+}
 
-    return (
-        <div className="relative">
-            {auth?.user ? (
-                <div className="relative">
-                    <button
-                        onClick={() => setDropdownOpen(!dropdownOpen)}
-                        className="flex items-center justify-center w-9 h-9 bg-blue-600 rounded-full border-2 border-white/30 font-bold text-sm hover:bg-blue-700 transition-all"
-                    >
-                        {getInitial(auth.user.name)}
-                    </button>
-                    <AnimatePresence>
-                        {dropdownOpen && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 10 }}
-                                className="absolute right-0 mt-3 w-52 bg-white rounded-2xl shadow-2xl py-2 text-gray-800 border border-gray-100 z-50"
-                            >
-                                <div className="px-4 py-3 mb-1 border-b border-gray-100">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-teal-600 block mb-1">Active Account</span>
-                                    <span className="text-sm font-bold text-gray-900 block truncate">{auth.user.name}</span>
-                                    <span className="text-xs text-gray-500 truncate block">{auth.user.email}</span>
-                                </div>
-                                <div className="px-2 space-y-0.5">
-                                    <Link href="/settings/profile" className="flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-xl hover:bg-teal-50 hover:text-teal-700 transition-colors">
-                                        <Settings className="w-4 h-4" /> Account Settings
-                                    </Link>
-                                    <Link href="/appointments" className="flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-xl hover:bg-teal-50 hover:text-teal-700 transition-colors">
-                                        <Calendar className="w-4 h-4" /> My Appointments
-                                    </Link>
-                                </div>
-                                <div className="mt-1 pt-1 border-t border-gray-100 px-2">
-                                    <button onClick={openModal} className="w-full flex items-center gap-2 px-3 py-2 text-sm font-bold text-red-600 rounded-xl hover:bg-red-50 transition-colors">
-                                        <LogOut className="w-4 h-4" /> Sign Out
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-            ) : (
-                <Link href="/login" className="px-5 py-2 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-full text-sm font-semibold hover:opacity-90 transition-all shadow-md">
-                    Login
-                </Link>
-            )}
+function Navigation({ user }: { user: User }) {
+    const [open, setOpen] = useState(false);
+    const links = [['Overview', '#overview'], ['My care', '#appointments'], ['Services', '#services']];
+    return <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 sm:px-7">
+            <Link href="/dashboard" className="flex items-center gap-3" aria-label="Living Myth Industrial Clinic dashboard"><span className="flex h-10 w-[66px] items-center justify-center rounded-xl bg-slate-950 p-1.5"><img src={logo} alt="Living Myth Industrial Clinic" className="h-full w-full object-contain" /></span><span className="hidden leading-tight sm:block"><strong className="block text-sm tracking-[-.03em] text-slate-950">LIVING MYTH</strong><small className="block text-[9px] font-bold uppercase tracking-[.16em] text-cyan-700">Patient portal</small></span></Link>
+            <nav className="hidden items-center gap-7 lg:flex">{links.map(([label, href]) => <a href={href} key={label} className="text-sm font-bold text-slate-500 transition hover:text-cyan-700">{label}</a>)}</nav>
+            <div className="flex items-center gap-2"><button className="grid h-9 w-9 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900" aria-label="Notifications"><Bell size={18} /></button><Link href="/appointment" className="hidden items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-cyan-700 sm:flex"><Plus size={16} /> Book appointment</Link><AccountMenu user={user} /><button onClick={() => setOpen(!open)} className="grid h-9 w-9 place-items-center rounded-xl text-slate-700 hover:bg-slate-100 lg:hidden" aria-label="Toggle navigation">{open ? <X size={20} /> : <Menu size={20} />}</button></div>
         </div>
-    );
-}
-
-function Navbar({ isLoggedIn }: { isLoggedIn: boolean }) {
-    const prefix = isLoggedIn ? '#dashboard-' : '#';
-
-    return (
-        <motion.nav
-            initial={{ y: -80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6 }}
-            className="fixed top-0 left-0 w-full z-50 px-6 pt-5"
-        >
-            <div className="max-w-7xl mx-auto">
-                <div className="
-                    relative
-                    flex items-center justify-between
-                    px-6 py-4
-                    rounded-3xl
-                    border border-white/10
-                    bg-[#0f172a]/70
-                    backdrop-blur-2xl
-                    shadow-[0_8px_32px_rgba(0,0,0,0.35)]
-                    overflow-visible
-                ">
-
-                    {/* Gradient Glow */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-teal-500/5 via-cyan-500/5 to-blue-500/5 pointer-events-none" />
-
-                    {/* LEFT */}
-                    <div className="relative flex items-center gap-10">
-
-                        {/* LOGO */}
-                        <Link
-                            href="/"
-                            className="flex items-center gap-3 group"
-                        >
-                            <div className="
-                                w-11 h-11
-                                rounded-2xl
-                                bg-gradient-to-br from-teal-400 to-cyan-600
-                                flex items-center justify-center
-                                shadow-lg shadow-cyan-500/20
-                                group-hover:scale-105
-                                transition-all
-                            ">
-                                <img
-                                    src={logo}
-                                    alt="LMC Logo"
-                                    className="w-7 h-7 object-contain"
-                                />
-                            </div>
-
-                            <div className="hidden sm:block">
-                                <h1 className="text-white font-black text-sm leading-none tracking-wide">
-                                    LIVING MYTH
-                                </h1>
-
-                                <p className="text-white/35 text-[10px] uppercase tracking-[0.25em]">
-                                    PATIENT PORTAL
-                                </p>
-                            </div>
-                        </Link>
-
-                        {/* NAVIGATION */}
-                        <div className="hidden lg:flex items-center gap-2">
-                            {[
-                                { name: 'Overview', href: `${prefix}about` },
-                                { name: 'Services', href: `${prefix}services` },
-                                { name: 'Appointments', href: `${prefix}appointments` },
-                            ].map((item) => (
-                                <Link
-                                    key={item.name}
-                                    href={item.href}
-                                    className="
-                                        relative
-                                        px-4 py-2
-                                        rounded-xl
-                                        text-sm
-                                        font-medium
-                                        text-white/55
-                                        hover:text-white
-                                        hover:bg-white/5
-                                        transition-all
-                                        duration-300
-                                        group
-                                    "
-                                >
-                                    {item.name}
-
-                                    <span className="
-                                        absolute left-1/2 -translate-x-1/2 bottom-1
-                                        w-0 h-[2px]
-                                        bg-gradient-to-r from-teal-400 to-cyan-500
-                                        group-hover:w-8
-                                        transition-all duration-300
-                                        rounded-full
-                                    " />
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* RIGHT */}
-                    <div className="relative flex items-center gap-3">
-
-                        {/* QUICK ACTION */}
-                        <Link
-                            href="/appointment"
-                            className="
-                                hidden md:flex
-                                items-center gap-2
-                                px-5 py-2.5
-                                rounded-xl
-                                bg-gradient-to-r
-                                from-teal-500
-                                to-cyan-600
-                                text-white
-                                text-sm
-                                font-bold
-                                shadow-lg shadow-cyan-500/20
-                                hover:scale-[1.02]
-                                transition-all
-                            "
-                        >
-                            <Calendar className="w-4 h-4" />
-                            Book Appointment
-                        </Link>
-
-                        {/* USER MENU */}
-                        <div className="
-                            p-1
-                            rounded-2xl
-                            border border-white/10
-                            bg-white/5
-                        ">
-                            <UserMenu />
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </motion.nav>
-    );
-}
-
-function HeroSection({ user, isLoggedIn = false }: { user?: any; isLoggedIn?: boolean }) {
-    return (
-        <div className="relative w-full min-h-screen bg-[#0a1628] overflow-hidden flex items-center">
-            {/* Background glows */}
-            <div className="absolute top-[-80px] right-[-80px] w-[500px] h-[500px] rounded-full bg-teal-500/10 blur-3xl" />
-            <div className="absolute bottom-[-100px] left-[20%] w-[300px] h-[300px] rounded-full bg-blue-600/15 blur-3xl" />
-            <div className="absolute top-[30%] right-[30%] w-[200px] h-[200px] rounded-full bg-cyan-400/8 blur-2xl" />
-
-            <Navbar isLoggedIn={isLoggedIn} />
-
-            <div className="relative z-10 w-full max-w-6xl mx-auto px-6 pt-24 pb-16 flex items-center gap-16">
-                {/* LEFT */}
-                <motion.div
-                    initial={{ opacity: 0, x: -40 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
-                    className="flex-1"
-                >
-                    <div className="inline-flex items-center gap-2 bg-teal-500/10 border border-teal-500/25 text-teal-400 text-xs font-bold tracking-widest uppercase px-4 py-2 rounded-full mb-6">
-                        <span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse" />
-                        Industrial Clinic
-                    </div>
-
-                    <h1 className="text-5xl font-extrabold leading-tight text-white mb-5">
-                        {isLoggedIn ? (
-                            <>Hello,<br /><span className="text-teal-400">{user?.first_name}!</span></>
-                        ) : (
-                            <>Your Trusted<br />Partner in<br /><span className="text-teal-400">Healthcare</span></>
-                        )}
-                    </h1>
-
-                    <p className="text-white/55 text-base leading-relaxed mb-8 max-w-md">
-                        Providing exceptional medical services to the community for over 8 years. Your health is our priority.
-                    </p>
-
-                    <div className="flex gap-3 mb-10">
-                        <Link
-                            href="/appointment"
-                            className="px-7 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-full font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-teal-500/20"
-                        >
-                            {isLoggedIn ? 'Book an Appointment' : 'Make an Appointment'}
-                        </Link>
-                        <Link
-                            href="#dashboard-about"
-                            className="px-7 py-3 border border-white/20 text-white/80 rounded-full font-semibold text-sm hover:bg-white/8 transition-all"
-                        >
-                            Learn More
-                        </Link>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="flex items-center gap-8">
-                        {[
-                            { num: '8+', label: 'Years Experience' },
-                            { num: '3+', label: 'Qualified Doctors' },
-                            { num: '8+', label: 'Medical Services' },
-                        ].map((s, i) => (
-                            <div key={i} className="flex items-center gap-8">
-                                {i > 0 && <div className="w-px h-8 bg-white/10" />}
-                                <div>
-                                    <div className="text-2xl font-extrabold text-teal-400">{s.num}</div>
-                                    <div className="text-xs text-white/45 mt-0.5">{s.label}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </motion.div>
-
-                {/* RIGHT — floating info cards */}
-                <motion.div
-                    initial={{ opacity: 0, x: 40 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8, delay: 0.4 }}
-                    className="hidden lg:flex flex-col gap-4 w-72"
-                >
-                    {/* Next Available */}
-                    <div className="bg-white/6 border border-white/10 rounded-2xl p-5">
-                        <div className="flex items-center gap-2 text-xs text-white/40 uppercase tracking-widest font-bold mb-3">
-                            <Clock className="w-3.5 h-3.5" /> Next Available
-                        </div>
-                        <p className="text-white font-semibold text-sm">Dr. Santos — Today 2:00 PM</p>
-                        <span className="inline-block mt-2 bg-teal-500/15 text-teal-400 text-xs font-bold px-3 py-1 rounded-full border border-teal-500/20">
-                            Available Now
-                        </span>
-                    </div>
-
-                    {/* Services */}
-                    <div className="bg-white/6 border border-white/10 rounded-2xl p-5">
-                        <div className="text-xs text-white/40 uppercase tracking-widest font-bold mb-3">Our Services</div>
-                        <div className="grid grid-cols-2 gap-2">
-                            {['Pre-Employment', 'Medical Clearance', 'Dental', 'Consultation'].map(s => (
-                                <div key={s} className="bg-white/5 border border-white/8 rounded-lg px-2 py-1.5 text-xs text-white/60 text-center">{s}</div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Hours */}
-                    <div className="bg-white/6 border border-white/10 rounded-2xl p-5">
-                        <div className="flex items-center gap-2 text-xs text-white/40 uppercase tracking-widest font-bold mb-3">
-                            <Calendar className="w-3.5 h-3.5" /> Clinic Hours
-                        </div>
-                        <p className="text-white font-semibold text-sm">Mon–Fri &nbsp; 8:00 AM – 5:00 PM</p>
-                        <span className="inline-block mt-2 bg-blue-500/15 text-blue-400 text-xs font-bold px-3 py-1 rounded-full border border-blue-500/20">
-                            Open Today
-                        </span>
-                    </div>
-                </motion.div>
-            </div>
-        </div>
-    );
-}
-
-function AboutSection({ id }: { id: string }) {
-    return (
-        <motion.section
-            id={id}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="py-24 px-6 bg-white"
-        >
-            <div className="max-w-6xl mx-auto">
-                <div className="text-xs font-bold tracking-widest text-teal-600 uppercase mb-2">Who We Are</div>
-                <h2 className="text-4xl font-extrabold text-gray-900 mb-4">About Living Myth Clinic</h2>
-                <p className="text-gray-500 mb-12 max-w-xl">Committed to your health and well-being since 2016.</p>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                    <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-3xl h-64 flex items-center justify-center border border-teal-100">
-                        <div className="text-center">
-                            <div className="w-20 h-20 bg-teal-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <Shield className="w-10 h-10 text-teal-600" />
-                            </div>
-                            <p className="text-teal-700 font-bold text-sm">8+ Years of Trusted Care</p>
-                        </div>
-                    </div>
-                    <div className="space-y-6">
-                        {[
-                            { icon: <CheckCircle className="w-5 h-5 text-teal-600" />, bg: 'bg-teal-50', title: 'Experienced Team', desc: 'Over 8 years of trusted medical expertise serving our community.' },
-                            { icon: <Calendar className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50', title: 'Easy Scheduling', desc: 'Book appointments online anytime, from anywhere.' },
-                            { icon: <Shield className="w-5 h-5 text-purple-600" />, bg: 'bg-purple-50', title: 'Patient Privacy', desc: 'Your data is protected under the Data Privacy Act (RA 10173).' },
-                        ].map((f, i) => (
-                            <div key={i} className="flex items-start gap-4">
-                                <div className={`w-10 h-10 ${f.bg} rounded-xl flex items-center justify-center flex-shrink-0`}>{f.icon}</div>
-                                <div>
-                                    <h4 className="font-bold text-gray-900 text-sm mb-0.5">{f.title}</h4>
-                                    <p className="text-gray-500 text-sm">{f.desc}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </motion.section>
-    );
-}
-
-function ServicesSection({ id }: { id: string }) {
-    const services = [
-        { title: 'Pre-Employment', desc: 'Medical clearance for new employees.', color: 'bg-teal-50', border: 'border-teal-100', icon: '🏥' },
-        { title: 'Consultation', desc: 'Specialized care for children of all ages.', color: 'bg-blue-50', border: 'border-blue-100', icon: '👶' },
-        { title: 'Dental Services', desc: 'Complete oral healthcare and hygiene.', color: 'bg-amber-50', border: 'border-amber-100', icon: '🦷' },
-        { title: 'Medical Clearance', desc: 'Accurate diagnostics and blood work.', color: 'bg-purple-50', border: 'border-purple-100', icon: '🔬' },
-    ];
-    return (
-        <motion.section
-            id={id}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="py-24 px-6 bg-gray-50"
-        >
-            <div className="max-w-6xl mx-auto">
-                <div className="text-xs font-bold tracking-widest text-teal-600 uppercase mb-2">What We Offer</div>
-                <h2 className="text-4xl font-extrabold text-gray-900 mb-4">Our Services</h2>
-                <p className="text-gray-500 mb-12">Comprehensive healthcare for every need.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {services.map((s, i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.5, delay: i * 0.08 }}
-                            className={`bg-white rounded-2xl p-6 border ${s.border} hover:shadow-lg transition-shadow`}
-                        >
-                            <div className={`w-12 h-12 ${s.color} rounded-xl flex items-center justify-center text-2xl mb-4`}>{s.icon}</div>
-                            <h3 className="font-bold text-gray-900 mb-1">{s.title}</h3>
-                            <p className="text-gray-500 text-sm">{s.desc}</p>
-                        </motion.div>
-                    ))}
-                </div>
-            </div>
-        </motion.section>
-    );
-}
-
-function AppointmentCTA({ id }: { id: string }) {
-    return (
-        <motion.section
-            id={id}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="py-24 px-6 bg-[#0a1628] text-center"
-        >
-            <div className="max-w-2xl mx-auto">
-                <div className="text-xs font-bold tracking-widest text-teal-400 uppercase mb-4">Get Started</div>
-                <h2 className="text-4xl font-extrabold text-white mb-4">Ready to Book Your Visit?</h2>
-                <p className="text-white/50 mb-8">Schedule an appointment today and experience quality healthcare.</p>
-                <Link
-                    href="/appointment"
-                    className="inline-block px-10 py-4 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-full font-bold text-base hover:opacity-90 transition-all shadow-xl shadow-teal-500/20"
-                >
-                    Book an Appointment
-                </Link>
-            </div>
-        </motion.section>
-    );
-}
-
-function PatientDashboard({ user }: { user: any }) {
-    return (
-        <>
-            <Head title="Dashboard" />
-            <HeroSection user={user} isLoggedIn={true} />
-            <AboutSection id="dashboard-about" />
-            <ServicesSection id="dashboard-services" />
-            <AppointmentCTA id="dashboard-appointments" />
-        </>
-    );
-}
-
-function WelcomePage() {
-    return (
-        <>
-            <Head title="Welcome" />
-            <HeroSection isLoggedIn={false} />
-            <AboutSection id="about" />
-            <ServicesSection id="services" />
-            <AppointmentCTA id="appointments" />
-        </>
-    );
+        <AnimatePresence>{open && <motion.nav initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden border-t border-slate-100 bg-white px-5 lg:hidden">{links.map(([label, href]) => <a onClick={() => setOpen(false)} href={href} key={label} className="block py-3 text-sm font-bold text-slate-600">{label}</a>)}<Link href="/appointment" className="mb-3 block rounded-xl bg-cyan-700 px-4 py-3 text-center text-sm font-bold text-white">Book appointment</Link></motion.nav>}</AnimatePresence>
+    </header>;
 }
 
 export default function Dashboard() {
-    const { auth } = usePage().props as any;
-    if (auth?.user) return <PatientDashboard user={auth.user} />;
-    return <WelcomePage />;
+    const { auth, appointments = [], upcomingAppointments = [], stats = {} } = usePage<PageProps>().props;
+    const user = auth.user;
+    const displayName = user.first_name || user.name?.split(' ')[0] || 'there';
+    const nextAppointment = upcomingAppointments[0];
+
+    return <><Head title="My Health Dashboard" /><div className="min-h-screen bg-[#f6f9fa] text-slate-900"><Navigation user={user} />
+        <main className="mx-auto max-w-7xl px-5 pb-14 pt-8 sm:px-7 sm:pt-11">
+            <section id="overview" className="relative overflow-hidden rounded-[1.75rem] bg-slate-950 px-6 py-8 text-white shadow-[0_24px_60px_rgba(15,23,42,.16)] sm:px-9 sm:py-10"><div className="absolute inset-0 bg-[radial-gradient(circle_at_87%_20%,rgba(45,212,191,.24),transparent_24rem),radial-gradient(circle_at_15%_110%,rgba(14,165,233,.18),transparent_22rem)]" /><div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end"><div><span className="inline-flex items-center gap-2 rounded-full border border-teal-300/20 bg-teal-300/10 px-3 py-1.5 text-xs font-bold text-teal-200"><HeartPulse size={14} /> Your occupational health hub</span><h1 className="mt-5 text-3xl font-extrabold tracking-[-.045em] sm:text-4xl">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {displayName}.</h1><p className="mt-3 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">Stay on top of your medical appointments, requirements, and workplace wellness journey—all in one secure place.</p></div><Link href="/appointment" className="inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:-translate-y-0.5 hover:bg-teal-50">Book a consultation <ArrowRight size={16} /></Link></div></section>
+
+            <section className="mt-6 grid gap-4 sm:grid-cols-3">{statCards.map(({ icon: Icon, value, label, hint }, i) => <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * .06 }} key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><span className="grid h-10 w-10 place-items-center rounded-xl bg-cyan-50 text-cyan-700"><Icon size={20} /></span><div className="mt-5 flex items-end justify-between"><div><strong className="block text-3xl leading-none tracking-[-.05em] text-slate-950">{value(stats)}</strong><span className="mt-2 block text-sm font-bold text-slate-800">{label}</span></div></div><p className="mt-2 text-xs text-slate-500">{hint}</p></motion.div>)}</section>
+
+            <section id="appointments" className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_.85fr]"><div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-cyan-700">Next visit</p><h2 className="mt-1 text-xl font-extrabold tracking-[-.035em] text-slate-950">Your upcoming appointment</h2></div><Link href="/appointments" className="hidden text-sm font-bold text-cyan-700 hover:text-cyan-900 sm:block">View all</Link></div>{nextAppointment ? <div className="mt-6 rounded-2xl border border-cyan-100 bg-[#f0fbfb] p-5"><div className="flex flex-col gap-5 sm:flex-row sm:items-center"><div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-cyan-700 text-white"><strong className="text-2xl leading-none">{formatDate(nextAppointment.appointment_date).day}</strong><small className="mt-1 text-[10px] font-bold tracking-wider">{formatDate(nextAppointment.appointment_date).month}</small></div><div className="min-w-0 flex-1"><span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-extrabold capitalize ${statusStyles[nextAppointment.status] ?? 'border-slate-200 bg-white text-slate-600'}`}>{nextAppointment.status.replaceAll('_', ' ')}</span><h3 className="mt-3 truncate text-lg font-extrabold text-slate-950">{serviceLabel(nextAppointment)}</h3><p className="mt-1 flex items-center gap-1.5 text-sm text-slate-600"><Clock3 size={15} className="text-cyan-700" />{formatDate(nextAppointment.appointment_date).long} · {formatDate(nextAppointment.appointment_date).time}</p>{nextAppointment.company?.name && <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500"><UserRound size={15} />{nextAppointment.company.name}</p>}</div><Link href={`/appointments/${nextAppointment.id}`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-bold text-white transition hover:bg-cyan-700">Details <ArrowRight size={15} /></Link></div></div> : <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center"><CalendarDays className="mx-auto text-slate-400" size={28} /><h3 className="mt-3 font-bold text-slate-900">No upcoming visit yet</h3><p className="mt-1 text-sm text-slate-500">Book an appointment when you’re ready.</p><Link href="/appointment" className="mt-4 inline-flex rounded-xl bg-cyan-700 px-4 py-2.5 text-sm font-bold text-white">Schedule now</Link></div>}</div>
+                <div className="rounded-[1.5rem] bg-cyan-700 p-6 text-white shadow-lg shadow-cyan-800/10"><span className="grid h-11 w-11 place-items-center rounded-xl bg-white/15"><ShieldCheck size={22} /></span><h2 className="mt-6 text-xl font-extrabold tracking-[-.035em]">Your health records are protected.</h2><p className="mt-3 text-sm leading-6 text-cyan-100">Your medical information is handled securely and confidentially under the Data Privacy Act.</p><Link href="/settings/profile" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-white underline decoration-cyan-300 underline-offset-4">Manage my profile <ArrowRight size={15} /></Link></div></section>
+
+            <section className="mt-8 rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-cyan-700">Recent activity</p><h2 className="mt-1 text-xl font-extrabold tracking-[-.035em] text-slate-950">Your appointments</h2></div><Link href="/appointments" className="inline-flex items-center gap-2 text-sm font-bold text-cyan-700 hover:text-cyan-900">See appointment history <ArrowRight size={15} /></Link></div><div className="mt-6 divide-y divide-slate-100">{appointments.length ? appointments.slice(0, 5).map(appointment => <div key={appointment.id} className="flex flex-col gap-4 py-4 first:pt-0 sm:flex-row sm:items-center"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-600"><ClipboardCheck size={19} /></div><div className="min-w-0 flex-1"><h3 className="truncate text-sm font-extrabold text-slate-900">{serviceLabel(appointment)}</h3><p className="mt-1 text-sm text-slate-500">{formatDate(appointment.appointment_date).long} · {formatDate(appointment.appointment_date).time}</p></div><span className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-[11px] font-extrabold capitalize ${statusStyles[appointment.status] ?? 'border-slate-200 bg-slate-50 text-slate-600'}`}>{appointment.status.replaceAll('_', ' ')}</span><Link href={`/appointments/${appointment.id}`} className="text-sm font-bold text-cyan-700 hover:text-cyan-900">View</Link></div>) : <div className="py-10 text-center"><FileText className="mx-auto text-slate-300" size={30} /><p className="mt-3 text-sm font-semibold text-slate-600">Your appointment history will appear here.</p></div>}</div></section>
+
+            <section id="services" className="mt-8"><div className="flex items-end justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-cyan-700">Clinic services</p><h2 className="mt-1 text-xl font-extrabold tracking-[-.035em] text-slate-950">Care designed around your work and wellbeing.</h2></div><Link href="/appointment" className="hidden text-sm font-bold text-cyan-700 sm:block">Explore all services</Link></div><div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{serviceCards.map(({ icon: Icon, title, text }) => <motion.div whileHover={{ y: -3 }} key={title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition"><span className="grid h-10 w-10 place-items-center rounded-xl bg-teal-50 text-teal-700"><Icon size={19} /></span><h3 className="mt-5 text-sm font-extrabold text-slate-950">{title}</h3><p className="mt-2 text-xs leading-5 text-slate-500">{text}</p></motion.div>)}</div></section>
+        </main></div></>;
 }

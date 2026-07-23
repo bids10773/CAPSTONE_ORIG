@@ -20,7 +20,7 @@ $infostaff = \App\Models\User::create([
     'email' => 'infostaff@lmic.com',
     'contact' => '1234567890',
     'password' => 'infostaff123', // Laravel will hash this automatically due to 'hashed' cast
-    'role' => 'info_staff',
+    'role' => 'staff',
     'is_active' => true,
     'email_verified_at' => now(),
 ]);

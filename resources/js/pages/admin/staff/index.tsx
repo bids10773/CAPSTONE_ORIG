@@ -188,11 +188,20 @@ export default function StaffIndex() {
                                                                 </Button>
                                                             </Link>
                                                         )}
-                                                        <Link method="patch" href={`/admin/staff/${member.id}/toggle-active`}>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500 hover:bg-amber-100/50 dark:hover:bg-amber-900/30" title="Toggle Status">
-                                                                <ToggleLeft className="w-4 h-4" />
-                                                            </Button>
-                                                        </Link>
+                                                        <Button
+    asChild
+    variant="ghost"
+    size="icon"
+    className="h-8 w-8 text-amber-500 hover:bg-amber-100/50 dark:hover:bg-amber-900/30"
+    title="Toggle Status"
+>
+    <Link
+        method="patch"
+        href={`/admin/staff/${member.id}/toggle-active`}
+    >
+        <ToggleLeft className="w-4 h-4" />
+    </Link>
+</Button>
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon" 

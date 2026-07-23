@@ -16,7 +16,6 @@ use App\Actions\Fortify\CustomLoginResponse;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\RegisteredUserResponse;
 use Laravel\Fortify\Contracts\VerifyEmailResponse;
-use Illuminate\Support\Facades\Auth;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -34,14 +33,7 @@ class FortifyServiceProvider extends ServiceProvider
 
         public function toResponse($request)
         {
-            // Ensure user is updated
-            $request->user()->refresh();
-
-            // Optional: logout user (safe)
-            Auth::logout();
-
-            // Redirect to login with success flag
-            return redirect('/login?verified=1');
+            return redirect('/dashboard')->with('status', 'email-verified');
         }
 
     };

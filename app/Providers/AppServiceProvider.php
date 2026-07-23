@@ -30,7 +30,7 @@ class AppServiceProvider extends ServiceProvider
 
         // 1. CUSTOM EMAIL VERIFICATION LOGIC
         VerifyEmail::toMailUsing(function (object $notifiable, string $url) {
-            $logoPath = public_path('images/full_logo.jpg'); 
+            $logoPath = public_path('images/full_logo.png');
             $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : '';
 
             return (new MailMessage)
@@ -39,7 +39,7 @@ class AppServiceProvider extends ServiceProvider
                     'url' => $url,
                     'name' => $notifiable->name,
                     'logo' => $logoData,
-                    'expire_message' => 'For your security, this link is only valid for 5 minutes.',
+                    'expire_message' => 'For your security, this link is only valid for 60 minutes.',
                 ]);
         });
 

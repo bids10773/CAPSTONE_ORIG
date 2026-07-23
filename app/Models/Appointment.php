@@ -21,7 +21,7 @@ class Appointment extends Model
         'start_time',
         'end_time',
         'appointment_date',
-        'type',
+        'type', 
         'status',
         'service_types',
         'referral_code',
@@ -130,6 +130,7 @@ public function patientProfile(): HasOne
             'individual' => 'Individual',
             'company_referral' => 'Company Referral',
             'company_bulk' => 'Company Bulk Booking',
+            'walk_in' => 'Walk-in',
         ];
     }
 

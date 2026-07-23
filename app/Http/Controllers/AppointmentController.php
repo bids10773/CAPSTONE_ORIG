@@ -595,45 +595,227 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
      * Bulk upload appointments from CSV for company users (simple file upload).
      */
     public function companyBulkStore(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|file|mimes:csv,txt|max:2048',
+{
+    $request->validate([
+        'file' => 'required|file|mimes:xlsx,xls|max:10240',
+    ]);
+
+    $user = $request->user();
+    $company = $user->company()->first() ?? ($user->company_id ? Company::find($user->company_id) : null);
+
+    if (!$company) {
+        return back()->with('error', 'No company association found.');
+    }
+
+    try {
+    \Maatwebsite\Excel\Facades\Excel::import(
+        new \App\Imports\AppointmentsImport(
+            $company->id,
+            $request->appointment_date
+        ),
+        $request->file('file')
+    );
+
+    return back()->with('success', 'Appointments uploaded successfully!');
+
+} catch (\Exception $e) {
+    \Log::error($e);
+    return back()->with('error', $e->getMessage());
+}
+}
+
+/**
+ * Staff: Appointment dashboard (view, search, filter, walk-in creation)
+ */
+public function staffDashboard(Request $request): Response
+{
+
+
+    $search = $request->get('search', '');
+    $status = $request->get('status', '');
+    $type   = $request->get('type', '');
+
+    $query = Appointment::with(['user.patientProfile', 'doctor', 'company'])
+        ->when($search, fn($q) =>
+            $q->whereHas('user', fn($q) =>
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name',  'like', "%{$search}%")
+                  ->orWhere('email',      'like', "%{$search}%")
+            )
+        )
+        ->when($status, fn($q) => $q->where('status', $status))
+        ->when($type,   fn($q) => $q->where('type', $type))
+        ->orderByRaw("CASE
+            WHEN status = 'pending'   THEN 1
+            WHEN status = 'accepted'  THEN 2
+            WHEN status = 'arrived'   THEN 3
+            WHEN status = 'completed' THEN 4
+            WHEN status = 'cancelled' THEN 5
+            ELSE 6 END")
+        ->orderBy('appointment_date', 'asc')
+        ->paginate(15)
+        ->withQueryString();
+
+    return Inertia::render('staff/appointments/index', [
+        'appointments'  => $query,
+        'doctors'       => User::where('role', 'doctor')->where('is_active', true)
+                               ->get(['id', 'first_name', 'last_name']),
+        'serviceTypes'  => Appointment::getServiceTypeOptions(),
+        'statusOptions' => ['pending','accepted','arrived','for_diagnostics','for_xray','for_final_evaluation','completed','cancelled'],
+        'filters'       => compact('search', 'status', 'type'),
+    ]);
+}
+
+/**
+ * Staff: Create walk-in appointment
+ */
+public function staffStore(Request $request)
+{
+    try {
+    $validated = $request->validate([
+        // Existing patient OR new patient fields
+        'patient_type'     => ['required', 'in:existing,new'],
+        'user_id'          => ['required_if:patient_type,existing', 'nullable', 'exists:users,id'],
+
+        // New patient fields
+        'first_name'       => ['required_if:patient_type,new', 'nullable', 'string', 'max:255'],
+        'last_name'        => ['required_if:patient_type,new', 'nullable', 'string', 'max:255'],
+        'email'            => ['required_if:patient_type,new', 'nullable', 'email', 'unique:users,email'],
+        'contact'          => ['nullable', 'string', 'max:11'],
+
+        // ✅ Patient profile fields
+        'birthdate'        => ['nullable', 'date'],
+        'sex' => ['nullable', 'in:Male,Female'],
+        'civil_status'     => ['nullable', 'in:single,married,widowed,separated'],
+
+        // Appointment fields
+        'doctor_id'        => ['required', 'exists:users,id'],
+        'appointment_date' => ['required', 'date', 'after_or_equal:today'],
+        'start_time'       => ['required', 'date_format:H:i'],
+        'service_types'    => ['required', 'array', 'min:1'],
+        'notes'            => ['nullable', 'string', 'max:500'],
+    ]);
+
+    // Resolve or create the patient
+    if ($validated['patient_type'] === 'new') {
+        $user = User::create([
+            'first_name' => $validated['first_name'],
+            'last_name'  => $validated['last_name'],
+            'email'      => $validated['email'],
+            'contact'    => $validated['contact'] ?? null,
+            'password'   => bcrypt('walkin-' . now()->timestamp), // temp password
+            'role'       => 'patient',
+            'is_active'  => true,
         ]);
 
-        $user = $request->user();
-        $company = $user->company ?? $user->company_id ? Company::find($user->company_id) : null;
+        // ✅ Create profile with staff-filled data
+        \App\Models\PatientProfile::create([
+            'user_id'      => $user->id,
+            'birthdate'    => $validated['birthdate'] ?? null,
+            'sex'          => $validated['sex'] ?? null,
+            'civil_status' => $validated['civil_status'] ?? null,
+        ]);
         
-        if (!$company) {
-            return back()->with('error', 'No company association found.');
-        }
+    } else {
+        $user = User::findOrFail($validated['user_id']);
 
-        $path = $request->file('file')->getRealPath();
-        $data = fopen($path, 'r');
-
-        $created = 0;
-
-        $header = fgetcsv($data); // Skip header
-        while (($row = fgetcsv($data)) !== false) {
-            if (count($row) < 4) continue;
-
-            [$employeeName, $date, $time, $type] = array_map('trim', $row);
-
-            Appointment::create([
-                'company_id' => $company->id,
-                'patient_name' => $employeeName,
-                'appointment_date' => $date,
-                'appointment_time' => $time,
-                'appointment_type' => $type,
-                'status' => 'pending',
+        // ✅ Update existing patient's profile if staff filled anything in
+        if ($user->patientProfile) {
+            $user->patientProfile->update([
+                'birthdate'    => $validated['birthdate'] ?? $user->patientProfile->birthdate,
+                'sex'          => $validated['sex'] ?? $user->patientProfile->sex,
+                'civil_status' => $validated['civil_status'] ?? $user->patientProfile->civil_status,
             ]);
-
-            $created++;
         }
-
-        fclose($data);
-
-        return back()->with('success', "Created {$created} pending appointments successfully!");
     }
+
+    $start = new \DateTime($validated['appointment_date'] . ' ' . $validated['start_time']);
+    $end   = (clone $start)->add(new \DateInterval('PT30M'));
+
+    Appointment::create([
+        'user_id'          => $user->id,
+        'doctor_id'        => $validated['doctor_id'],
+        'appointment_date' => $validated['appointment_date'],
+        'start_time'       => $start->format('H:i'),
+        'end_time'         => $end->format('H:i'),
+        'service_types'    => $validated['service_types'],
+        'notes'            => $validated['notes'] ?? null,
+        'type'             => 'walk_in',
+        'status'           => 'arrived',
+    ]);
+
+    return back()->with('success', 'Walk-in appointment created' . ($validated['patient_type'] === 'new' ? " for new patient {$user->first_name} {$user->last_name}." : '.'));
+
+    } catch (\Exception $e) {
+        dd($e->getMessage());
+    }
+}
+
+/**
+ * Staff: Update appointment status
+ */
+public function staffUpdateStatus(Request $request, Appointment $appointment)
+{
+    $request->validate([
+        'status' => ['required', 'in:pending,accepted,arrived,for_diagnostics,for_xray,for_final_evaluation,completed,cancelled'],
+    ]);
+
+    $appointment->update(['status' => $request->status]);
+
+    return back()->with('success', match($request->status) {
+        'accepted'             => 'Appointment accepted.',
+        'arrived'              => 'Patient marked as arrived.',
+        'for_diagnostics'      => 'Sent to diagnostics.',
+        'for_xray'             => 'Sent to X-Ray.',
+        'for_final_evaluation' => 'Sent for final evaluation.',
+        'completed'            => 'Appointment completed.',
+        'cancelled'            => 'Appointment cancelled.',
+        default                => 'Status updated.',
+    });
+}
+
+/**
+ * Staff: Edit appointment details
+ */
+public function staffUpdate(Request $request, Appointment $appointment)
+{
+    $validated = $request->validate([
+        'doctor_id'        => ['required', 'exists:users,id'],
+        'appointment_date' => ['required', 'date'],
+        'start_time'       => ['required', 'date_format:H:i'],
+        'service_types'    => ['required', 'array', 'min:1'],
+        'notes'            => ['nullable', 'string', 'max:500'],
+    ]);
+
+    $start = new \DateTime($validated['appointment_date'] . ' ' . $validated['start_time']);
+    $end   = (clone $start)->add(new \DateInterval('PT30M'));
+
+    $appointment->update([
+        ...$validated,
+        'start_time' => $start->format('H:i'),
+        'end_time'   => $end->format('H:i'),
+    ]);
+
+    return back()->with('success', 'Appointment updated.');
+}
+
+/**
+ * Patient search for walk-in autocomplete (API)
+ */
+public function searchPatients(Request $request)
+{
+    return response()->json(
+        User::where('role', 'patient')
+            ->where('is_active', true)
+            ->where(fn($q) =>
+                $q->where('first_name', 'like', "%{$request->q}%")
+                  ->orWhere('last_name',  'like', "%{$request->q}%")
+                  ->orWhere('email',      'like', "%{$request->q}%")
+            )
+            ->limit(10)
+            ->get(['id', 'first_name', 'last_name', 'email'])
+    );
+}
 
     /**
      * Staff appointment list - filtered by role and status/service_type.
@@ -692,6 +874,8 @@ if ($status) {
         'filters' => ['search' => $search,'status' => $status, 'role' => $role],
         'pageTitle' => ucfirst($role) . ' Queue',
     ]);
+
+    
 }
 }
 

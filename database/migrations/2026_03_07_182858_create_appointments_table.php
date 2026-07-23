@@ -21,18 +21,23 @@ return new class extends Migration
 
     $table->dateTime('appointment_date');
 
-    $table->enum('type',[
-        'individual',
-        'company_referral',
-        'company_bulk'
-    ]);
+    $table->enum('type', [
+    'individual',
+    'company_referral',
+    'company_bulk',
+    'walk_in'
+]);
 
-    $table->enum('status',[
-        'pending',
-        'arrived',
-        'completed',
-        'cancelled'
-    ]);
+$table->enum('status', [
+    'pending',
+    'accepted',
+    'arrived',
+    'for_diagnostics',
+    'for_xray',
+    'for_final_evaluation',
+    'completed',
+    'cancelled'
+]);
 
     $table->timestamps();
 

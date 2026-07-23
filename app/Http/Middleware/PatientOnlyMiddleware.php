@@ -16,7 +16,7 @@ class PatientOnlyMiddleware
                 'medtech'      => redirect('/medtech/dashboard'),
                 'radtech'      => redirect('/radtech/dashboard'),
                 'company'      => redirect('/company/dashboard'),
-                'receptionist' => redirect('/receptionist/dashboard'),
+                'staff'        => redirect('/staff/appointments'), // ✅ add this
                 default        => $next($request),
             };
         }

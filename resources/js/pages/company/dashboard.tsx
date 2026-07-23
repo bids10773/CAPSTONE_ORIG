@@ -43,6 +43,7 @@ interface CompanyDashboardProps {
 const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats, user, company }) => {
   const { data, setData, processing, errors } = useForm({
     file: null as File | null,
+    appointment_date: '',
   })
 
   const [fileKey, setFileKey] = React.useState<number>(Date.now())
@@ -56,7 +57,7 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats
     e.preventDefault()
 
     if (!data.file) {
-      toast.error('Please select a CSV file!')
+      toast.error('Please select an Excel file!')
       return
     }
 
@@ -257,25 +258,32 @@ const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats
       </motion.div>
 
       {/* UPLOAD */}
-      <motion.div variants={card} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
-        <form onSubmit={submitBulkUpload} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="csv-file">CSV File</Label>
-            <Input
-              id="csv-file"
-              key={fileKey}
-              type="file"
-              accept=".csv"
-              onChange={handleFileUpload}
-            />
-            <InputError message={errors.file} className="mt-2" />
-          </div>
-          <Button type="submit" disabled={processing}>
-            {processing ? 'Uploading...' : 'Upload CSV'}
-          </Button>
-        </form>
-      </motion.div>
-
+<motion.div variants={card} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
+  <form onSubmit={submitBulkUpload} className="space-y-4">
+    <div className="space-y-2">
+      <Label htmlFor="appointment-date">Appointment Date</Label>
+      <Input
+        id="appointment-date"
+        type="date"
+        onChange={(e) => setData('appointment_date', e.target.value)}
+      />
+    </div>
+    <div className="space-y-2">
+      <Label htmlFor="excel-file">Excel File</Label>
+      <Input
+        id="excel-file"
+        key={fileKey}
+        type="file"
+        accept=".xlsx,.xls"
+        onChange={handleFileUpload}
+      />
+      <InputError message={errors.file} className="mt-2" />
+    </div>
+    <Button type="submit" disabled={processing}>
+      {processing ? 'Uploading...' : 'Upload Excel'}
+    </Button>
+  </form>
+</motion.div>
       {/* RECENT */}
       <motion.div variants={card} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
         <h3 className="mb-4 font-semibold">Recent Appointments</h3>

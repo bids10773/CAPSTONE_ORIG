@@ -36,13 +36,10 @@ Route::get('/', function () {
             'medtech'  => redirect('/medtech/dashboard'),
             'radtech'  => redirect('/radtech/dashboard'),
             'company'  => redirect('/company/dashboard'),
-            'receptionist' => redirect('/receptionist/dashboard'),
-            // Patients or anyone else goes to the unified dashboard
+            'staff'    => redirect('/staff/appointments'), // ✅ add this
             default    => redirect('/dashboard'),
         };
     }
-
-    // Guest: Go to the public dashboard (Landing Page)
     return redirect('/dashboard'); 
 })->name('home');
 
@@ -54,6 +51,15 @@ Route::middleware(['auth', 'staff.verified', 'role:receptionist'])
     ->group(function () {
         Route::get('/dashboard', [ReceptionistDashboardController::class, '__invoke'])->name('dashboard');
     });
+
+    Route::middleware(['auth', 'role:staff'])->prefix('staff')->name('staff.')->group(function () {
+    Route::get('/',              fn() => redirect()->route('staff.appointments.index'))->name('dashboard'); // ✅
+    Route::get('appointments',                        [AppointmentController::class, 'staffDashboard'])->name('appointments.index');
+    Route::post('appointments',                       [AppointmentController::class, 'staffStore'])->name('appointments.store');
+    Route::patch('appointments/{appointment}',        [AppointmentController::class, 'staffUpdate'])->name('appointments.update');
+    Route::patch('appointments/{appointment}/status', [AppointmentController::class, 'staffUpdateStatus'])->name('appointments.status');
+    Route::get('patients/search',                     [AppointmentController::class, 'searchPatients'])->name('patients.search');
+});
 
 Route::middleware(['auth', 'staff.verified'])->group(function () {
 
@@ -80,6 +86,16 @@ Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(funct
 
 Route::post('/final-evaluation/{appointmentId}', [PhysicalExamController::class, 'finalStore'])
     ->name('final-evaluation.store');
+});
+
+
+// routes/web.php
+Route::middleware(['auth', 'role:staff'])->prefix('staff')->name('staff.')->group(function () {
+    Route::get('appointments',                       [AppointmentController::class, 'staffDashboard'])  ->name('appointments.index');
+    Route::post('appointments',                      [AppointmentController::class, 'staffStore'])      ->name('appointments.store');
+    Route::patch('appointments/{appointment}',       [AppointmentController::class, 'staffUpdate'])     ->name('appointments.update');
+    Route::patch('appointments/{appointment}/status',[AppointmentController::class, 'staffUpdateStatus'])->name('appointments.status');
+    Route::get('patients/search',                    [AppointmentController::class, 'searchPatients'])  ->name('patients.search');
 });
 
     // MedTech Routes

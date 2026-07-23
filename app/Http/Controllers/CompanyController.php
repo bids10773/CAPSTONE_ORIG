@@ -12,6 +12,7 @@ use Inertia\Response;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
 
+
 class CompanyController extends Controller
 {
     /**

@@ -5,11 +5,11 @@ namespace App\Actions\Fortify;
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Models\User;
+use App\Models\PatientProfile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Redirect;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
-use App\Models\PatientProfile;
 
 class CreateNewUser implements CreatesNewUsers
 {
@@ -36,27 +36,26 @@ class CreateNewUser implements CreatesNewUsers
                 'password' => $this->passwordRules(),
             ])->validate();
 
-        $user = User::create([
-            'first_name' => $input['first_name'],
-            'middle_name' => $input['middle_name'] ?? null,
-            'last_name' => $input['last_name'],
-            'email' => $input['email'],
-            'contact' => $input['contact'],
-            'password' => Hash::make($input['password']),
-            'role' => 'patient',
-            'is_active' => true,
-        ]);
+        return DB::transaction(function () use ($input): User {
+            $user = User::create([
+                'first_name' => $input['first_name'],
+                'middle_name' => $input['middle_name'] ?? null,
+                'last_name' => $input['last_name'],
+                'email' => $input['email'],
+                'contact' => $input['contact'],
+                'password' => Hash::make($input['password']),
+                'role' => 'patient',
+                'is_active' => true,
+            ]);
 
-        PatientProfile::create([
-    'user_id' => $user->id,
-    'birthdate' => $input['birthdate'],
-    'sex' => $input['sex'],
-    'civil_status' => $input['civil_status'],
-]);
+            PatientProfile::create([
+                'user_id' => $user->id,
+                'birthdate' => $input['birthdate'],
+                'sex' => $input['sex'],
+                'civil_status' => $input['civil_status'],
+            ]);
 
-        // Send email verification notification
-        $user->sendEmailVerificationNotification();
-
-        return $user;
+            return $user;
+        });
     }
 }
