@@ -22,6 +22,35 @@ test('users can authenticate using the login screen', function () {
     $response->assertRedirect(route('dashboard', absolute: false));
 });
 
+test('administrator-created staff can authenticate without email verification', function () {
+    $doctor = User::factory()->unverified()->create([
+        'role' => 'doctor',
+    ]);
+
+    $response = $this->post(route('login.store'), [
+        'email' => $doctor->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticatedAs($doctor);
+    $response->assertRedirect('/doctor/dashboard');
+    expect($doctor->refresh()->hasVerifiedEmail())->toBeTrue();
+});
+
+test('unverified patients are still directed to email verification', function () {
+    $patient = User::factory()->unverified()->create([
+        'role' => 'patient',
+    ]);
+
+    $response = $this->post(route('login.store'), [
+        'email' => $patient->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticatedAs($patient);
+    $response->assertRedirect(route('verification.notice'));
+});
+
 test('users with two factor enabled are redirected to two factor challenge', function () {
     if (! Features::canManageTwoFactorAuthentication()) {
         $this->markTestSkipped('Two-factor authentication is not enabled.');

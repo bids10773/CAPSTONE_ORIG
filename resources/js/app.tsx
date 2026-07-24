@@ -10,7 +10,7 @@ import { initializeTheme } from './hooks/use-appearance';
 createInertiaApp({
     // Template: "Page Title - LMIC" or just "LMIC" if no title is set
      title: (title) => `${title} - LMIC`,
-    resolve: (name) => resolvePageComponent(`./Pages/${name}.tsx`, import.meta.glob('./Pages/**/*.tsx')),
+    resolve: (name) => resolvePageComponent(`./pages/${name}.tsx`, import.meta.glob('./pages/**/*.tsx')),
     setup({ el, App, props }) {
         const root = createRoot(el);
         const pageProps = props.initialPage.props as {

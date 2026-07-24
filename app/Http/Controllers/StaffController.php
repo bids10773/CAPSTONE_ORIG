@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\SecurityAudit;
 use App\Models\User;
+use App\Services\StaffCredentialService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
-
+use Throwable;
 
 class StaffController extends Controller
 {
@@ -64,7 +68,7 @@ $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'
     /**
      * Store a newly created staff member.
      */
-    public function store(Request $request)
+    public function store(Request $request, StaffCredentialService $credentials): RedirectResponse
     {
         $validator = Validator::make($request->all(), [
             'first_name' => ['required', 'string', 'max:255'],
@@ -75,36 +79,103 @@ $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'
             'role' => ['required', 'string', 'in:doctor,medtech,radtech,receptionist'],
             'license_no' => ['nullable', 'string', 'max:255'],
             'specialization' => ['nullable', 'string', 'max:255'],
-            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
-
 
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
         }
 
         $data = $validator->validated();
+        $temporaryPassword = $credentials->generateTemporaryPassword();
 
-        // Create the user
-        $user = User::create([
-            'first_name' => $data['first_name'],
-            'middle_name' => $data['middle_name'] ?? null,
-            'last_name' => $data['last_name'],
-            'email' => $data['email'],
-            'contact' => $data['contact'] ?? null,
-            'password' => Hash::make($data['password']),
-            'role' => $data['role'],
-            'license_no' => $data['license_no'] ?? null,
-            'specialization' => $data['specialization'] ?? null,
-            'is_active' => true,
-            'email_verified_at' => now(), // Admin-created accounts are automatically verified
-        ]);
+        try {
+            DB::transaction(function () use ($credentials, $data, $request, $temporaryPassword): void {
+                $staff = User::create([
+                    'first_name' => $data['first_name'],
+                    'middle_name' => $data['middle_name'] ?? null,
+                    'last_name' => $data['last_name'],
+                    'email' => $data['email'],
+                    'contact' => $data['contact'] ?? null,
+                    'password' => Hash::make($temporaryPassword),
+                    'role' => $data['role'],
+                    'license_no' => $data['license_no'] ?? null,
+                    'specialization' => $data['specialization'] ?? null,
+                    'is_active' => true,
+                    'email_verified_at' => now(),
+                    'must_change_password' => true,
+                    'temporary_password_created_at' => now(),
+                    'temporary_password_expires_at' => now()->addHours(48),
+                ]);
 
-        $user->markEmailAsVerified();
-        $user->update(['role' => $data['role']]);
+                $credentials->send($staff, $temporaryPassword);
+
+                SecurityAudit::create([
+                    'actor_id' => $request->user()->id,
+                    'target_user_id' => $staff->id,
+                    'action' => 'staff_account_created_credentials_sent',
+                    'status' => 'success',
+                ]);
+            });
+        } catch (Throwable) {
+            SecurityAudit::create([
+                'actor_id' => $request->user()->id,
+                'action' => 'staff_account_creation_failed',
+                'status' => 'failure',
+                'metadata' => ['email' => $data['email']],
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'The account was not created because the credentials email could not be sent. Please verify the email service and try again.');
+        }
 
         return redirect()->route('admin.staff.index')
-            ->with('success', "{$user->name} has been created successfully.");
+            ->with('success', 'Staff account created successfully. Temporary login credentials were sent to the staff member’s email.');
+    }
+
+    public function resendCredentials(
+        Request $request,
+        User $staff,
+        StaffCredentialService $credentials,
+    ): RedirectResponse {
+        abort_unless(in_array($staff->role, array_keys(User::getStaffRoles()), true), 404);
+
+        if (! $staff->must_change_password) {
+            return back()->with('error', 'Temporary credentials can only be resent before the staff member completes their first password change.');
+        }
+
+        $temporaryPassword = $credentials->generateTemporaryPassword();
+
+        try {
+            DB::transaction(function () use ($credentials, $request, $staff, $temporaryPassword): void {
+                $staff->update([
+                    'password' => Hash::make($temporaryPassword),
+                    'must_change_password' => true,
+                    'temporary_password_created_at' => now(),
+                    'temporary_password_expires_at' => now()->addHours(48),
+                ]);
+
+                $credentials->send($staff, $temporaryPassword);
+
+                SecurityAudit::create([
+                    'actor_id' => $request->user()->id,
+                    'target_user_id' => $staff->id,
+                    'action' => 'staff_temporary_credentials_resent',
+                    'status' => 'success',
+                ]);
+            });
+        } catch (Throwable) {
+            SecurityAudit::create([
+                'actor_id' => $request->user()->id,
+                'target_user_id' => $staff->id,
+                'action' => 'staff_temporary_credentials_resend_failed',
+                'status' => 'failure',
+            ]);
+
+            return back()->with('error', 'Credentials were not changed because the email could not be sent.');
+        }
+
+        return back()->with('success', 'New temporary credentials were sent successfully. The previous temporary password is no longer valid.');
     }
 
     /**

@@ -1,7 +1,7 @@
 import { Head, usePage, Link, router } from '@inertiajs/react';
 import { motion } from "framer-motion";
 import { 
-    ArrowLeft, Save, Lock, Copy, RefreshCw,
+    ArrowLeft, Save, Lock,
     User, Mail, Phone, BadgeCheck, Stethoscope
 } from 'lucide-react';
 import { useState } from 'react';
@@ -16,41 +16,11 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Create Staff', href: "" },
 ];
 
-const generateTemporaryPassword = () => {
-    const groups = [
-        'ABCDEFGHJKLMNPQRSTUVWXYZ',
-        'abcdefghijkmnopqrstuvwxyz',
-        '23456789',
-        '!@#$%&*?',
-    ];
-    const allCharacters = groups.join('');
-    const randomIndex = (length: number) => {
-        const value = new Uint32Array(1);
-        crypto.getRandomValues(value);
-        return value[0] % length;
-    };
-    const characters = groups.map((group) => group[randomIndex(group.length)]);
-
-    while (characters.length < 14) {
-        characters.push(allCharacters[randomIndex(allCharacters.length)]);
-    }
-
-    for (let index = characters.length - 1; index > 0; index -= 1) {
-        const swapIndex = randomIndex(index + 1);
-        [characters[index], characters[swapIndex]] = [characters[swapIndex], characters[index]];
-    }
-
-    return characters.join('');
-};
-
 export default function CreateStaff() {
     const props = usePage().props as any;
     const { roles } = props;
 
-    const [formData, setFormData] = useState(() => {
-        const password = generateTemporaryPassword();
-
-        return {
+    const [formData, setFormData] = useState({
         first_name: '',
         middle_name: '',
         last_name: '',
@@ -60,31 +30,10 @@ export default function CreateStaff() {
         role: 'doctor',
         license_no: '',
         specialization: '',
-            password,
-            password_confirmation: password,
-        };
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [passwordCopied, setPasswordCopied] = useState(false);
-
-    const regeneratePassword = () => {
-        const password = generateTemporaryPassword();
-        setFormData((previous) => ({
-            ...previous,
-            password,
-            password_confirmation: password,
-        }));
-        setPasswordCopied(false);
-    };
-
-    const copyPassword = async () => {
-        await navigator.clipboard.writeText(formData.password);
-        setPasswordCopied(true);
-        window.setTimeout(() => setPasswordCopied(false), 2000);
-    };
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
   const { name, value } = e.target;
 
@@ -112,8 +61,8 @@ export default function CreateStaff() {
         router.post('/admin/staff', formData, {
             onError: (err) => {
                 setErrors(err);
-                setIsSubmitting(false);
             },
+            onFinish: () => setIsSubmitting(false),
         });
     };
 
@@ -165,49 +114,17 @@ export default function CreateStaff() {
                                 </div>
                             </div>
 
-                            <div className="bg-white dark:bg-gray-950 p-6 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+                            <div className="rounded-xl border border-blue-200 bg-blue-50 p-6 shadow-sm dark:border-blue-900 dark:bg-blue-950/30">
                                 <div className="flex items-center gap-2 mb-4 text-amber-600 dark:text-amber-400">
                                     <Lock className="w-4 h-4" />
                                     <h2 className="text-sm font-bold uppercase tracking-wider">Security</h2>
                                 </div>
-                                <div className="space-y-4">
-                                    <div>
-                                        <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Temporary Password</Label>
-                                        <div className="relative">
-                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                name="password"
-                                                value={formData.password}
-                                                readOnly
-                                                className={`${inputStyle} pr-20 font-mono`}
-                                                aria-describedby="temporary-password-help"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={copyPassword}
-                                                className="absolute right-10 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500"
-                                                aria-label="Copy temporary password"
-                                                title="Copy password"
-                                            >
-                                                <Copy className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={regeneratePassword}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500"
-                                                aria-label="Generate a new temporary password"
-                                                title="Generate new password"
-                                            >
-                                                <RefreshCw className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                        <p id="temporary-password-help" className="mt-2 text-xs text-muted-foreground">
-                                            {passwordCopied ? 'Copied to clipboard.' : 'Generated automatically. Copy this password before creating the account.'}
-                                        </p>
-                                        {errors.password && <InputError message={errors.password} />}
-                                    </div>
-                                </div>
+                                <p className="text-sm leading-6 text-blue-900 dark:text-blue-100">
+                                    A secure temporary password will be generated on the server and sent directly to the staff member’s email address.
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-blue-700 dark:text-blue-300">
+                                    The staff member must replace it after their first successful login.
+                                </p>
                             </div>
                         </div>
 

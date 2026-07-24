@@ -13,10 +13,19 @@ use App\Http\Controllers\PhysicalExamController;
 use App\Http\Controllers\RadTechDashboardController;
 use App\Http\Controllers\ReceptionistDashboardController;
 use App\Http\Controllers\StaffController;
+use App\Http\Controllers\TemporaryPasswordController;
 use App\Http\Controllers\XrayController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+Route::middleware('auth')->group(function () {
+    Route::get('/temporary-password', [TemporaryPasswordController::class, 'edit'])
+        ->name('temporary-password.edit');
+    Route::put('/temporary-password', [TemporaryPasswordController::class, 'update'])
+        ->middleware('throttle:6,1')
+        ->name('temporary-password.update');
+});
 
 Route::get('/', function () {
     if (! auth()->check()) {
@@ -104,6 +113,9 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::resource('staff', StaffController::class)->except('show');
         Route::patch('/staff/{staff}/toggle-active', [StaffController::class, 'toggleActive'])->name('staff.toggle-active');
         Route::post('/staff/{staff}/signature', [StaffController::class, 'uploadSignature'])->name('staff.signature');
+        Route::post('/staff/{staff}/resend-credentials', [StaffController::class, 'resendCredentials'])
+            ->middleware('throttle:6,1')
+            ->name('staff.resend-credentials');
 
         Route::get('/appointments', [AppointmentController::class, 'adminIndex'])->name('appointments.index');
         Route::get('/appointments/create', [AppointmentController::class, 'adminCreate'])->name('appointments.create');

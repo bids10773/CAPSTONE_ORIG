@@ -35,7 +35,10 @@ use HasFactory, Notifiable, TwoFactorAuthenticatable;
         'signature_path',
         'company_id',
         'is_active',
-        'availability', // ✅ add this
+        'availability',
+        'must_change_password',
+        'temporary_password_created_at',
+        'temporary_password_expires_at',
     ];
 
     /**
@@ -72,6 +75,9 @@ use HasFactory, Notifiable, TwoFactorAuthenticatable;
             'two_factor_confirmed_at' => 'datetime',
             'is_active' => 'boolean',
             'availability' => 'array',
+            'must_change_password' => 'boolean',
+            'temporary_password_created_at' => 'datetime',
+            'temporary_password_expires_at' => 'datetime',
         ];
     }
 

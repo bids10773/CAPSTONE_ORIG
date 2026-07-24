@@ -1,13 +1,13 @@
-import AppLayout from '@/layouts/app-layout';
-import { 
-    Users, Plus, Search, Trash2, ToggleLeft, Clock, Filter
-} from 'lucide-react';
-import { useState, useEffect} from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import { motion, AnimatePresence } from "framer-motion";
-import type { BreadcrumbItem } from '@/types';
+import { 
+    Users, Plus, Search, Trash2, ToggleLeft, Clock, Filter, RefreshCw
+} from 'lucide-react';
+import { useState, useEffect} from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Staff Management', href: "/admin/staff" },
@@ -32,6 +32,7 @@ interface StaffMember {
     license_no: string | null;
     specialization: string | null;
     is_active: boolean;
+    must_change_password: boolean;
     created_at: string;
 }
 
@@ -187,8 +188,23 @@ export default function StaffIndex() {
                                                                     <Clock className="w-3.5 h-3.5" />
                                                                 </Button>
                                                             </Link>
+                                                         )}
+                                                        {member.must_change_password && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-blue-600 hover:bg-blue-100/50 dark:hover:bg-blue-900/30"
+                                                                title="Resend temporary credentials"
+                                                                onClick={() => {
+                                                                    if (confirm('Generate and email a new temporary password? The previous temporary password will stop working.')) {
+                                                                        router.post(`/admin/staff/${member.id}/resend-credentials`);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <RefreshCw className="w-3.5 h-3.5" />
+                                                            </Button>
                                                         )}
-                                                        <Button
+                                                         <Button
     asChild
     variant="ghost"
     size="icon"
