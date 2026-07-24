@@ -1,300 +1,203 @@
 import { Form, Head } from '@inertiajs/react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CalendarDays, Check, ChevronDown, Eye, EyeOff, LockKeyhole, Mail, Phone, ShieldCheck, UserRound, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShieldCheck, User, Mail, Phone, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function Register() {
-const [showPassword, setShowPassword] = useState(false);
-const [showTermsModal, setShowTermsModal] = useState(false);
-const [acceptedTerms, setAcceptedTerms] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [showTerms, setShowTerms] = useState(false);
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
+    const [password, setPassword] = useState('');
+    const [confirmation, setConfirmation] = useState('');
 
-return (
-    <>
-        {/* TERMS & PRIVACY MODAL */}
-        <AnimatePresence>
-            {showTermsModal && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-950/60 backdrop-blur-md"
-                >
-                    <motion.div
-                        initial={{ scale: 0.9, y: 20 }}
-                        animate={{ scale: 1, y: 0 }}
-                        exit={{ scale: 0.9, y: 20 }}
-                        className="relative w-full max-w-2xl bg-white rounded-[2rem] shadow-2xl shadow-blue-500/20 overflow-hidden"
-                    >
-                        <div className="p-6 border-b flex items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700">
-                            <div className="flex items-center gap-3 text-white">
-                                <ShieldCheck className="h-7 w-7" />
-                                <h2 className="text-xl font-bold">Terms & Privacy Policy</h2>
+    const strength = useMemo(() => {
+        let score = 0;
+        if (password.length >= 8) score++;
+        if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+        if (/\d/.test(password)) score++;
+        if (/[^A-Za-z0-9]/.test(password)) score++;
+        return score;
+    }, [password]);
+
+    const strengthLabel = ['', 'Weak', 'Fair', 'Good', 'Strong'][strength];
+    const matches = confirmation.length > 0 && password === confirmation;
+
+    return (
+        <>
+            <Head title="Create your account" />
+            <AuthLayout variant="register">
+                <header className="mb-7">
+                    <p className="text-xs font-semibold uppercase tracking-[.16em] text-blue-600">Patient registration</p>
+                    <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Create your account</h1>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">Register to access the Medical Services Management System.</p>
+                </header>
+
+                <Form {...store.form()} resetOnSuccess={['password', 'password_confirmation']} className="space-y-5">
+                    {({ processing, errors }) => (
+                        <>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <Field label="First name" error={errors.first_name}>
+                                    <div className="auth-input-wrap">
+                                        <UserRound className="auth-input-icon" />
+                                        <input name="first_name" required autoFocus autoComplete="given-name" placeholder="Juan" className="auth-input" />
+                                    </div>
+                                </Field>
+                                <Field label="Last name" error={errors.last_name}>
+                                    <div className="auth-input-wrap">
+                                        <UserRound className="auth-input-icon" />
+                                        <input name="last_name" required autoComplete="family-name" placeholder="Dela Cruz" className="auth-input" />
+                                    </div>
+                                </Field>
                             </div>
-                            <button
-                                onClick={() => setShowTermsModal(false)}
-                                className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                            >
-                                <X className="h-5 w-5 text-white" />
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <Field label="Middle name" optional error={errors.middle_name}>
+                                    <div className="auth-input-wrap">
+                                        <UserRound className="auth-input-icon" />
+                                        <input name="middle_name" autoComplete="additional-name" placeholder="Optional" className="auth-input" />
+                                    </div>
+                                </Field>
+                                <Field label="Phone number" error={errors.contact}>
+                                    <div className="auth-input-wrap">
+                                        <Phone className="auth-input-icon" />
+                                        <input name="contact" type="tel" required inputMode="numeric" maxLength={11} pattern="09[0-9]{9}" autoComplete="tel" placeholder="09XX XXX XXXX" className="auth-input" />
+                                    </div>
+                                </Field>
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-3">
+                                <Field label="Birthdate" error={errors.birthdate}>
+                                    <div className="auth-input-wrap">
+                                        <CalendarDays className="auth-input-icon" />
+                                        <input name="birthdate" type="date" required max={new Date().toISOString().split('T')[0]} className="auth-input pl-10 text-sm" />
+                                    </div>
+                                </Field>
+                                <Field label="Sex" error={errors.sex}>
+                                    <div className="auth-input-wrap">
+                                        <select name="sex" required defaultValue="" className="auth-select">
+                                            <option value="" disabled>Select</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                        </select>
+                                        <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                                    </div>
+                                </Field>
+                                <Field label="Civil status" error={errors.civil_status}>
+                                    <div className="auth-input-wrap">
+                                        <select name="civil_status" required defaultValue="" className="auth-select">
+                                            <option value="" disabled>Select</option>
+                                            <option value="Single">Single</option>
+                                            <option value="Married">Married</option>
+                                            <option value="Divorced">Divorced</option>
+                                            <option value="Widowed">Widowed</option>
+                                        </select>
+                                        <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                                    </div>
+                                </Field>
+                            </div>
+
+                            <Field label="Email address" error={errors.email}>
+                                <div className="auth-input-wrap">
+                                    <Mail className="auth-input-icon" />
+                                    <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" className="auth-input" />
+                                </div>
+                            </Field>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <Field label="Password" error={errors.password}>
+                                    <div className="auth-input-wrap">
+                                        <LockKeyhole className="auth-input-icon" />
+                                        <input name="password" value={password} onChange={(e) => setPassword(e.target.value)} type={showPassword ? 'text' : 'password'} required autoComplete="new-password" placeholder="At least 8 characters" className="auth-input pr-11" />
+                                        <PasswordToggle shown={showPassword} onClick={() => setShowPassword(!showPassword)} />
+                                    </div>
+                                    {password && (
+                                        <div className="mt-2">
+                                            <div className="flex gap-1" aria-label={`Password strength: ${strengthLabel}`}>
+                                                {[1, 2, 3, 4].map((level) => <span key={level} className={`h-1 flex-1 rounded-full transition-colors ${level <= strength ? (strength < 3 ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200'}`} />)}
+                                            </div>
+                                            <p className="mt-1.5 text-[11px] text-slate-500">{strengthLabel} password</p>
+                                        </div>
+                                    )}
+                                </Field>
+                                <Field label="Confirm password" error={errors.password_confirmation}>
+                                    <div className="auth-input-wrap">
+                                        <LockKeyhole className="auth-input-icon" />
+                                        <input name="password_confirmation" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} type={showConfirm ? 'text' : 'password'} required autoComplete="new-password" placeholder="Repeat your password" className={`auth-input pr-11 ${confirmation && !matches ? 'auth-input-error' : ''}`} />
+                                        <PasswordToggle shown={showConfirm} onClick={() => setShowConfirm(!showConfirm)} />
+                                    </div>
+                                    {confirmation && <p className={`mt-1.5 flex items-center gap-1 text-[11px] ${matches ? 'text-emerald-600' : 'text-red-600'}`}>{matches && <Check className="size-3" />}{matches ? 'Passwords match' : 'Passwords do not match'}</p>}
+                                </Field>
+                            </div>
+
+                            <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-3.5">
+                                <Checkbox id="terms" name="terms" checked={acceptedTerms} onCheckedChange={(value) => setAcceptedTerms(!!value)} required className="mt-0.5 size-5 rounded border-slate-300 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600" />
+                                <label htmlFor="terms" className="text-xs leading-5 text-slate-600">
+                                    I agree to the <button type="button" onClick={() => setShowTerms(true)} className="font-semibold text-blue-600 underline-offset-2 hover:underline">Terms of Service and Privacy Policy</button>.
+                                </label>
+                            </div>
+
+                            <button type="submit" disabled={processing || !acceptedTerms || (!!confirmation && !matches)} className="auth-primary-button">
+                                {processing ? <><Spinner className="size-4" /> Creating your account…</> : 'Create account'}
                             </button>
-                        </div>
+                        </>
+                    )}
+                </Form>
 
-                        <div className="p-8 overflow-y-auto text-gray-600 text-sm leading-relaxed space-y-4 max-h-[60vh]">
-                            <p className="font-bold text-gray-900 text-base">
-                                Living Myth Industrial Clinic Data Privacy Agreement
-                            </p>
-                            <p>
-                                By registering, you agree that your medical information will be handled in accordance with the <strong>Data Privacy Act of 2012 (RA 10173)</strong>.
-                            </p>
-                            <p>
-                                We collect your Name, Email, and Contact Number solely for medical record verification and appointment scheduling.
-                            </p>
-                            <p>
-                                <strong>Disclaimer:</strong> This portal is for official industrial clinic use only.
-                            </p>
-                            <p>
-                                <strong>Retention:</strong> Your data is stored securely and retained only as necessary.
-                            </p>
-                        </div>
+                <div className="mt-6 text-center text-sm text-slate-500">
+                    Already have an account? <TextLink href={login()} className="font-semibold text-blue-600 hover:text-blue-700">Sign in</TextLink>
+                </div>
+            </AuthLayout>
 
-                        <div className="p-6 border-t bg-gray-50 flex justify-end">
-                            <Button
-                                onClick={() => {
-                                setAcceptedTerms(true);  
-                                setShowTermsModal(false);
-                            }}
-                                className="px-10 h-11 bg-[#246AFE] hover:bg-blue-700"
-                            >
-                                I Understand & Accept
-                            </Button>
-                        </div>
+            <AnimatePresence>
+                {showTerms && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="terms-title" onMouseDown={(e) => e.target === e.currentTarget && setShowTerms(false)}>
+                        <motion.div initial={{ scale: .96, y: 10 }} animate={{ scale: 1, y: 0 }} className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+                            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+                                <div className="flex items-center gap-3">
+                                    <span className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600"><ShieldCheck className="size-5" /></span>
+                                    <div><h2 id="terms-title" className="font-semibold text-slate-900">Terms & Privacy</h2><p className="text-xs text-slate-500">Your data, handled responsibly</p></div>
+                                </div>
+                                <button onClick={() => setShowTerms(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close"><X className="size-5" /></button>
+                            </div>
+                            <div className="max-h-[55vh] space-y-4 overflow-y-auto px-6 py-5 text-sm leading-6 text-slate-600">
+                                <p className="font-semibold text-slate-900">Living Myth Industrial Clinic Data Privacy Agreement</p>
+                                <p>Your medical and personal information is handled in accordance with the Data Privacy Act of 2012 (RA 10173).</p>
+                                <p>We collect your name, email, contact number, and profile information only for medical record verification, patient care, and appointment scheduling.</p>
+                                <p>Your data is stored securely, accessed only by authorized personnel, and retained only as long as necessary for legitimate clinic operations.</p>
+                            </div>
+                            <div className="border-t border-slate-100 bg-slate-50 px-6 py-4">
+                                <button onClick={() => { setAcceptedTerms(true); setShowTerms(false); }} className="auth-primary-button ml-auto max-w-52">Accept and continue</button>
+                            </div>
+                        </motion.div>
                     </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
+                )}
+            </AnimatePresence>
+        </>
+    );
+}
 
-        <AuthLayout
-            title="Create an account"
-            variant="register"   // ← add this
-        >
-            <Head title="Register" />
-
-            <Form
-    {...store.form()}
-    resetOnSuccess={['password', 'password_confirmation']}
-    className="flex flex-col gap-0 w-full"
->
-    {({ processing, errors }) => (
-        <div className="space-y-3">
-
-            {/* ROW 1 — First + Last name */}
-            <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                    <Label htmlFor="first_name" className="text-xs font-semibold text-gray-700">First Name</Label>
-                    <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
-                        <Input id="first_name" name="first_name" required autoFocus placeholder="First name" className="pl-9 h-9 text-sm"/>
-                    </div>
-                    <InputError message={errors.first_name}/>
-                </div>
-                <div className="space-y-1">
-                    <Label htmlFor="last_name" className="text-xs font-semibold text-gray-700">Last Name</Label>
-                    <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
-                        <Input id="last_name" name="last_name" required placeholder="Last name" className="pl-9 h-9 text-sm"/>
-                    </div>
-                    <InputError message={errors.last_name}/>
-                </div>
-            </div>
-
-            {/* ROW 2 — Middle name + Contact */}
-            <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                    <Label htmlFor="middle_name" className="text-xs font-semibold text-gray-700">
-                        Middle Name <span className="text-gray-400 font-normal">(Optional)</span>
-                    </Label>
-                    <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
-                        <Input id="middle_name" name="middle_name" placeholder="Middle name" className="pl-9 h-9 text-sm"/>
-                    </div>
-                    <InputError message={errors.middle_name}/>
-                </div>
-                <div className="space-y-1">
-                    <Label htmlFor="contact" className="text-xs font-semibold text-gray-700">Contact Number</Label>
-                    <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
-                        <Input id="contact" type="tel" name="contact" required maxLength={11} placeholder="09XXXXXXXXX" className="pl-9 h-9 text-sm"/>
-                    </div>
-                    <InputError message={errors.contact}/>
-                </div>
-            </div>
-
-            {/* ROW 3 — Birthdate + Sex + Civil Status */}
-<div className="grid grid-cols-3 gap-3">
-
-    {/* Birthdate */}
-    <div className="space-y-1">
-        <Label
-            htmlFor="birthdate"
-            className="text-xs font-semibold text-gray-700"
-        >
-            Birthdate
-        </Label>
-
-        <Input
-            id="birthdate"
-            type="date"
-            name="birthdate"
-            required
-            max={new Date().toISOString().split('T')[0]}
-            className="h-9 text-sm"
-        />
-
-        <InputError message={errors.birthdate}/>
-    </div>
-
-    {/* Sex */}
-    <div className="space-y-1">
-        <Label
-            htmlFor="sex"
-            className="text-xs font-semibold text-gray-700"
-        >
-            Sex
-        </Label>
-
-        <select
-            id="sex"
-            name="sex"
-            required
-            className="
-                w-full h-9 px-3 text-sm
-                border border-input
-                rounded-md
-                bg-background
-                focus:ring-2 focus:ring-[#0097A7]
-                outline-none
-            "
-        >
-            <option value="">Select</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-        </select>
-
-        <InputError message={errors.sex}/>
-    </div>
-
-    {/* Civil Status */}
-    <div className="space-y-1">
-        <Label
-            htmlFor="civil_status"
-            className="text-xs font-semibold text-gray-700"
-        >
-            Civil Status
-        </Label>
-
-        <select
-            id="civil_status"
-            name="civil_status"
-            required
-            className="
-                w-full h-9 px-3 text-sm
-                border border-input
-                rounded-md
-                bg-background
-                focus:ring-2 focus:ring-[#0097A7]
-                outline-none
-            "
-        >
-            <option value="">Select</option>
-            <option value="Single">Single</option>
-            <option value="Married">Married</option>
-            <option value="Divorced">Divorced</option>
-            <option value="Widowed">Widowed</option>
-        </select>
-
-        <InputError message={errors.civil_status}/>
-    </div>
-</div>
-
-            {/* ROW 3 — Email full width */}
-            <div className="space-y-1">
-                <Label htmlFor="email" className="text-xs font-semibold text-gray-700">Email Address</Label>
-                <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
-                    <Input id="email" type="email" name="email" required placeholder="email@example.com" className="pl-9 h-9 text-sm"/>
-                </div>
-                <InputError message={errors.email}/>
-            </div>
-
-            {/* ROW 4 — Password + Confirm Password */}
-            <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                    <Label htmlFor="password" className="text-xs font-semibold text-gray-700">Password</Label>
-                    <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
-                        <Input id="password" name="password" type={showPassword ? "text" : "password"} required className="pl-9 pr-9 h-9 text-sm"/>
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                            {showPassword ? <EyeOff className="h-3.5 w-3.5"/> : <Eye className="h-3.5 w-3.5"/>}
-                        </button>
-                    </div>
-                    <InputError message={errors.password}/>
-                </div>
-                <div className="space-y-1">
-                    <Label htmlFor="password_confirmation" className="text-xs font-semibold text-gray-700">Confirm Password</Label>
-                    <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400"/>
-                        <Input id="password_confirmation" name="password_confirmation" type={showPassword ? "text" : "password"} required className="pl-9 h-9 text-sm"/>
-                    </div>
-                    <InputError message={errors.password_confirmation}/>
-                </div>
-            </div>
-
-            {/* TERMS */}
-            <div className="flex items-center space-x-2 pt-1">
-                <Checkbox
-                    id="terms"
-                    name="terms"
-                    checked={acceptedTerms}
-                    onCheckedChange={(value) => setAcceptedTerms(!!value)}
-                    required
-                />
-                <Label htmlFor="terms" className="text-xs text-gray-700 leading-tight">
-                    I agree to the{" "}
-                    <button type="button" onClick={() => setShowTermsModal(true)} className="text-[#0097A7] font-semibold hover:underline">
-                        Terms & Privacy Policy
-                    </button>
-                </Label>
-            </div>
-
-            {/* SUBMIT */}
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button type="submit" className="w-full h-10 bg-[#2E7D32] hover:bg-[#6FC276] text-white font-bold text-sm rounded-xl">
-                    {processing ? <Spinner className="text-white"/> : "Create Account"}
-                </Button>
-            </motion.div>
-
-            {/* SIGN IN */}
-            <div className="text-center text-xs text-gray-600 pt-1">
-                Already have an account?{" "}
-                <TextLink href={login()} className="text-[#0097A7] font-bold hover:underline">
-                    Sign in
-                </TextLink>
-            </div>
-
+function Field({ label, optional, error, children }: { label: string; optional?: boolean; error?: string; children: React.ReactNode }) {
+    return (
+        <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">{label} {optional && <span className="font-normal text-slate-400">(optional)</span>}</label>
+            {children}
+            <InputError message={error} className="mt-1.5 text-xs" />
         </div>
-    )}
-</Form>
-        </AuthLayout>
-    </>
-);
+    );
+}
 
+function PasswordToggle({ shown, onClick }: { shown: boolean; onClick: () => void }) {
+    return (
+        <button type="button" onClick={onClick} className="auth-password-toggle" aria-label={shown ? 'Hide password' : 'Show password'}>
+            {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
+    );
 }

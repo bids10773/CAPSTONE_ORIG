@@ -1,210 +1,109 @@
-import { Form, Head, usePage, router } from '@inertiajs/react';
-import { Eye, EyeOff } from 'lucide-react'; // add this
+import { Form, Head, router, usePage } from '@inertiajs/react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import TextLink from '@/components/text-link';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
-import { useState, useEffect } from 'react';
-import { CheckCircle2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 
-type Props = {
-    status?: string;
-    canResetPassword: boolean;
-    canRegister: boolean;
-};
+type Props = { status?: string; canResetPassword: boolean; canRegister: boolean };
 
 export default function Login({ status, canResetPassword, canRegister }: Props) {
-    const [showVerifyModal, setShowVerifyModal] = useState(false);
-    const { auth , errors} = usePage().props as any;
-    const [formError, setFormError] = useState<string | null>(null);
+    const { auth, errors: pageErrors } = usePage().props as any;
     const [showPassword, setShowPassword] = useState(false);
+    const [showVerified, setShowVerified] = useState(false);
 
     useEffect(() => {
-    if (errors?.email) {
-        setFormError(errors.email);
-
-        // auto remove after 3 seconds
-        const timer = setTimeout(() => {
-            setFormError(null);
-        }, 3000);
-
-        return () => clearTimeout(timer);
-    }
-}, [errors]);
-
-useEffect(() => {
-    if (auth?.user) {
-        router.visit('/dashboard');
-    }
-}, []);
-
-    useEffect(() => {
+        if (auth?.user) router.visit('/dashboard');
         const params = new URLSearchParams(window.location.search);
         if (params.get('verified') === '1') {
-            setShowVerifyModal(true);
+            setShowVerified(true);
             window.history.replaceState({}, document.title, window.location.pathname);
         }
-    }, []);
+    }, [auth?.user]);
 
     return (
         <>
-           {/* FULL SCREEN MODAL - Reduced Blur & Opacity */}
-<AnimatePresence>
-    {showVerifyModal && (
-        <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            // Changed backdrop-blur-xl to backdrop-blur-sm
-            // Changed bg-gray-950/80 to bg-gray-950/40 for more transparency
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/40 backdrop-blur-sm p-4"
-        >
-            <motion.div 
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                // Added shadow-blue-500/20 to make the modal pop against the now-visible background
-                className="bg-white rounded-[2.5rem] p-10 max-w-lg w-full text-center shadow-2xl shadow-blue-500/20 border border-blue-100"
-            >
-                <motion.div 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
-                    className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-green-100 mb-8"
-                >
-                    <CheckCircle2 className="h-14 w-14 text-green-600" />
-                </motion.div>
-                
-                <h2 className="text-4xl font-black text-gray-900 mb-6 tracking-tight uppercase">Verified!</h2>
-                
-                <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-6 mb-10 text-center">
-                    <p className="text-gray-700 text-lg leading-relaxed font-medium">
-    Your email has been successfully verified. You may now securely log in to your account.
-</p>
-                </div>
+            <Head title="Secure sign in" />
+            <AuthLayout variant="login">
+                <header className="mb-8">
+                    <div className="mb-5 flex size-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                        <ShieldCheck className="size-5" aria-hidden="true" />
+                    </div>
+                    <p className="text-xs font-semibold uppercase tracking-[.16em] text-blue-600">Welcome back</p>
+                    <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Sign in to your account</h1>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">Securely sign in to continue to the medical services portal.</p>
+                </header>
 
-                <Button 
-                    onClick={() => setShowVerifyModal(false)}
-                    className="w-full py-8 text-xl bg-[#6FC276] hover:bg-blue-700 text-white rounded-2xl font-bold transition-all shadow-xl active:scale-95"
-                >
-                    Okay, I'm ready
-                </Button>
-            </motion.div>
-        </motion.div>
-    )}
-</AnimatePresence>
+                {(status || pageErrors?.email) && (
+                    <div role="alert" className={`mb-5 flex items-start gap-3 rounded-xl border p-3.5 text-sm ${pageErrors?.email ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+                        {pageErrors?.email ? <AlertCircle className="mt-0.5 size-4 shrink-0" /> : <CheckCircle2 className="mt-0.5 size-4 shrink-0" />}
+                        <span>{pageErrors?.email || status}</span>
+                    </div>
+                )}
 
-
-            <AuthLayout
-                title="Log in to your account"
-                description="Enter your email and password below to log in"
-                variant="login"
-            >
-                <Head title="Log in" />
-
-                <Form
-                    {...store.form()}
-                    resetOnSuccess={['password']}
-                    className="flex flex-col gap-6"
-                >
+                <Form {...store.form()} resetOnSuccess={['password']} className="space-y-5">
                     {({ processing, errors }) => (
                         <>
-                        {formError && (
-    <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-semibold text-center animate-fade-in">
-        {formError}
-    </div>
-)}
-    <div className="grid gap-6">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="email">Email address</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        name="email"
-                                        required
-                                        autoFocus
-                                        tabIndex={1}
-                                        autoComplete="email"
-                                        placeholder="email@example.com"
-                                        className={errors.email ? 'border-red-500' : ''}
-                                    />
+                            <div>
+                                <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-700">Email address</label>
+                                <div className="auth-input-wrap">
+                                    <Mail className="auth-input-icon" aria-hidden="true" />
+                                    <input id="email" name="email" type="email" required autoFocus autoComplete="email" placeholder="you@example.com" className={`auth-input ${errors.email ? 'auth-input-error' : ''}`} aria-invalid={!!errors.email} />
                                 </div>
-
-                                <div className="grid gap-2">
-    <div className="flex items-center">
-        <Label htmlFor="password">Password</Label>
-        {canResetPassword && (
-            <TextLink href={request()} className="ml-auto text-sm" tabIndex={5}>
-                Forgot password?
-            </TextLink>
-        )}
-    </div>
-    <div className="relative">
-        <Input
-            id="password"
-            name="password"
-            type={showPassword ? "text" : "password"}
-            required
-            tabIndex={2}
-            autoComplete="current-password"
-            placeholder="Password"
-            className={errors.email ? 'border-red-500 pr-10' : 'pr-10'}
-        />
-        <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            tabIndex={-1}
-        >
-            {showPassword ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
-        </button>
-    </div>
-</div>
-
-                                <div className="flex items-center space-x-3">
-                                    <Checkbox id="remember" name="remember" tabIndex={3} />
-                                    <Label htmlFor="remember">Remember me</Label>
-                                </div>
-
-                                <Button
-                                    type="submit"
-                                    className="mt-4 w-full bg-[#2E7D32] hover:bg-[#6FC276]"
-                                    tabIndex={4}
-                                    disabled={processing}
-                                    data-test="login-button"
-                                >
-                                    {processing && <Spinner />}
-                                    Log in
-                                </Button>
                             </div>
-
-                            {canRegister && (
-                                <div className="text-center text-sm text-muted-foreground text-white">
-                                    Don't have an account?{' '}
-                                    <TextLink href={register()} tabIndex={5}>
-                                        Sign up
-                                    </TextLink>
+                            <div>
+                                <div className="mb-2 flex items-center justify-between">
+                                    <label htmlFor="password" className="text-sm font-medium text-slate-700">Password</label>
+                                    {canResetPassword && <TextLink href={request()} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Forgot password?</TextLink>}
                                 </div>
-                            )}
+                                <div className="auth-input-wrap">
+                                    <LockKeyhole className="auth-input-icon" aria-hidden="true" />
+                                    <input id="password" name="password" type={showPassword ? 'text' : 'password'} required autoComplete="current-password" placeholder="Enter your password" className="auth-input pr-12" />
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="auth-password-toggle" aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Checkbox id="remember" name="remember" className="size-5 rounded border-slate-300 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600" />
+                                <label htmlFor="remember" className="cursor-pointer text-sm text-slate-600">Keep me signed in</label>
+                            </div>
+                            <button type="submit" disabled={processing} className="auth-primary-button">
+                                {processing ? <><Spinner className="size-4" /> Signing in securely…</> : 'Sign in'}
+                            </button>
                         </>
                     )}
                 </Form>
 
-{status && (
-                    <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-2xl text-center">
-                        <CheckCircle2 className="mx-auto h-12 w-12 text-green-600 mb-4" />
-                        <p className="text-lg font-semibold text-green-800 mb-2">{status}</p>
-                        <p className="text-green-700">You can now log in with your account.</p>
+                {canRegister && (
+                    <div className="mt-7 border-t border-slate-100 pt-6 text-center text-sm text-slate-500">
+                        New to the patient portal? <TextLink href={register()} className="font-semibold text-blue-600 hover:text-blue-700">Create an account</TextLink>
                     </div>
                 )}
-
+                <div className="mt-6 flex items-center justify-center gap-2 text-[11px] text-slate-400">
+                    <LockKeyhole className="size-3.5" /> Your connection is encrypted and secure
+                </div>
             </AuthLayout>
+
+            <AnimatePresence>
+                {showVerified && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="verified-title">
+                        <motion.div initial={{ scale: .94, y: 12 }} animate={{ scale: 1, y: 0 }} className="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-2xl">
+                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: .15 }} className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                                <CheckCircle2 className="size-8" />
+                            </motion.div>
+                            <h2 id="verified-title" className="mt-5 text-2xl font-semibold text-slate-950">Email verified</h2>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">Your account is ready. You can now sign in securely.</p>
+                            <button onClick={() => setShowVerified(false)} className="auth-primary-button mt-6">Continue to sign in</button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </>
     );
 }

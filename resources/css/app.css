@@ -103,6 +103,53 @@
     body { @apply bg-background text-foreground; }
 }
 
+@layer components {
+    .auth-grid {
+        background-image:
+            linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
+        background-size: 46px 46px;
+        mask-image: linear-gradient(to bottom, black, transparent 90%);
+    }
+
+    .auth-input-wrap {
+        @apply relative;
+    }
+
+    .auth-input-icon {
+        @apply pointer-events-none absolute left-3.5 top-1/2 z-10 size-4 -translate-y-1/2 text-slate-400 transition-colors;
+    }
+
+    .auth-input,
+    .auth-select {
+        @apply h-12 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10;
+    }
+
+    .auth-input {
+        @apply pl-10 pr-4;
+    }
+
+    .auth-select {
+        @apply appearance-none px-3.5 pr-9;
+    }
+
+    .auth-input-wrap:focus-within .auth-input-icon {
+        @apply text-blue-600;
+    }
+
+    .auth-input-error {
+        @apply border-red-400 focus:border-red-500 focus:ring-red-500/10;
+    }
+
+    .auth-password-toggle {
+        @apply absolute right-1.5 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500;
+    }
+
+    .auth-primary-button {
+        @apply flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-600/25 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25 active:translate-y-0 disabled:pointer-events-none disabled:opacity-60 disabled:shadow-none;
+    }
+}
+
 /* ─── Auth right panel: force dark text on white bg ─── */
 @layer components {
     .auth-panel-right {
