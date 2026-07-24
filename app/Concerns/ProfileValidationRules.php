@@ -15,19 +15,14 @@ trait ProfileValidationRules
     protected function profileRules(?int $userId = null): array
     {
         return [
-            'name' => $this->nameRules(),
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
             'email' => $this->emailRules($userId),
+            'birthdate' => ['nullable', 'date', 'before_or_equal:today'],
+            'sex' => ['nullable', Rule::in(['Male', 'Female'])],
+            'civil_status' => ['nullable', Rule::in(['Single', 'Married', 'Divorced', 'Widowed'])],
         ];
-    }
-
-    /**
-     * Get the validation rules used to validate user names.
-     *
-     * @return array<int, \Illuminate\Contracts\Validation\Rule|array<mixed>|string>
-     */
-    protected function nameRules(): array
-    {
-        return ['required', 'string', 'max:255'];
     }
 
     /**

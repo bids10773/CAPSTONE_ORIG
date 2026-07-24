@@ -1,26 +1,56 @@
-import { useState, useEffect} from 'react';
 import { Head, usePage, Link, router } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import { 
-    Users, ArrowLeft, Save, Lock, Eye, EyeOff, 
-    User, Mail, Phone, BadgeCheck, Stethoscope 
-} from 'lucide-react';
-import InputError from '@/components/input-error';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import type { BreadcrumbItem } from '@/types';
 import { motion } from "framer-motion";
+import { 
+    ArrowLeft, Save, Lock, Copy, RefreshCw,
+    User, Mail, Phone, BadgeCheck, Stethoscope
+} from 'lucide-react';
+import { useState } from 'react';
+import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Staff Management', href: "/admin/staff" },
     { title: 'Create Staff', href: "" },
 ];
 
+const generateTemporaryPassword = () => {
+    const groups = [
+        'ABCDEFGHJKLMNPQRSTUVWXYZ',
+        'abcdefghijkmnopqrstuvwxyz',
+        '23456789',
+        '!@#$%&*?',
+    ];
+    const allCharacters = groups.join('');
+    const randomIndex = (length: number) => {
+        const value = new Uint32Array(1);
+        crypto.getRandomValues(value);
+        return value[0] % length;
+    };
+    const characters = groups.map((group) => group[randomIndex(group.length)]);
+
+    while (characters.length < 14) {
+        characters.push(allCharacters[randomIndex(allCharacters.length)]);
+    }
+
+    for (let index = characters.length - 1; index > 0; index -= 1) {
+        const swapIndex = randomIndex(index + 1);
+        [characters[index], characters[swapIndex]] = [characters[swapIndex], characters[index]];
+    }
+
+    return characters.join('');
+};
+
 export default function CreateStaff() {
     const props = usePage().props as any;
     const { roles } = props;
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState(() => {
+        const password = generateTemporaryPassword();
+
+        return {
         first_name: '',
         middle_name: '',
         last_name: '',
@@ -30,13 +60,30 @@ export default function CreateStaff() {
         role: 'doctor',
         license_no: '',
         specialization: '',
-        password: '',
-        password_confirmation: '',
+            password,
+            password_confirmation: password,
+        };
     });
 
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
+    const [passwordCopied, setPasswordCopied] = useState(false);
+
+    const regeneratePassword = () => {
+        const password = generateTemporaryPassword();
+        setFormData((previous) => ({
+            ...previous,
+            password,
+            password_confirmation: password,
+        }));
+        setPasswordCopied(false);
+    };
+
+    const copyPassword = async () => {
+        await navigator.clipboard.writeText(formData.password);
+        setPasswordCopied(true);
+        window.setTimeout(() => setPasswordCopied(false), 2000);
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
   const { name, value } = e.target;
@@ -69,9 +116,6 @@ export default function CreateStaff() {
             },
         });
     };
-
-    const showSpecialization = formData.role === 'doctor';
-    const showLicense = formData.role !== 'company';
 
     const inputStyle = "w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none";
     const selectStyle = "w-full px-4 py-2 border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none cursor-pointer";
@@ -128,22 +172,40 @@ export default function CreateStaff() {
                                 </div>
                                 <div className="space-y-4">
                                     <div>
-                                        <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Password</Label>
+                                        <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Temporary Password</Label>
                                         <div className="relative">
                                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} className={inputStyle} placeholder="••••••••" />
-                                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500">
-                                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            <input
+                                                type="text"
+                                                name="password"
+                                                value={formData.password}
+                                                readOnly
+                                                className={`${inputStyle} pr-20 font-mono`}
+                                                aria-describedby="temporary-password-help"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={copyPassword}
+                                                className="absolute right-10 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500"
+                                                aria-label="Copy temporary password"
+                                                title="Copy password"
+                                            >
+                                                <Copy className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={regeneratePassword}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-500"
+                                                aria-label="Generate a new temporary password"
+                                                title="Generate new password"
+                                            >
+                                                <RefreshCw className="w-4 h-4" />
                                             </button>
                                         </div>
+                                        <p id="temporary-password-help" className="mt-2 text-xs text-muted-foreground">
+                                            {passwordCopied ? 'Copied to clipboard.' : 'Generated automatically. Copy this password before creating the account.'}
+                                        </p>
                                         {errors.password && <InputError message={errors.password} />}
-                                    </div>
-                                    <div>
-                                        <Label className="text-[11px] font-bold uppercase text-muted-foreground mb-2 block">Confirm Password</Label>
-                                        <div className="relative">
-                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <input type={showPassword ? "text" : "password"} name="password_confirmation" value={formData.password_confirmation} onChange={handleChange} className={inputStyle} placeholder="••••••••" />
-                                        </div>
                                     </div>
                                 </div>
                             </div>

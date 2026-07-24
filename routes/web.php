@@ -4,198 +4,142 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
+use App\Http\Controllers\DoctorAvailabilityController;
 use App\Http\Controllers\DoctorDashboardController;
+use App\Http\Controllers\LaboratoryController;
 use App\Http\Controllers\MedTechDashboardController;
 use App\Http\Controllers\PatientDashboardController;
-use App\Http\Controllers\RadTechDashboardController;
-use App\Http\Controllers\LaboratoryController;
-use App\Http\Controllers\DoctorAvailabilityController;
 use App\Http\Controllers\PhysicalExamController;
+use App\Http\Controllers\RadTechDashboardController;
+use App\Http\Controllers\ReceptionistDashboardController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\XrayController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Laravel\Fortify\Features;
-use App\Http\Controllers\ReceptionistDashboardController;
 
-
-
-Route::get('/dashboard', [PatientDashboardController::class, '__invoke'])
-    ->middleware(['patient.only'])
-    ->name('dashboard');
-    
-    Route::get('/appointment', [AppointmentController::class, 'create'])->name('appointment.create');
-
-// 2. SMART REDIRECTS
 Route::get('/', function () {
-    if (auth()->check()) {
-        // Redirect patients/staff to their correct spots
-        return match(auth()->user()->role) {
-            'admin'    => redirect('/admin/dashboard'),
-            'doctor'   => redirect('/doctor/dashboard'),
-            'medtech'  => redirect('/medtech/dashboard'),
-            'radtech'  => redirect('/radtech/dashboard'),
-            'company'  => redirect('/company/dashboard'),
-            'staff'    => redirect('/staff/appointments'), // ✅ add this
-            default    => redirect('/dashboard'),
-        };
+    if (! auth()->check()) {
+        return Inertia::render('welcome');
     }
-    return redirect('/dashboard'); 
+
+    return redirect(match (auth()->user()->role) {
+        'admin' => '/admin/dashboard',
+        'doctor' => '/doctor/dashboard',
+        'medtech' => '/medtech/dashboard',
+        'radtech' => '/radtech/dashboard',
+        'company' => '/company/dashboard',
+        'receptionist' => '/receptionist/dashboard',
+        default => '/dashboard',
+    });
 })->name('home');
 
+Route::middleware(['auth', 'staff.verified'])->group(function () {
+    Route::get('/dashboard', PatientDashboardController::class)
+        ->middleware('patient.only')
+        ->name('dashboard');
 
+    Route::middleware('role:patient,company')->group(function () {
+        Route::get('/appointment', [AppointmentController::class, 'create'])->name('appointment.create');
+        Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments.index');
+        Route::get('/appointments/create', [AppointmentController::class, 'create'])->name('appointments.create');
+        Route::post('/appointments', [AppointmentController::class, 'store'])->name('appointments.store');
+        Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
 
-Route::middleware(['auth', 'staff.verified', 'role:receptionist'])
-    ->prefix('receptionist')
-    ->name('receptionist.')
-    ->group(function () {
-        Route::get('/dashboard', [ReceptionistDashboardController::class, '__invoke'])->name('dashboard');
+        Route::get('/api/companies', [AppointmentController::class, 'getCompanies'])->name('api.companies');
+        Route::get('/api/available-doctors', [AppointmentController::class, 'availableDoctors'])->name('api.available-doctors');
+        Route::get('/api/doctors', [AppointmentController::class, 'getDoctors'])->name('api.doctors');
+        Route::get('/api/doctors/{doctorId}/availability', [AppointmentController::class, 'getDoctorAvailability'])->name('api.doctor.availability');
     });
 
-    Route::middleware(['auth', 'role:staff'])->prefix('staff')->name('staff.')->group(function () {
-    Route::get('/',              fn() => redirect()->route('staff.appointments.index'))->name('dashboard'); // ✅
-    Route::get('appointments',                        [AppointmentController::class, 'staffDashboard'])->name('appointments.index');
-    Route::post('appointments',                       [AppointmentController::class, 'staffStore'])->name('appointments.store');
-    Route::patch('appointments/{appointment}',        [AppointmentController::class, 'staffUpdate'])->name('appointments.update');
-    Route::patch('appointments/{appointment}/status', [AppointmentController::class, 'staffUpdateStatus'])->name('appointments.status');
-    Route::get('patients/search',                     [AppointmentController::class, 'searchPatients'])->name('patients.search');
-});
+    Route::middleware('role:company')->group(function () {
+        Route::get('/company/dashboard', CompanyDashboardController::class)->name('company.dashboard');
+        Route::post('/company/appointments/bulk', [AppointmentController::class, 'companyBulkStore'])->name('company.appointments.bulk');
+        Route::post('/appointments/bulk', [AppointmentController::class, 'bulkStore'])->name('appointments.bulk');
+    });
 
-Route::middleware(['auth', 'staff.verified'])->group(function () {
+    Route::middleware('role:receptionist')->group(function () {
+        Route::get('/receptionist/dashboard', ReceptionistDashboardController::class)->name('receptionist.dashboard');
+    });
 
-    // Dashboard Routes
-    Route::get('/admin/dashboard', [AdminDashboardController::class, '__invoke'])->middleware('role:admin');
-    Route::get('/doctor/dashboard', [DoctorDashboardController::class, '__invoke'])->middleware('role:doctor')->name('doctor.dashboard');
-    Route::get('/medtech/dashboard', [MedTechDashboardController::class, '__invoke'])->middleware('role:medtech');
-    Route::get('/radtech/dashboard', [RadTechDashboardController::class, '__invoke'])->middleware('role:radtech');
-    Route::get('/company/dashboard', [CompanyDashboardController::class, '__invoke'])->middleware('role:company')->name('company.dashboard');
-    Route::post('/company/appointments/bulk', [AppointmentController::class, 'companyBulkStore'])->middleware('role:company')->name('company.appointments.bulk');
-    
-   // Doctor Routes
-Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(function () {
-    Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor');
+    Route::middleware('role:receptionist')->prefix('staff')->name('staff.')->group(function () {
+        Route::get('/', fn () => redirect()->route('staff.appointments.index'))->name('dashboard');
+        Route::get('/appointments', [AppointmentController::class, 'staffDashboard'])->name('appointments.index');
+        Route::post('/appointments', [AppointmentController::class, 'staffStore'])->name('appointments.store');
+        Route::patch('/appointments/{appointment}', [AppointmentController::class, 'staffUpdate'])->name('appointments.update');
+        Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'staffUpdateStatus'])->name('appointments.status');
+        Route::get('/patients/search', [AppointmentController::class, 'searchPatients'])->name('patients.search');
+    });
 
-    Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
-    Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');
+    Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(function () {
+        Route::get('/dashboard', DoctorDashboardController::class)->name('dashboard');
+        Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor')->name('appointments');
+        Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
+        Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');
+        Route::get('/physical-exam-form/{appointmentId}', [PhysicalExamController::class, 'create'])->name('physical-exams.create');
+        Route::post('/physical-exam-form/{appointmentId}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
+        Route::get('/final-evaluation/{appointmentId}', [PhysicalExamController::class, 'final'])->name('final-evaluation');
+        Route::post('/final-evaluation/{appointmentId}', [PhysicalExamController::class, 'finalStore'])->name('final-evaluation.store');
+    });
 
-    // Change {appointmentid} to {appointmentId}
-    Route::get('/physical-exam-form/{appointmentId}', [PhysicalExamController::class, 'create'])->name('physical-exams.create');
-    Route::post('/physical-exam-form/{appointmentId}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
-    Route::get('/final-evaluation/{appointmentId}', [PhysicalExamController::class, 'final'])
-    ->name('final-evaluation');
-
-Route::post('/final-evaluation/{appointmentId}', [PhysicalExamController::class, 'finalStore'])
-    ->name('final-evaluation.store');
-});
-
-
-// routes/web.php
-Route::middleware(['auth', 'role:staff'])->prefix('staff')->name('staff.')->group(function () {
-    Route::get('appointments',                       [AppointmentController::class, 'staffDashboard'])  ->name('appointments.index');
-    Route::post('appointments',                      [AppointmentController::class, 'staffStore'])      ->name('appointments.store');
-    Route::patch('appointments/{appointment}',       [AppointmentController::class, 'staffUpdate'])     ->name('appointments.update');
-    Route::patch('appointments/{appointment}/status',[AppointmentController::class, 'staffUpdateStatus'])->name('appointments.status');
-    Route::get('patients/search',                    [AppointmentController::class, 'searchPatients'])  ->name('patients.search');
-});
-
-    // MedTech Routes
     Route::middleware('role:medtech')->prefix('medtech')->name('medtech.')->group(function () {
-        Route::get('/appointments', [AppointmentController::class, 'staffIndex'])
-    ->defaults('role', 'medtech')
-    ->name('appointments');
+        Route::get('/dashboard', MedTechDashboardController::class)->name('dashboard');
+        Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'medtech')->name('appointments');
         Route::get('/lab-results/{appointment}', [LaboratoryController::class, 'create'])->name('lab-results.create');
         Route::post('/lab-results/{appointment}', [LaboratoryController::class, 'store'])->name('lab-results.store');
     });
 
-    // RadTech Routes
     Route::middleware('role:radtech')->prefix('radtech')->name('radtech.')->group(function () {
-       Route::get('/appointments', [AppointmentController::class, 'staffIndex'])
-    ->defaults('role', 'radtech')
-    ->name('appointments');
+        Route::get('/dashboard', RadTechDashboardController::class)->name('dashboard');
+        Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'radtech')->name('appointments');
         Route::get('/xrays/{appointment}', [XrayController::class, 'create'])->name('xrays.create');
         Route::post('/xrays/{appointment}', [XrayController::class, 'store'])->name('xrays.store');
     });
 
-    // Appointment Routes
-    Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments.index');
-    Route::get('/appointments/create', [AppointmentController::class, 'create'])->name('appointments.create');
-    Route::post('/appointments', [AppointmentController::class, 'store'])->name('appointments.store');
-    Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
-    Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.update-status');
-    Route::post('/appointments/bulk', [AppointmentController::class, 'bulkStore'])->name('appointments.bulk');
-    
-    // API for companies dropdown
-    Route::get('/api/companies', [AppointmentController::class, 'getCompanies'])->name('api.companies');
-
-    // API for doctor availability
-    Route::get('/api/available-doctors', [AppointmentController::class, 'availableDoctors'])->name('api.available-doctors');
-    
-    // New APIs for doctor-first flow
-    Route::get('/api/doctors', [AppointmentController::class, 'getDoctors'])->name('api.doctors');
-    Route::get('/api/doctors/{doctorId}/availability', [AppointmentController::class, 'getDoctorAvailability'])->name('api.doctor.availability');
-
-    // Admin Staff Management Routes
-
-    Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
         Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
         Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');
-        Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
 
-        Route::get('/staff/create', [StaffController::class, 'create'])->name('staff.create');
-        Route::post('/staff', [StaffController::class, 'store'])->name('staff.store');
-        Route::get('/staff/{staff}/edit', [StaffController::class, 'edit'])->name('staff.edit');
-        Route::put('/staff/{staff}', [StaffController::class, 'update'])->name('staff.update');
-        Route::delete('/staff/{staff}', [StaffController::class, 'destroy'])->name('staff.destroy');
+        Route::resource('staff', StaffController::class)->except('show');
         Route::patch('/staff/{staff}/toggle-active', [StaffController::class, 'toggleActive'])->name('staff.toggle-active');
         Route::post('/staff/{staff}/signature', [StaffController::class, 'uploadSignature'])->name('staff.signature');
 
-        // Admin Appointment Management
         Route::get('/appointments', [AppointmentController::class, 'adminIndex'])->name('appointments.index');
         Route::get('/appointments/create', [AppointmentController::class, 'adminCreate'])->name('appointments.create');
         Route::post('/appointments', [AppointmentController::class, 'adminStore'])->name('appointments.store');
         Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
         Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.update-status');
-        
-        // Admin Company Management
-        Route::get('/companies', [CompanyController::class, 'index'])->name('companies.index');
-        Route::get('/companies/create', [CompanyController::class, 'create'])->name('companies.create');
-        Route::post('/companies', [CompanyController::class, 'store'])->name('companies.store');
-        Route::get('/companies/{company}/edit', [CompanyController::class, 'edit'])->name('companies.edit');
-        Route::put('/companies/{company}', [CompanyController::class, 'update'])->name('companies.update');
-        Route::delete('/companies/{company}', [CompanyController::class, 'destroy'])->name('companies.destroy');
+
+        Route::resource('companies', CompanyController::class)->except('show');
         Route::patch('/companies/{company}/toggle-active', [CompanyController::class, 'toggleActive'])->name('companies.toggle-active');
         Route::post('/companies/{company}/resend-invitation', [CompanyController::class, 'resendInvitation'])->name('companies.resend-invitation');
 
-        // Admin Analytics
         Route::get('/analytics', [AdminDashboardController::class, 'analytics'])->name('analytics');
-        
-        // Admin Reports
         Route::get('/reports', [AdminDashboardController::class, 'reports'])->name('reports');
-
-      
     });
-
 });
 
 require __DIR__.'/settings.php';
 
-// Email Verification Routes
-Route::get('/email/verify', function (Illuminate\Http\Request $request) {
+Route::get('/email/verify', function (Request $request) {
+    if ($request->user()->hasVerifiedEmail()) {
+        return redirect()->route('dashboard');
+    }
+
     return Inertia::render('auth/verify-email', [
         'status' => $request->session()->get('status'),
     ]);
 })->middleware('auth')->name('verification.notice');
 
-
-Route::post('/email/verification-notification', function (Illuminate\Http\Request $request) {
+Route::post('/email/verification-notification', function (Request $request) {
     $user = $request->user();
-    
+
     if ($user->hasVerifiedEmail()) {
-        return back()->with('status', 'already-verified');
+        return redirect()->route('dashboard')->with('status', 'already-verified');
     }
 
     $user->sendEmailVerificationNotification();
 
     return back()->with('status', 'verification-link-sent');
 })->middleware(['auth', 'throttle:6,1'])->name('verification.send');
-

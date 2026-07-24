@@ -116,8 +116,12 @@ for ($i = 5; $i >= 0; $i--) {
         $predictions = $this->generateLevel3Forecast($monthlyTrends, 4);
         $combinedTrends = array_merge($monthlyTrends, $predictions);
 
-        $serviceTypeBreakdown = Appointment::selectRaw('service_type, COUNT(*) as count')
-            ->groupBy('service_type')->get()->pluck('count', 'service_type')->toArray();
+        $serviceTypeBreakdown = Appointment::query()
+            ->get(['service_types'])
+            ->flatMap(fn (Appointment $appointment) => $appointment->service_types ?? [])
+            ->filter()
+            ->countBy()
+            ->all();
 
         $companyAppointments = Appointment::with('company:id,company_name')
             ->whereNotNull('company_id')->get()->groupBy('company_id')

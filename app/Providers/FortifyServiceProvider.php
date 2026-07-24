@@ -14,7 +14,6 @@ use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 use App\Actions\Fortify\CustomLoginResponse;
 use Laravel\Fortify\Contracts\LoginResponse;
-use Laravel\Fortify\Contracts\RegisteredUserResponse;
 use Laravel\Fortify\Contracts\VerifyEmailResponse;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -24,20 +23,13 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
 {
-    // Custom login redirect
-    $this->app->singleton(LoginResponseContract::class, CustomLoginResponse::class);
-
-    // Custom verify email redirect
-    $this->app->singleton(VerifyEmailResponse::class, function () {
-    return new class implements VerifyEmailResponse {
-
+    $this->app->singleton(LoginResponse::class, CustomLoginResponse::class);
+    $this->app->singleton(VerifyEmailResponse::class, fn () => new class implements VerifyEmailResponse {
         public function toResponse($request)
         {
-            return redirect('/dashboard')->with('status', 'email-verified');
+            return redirect('/dashboard?verified=1')->with('status', 'email-verified');
         }
-
-    };
-});
+    });
 }
 
     /**
@@ -54,11 +46,9 @@ class FortifyServiceProvider extends ServiceProvider
         // Configure rate limiting
         $this->configureRateLimiting();
 
-        // Add role-based redirect after login
-        $this->app->singleton(LoginResponse::class, CustomLoginResponse::class);
-
         // Redirect to email verification after registration
         Fortify::redirects('register', '/email/verify');
+        config(['fortify.redirects.logout' => '/login']);
     }
 
     /**

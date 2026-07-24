@@ -121,7 +121,6 @@ function WalkInModal({ doctors, serviceTypes, onClose }: {
 });
 
 useEffect(() => {
-    console.log(errors);
 }, [errors]);
 
     const doSearch = useRef(

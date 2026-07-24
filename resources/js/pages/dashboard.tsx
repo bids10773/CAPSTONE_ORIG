@@ -1,4 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
     Activity,
     ArrowRight,
@@ -21,7 +22,6 @@ import {
     X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 import logo from '/resources/images/full_logo.png';
 import { useLogoutModal } from '@/contexts/logout-modal-context';
@@ -93,7 +93,12 @@ function AccountMenu({ user }: { user: User }) {
             <div className="border-b border-slate-100 px-3 py-3"><p className="text-sm font-bold text-slate-950">{user.name || `${user.first_name ?? ''} ${user.last_name ?? ''}`}</p><p className="mt-1 truncate text-xs text-slate-500">{user.email}</p></div>
             <Link href="/settings/profile" className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-cyan-50 hover:text-cyan-800"><Settings size={16} /> Account settings</Link>
             <Link href="/appointments" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-cyan-50 hover:text-cyan-800"><CalendarDays size={16} /> My appointments</Link>
-            <button onClick={openModal} className="mt-1 flex w-full items-center gap-3 rounded-xl border-t border-slate-100 px-3 py-2.5 text-sm font-bold text-rose-600 hover:bg-rose-50"><LogOut size={16} /> Sign out</button>
+            <button
+                onClick={(event) => openModal(event.currentTarget)}
+                className="mt-1 flex w-full items-center gap-3 rounded-xl border-t border-slate-100 px-3 py-2.5 text-sm font-bold text-rose-600 hover:bg-rose-50"
+            >
+                <LogOut size={16} /> Sign out
+            </button>
         </motion.div>}</AnimatePresence>
     </div>;
 }

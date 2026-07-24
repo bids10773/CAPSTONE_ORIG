@@ -1,109 +1,184 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, X , Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useLogoutModal } from '@/contexts/logout-modal-context';
 import { router } from '@inertiajs/react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CircleAlert, Loader2, LogOut, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useLogoutModal } from '@/contexts/logout-modal-context';
 import { logout } from '@/routes';
-import { useEffect, useState } from 'react';
 
-export default function LogoutModal() {
+const FOCUSABLE_SELECTOR = [
+    'button:not([disabled])',
+    '[href]',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+type LogoutModalProps = {
+    userId?: number;
+};
+
+export default function LogoutModal({ userId }: LogoutModalProps) {
     const { isOpen, closeModal } = useLogoutModal();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-
+    const [errorMessage, setErrorMessage] = useState('');
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
-    if (isOpen) {
+        if (!isOpen) return;
+
+        const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
-    } else {
-        document.body.style.overflow = '';
-    }
+        cancelButtonRef.current?.focus();
 
-    return () => {
-        document.body.style.overflow = '';
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && !isLoggingOut) {
+                event.preventDefault();
+                closeModal();
+                return;
+            }
+
+            if (event.key !== 'Tab' || !dialogRef.current) return;
+
+            const focusableElements = Array.from(
+                dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+            );
+            if (!focusableElements.length) return;
+
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+
+            if (event.shiftKey && document.activeElement === firstElement) {
+                event.preventDefault();
+                lastElement.focus();
+            } else if (!event.shiftKey && document.activeElement === lastElement) {
+                event.preventDefault();
+                firstElement.focus();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [closeModal, isLoggingOut, isOpen]);
+
+    const dismiss = () => {
+        if (isLoggingOut) return;
+        setErrorMessage('');
+        closeModal();
     };
-}, [isOpen]);
 
-   const handleConfirm = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
+    const confirmLogout = () => {
+        if (isLoggingOut) return;
 
-    if (isLoggingOut) return;
+        setIsLoggingOut(true);
+        setErrorMessage('');
 
-    setIsLoggingOut(true);
+        router.post(logout().url, {}, {
+            preserveScroll: false,
+            preserveState: false,
+            onSuccess: () => {
+                if (userId !== undefined) {
+                    localStorage.removeItem(`appointment-draft-${userId}`);
+                }
+                closeModal();
+            },
+            onError: () => {
+                setErrorMessage('We could not complete the logout request. Please check your connection and try again.');
+            },
+            onFinish: () => {
+                setIsLoggingOut(false);
+            },
+        });
+    };
 
-    router.post(logout().url, {}, {
-        preserveScroll: false,
-        preserveState: false,
-
-        onSuccess: () => {
-            closeModal();
-        },
-
-        onFinish: () => {
-            setIsLoggingOut(false);
-        },
-    });
-};
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-                    <motion.div
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <motion.button
+                        type="button"
+                        aria-label="Close logout dialog"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        onClick={!isLoggingOut ? closeModal : undefined}
-                        className="absolute inset-0 bg-gray-950/75 backdrop-blur-sm"
+                        onClick={dismiss}
+                        disabled={isLoggingOut}
+                        className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-sm disabled:pointer-events-none"
                     />
+
                     <motion.div
-                        initial={{ scale: 0.95, opacity: 0, y: 8 }}
+                        ref={dialogRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="logout-dialog-title"
+                        aria-describedby="logout-dialog-description"
+                        initial={{ scale: 0.96, opacity: 0, y: 12 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
-                        exit={{ scale: 0.95, opacity: 0, y: 8 }}
-                        transition={{ duration: 0.15 }}
-                        className="relative w-full max-w-sm bg-white dark:bg-neutral-900 rounded-[20px] border border-gray-200 dark:border-neutral-700 overflow-hidden shadow-xl"
+                        exit={{ scale: 0.96, opacity: 0, y: 12 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 dark:border-slate-700 dark:bg-slate-900"
                     >
-                        {/* Header */}
-                        <div className="flex items-start gap-3.5 p-7 pb-5">
-                            <div className="w-[42px] h-[42px] rounded-xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center flex-shrink-0">
-                                <LogOut className="w-5 h-5 text-red-700 dark:text-red-400" />
-                            </div>
-                            <div>
-                                <p className="text-base font-medium text-gray-900 dark:text-white mb-1">
-                                    Log out of LMIC?
-                                </p>
-                                <p className="text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                                    You'll need to sign in again to access your account and appointments.
-                                </p>
-                            </div>
+                        <button
+                            type="button"
+                            onClick={dismiss}
+                            disabled={isLoggingOut}
+                            aria-label="Close"
+                            className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-slate-800 dark:hover:text-white"
+                        >
+                            <X className="size-4" />
+                        </button>
+
+                        <div className="px-6 pb-5 pt-7 sm:px-7">
+                            <span className="flex size-12 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                                <LogOut className="size-5" aria-hidden="true" />
+                            </span>
+                            <h2 id="logout-dialog-title" className="mt-5 pr-9 text-xl font-semibold tracking-[-.025em] text-slate-950 dark:text-white">
+                                Log Out of Your Account?
+                            </h2>
+                            <p id="logout-dialog-description" className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                                You will need to sign in again to access your account and clinic services.
+                            </p>
+
+                            {errorMessage && (
+                                <div role="alert" className="mt-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs leading-5 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+                                    <CircleAlert className="mt-0.5 size-4 shrink-0" />
+                                    <span>{errorMessage}</span>
+                                </div>
+                            )}
                         </div>
 
-                        <div className="mx-7 border-t border-gray-100 dark:border-neutral-800" />
-
-                        {/* Actions */}
-                        <div className="flex flex-col gap-2 p-7 pt-4">
+                        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/70 px-6 py-4 sm:flex-row sm:justify-end dark:border-slate-800 dark:bg-slate-950/30">
                             <button
-                                onClick={handleConfirm}
+                                ref={cancelButtonRef}
+                                type="button"
+                                onClick={dismiss}
                                 disabled={isLoggingOut}
-                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-[10px] bg-red-700 hover:bg-red-800 text-red-50 text-sm font-medium transition disabled:opacity-70 disabled:cursor-not-allowed"
+                                className="h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={confirmLogout}
+                                disabled={isLoggingOut}
+                                className="flex h-11 min-w-32 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-500/20 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-70"
                             >
                                 {isLoggingOut ? (
                                     <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Logging out…
+                                        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                                        Logging Out...
                                     </>
                                 ) : (
                                     <>
-                                        <LogOut className="w-4 h-4" />
-                                        Yes, log me out
+                                        <LogOut className="size-4" aria-hidden="true" />
+                                        Log Out
                                     </>
                                 )}
-                            </button>
-                            <button
-                                onClick={closeModal}
-                                disabled={isLoggingOut}
-                                className="w-full py-2.5 rounded-[10px] border border-gray-200 dark:border-neutral-700 text-gray-500 dark:text-gray-400 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                                No, stay signed in
                             </button>
                         </div>
                     </motion.div>

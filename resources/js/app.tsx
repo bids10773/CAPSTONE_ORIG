@@ -1,15 +1,11 @@
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Toaster } from 'sonner';
 import '../css/app.css';
-import { initializeTheme } from './hooks/use-appearance';
-import { LogoutModalProvider } from './contexts/logout-modal-context';
 import LogoutModal from './components/logout-modal';
-import { Toaster } from "sonner";
-
-// Pulls from VITE_APP_NAME in .env or defaults to 'LMIC'
-const appName = import.meta.env.VITE_APP_NAME || 'LMIC';
+import { LogoutModalProvider } from './contexts/logout-modal-context';
+import { initializeTheme } from './hooks/use-appearance';
 
 createInertiaApp({
     // Template: "Page Title - LMIC" or just "LMIC" if no title is set
@@ -17,10 +13,14 @@ createInertiaApp({
     resolve: (name) => resolvePageComponent(`./Pages/${name}.tsx`, import.meta.glob('./Pages/**/*.tsx')),
     setup({ el, App, props }) {
         const root = createRoot(el);
+        const pageProps = props.initialPage.props as {
+            auth?: { user?: { id?: number } };
+        };
+
         root.render(
                 <LogoutModalProvider>
                     <App {...props} />
-                    <LogoutModal />
+                    <LogoutModal userId={pageProps.auth?.user?.id} />
                     <Toaster position="top-right" richColors />
                 </LogoutModalProvider>
         );

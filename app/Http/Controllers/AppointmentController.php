@@ -7,6 +7,8 @@ use App\Models\Company;
 use App\Models\User;
 use App\Models\MedicalHistory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -156,13 +158,11 @@ $rules = [
             return back()->withErrors(['start_time' => 'Selected time outside doctor\'s availability.'])->withInput();
         }
 
-        // Check for overlapping appointments
         $overlap = Appointment::where('doctor_id', $doctor->id)
             ->whereDate('appointment_date', $data['appointment_date'])
-            ->where(function ($q) use ($startTime, $endTime) {
-                $q->whereBetween('start_time', [$startTime->format('H:i'), $endTime->format('H:i')])
-                  ->orWhereBetween('end_time', [$startTime->format('H:i'), $endTime->format('H:i')]);
-            })
+            ->where('status', '!=', 'cancelled')
+            ->where('start_time', '<', $endTime->format('H:i'))
+            ->where('end_time', '>', $startTime->format('H:i'))
             ->exists();
 
         if ($overlap) {
@@ -173,21 +173,32 @@ $rules = [
     $data['referral_code'] = 'REF-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4));
 }
 
-        // Create appointment first
-        $appointment = Appointment::create([
-            'user_id' => $user->id,
-            'company_id' => $data['company_id'] ?? null,
-            'company_name' => $data['company_name']
-                ?? ($data['company_id'] ? Company::find($data['company_id'])->company_name : null),            'doctor_id' => $data['doctor_id'],
-            'start_time' => $startTime->format('H:i'),
-            'end_time' => $endTime->format('H:i'),
-            'appointment_date' => $data['appointment_date'],
-            'type' => $data['type'],
-            'status' => 'pending',
-            'service_types' => json_encode($data['service_types']),
-            'referral_code' => $data['referral_code'] ?? null,
-            'notes' => $data['notes'] ?? null,
-        ]);
+        DB::transaction(function () use ($data, $user, $startTime, $endTime) {
+            $appointment = Appointment::create([
+                'user_id' => $user->id,
+                'company_id' => $data['company_id'] ?? null,
+                'company_name' => $data['company_name']
+                    ?? (isset($data['company_id']) ? Company::find($data['company_id'])?->company_name : null),
+                'doctor_id' => $data['doctor_id'],
+                'start_time' => $startTime->format('H:i'),
+                'end_time' => $endTime->format('H:i'),
+                'appointment_date' => $data['appointment_date'],
+                'type' => $data['type'],
+                'status' => 'pending',
+                'service_types' => $data['service_types'],
+                'referral_code' => $data['referral_code'] ?? null,
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            MedicalHistory::create([
+                'appointment_id' => $appointment->id,
+                ...collect($data)->only([
+                    'present_illness', 'past_medical_history', 'operations_accidents',
+                    'family_history', 'allergies', 'personal_social_history',
+                    'ob_menstrual_history',
+                ])->all(),
+            ]);
+        });
         
         return redirect()->route('appointments.index')
     ->with('success', 
@@ -203,6 +214,13 @@ $rules = [
      */
     public function show(Appointment $appointment): Response
     {
+        $user = request()->user();
+        $canView = $user->role === 'admin'
+            || ($user->role === 'patient' && $appointment->user_id === $user->id)
+            || ($user->role === 'company' && $appointment->company_id === $user->company_id);
+
+        abort_unless($canView, 403);
+
         $appointment->load([
     'user.patientProfile',
     'company',
@@ -618,9 +636,13 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
 
     return back()->with('success', 'Appointments uploaded successfully!');
 
-} catch (\Exception $e) {
-    \Log::error($e);
-    return back()->with('error', $e->getMessage());
+} catch (\Throwable $exception) {
+    Log::error('Company appointment import failed.', [
+        'company_id' => $company->id,
+        'exception' => $exception,
+    ]);
+
+    return back()->with('error', 'The appointment file could not be imported. Check its format and try again.');
 }
 }
 
@@ -746,8 +768,13 @@ public function staffStore(Request $request)
 
     return back()->with('success', 'Walk-in appointment created' . ($validated['patient_type'] === 'new' ? " for new patient {$user->first_name} {$user->last_name}." : '.'));
 
-    } catch (\Exception $e) {
-        dd($e->getMessage());
+    } catch (\Throwable $exception) {
+        Log::error('Walk-in appointment creation failed.', [
+            'staff_id' => $request->user()->id,
+            'exception' => $exception,
+        ]);
+
+        return back()->withInput()->with('error', 'The walk-in appointment could not be created. Please try again.');
     }
 }
 

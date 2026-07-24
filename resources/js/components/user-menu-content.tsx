@@ -1,4 +1,3 @@
-import { router } from '@inertiajs/react';
 import { LogOut} from 'lucide-react';
 import {
     DropdownMenuGroup,
@@ -7,8 +6,6 @@ import {
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
-import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
-import { edit } from '@/routes/profile';
 import { useLogoutModal } from '@/contexts/logout-modal-context';
 import type { User } from '@/types';
 
@@ -19,7 +16,6 @@ type Props = {
 
 export function UserMenuContent({ user }: Props) {
     const { openModal } = useLogoutModal();
-    const cleanup = useMobileNavigation();
 
     return (
         <>
@@ -36,10 +32,7 @@ export function UserMenuContent({ user }: Props) {
             <DropdownMenuSeparator />
             <DropdownMenuItem 
                 className="cursor-pointer"
-                onClick={(event) => {
-    event.preventDefault();
-    openModal();
-}}
+                onSelect={() => openModal()}
                 data-test="logout-button"
             >
                 <LogOut className="mr-2" />

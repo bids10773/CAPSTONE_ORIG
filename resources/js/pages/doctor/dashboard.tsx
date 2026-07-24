@@ -29,7 +29,6 @@ interface Props {
 export default function DoctorDashboard(props: Props) {
     const { auth } = usePage().props as any;
     const { pendingCount, todayCount, completedPhysicalCount, upcomingAppointments} = props;
-    console.log(upcomingAppointments);
 
     // Get availability days from authenticated doctor
     const availabilityDays = auth?.user?.availability?.length || 0;

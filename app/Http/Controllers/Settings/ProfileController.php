@@ -9,6 +9,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,18 +31,28 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $validated = $request->validated();
+        $user = $request->user();
+        $profileData = collect($validated)->only(['birthdate', 'sex', 'civil_status'])->all();
+        $userData = collect($validated)->except(['birthdate', 'sex', 'civil_status'])->all();
 
-        $emailChanged = $request->user()->isDirty('email');
+        DB::transaction(function () use ($user, $userData, $profileData) {
+            $user->fill($userData);
 
+            if ($user->isDirty('email')) {
+                $user->email_verified_at = null;
+            }
+
+            $user->save();
+
+            if ($user->role === 'patient' && ($user->patientProfile || ! empty($profileData['birthdate']))) {
+                $user->patientProfile()->updateOrCreate(['user_id' => $user->id], $profileData);
+            }
+        });
+
+        $emailChanged = array_key_exists('email', $user->getChanges());
         if ($emailChanged) {
-            $request->user()->email_verified_at = null;
-        }
-
-        $request->user()->save();
-
-        if ($emailChanged) {
-            $request->user()->sendEmailVerificationNotification();
+            $user->sendEmailVerificationNotification();
         }
 
         return to_route('profile.edit')->with(
