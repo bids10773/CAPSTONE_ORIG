@@ -7,6 +7,10 @@ export interface User {
 
     email: string;
     email_verified_at?: string | null;
+    name: string;
+    full_name?: string;
+    avatar?: string;
+    role?: string;
 
     contact?: string;
 
@@ -19,4 +23,12 @@ export interface User {
 
 export interface Auth {
     user: User
+}
+
+export interface TwoFactorSetupData {
+    svg: string;
+}
+
+export interface TwoFactorSecretKey {
+    secretKey: string;
 }

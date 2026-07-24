@@ -1,222 +1,110 @@
-// AppSidebar.tsx
-import { Link , usePage } from '@inertiajs/react';
-import { 
-    BookOpen, FolderGit2, LayoutGrid, Users, Activity, HeartPulse, Settings, 
-    Calendar, Clock, TestTube, Image 
-} from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { NavUser } from '@/components/nav-user';
-import logo from '/public/images/full_logo.png';
+import { Link, usePage } from '@inertiajs/react';
 import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-    SidebarGroup,
+    BarChart3, Building2, CalendarDays, ClipboardList, FlaskConical, LayoutDashboard,
+    ScanLine, Settings, Stethoscope, UserCog, UsersRound,
+} from 'lucide-react';
+import { motion } from 'framer-motion';
+import { NavUser } from '@/components/nav-user';
+import {
+    Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel,
+    SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import type { NavItem } from '@/types';
-import { motion, AnimatePresence } from 'framer-motion';
+import logo from '/public/images/full_logo.png';
 
-interface AppSidebarProps {
-    auth?: any;
-    className?: string;
-}
+type Item = { title: string; href: string; icon: React.ComponentType<{ className?: string }> };
 
-export function AppSidebar({ className }: AppSidebarProps) {
-    // Get auth from usePage() props
+const navigation: Record<string, Item[]> = {
+    admin: [
+        { title: 'Overview', href: '/admin/dashboard', icon: LayoutDashboard },
+        { title: 'Appointments', href: '/admin/appointments', icon: CalendarDays },
+        { title: 'Staff', href: '/admin/staff', icon: UserCog },
+        { title: 'Companies', href: '/admin/companies', icon: Building2 },
+        { title: 'Doctor availability', href: '/admin/doctor-availability', icon: Stethoscope },
+        { title: 'Trend analytics', href: '/admin/analytics', icon: BarChart3 },
+        { title: 'Reports', href: '/admin/reports', icon: ClipboardList },
+        { title: 'Settings', href: '/settings/profile', icon: Settings },
+    ],
+    doctor: [
+        { title: 'Overview', href: '/doctor/dashboard', icon: LayoutDashboard },
+        { title: 'Appointments', href: '/doctor/appointments', icon: CalendarDays },
+        { title: 'Availability', href: '/doctor/availability', icon: Stethoscope },
+        { title: 'Settings', href: '/settings/profile', icon: Settings },
+    ],
+    medtech: [
+        { title: 'Overview', href: '/medtech/dashboard', icon: LayoutDashboard },
+        { title: 'Laboratory queue', href: '/medtech/appointments', icon: FlaskConical },
+        { title: 'Settings', href: '/settings/profile', icon: Settings },
+    ],
+    radtech: [
+        { title: 'Overview', href: '/radtech/dashboard', icon: LayoutDashboard },
+        { title: 'Imaging queue', href: '/radtech/appointments', icon: ScanLine },
+        { title: 'Settings', href: '/settings/profile', icon: Settings },
+    ],
+    receptionist: [
+        { title: 'Overview', href: '/receptionist/dashboard', icon: LayoutDashboard },
+        { title: 'Appointments', href: '/staff/appointments', icon: CalendarDays },
+        { title: 'Settings', href: '/settings/profile', icon: Settings },
+    ],
+    company: [
+        { title: 'Overview', href: '/company/dashboard', icon: LayoutDashboard },
+        { title: 'Employee bookings', href: '/appointments', icon: UsersRound },
+        { title: 'Settings', href: '/settings/profile', icon: Settings },
+    ],
+    patient: [
+        { title: 'My health overview', href: '/dashboard', icon: LayoutDashboard },
+        { title: 'Appointments', href: '/appointments', icon: CalendarDays },
+        { title: 'Settings', href: '/settings/profile', icon: Settings },
+    ],
+};
+
+const roleLabels: Record<string, string> = {
+    admin: 'Administration',
+    doctor: 'Clinical workspace',
+    medtech: 'Laboratory workspace',
+    radtech: 'Radiology workspace',
+    receptionist: 'Front desk workspace',
+    company: 'Company workspace',
+    patient: 'Patient portal',
+};
+
+export function AppSidebar({ className }: { auth?: any; className?: string }) {
     const { props, url } = usePage();
-    const auth = props.auth as any;
-    
-    // 1. Real-time Clock
-    const [time, setTime] = useState(new Date());
-    useEffect(() => {
-        const timer = setInterval(() => setTime(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
-
-    const formattedTime = time.toLocaleTimeString([], { 
-        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true 
-    });
-
-    // Check user role
-    const userRole = auth?.user?.role;
-    const isAdmin = userRole === 'admin';
-    const isDoctor = userRole === 'doctor';
-    const isMedTech = userRole === 'medtech';
-    const isRadTech = userRole === 'radtech';
-    const isCompany = userRole === 'company';
-
-    // Define navigation items for each role
-    const adminNavItems: NavItem[] = [
-        { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutGrid },
-        { title: 'Staff Management', href: '/admin/staff', icon: Users },
-        { title: 'Company Registry', href: '/admin/companies', icon: FolderGit2 },
-        { title: 'Appointments', href: '/admin/appointments', icon: Calendar },
-        { title: 'Settings', href: '/settings/profile', icon: Settings }
-    ];
-
-    const doctorNavItems: NavItem[] = [
-        { title: 'Dashboard', href: '/doctor/dashboard', icon: LayoutGrid },
-        { title: 'Appointments', href: '/doctor/appointments', icon: Calendar },
-        { title: 'Settings', href: '/settings/profile', icon: Settings }
-    ];
-
-    const medtechNavItems: NavItem[] = [
-        { title: 'Dashboard', href: '/medtech/dashboard', icon: LayoutGrid },
-        { title: 'Appointments', href: '/medtech/appointments', icon: Calendar },
-        { title: 'Settings', href: '/settings/profile', icon: Settings }
-    ];
-
-    const radtechNavItems: NavItem[] = [
-        { title: 'Dashboard', href: '/radtech/dashboard', icon: LayoutGrid },
-        { title: 'Appointments', href: '/radtech/appointments', icon: Calendar },
-        { title: 'Settings', href: '/settings/profile', icon: Settings }
-    ];
-
-    const companyNavItems: NavItem[] = [
-        { title: 'Dashboard', href: '/company/dashboard', icon: LayoutGrid },
-        { title: 'Employee Bookings', href: '/appointments', icon: Calendar },
-        { title: 'Settings', href: '/settings/profile', icon: Settings }
-    ];
-
-    const userNavItems: NavItem[] = [
-        { title: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
-        { title: 'Appointments', href: '/appointments', icon: Calendar },
-        { title: 'Settings', href: '/settings/profile', icon: Settings }
-    ];
-
-    // Select navigation items based on role
-    let activeNavItems: NavItem[];
-    if (isAdmin) {
-        activeNavItems = adminNavItems;
-    } else if (isDoctor) {
-        activeNavItems = doctorNavItems;
-    } else if (isMedTech) {
-        activeNavItems = medtechNavItems;
-    } else if (isRadTech) {
-        activeNavItems = radtechNavItems;
-    } else if (isCompany) {
-        activeNavItems = companyNavItems;
-    } else {
-        activeNavItems = userNavItems;
-    }
-
-    // Get portal label
-    const getPortalLabel = () => {
-        if (isAdmin) return 'Admin Portal';
-        if (isDoctor) return 'Doctor Portal';
-        if (isMedTech) return 'MedTech Portal';
-        if (isRadTech) return 'RadTech Portal';
-        if (isCompany) return 'Company Portal';
-        return 'Patient Portal';
-    };
-
-    // Get dashboard href
-    const getDashboardHref = () => {
-        if (isAdmin) return '/admin/dashboard';
-        if (isDoctor) return '/doctor/dashboard';
-        if (isMedTech) return '/medtech/dashboard';
-        if (isRadTech) return '/radtech/dashboard';
-        if (isCompany) return '/company/dashboard';
-        return '/dashboard';
-    };
-
-    // Footer links
-    const footerNavItems: NavItem[] = [
-        { title: 'Repository', href: 'https://github.com/laravel/react-starter-kit', icon: FolderGit2 },
-        { title: 'Documentation', href: 'https://laravel.com/docs/starter-kits#react', icon: BookOpen },
-    ];
+    const role = (props.auth as any)?.user?.role || 'patient';
+    const items = navigation[role] || navigation.patient;
+    const home = items[0].href;
 
     return (
-        <Sidebar 
-            collapsible="icon" 
-            className="bg-[#0A2E63] dark:bg-[#030712] text-blue-50 border-r border-white/5 dark:border-white/10 shadow-none overflow-hidden"
-        >
-            {/* BRANDING HEADER */}
-            <SidebarHeader className="pt-6 pb-2 px-0 transition-all duration-300">
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <div className="flex flex-col items-center gap-4">
-                            <Link href={getDashboardHref()} className="group-data-[collapsible=icon]:hidden px-4">
-                                <motion.div whileHover={{ scale: 1.05 }} className="p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl">
-                                    <img src={logo} alt="LMC Logo" className="h-10 w-auto object-contain brightness-110" />
-                                </motion.div>
-                            </Link>
-
-                            <div className="text-center group-data-[collapsible=icon]:hidden px-4">
-                                <span className="block text-xs font-black tracking-[0.3em] text-[#4F86FF] uppercase">Living Myth</span>
-                                <span className="block text-[9px] font-bold text-blue-200/50 uppercase tracking-widest mt-1">Industrial Clinic</span>
-                            </div>
-
-                            <div className="w-full px-4 group-data-[collapsible=icon]:hidden">
-                                <div className="rounded-2xl bg-[#246AFE]/20 p-3 border border-white/10 relative overflow-hidden">
-                                    <div className="flex items-center justify-center gap-2 mb-2">
-                                        <Activity className="size-3 text-cyan-400 animate-pulse" />
-                                        <span className="text-[9px] font-black uppercase text-blue-200 tracking-tighter">System Live</span>
-                                    </div>
-                                    <div className="flex items-center justify-center gap-2 py-1.5 bg-black/20 rounded-xl border border-white/5">
-                                        <Clock className="size-3 text-blue-300" />
-                                        <span className="text-[11px] font-mono font-bold text-white tabular-nums tracking-wider">{formattedTime}</span>
-                                    </div>
-                                    <p className="text-[10px] font-bold text-blue-200/70 capitalize text-center mt-2 tracking-widest">{getPortalLabel()}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </SidebarMenuItem>
-                </SidebarMenu>
+        <Sidebar collapsible="icon" className={`border-r border-slate-200 bg-white text-slate-700 ${className || ''}`}>
+            <SidebarHeader className="h-20 justify-center border-b border-slate-100 px-4">
+                <Link href={home} className="flex items-center gap-3 rounded-xl p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-teal-500 shadow-lg shadow-blue-600/20">
+                        <img src={logo} alt="" className="h-7 w-auto brightness-0 invert" />
+                    </span>
+                    <span className="min-w-0 group-data-[collapsible=icon]:hidden">
+                        <span className="block truncate text-sm font-bold tracking-[-.02em] text-slate-950">Living Myth</span>
+                        <span className="block truncate text-[10px] font-semibold uppercase tracking-[.12em] text-slate-400">Industrial Clinic</span>
+                    </span>
+                </Link>
             </SidebarHeader>
 
-            {/* NAVIGATION CONTENT WITH FRAMER MOTION FOCUS */}
-            <SidebarContent className="px-2 pt-2 group-data-[collapsible=icon]:px-0">
-                <SidebarGroup className="pt-0">
-                    <SidebarMenu className="gap-1.5 relative">
-                        {activeNavItems.map((item) => {
+            <SidebarContent className="px-3 py-5 group-data-[collapsible=icon]:px-2">
+                <SidebarGroup className="p-0">
+                    <SidebarGroupLabel className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.16em] text-slate-400 group-data-[collapsible=icon]:hidden">
+                        {roleLabels[role] || roleLabels.patient}
+                    </SidebarGroupLabel>
+                    <SidebarMenu className="gap-1">
+                        {items.map((item) => {
+                            const active = url === item.href || (item.href !== '/dashboard' && url.startsWith(`${item.href}/`));
                             const Icon = item.icon;
-                            const isActive = url === item.href || url.startsWith(item.href + '/');
-
                             return (
-                                <SidebarMenuItem key={item.title} className="relative">
-                                    <SidebarMenuButton 
-                                        asChild 
-                                        isActive={isActive}
-                                        tooltip={item.title}
-                                        className="h-11 rounded-xl transition-colors duration-300 relative z-10 hover:bg-white/5 text-blue-100/80 data-[active=true]:text-white group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:h-12"
-                                    >
-                                        <Link href={item.href} className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-                                            {Icon && (
-                                                <motion.div
-                                                    animate={isActive ? { scale: 1.1, rotate: [0, -5, 5, 0] } : { scale: 1 }}
-                                                    transition={{ duration: 0.3 }}
-                                                >
-                                                    <Icon className="size-5 shrink-0" />
-                                                </motion.div>
-                                            )}
-                                            <span className={`font-semibold tracking-tight group-data-[collapsible=icon]:hidden ${isActive ? 'text-white' : 'text-blue-100/70'}`}>
-                                                {item.title}
-                                            </span>
+                                <SidebarMenuItem key={item.href}>
+                                    <SidebarMenuButton asChild tooltip={item.title} isActive={active} className="relative h-11 rounded-xl px-3 text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-950 data-[active=true]:bg-blue-50 data-[active=true]:font-semibold data-[active=true]:text-blue-700">
+                                        <Link href={item.href}>
+                                            {active && <motion.span layoutId="navigation-marker" className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-blue-600" />}
+                                            <Icon className="size-[18px] shrink-0" />
+                                            <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
                                         </Link>
                                     </SidebarMenuButton>
-
-                                    {/* FRAMER MOTION SLIDING BACKGROUND */}
-                                    <AnimatePresence>
-                                        {isActive && (
-                                            <motion.div
-                                                layoutId="sidebar-active-pill"
-                                                className="absolute inset-0 bg-[#246AFE] rounded-xl shadow-lg shadow-blue-500/20 z-0"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                transition={{ 
-                                                    type: "spring", 
-                                                    stiffness: 350, 
-                                                    damping: 30 
-                                                }}
-                                            />
-                                        )}
-                                    </AnimatePresence>
                                 </SidebarMenuItem>
                             );
                         })}
@@ -224,7 +112,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
                 </SidebarGroup>
             </SidebarContent>
 
-            <SidebarFooter className="p-4 bg-[#08224a]/50 dark:bg-black/50 backdrop-blur-md border-t border-white/5 dark:border-white/10 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
+            <SidebarFooter className="border-t border-slate-100 p-3">
                 <NavUser />
             </SidebarFooter>
         </Sidebar>
