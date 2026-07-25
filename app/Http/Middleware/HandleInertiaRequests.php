@@ -20,16 +20,17 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-    'user' => $request->user()
-        ? $request->user()->load('patientProfile')
-        : null,
-],
+                'user' => $request->user()
+                    ? $request->user()->load('patientProfile')
+                    : null,
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
 
             // ✅ Add flash messages
             'flash' => [
-                'success' => fn() => $request->session()->get('success'),
-                'error' => fn() => $request->session()->get('error'),
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+                'import_result' => fn () => $request->session()->get('import_result'),
             ],
         ];
     }

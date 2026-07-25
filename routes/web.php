@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
+use App\Http\Controllers\CompanyEmployeeImportController;
 use App\Http\Controllers\DoctorAvailabilityController;
 use App\Http\Controllers\DoctorDashboardController;
 use App\Http\Controllers\LaboratoryController;
@@ -63,8 +64,10 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
 
     Route::middleware('role:company')->group(function () {
         Route::get('/company/dashboard', CompanyDashboardController::class)->name('company.dashboard');
-        Route::post('/company/appointments/bulk', [AppointmentController::class, 'companyBulkStore'])->name('company.appointments.bulk');
-        Route::post('/appointments/bulk', [AppointmentController::class, 'bulkStore'])->name('appointments.bulk');
+        Route::post('/company/employees/import/preview', [CompanyEmployeeImportController::class, 'preview'])->name('company.employees.import.preview');
+        Route::post('/company/employees/import/confirm', [CompanyEmployeeImportController::class, 'confirm'])->name('company.employees.import.confirm');
+        Route::get('/company/employees/import/template', [CompanyEmployeeImportController::class, 'template'])->name('company.employees.import.template');
+        Route::get('/company/employees/import/errors/{token}', [CompanyEmployeeImportController::class, 'errorReport'])->whereUuid('token')->name('company.employees.import.errors');
     });
 
     Route::middleware('role:receptionist')->group(function () {

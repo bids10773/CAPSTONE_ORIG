@@ -4,18 +4,17 @@ namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
@@ -28,6 +27,7 @@ use HasFactory, Notifiable, TwoFactorAuthenticatable;
         'last_name',
         'email',
         'contact',
+        'sex',
         'password',
         'role',
         'license_no',
@@ -86,8 +86,9 @@ use HasFactory, Notifiable, TwoFactorAuthenticatable;
      */
     public function getNameAttribute(): string
     {
-        $name = trim(($this->first_name ?? '') . ' ' . ($this->middle_name ?? ''));
-        $name = trim($name . ' ' . ($this->last_name ?? ''));
+        $name = trim(($this->first_name ?? '').' '.($this->middle_name ?? ''));
+        $name = trim($name.' '.($this->last_name ?? ''));
+
         return $name;
     }
 
@@ -160,7 +161,7 @@ use HasFactory, Notifiable, TwoFactorAuthenticatable;
      */
     public function getRoleLabelAttribute(): string
     {
-        return match($this->role) {
+        return match ($this->role) {
             'admin' => 'Administrator',
             'doctor' => 'Doctor',
             'medtech' => 'Medical Technologist',
@@ -183,5 +184,4 @@ use HasFactory, Notifiable, TwoFactorAuthenticatable;
             'receptionist' => 'Receptionist / Info Staff',
         ];
     }
-
 }

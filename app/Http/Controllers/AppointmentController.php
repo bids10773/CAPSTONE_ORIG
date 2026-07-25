@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\Company;
-use App\Models\User;
 use App\Models\MedicalHistory;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -24,45 +24,45 @@ class AppointmentController extends Controller
         $search = $request->get('search', '');
         $status = $request->get('status', '');
         $type = $request->get('type', '');
-        
+
         $user = $request->user();
-        
+
         $query = Appointment::with([
-    'user' => function ($q) {
-$q->with('patientProfile');
-    },
-    'company'
-]);
-        
+            'user' => function ($q) {
+                $q->with('patientProfile');
+            },
+            'company',
+        ]);
+
         // If patient, show only their appointments
         if ($user->role === 'patient') {
             $query->where('user_id', $user->id);
         }
-        
+
         // If company, show appointments for their employees
         if ($user->role === 'company') {
             $query->where('company_id', $user->company_id);
         }
-        
+
         if ($search) {
             $query->whereHas('user', function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%");
+                    ->orWhere('last_name', 'like', "%{$search}%");
             });
         }
-        
+
         if ($status) {
             $query->where('status', $status);
         }
-        
+
         if ($type) {
             $query->where('type', $type);
         }
-        
+
         $appointments = $query->orderBy('appointment_date', 'desc')
             ->paginate(10)
             ->withQueryString();
-        
+
         return Inertia::render('appointments/index', [
             'appointments' => $appointments,
             'filters' => [
@@ -80,22 +80,22 @@ $q->with('patientProfile');
      * Show the form for creating a new appointment.
      */
     public function create(Request $request): Response
-{
-    $companies = Company::where('is_active', true)
-        ->orderBy('company_name')
-        ->get(['id', 'company_name']);
+    {
+        $companies = Company::where('is_active', true)
+            ->orderBy('company_name')
+            ->get(['id', 'company_name']);
 
-    $user = $request->user()->load('patientProfile'); // ✅ LOAD RELATION
+        $user = $request->user()->load('patientProfile'); // ✅ LOAD RELATION
 
-    return Inertia::render('appointments/create', [
-        'companies' => $companies,
-        'serviceTypes' => Appointment::getServiceTypeOptions(),
-        'appointmentTypes' => Appointment::getTypeOptions(),
-        'auth' => [
-            'user' => $user // ✅ SEND USER WITH PROFILE
-        ]
-    ]);
-}
+        return Inertia::render('appointments/create', [
+            'companies' => $companies,
+            'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'appointmentTypes' => Appointment::getTypeOptions(),
+            'auth' => [
+                'user' => $user, // ✅ SEND USER WITH PROFILE
+            ],
+        ]);
+    }
 
     /**
      * Store a newly created appointment.
@@ -103,8 +103,8 @@ $q->with('patientProfile');
     public function store(Request $request)
     {
         $user = $request->user();
-        
-$rules = [
+
+        $rules = [
             'doctor_id' => ['required', 'exists:users,id'],
             'start_time' => ['required', 'date_format:H:i'],
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
@@ -122,23 +122,22 @@ $rules = [
             'ob_menstrual_history' => ['nullable', 'string', 'max:1000'],
         ];
 
-
         $validator = Validator::make($request->all(), $rules);
-        
+
         // For company referral, company is required
-        if ($request->type === 'company_referral' && !$request->company_id && !$request->company_name) {
-    $validator->errors()->add('company_name', 'Company is required.');
-}
-        
+        if ($request->type === 'company_referral' && ! $request->company_id && ! $request->company_name) {
+            $validator->errors()->add('company_name', 'Company is required.');
+        }
+
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
         }
-        
+
         $data = $validator->validated();
 
         // Validate doctor availability
         $doctor = User::findOrFail($data['doctor_id']);
-        if ($doctor->role !== 'doctor' || !$doctor->is_active) {
+        if ($doctor->role !== 'doctor' || ! $doctor->is_active) {
             return back()->withErrors(['doctor_id' => 'Invalid doctor selected.'])->withInput();
         }
 
@@ -146,11 +145,11 @@ $rules = [
         $dayKey = strtolower($appointmentDate->format('D'));
         $availSlot = collect($doctor->availability ?? [])->firstWhere('day', $dayKey);
 
-        if (!$availSlot) {
+        if (! $availSlot) {
             return back()->withErrors(['doctor_id' => "Doctor not available on {$appointmentDate->format('l')}."])->withInput();
         }
 
-        $startTime = new \DateTime($data['appointment_date'] . ' ' . $data['start_time']);
+        $startTime = new \DateTime($data['appointment_date'].' '.$data['start_time']);
         $endTime = clone $startTime;
         $endTime->add(new \DateInterval('PT30M'));  // 30min slot
 
@@ -170,8 +169,8 @@ $rules = [
         }
 
         if ($data['type'] === 'company_referral') {
-    $data['referral_code'] = 'REF-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4));
-}
+            $data['referral_code'] = 'REF-'.now()->format('Ymd').'-'.strtoupper(Str::random(4));
+        }
 
         DB::transaction(function () use ($data, $user, $startTime, $endTime) {
             $appointment = Appointment::create([
@@ -199,14 +198,14 @@ $rules = [
                 ])->all(),
             ]);
         });
-        
+
         return redirect()->route('appointments.index')
-    ->with('success', 
-        'Appointment booked successfully!' . 
-        ($data['type'] === 'company_referral' 
-            ? ' Referral Code: ' . $data['referral_code'] 
-            : '')
-    );
+            ->with('success',
+                'Appointment booked successfully!'.
+                ($data['type'] === 'company_referral'
+                    ? ' Referral Code: '.$data['referral_code']
+                    : '')
+            );
     }
 
     /**
@@ -222,13 +221,13 @@ $rules = [
         abort_unless($canView, 403);
 
         $appointment->load([
-    'user.patientProfile',
-    'company',
-    'physicalExam',
-    'labResult',
-    'xrayReport'
-]);
-        
+            'user.patientProfile',
+            'company',
+            'physicalExam',
+            'labResult',
+            'xrayReport',
+        ]);
+
         return Inertia::render('appointments/show', [
             'appointment' => $appointment,
         ]);
@@ -243,15 +242,14 @@ $rules = [
             'status' => ['required', 'string', 'in:pending,accepted,arrived,for_diagnostics,for_xray,for_final_evaluation,completed,cancelled'],
         ]);
 
-        
         if ($validator->fails()) {
             return back()->withErrors($validator);
         }
-        
+
         $appointment->update([
             'status' => $request->status,
         ]);
-        
+
         return back()->with('success', match ($request->status) {
             'accepted' => 'Appointment accepted and forwarded to doctor.',
             'arrived' => 'Patient marked as arrived.',
@@ -259,69 +257,6 @@ $rules = [
             'cancelled' => 'Appointment has been cancelled.',
             default => 'Appointment status updated.',
         });
-    }
-
-
-    /**
-     * Handle bulk appointment creation from CSV (for Company HR).
-     */
-    public function bulkStore(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'company_id' => ['required', 'exists:companies,id'],
-            'appointment_date' => ['required', 'date'],
-            'service_type' => ['required', 'string'],
-            'employees' => ['required', 'array', 'min:1'],
-            'employees.*.email' => ['required', 'email'],
-            'employees.*.first_name' => ['required', 'string'],
-            'employees.*.last_name' => ['required', 'string'],
-        ]);
-        
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
-        }
-        
-        $data = $validator->validated();
-        $batchId = strtoupper(Str::random(10));
-        $company = Company::find($data['company_id']);
-        
-        $created = 0;
-        $errors = [];
-        
-        foreach ($data['employees'] as $index => $employee) {
-            // Find or create user by email
-            $user = User::where('email', $employee['email'])->first();
-            
-            if (!$user) {
-                // Create new user/patient
-                $user = User::create([
-                    'first_name' => $employee['first_name'],
-                    'last_name' => $employee['last_name'],
-                    'email' => $employee['email'],
-                    'password' => bcrypt('changeme123'), // Temporary password
-                    'role' => 'patient',
-                    'company_id' => $data['company_id'],
-                    'is_active' => true,
-                ]);
-            }
-            
-            // Create appointment
-            Appointment::create([
-                'user_id' => $user->id,
-                'company_id' => $data['company_id'],
-                'appointment_date' => $data['appointment_date'],
-                'type' => 'company_bulk',
-                'status' => 'pending',
-                'service_type' => $data['service_type'],
-                'batch_id' => $batchId,
-                'notes' => "Bulk booking for {$company->company_name}",
-            ]);
-            
-            $created++;
-        }
-        
-        return redirect()->route('appointments.index')
-            ->with('success', "Successfully created {$created} appointments for {$company->company_name} (Batch: {$batchId})");
     }
 
     /**
@@ -337,11 +272,11 @@ $rules = [
             ->whereJsonContains('availability->*.day', $dayKey)
             ->withCount(['doctorAppointments as booked_slots' => function ($q) use ($date) {
                 $q->whereDate('appointment_date', $date)
-                  ->whereIn('status', ['accepted', 'arrived']);
+                    ->whereIn('status', ['accepted', 'arrived']);
             }])
-            ->get(['id', 'first_name', 'last_name', 'specialization']);
+            ->get(['id', 'first_name', 'last_name', 'specialization', 'sex']);
 
-        $doctors->each(function ($doctor) use ($dayKey, $date) {
+        $doctors->each(function ($doctor) use ($dayKey) {
             $avail = collect($doctor->availability)->firstWhere('day', $dayKey);
             if ($avail) {
                 $doctor->availability_slot = $avail;
@@ -351,7 +286,7 @@ $rules = [
             }
         });
 
-        return response()->json($doctors->filter(fn($d) => ($d->free_slots ?? 0) > 0));
+        return response()->json($doctors->filter(fn ($d) => ($d->free_slots ?? 0) > 0));
     }
 
     /**
@@ -360,7 +295,7 @@ $rules = [
     public function getCompanies(Request $request)
     {
         $search = $request->get('search', '');
-        
+
         $companies = Company::where('is_active', true)
             ->when($search, function ($query) use ($search) {
                 $query->where('company_name', 'like', "%{$search}%");
@@ -368,7 +303,7 @@ $rules = [
             ->orderBy('company_name')
             ->limit(20)
             ->get(['id', 'company_name']);
-        
+
         return response()->json($companies);
     }
 
@@ -380,7 +315,8 @@ $rules = [
         $doctors = User::where('role', 'doctor')
             ->where('is_active', true)
             ->orderBy('first_name')
-            ->get(['id', 'first_name', 'last_name', 'specialization']);
+            ->get(['id', 'first_name', 'last_name', 'specialization', 'sex']);
+
         return response()->json($doctors);
     }
 
@@ -390,13 +326,13 @@ $rules = [
     public function getDoctorAvailability(Request $request, $doctorId)
     {
         $doctor = User::where('role', 'doctor')->where('is_active', true)->findOrFail($doctorId);
-        
+
         $availability = $doctor->availability ?? [];
         $slots = collect($availability)->keyBy('day');
-        
+
         $date = $request->get('date');
         $availableDates = [];
-        
+
         // Next 30 days available dates
         $startDate = now();
         for ($i = 0; $i < 30; $i++) {
@@ -406,7 +342,7 @@ $rules = [
                 $availableDates[] = $checkDate->format('Y-m-d');
             }
         }
-        
+
         $availableTimes = [];
         if ($date) {
             $dayKey = strtolower(date('D', strtotime($date)));
@@ -415,11 +351,11 @@ $rules = [
                 $availableTimes = $this->generateAvailableTimes($slot['start'], $slot['end'], $doctorId, $date);
             }
         }
-        
+
         return response()->json([
             'doctor' => [
                 'id' => $doctor->id,
-                'name' => $doctor->first_name . ' ' . $doctor->last_name,
+                'name' => $doctor->first_name.' '.$doctor->last_name,
                 'specialization' => $doctor->specialization,
             ],
             'slots' => $slots->toArray(),
@@ -436,28 +372,28 @@ $rules = [
         $times = [];
         $current = new \DateTime($start);
         $endTime = new \DateTime($end);
-        
+
         while ($current < $endTime) {
             $startStr = $current->format('H:i');
             $endStr = (clone $current)->add(new \DateInterval('PT30M'))->format('H:i');
-            
+
             // Check overlap with booked appointments
             $overlap = Appointment::where('doctor_id', $doctorId)
                 ->whereDate('appointment_date', $date)
                 ->whereIn('status', ['accepted', 'arrived', 'pending'])  // include pending
-                ->where(function($q) use ($startStr, $endStr) {
+                ->where(function ($q) use ($startStr, $endStr) {
                     $q->where('start_time', '<=', $endStr)
-                      ->where('end_time', '>', $startStr);
+                        ->where('end_time', '>', $startStr);
                 })
                 ->exists();
-            
-            if (!$overlap) {
+
+            if (! $overlap) {
                 $times[] = $startStr;
             }
-            
+
             $current->add(new \DateInterval('PT30M'));
         }
-        
+
         return $times;
     }
 
@@ -471,36 +407,34 @@ $rules = [
         $type = $request->get('type', '');
         $dateFrom = $request->get('date_from', '');
         $dateTo = $request->get('date_to', '');
-        
-$query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
 
+        $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
 
-        
         if ($search) {
-    $query->where(function ($query) use ($search) {
+            $query->where(function ($query) use ($search) {
 
-        // 🔍 Search by patient name/email
-        $query->whereHas('user', function ($q) use ($search) {
-            $q->where('first_name', 'like', "%{$search}%")
-              ->orWhere('last_name', 'like', "%{$search}%")
-              ->orWhere('email', 'like', "%{$search}%");
-        })
+                // 🔍 Search by patient name/email
+                $query->whereHas('user', function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                })
 
-        // 🔍 Search by doctor name
-        ->orWhereHas('doctor', function ($q) use ($search) {
-            $q->where('first_name', 'like', "%{$search}%")
-              ->orWhere('last_name', 'like', "%{$search}%");
-        })
+                // 🔍 Search by doctor name
+                    ->orWhereHas('doctor', function ($q) use ($search) {
+                        $q->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%");
+                    })
 
-        // 🔍 Search by appointment date
-        ->orWhere('appointment_date', 'like', "%{$search}%");
-    });
-}
-        
+                // 🔍 Search by appointment date
+                    ->orWhere('appointment_date', 'like', "%{$search}%");
+            });
+        }
+
         if ($status) {
             $query->where('status', $status);
         }
-        
+
         if ($type) {
             $query->where('type', $type);
         }
@@ -512,9 +446,9 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
         if ($dateTo) {
             $query->whereDate('appointment_date', '<=', $dateTo);
         }
-        
+
         $appointments = $query
-    ->orderByRaw("
+            ->orderByRaw("
         CASE 
             WHEN status = 'pending' THEN 1
             WHEN status = 'accepted' THEN 2
@@ -526,10 +460,10 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
             ELSE 8
         END
     ")
-    ->orderBy('appointment_date', 'asc') // optional: earliest first
-    ->paginate(15)
-    ->withQueryString();
-        
+            ->orderBy('appointment_date', 'asc') // optional: earliest first
+            ->paginate(15)
+            ->withQueryString();
+
         return Inertia::render('admin/appointments/index', [
             'appointments' => $appointments,
             'filters' => [
@@ -560,7 +494,7 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
             ->where('is_active', true)
             ->orderBy('first_name')
             ->get(['id', 'first_name', 'last_name', 'email']);
-        
+
         return Inertia::render('admin/appointments/create', [
             'companies' => $companies,
             'doctors' => $doctors,
@@ -584,13 +518,12 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
             'notes' => ['nullable', 'string', 'max:500'],
         ];
 
-
         $validator = Validator::make($request->all(), $rules);
-        
+
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
         }
-        
+
         $data = $validator->validated();
 
         $appointment = Appointment::create([
@@ -604,306 +537,259 @@ $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
             'notes' => $data['notes'] ?? null,
         ]);
 
-        
         return redirect()->route('admin.appointments.index')
             ->with('success', 'Appointment created successfully!');
     }
 
     /**
-     * Bulk upload appointments from CSV for company users (simple file upload).
+     * Staff: Appointment dashboard (view, search, filter, walk-in creation)
      */
-    public function companyBulkStore(Request $request)
-{
-    $request->validate([
-        'file' => 'required|file|mimes:xlsx,xls|max:10240',
-    ]);
+    public function staffDashboard(Request $request): Response
+    {
 
-    $user = $request->user();
-    $company = $user->company()->first() ?? ($user->company_id ? Company::find($user->company_id) : null);
+        $search = $request->get('search', '');
+        $status = $request->get('status', '');
+        $type = $request->get('type', '');
 
-    if (!$company) {
-        return back()->with('error', 'No company association found.');
-    }
-
-    try {
-    \Maatwebsite\Excel\Facades\Excel::import(
-        new \App\Imports\AppointmentsImport(
-            $company->id,
-            $request->appointment_date
-        ),
-        $request->file('file')
-    );
-
-    return back()->with('success', 'Appointments uploaded successfully!');
-
-} catch (\Throwable $exception) {
-    Log::error('Company appointment import failed.', [
-        'company_id' => $company->id,
-        'exception' => $exception,
-    ]);
-
-    return back()->with('error', 'The appointment file could not be imported. Check its format and try again.');
-}
-}
-
-/**
- * Staff: Appointment dashboard (view, search, filter, walk-in creation)
- */
-public function staffDashboard(Request $request): Response
-{
-
-
-    $search = $request->get('search', '');
-    $status = $request->get('status', '');
-    $type   = $request->get('type', '');
-
-    $query = Appointment::with(['user.patientProfile', 'doctor', 'company'])
-        ->when($search, fn($q) =>
-            $q->whereHas('user', fn($q) =>
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name',  'like', "%{$search}%")
-                  ->orWhere('email',      'like', "%{$search}%")
+        $query = Appointment::with(['user.patientProfile', 'doctor', 'company'])
+            ->when($search, fn ($q) => $q->whereHas('user', fn ($q) => $q->where('first_name', 'like', "%{$search}%")
+                ->orWhere('last_name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")
             )
-        )
-        ->when($status, fn($q) => $q->where('status', $status))
-        ->when($type,   fn($q) => $q->where('type', $type))
-        ->orderByRaw("CASE
+            )
+            ->when($status, fn ($q) => $q->where('status', $status))
+            ->when($type, fn ($q) => $q->where('type', $type))
+            ->orderByRaw("CASE
             WHEN status = 'pending'   THEN 1
             WHEN status = 'accepted'  THEN 2
             WHEN status = 'arrived'   THEN 3
             WHEN status = 'completed' THEN 4
             WHEN status = 'cancelled' THEN 5
             ELSE 6 END")
-        ->orderBy('appointment_date', 'asc')
-        ->paginate(15)
-        ->withQueryString();
+            ->orderBy('appointment_date', 'asc')
+            ->paginate(15)
+            ->withQueryString();
 
-    return Inertia::render('staff/appointments/index', [
-        'appointments'  => $query,
-        'doctors'       => User::where('role', 'doctor')->where('is_active', true)
-                               ->get(['id', 'first_name', 'last_name']),
-        'serviceTypes'  => Appointment::getServiceTypeOptions(),
-        'statusOptions' => ['pending','accepted','arrived','for_diagnostics','for_xray','for_final_evaluation','completed','cancelled'],
-        'filters'       => compact('search', 'status', 'type'),
-    ]);
-}
-
-/**
- * Staff: Create walk-in appointment
- */
-public function staffStore(Request $request)
-{
-    try {
-    $validated = $request->validate([
-        // Existing patient OR new patient fields
-        'patient_type'     => ['required', 'in:existing,new'],
-        'user_id'          => ['required_if:patient_type,existing', 'nullable', 'exists:users,id'],
-
-        // New patient fields
-        'first_name'       => ['required_if:patient_type,new', 'nullable', 'string', 'max:255'],
-        'last_name'        => ['required_if:patient_type,new', 'nullable', 'string', 'max:255'],
-        'email'            => ['required_if:patient_type,new', 'nullable', 'email', 'unique:users,email'],
-        'contact'          => ['nullable', 'string', 'max:11'],
-
-        // ✅ Patient profile fields
-        'birthdate'        => ['nullable', 'date'],
-        'sex' => ['nullable', 'in:Male,Female'],
-        'civil_status'     => ['nullable', 'in:single,married,widowed,separated'],
-
-        // Appointment fields
-        'doctor_id'        => ['required', 'exists:users,id'],
-        'appointment_date' => ['required', 'date', 'after_or_equal:today'],
-        'start_time'       => ['required', 'date_format:H:i'],
-        'service_types'    => ['required', 'array', 'min:1'],
-        'notes'            => ['nullable', 'string', 'max:500'],
-    ]);
-
-    // Resolve or create the patient
-    if ($validated['patient_type'] === 'new') {
-        $user = User::create([
-            'first_name' => $validated['first_name'],
-            'last_name'  => $validated['last_name'],
-            'email'      => $validated['email'],
-            'contact'    => $validated['contact'] ?? null,
-            'password'   => bcrypt('walkin-' . now()->timestamp), // temp password
-            'role'       => 'patient',
-            'is_active'  => true,
+        return Inertia::render('staff/appointments/index', [
+            'appointments' => $query,
+            'doctors' => User::where('role', 'doctor')->where('is_active', true)
+                ->get(['id', 'first_name', 'last_name']),
+            'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'statusOptions' => ['pending', 'accepted', 'arrived', 'for_diagnostics', 'for_xray', 'for_final_evaluation', 'completed', 'cancelled'],
+            'filters' => compact('search', 'status', 'type'),
         ]);
+    }
 
-        // ✅ Create profile with staff-filled data
-        \App\Models\PatientProfile::create([
-            'user_id'      => $user->id,
-            'birthdate'    => $validated['birthdate'] ?? null,
-            'sex'          => $validated['sex'] ?? null,
-            'civil_status' => $validated['civil_status'] ?? null,
-        ]);
-        
-    } else {
-        $user = User::findOrFail($validated['user_id']);
+    /**
+     * Staff: Create walk-in appointment
+     */
+    public function staffStore(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                // Existing patient OR new patient fields
+                'patient_type' => ['required', 'in:existing,new'],
+                'user_id' => ['required_if:patient_type,existing', 'nullable', 'exists:users,id'],
 
-        // ✅ Update existing patient's profile if staff filled anything in
-        if ($user->patientProfile) {
-            $user->patientProfile->update([
-                'birthdate'    => $validated['birthdate'] ?? $user->patientProfile->birthdate,
-                'sex'          => $validated['sex'] ?? $user->patientProfile->sex,
-                'civil_status' => $validated['civil_status'] ?? $user->patientProfile->civil_status,
+                // New patient fields
+                'first_name' => ['required_if:patient_type,new', 'nullable', 'string', 'max:255'],
+                'last_name' => ['required_if:patient_type,new', 'nullable', 'string', 'max:255'],
+                'email' => ['required_if:patient_type,new', 'nullable', 'email', 'unique:users,email'],
+                'contact' => ['nullable', 'string', 'max:11'],
+
+                // ✅ Patient profile fields
+                'birthdate' => ['nullable', 'date'],
+                'sex' => ['nullable', 'in:Male,Female'],
+                'civil_status' => ['nullable', 'in:single,married,widowed,separated'],
+
+                // Appointment fields
+                'doctor_id' => ['required', 'exists:users,id'],
+                'appointment_date' => ['required', 'date', 'after_or_equal:today'],
+                'start_time' => ['required', 'date_format:H:i'],
+                'service_types' => ['required', 'array', 'min:1'],
+                'notes' => ['nullable', 'string', 'max:500'],
             ]);
+
+            // Resolve or create the patient
+            if ($validated['patient_type'] === 'new') {
+                $user = User::create([
+                    'first_name' => $validated['first_name'],
+                    'last_name' => $validated['last_name'],
+                    'email' => $validated['email'],
+                    'contact' => $validated['contact'] ?? null,
+                    'password' => bcrypt('walkin-'.now()->timestamp), // temp password
+                    'role' => 'patient',
+                    'is_active' => true,
+                ]);
+
+                // ✅ Create profile with staff-filled data
+                \App\Models\PatientProfile::create([
+                    'user_id' => $user->id,
+                    'birthdate' => $validated['birthdate'] ?? null,
+                    'sex' => $validated['sex'] ?? null,
+                    'civil_status' => $validated['civil_status'] ?? null,
+                ]);
+
+            } else {
+                $user = User::findOrFail($validated['user_id']);
+
+                // ✅ Update existing patient's profile if staff filled anything in
+                if ($user->patientProfile) {
+                    $user->patientProfile->update([
+                        'birthdate' => $validated['birthdate'] ?? $user->patientProfile->birthdate,
+                        'sex' => $validated['sex'] ?? $user->patientProfile->sex,
+                        'civil_status' => $validated['civil_status'] ?? $user->patientProfile->civil_status,
+                    ]);
+                }
+            }
+
+            $start = new \DateTime($validated['appointment_date'].' '.$validated['start_time']);
+            $end = (clone $start)->add(new \DateInterval('PT30M'));
+
+            Appointment::create([
+                'user_id' => $user->id,
+                'doctor_id' => $validated['doctor_id'],
+                'appointment_date' => $validated['appointment_date'],
+                'start_time' => $start->format('H:i'),
+                'end_time' => $end->format('H:i'),
+                'service_types' => $validated['service_types'],
+                'notes' => $validated['notes'] ?? null,
+                'type' => 'walk_in',
+                'status' => 'arrived',
+            ]);
+
+            return back()->with('success', 'Walk-in appointment created'.($validated['patient_type'] === 'new' ? " for new patient {$user->first_name} {$user->last_name}." : '.'));
+
+        } catch (\Throwable $exception) {
+            Log::error('Walk-in appointment creation failed.', [
+                'staff_id' => $request->user()->id,
+                'exception' => $exception,
+            ]);
+
+            return back()->withInput()->with('error', 'The walk-in appointment could not be created. Please try again.');
         }
     }
 
-    $start = new \DateTime($validated['appointment_date'] . ' ' . $validated['start_time']);
-    $end   = (clone $start)->add(new \DateInterval('PT30M'));
-
-    Appointment::create([
-        'user_id'          => $user->id,
-        'doctor_id'        => $validated['doctor_id'],
-        'appointment_date' => $validated['appointment_date'],
-        'start_time'       => $start->format('H:i'),
-        'end_time'         => $end->format('H:i'),
-        'service_types'    => $validated['service_types'],
-        'notes'            => $validated['notes'] ?? null,
-        'type'             => 'walk_in',
-        'status'           => 'arrived',
-    ]);
-
-    return back()->with('success', 'Walk-in appointment created' . ($validated['patient_type'] === 'new' ? " for new patient {$user->first_name} {$user->last_name}." : '.'));
-
-    } catch (\Throwable $exception) {
-        Log::error('Walk-in appointment creation failed.', [
-            'staff_id' => $request->user()->id,
-            'exception' => $exception,
+    /**
+     * Staff: Update appointment status
+     */
+    public function staffUpdateStatus(Request $request, Appointment $appointment)
+    {
+        $request->validate([
+            'status' => ['required', 'in:pending,accepted,arrived,for_diagnostics,for_xray,for_final_evaluation,completed,cancelled'],
         ]);
 
-        return back()->withInput()->with('error', 'The walk-in appointment could not be created. Please try again.');
+        $appointment->update(['status' => $request->status]);
+
+        return back()->with('success', match ($request->status) {
+            'accepted' => 'Appointment accepted.',
+            'arrived' => 'Patient marked as arrived.',
+            'for_diagnostics' => 'Sent to diagnostics.',
+            'for_xray' => 'Sent to X-Ray.',
+            'for_final_evaluation' => 'Sent for final evaluation.',
+            'completed' => 'Appointment completed.',
+            'cancelled' => 'Appointment cancelled.',
+            default => 'Status updated.',
+        });
     }
-}
 
-/**
- * Staff: Update appointment status
- */
-public function staffUpdateStatus(Request $request, Appointment $appointment)
-{
-    $request->validate([
-        'status' => ['required', 'in:pending,accepted,arrived,for_diagnostics,for_xray,for_final_evaluation,completed,cancelled'],
-    ]);
+    /**
+     * Staff: Edit appointment details
+     */
+    public function staffUpdate(Request $request, Appointment $appointment)
+    {
+        $validated = $request->validate([
+            'doctor_id' => ['required', 'exists:users,id'],
+            'appointment_date' => ['required', 'date'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'service_types' => ['required', 'array', 'min:1'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
 
-    $appointment->update(['status' => $request->status]);
+        $start = new \DateTime($validated['appointment_date'].' '.$validated['start_time']);
+        $end = (clone $start)->add(new \DateInterval('PT30M'));
 
-    return back()->with('success', match($request->status) {
-        'accepted'             => 'Appointment accepted.',
-        'arrived'              => 'Patient marked as arrived.',
-        'for_diagnostics'      => 'Sent to diagnostics.',
-        'for_xray'             => 'Sent to X-Ray.',
-        'for_final_evaluation' => 'Sent for final evaluation.',
-        'completed'            => 'Appointment completed.',
-        'cancelled'            => 'Appointment cancelled.',
-        default                => 'Status updated.',
-    });
-}
+        $appointment->update([
+            ...$validated,
+            'start_time' => $start->format('H:i'),
+            'end_time' => $end->format('H:i'),
+        ]);
 
-/**
- * Staff: Edit appointment details
- */
-public function staffUpdate(Request $request, Appointment $appointment)
-{
-    $validated = $request->validate([
-        'doctor_id'        => ['required', 'exists:users,id'],
-        'appointment_date' => ['required', 'date'],
-        'start_time'       => ['required', 'date_format:H:i'],
-        'service_types'    => ['required', 'array', 'min:1'],
-        'notes'            => ['nullable', 'string', 'max:500'],
-    ]);
+        return back()->with('success', 'Appointment updated.');
+    }
 
-    $start = new \DateTime($validated['appointment_date'] . ' ' . $validated['start_time']);
-    $end   = (clone $start)->add(new \DateInterval('PT30M'));
-
-    $appointment->update([
-        ...$validated,
-        'start_time' => $start->format('H:i'),
-        'end_time'   => $end->format('H:i'),
-    ]);
-
-    return back()->with('success', 'Appointment updated.');
-}
-
-/**
- * Patient search for walk-in autocomplete (API)
- */
-public function searchPatients(Request $request)
-{
-    return response()->json(
-        User::where('role', 'patient')
-            ->where('is_active', true)
-            ->where(fn($q) =>
-                $q->where('first_name', 'like', "%{$request->q}%")
-                  ->orWhere('last_name',  'like', "%{$request->q}%")
-                  ->orWhere('email',      'like', "%{$request->q}%")
-            )
-            ->limit(10)
-            ->get(['id', 'first_name', 'last_name', 'email'])
-    );
-}
+    /**
+     * Patient search for walk-in autocomplete (API)
+     */
+    public function searchPatients(Request $request)
+    {
+        return response()->json(
+            User::where('role', 'patient')
+                ->where('is_active', true)
+                ->where(fn ($q) => $q->where('first_name', 'like', "%{$request->q}%")
+                    ->orWhere('last_name', 'like', "%{$request->q}%")
+                    ->orWhere('email', 'like', "%{$request->q}%")
+                )
+                ->limit(10)
+                ->get(['id', 'first_name', 'last_name', 'email'])
+        );
+    }
 
     /**
      * Staff appointment list - filtered by role and status/service_type.
      */
-   public function staffIndex(Request $request, string $role): Response
-{
-    $search = $request->get('search', '');
-    $status = $request->get('status', '');
+    public function staffIndex(Request $request, string $role): Response
+    {
+        $search = $request->get('search', '');
+        $status = $request->get('status', '');
 
-    
-    $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport']);
+        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport']);
 
+        if ($role === 'doctor') {
+            $query->where(function ($q) {
+                $q->where(function ($sub) {
+                    $sub->whereIn('status', ['accepted', 'arrived'])
+                        ->whereDoesntHave('physicalExam');
+                })
+                    ->orWhere('status', 'for_final_evaluation');
+            });
 
-    if ($role === 'doctor') {
-    $query->where(function ($q) {
-        $q->where(function ($sub) {
-            $sub->whereIn('status', ['accepted', 'arrived'])
-                ->whereDoesntHave('physicalExam');
-        })
-        ->orWhere('status', 'for_final_evaluation');
-    });
+        } elseif ($role === 'medtech') {
+            $query->where('status', 'for_diagnostics')
+                ->whereDoesntHave('labResult');
 
-} elseif ($role === 'medtech') {
-    $query->where('status', 'for_diagnostics')
-          ->whereDoesntHave('labResult');
+        } elseif ($role === 'radtech') {
+            $query->where('status', 'for_xray')
+                ->whereDoesntHave('xrayReport');
+        }
 
-} elseif ($role === 'radtech') {
-    $query->where('status', 'for_xray')
-          ->whereDoesntHave('xrayReport');
-}
+        if ($status) {
+            $query->where('status', $status);
+        }
 
-if ($status) {
-    $query->where('status', $status);
-}
+        // Search logic
+        if ($search) {
+            $query->whereHas('user', function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%");
+            });
+        }
 
-    // Search logic
-    if ($search) {
-        $query->whereHas('user', function ($q) use ($search) {
-            $q->where('first_name', 'like', "%{$search}%")
-              ->orWhere('last_name', 'like', "%{$search}%");
-        });
+        $appointments = $query->orderBy('updated_at', 'desc')->paginate(15)->withQueryString();
+
+        // Map the role to the correct Inertia page path based on your routes
+        $pagePath = match ($role) {
+            'doctor' => 'doctor/appointments/index', // Adjust if your file is elsewhere
+            'medtech' => 'medtech/appointments/index',
+            'radtech' => 'radtech/appointments/index',
+            default => "{$role}/appointments/index"
+        };
+
+        return Inertia::render($pagePath, [
+            'appointments' => $appointments,
+            'filters' => ['search' => $search, 'status' => $status, 'role' => $role],
+            'pageTitle' => ucfirst($role).' Queue',
+        ]);
+
     }
-
-    $appointments = $query->orderBy('updated_at', 'desc')->paginate(15)->withQueryString();
-
-    // Map the role to the correct Inertia page path based on your routes
-    $pagePath = match($role) {
-        'doctor' => 'doctor/appointments/index', // Adjust if your file is elsewhere
-        'medtech' => 'medtech/appointments/index',
-        'radtech' => 'radtech/appointments/index',
-        default => "{$role}/appointments/index"
-    };
-
-    return Inertia::render($pagePath, [
-        'appointments' => $appointments,
-        'filters' => ['search' => $search,'status' => $status, 'role' => $role],
-        'pageTitle' => ucfirst($role) . ' Queue',
-    ]);
-
-    
 }
-}
-
-

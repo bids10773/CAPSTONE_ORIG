@@ -30,8 +30,8 @@ class StaffController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -39,11 +39,10 @@ class StaffController extends Controller
             $query->where('role', $role);
         }
 
-$staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'])
+        $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'])
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
-
 
         return Inertia::render('admin/staff/index', [
             'staff' => $staff,
@@ -76,6 +75,7 @@ $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'
             'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'contact' => ['nullable', 'string', 'max:20'],
+            'sex' => ['nullable', 'string', 'in:male,female'],
             'role' => ['required', 'string', 'in:doctor,medtech,radtech,receptionist'],
             'license_no' => ['nullable', 'string', 'max:255'],
             'specialization' => ['nullable', 'string', 'max:255'],
@@ -96,6 +96,7 @@ $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'
                     'last_name' => $data['last_name'],
                     'email' => $data['email'],
                     'contact' => $data['contact'] ?? null,
+                    'sex' => $data['sex'] ?? null,
                     'password' => Hash::make($temporaryPassword),
                     'role' => $data['role'],
                     'license_no' => $data['license_no'] ?? null,
@@ -198,9 +199,9 @@ $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $staff->id],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$staff->id],
             'contact' => ['nullable', 'string', 'max:20'],
-'role' => ['required', 'string', 'in:doctor,medtech,radtech,receptionist'],
+            'role' => ['required', 'string', 'in:doctor,medtech,radtech,receptionist'],
             'license_no' => ['nullable', 'string', 'max:255'],
             'specialization' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'confirmed', Password::defaults()],
@@ -227,14 +228,14 @@ $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'
         ]);
 
         // Update password if provided
-        if (!empty($data['password'])) {
+        if (! empty($data['password'])) {
             $staff->update([
                 'password' => Hash::make($data['password']),
             ]);
         }
 
         // Update role
-$staff->update(['role' => $data['role']]);
+        $staff->update(['role' => $data['role']]);
 
         return redirect()->route('admin.staff.index')
             ->with('success', "{$staff->name} has been updated successfully.");
@@ -266,11 +267,11 @@ $staff->update(['role' => $data['role']]);
         }
 
         $staff->update([
-            'is_active' => !$staff->is_active,
+            'is_active' => ! $staff->is_active,
         ]);
 
         $status = $staff->is_active ? 'activated' : 'deactivated';
-        
+
         return back()->with('success', "{$staff->name} has been {$status}.");
     }
 
@@ -296,4 +297,3 @@ $staff->update(['role' => $data['role']]);
         return back()->with('success', 'Signature uploaded successfully.');
     }
 }
-

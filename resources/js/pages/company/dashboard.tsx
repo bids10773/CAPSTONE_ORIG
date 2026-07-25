@@ -1,322 +1,842 @@
-import React from 'react'
-import { Head, Link, router, useForm } from '@inertiajs/react'
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
-  Calendar,
-  Users,
-  CheckCircle,
-  UploadCloud,
-  BarChart3,
-  ArrowRight,
-  FileText
-} from 'lucide-react'
-import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { toast } from 'sonner'
-import AppLayout from '@/layouts/app-layout'
-import InputError from '@/components/input-error'
-import { BreadcrumbItem } from '@/types'
+    AlertCircle,
+    ArrowRight,
+    Building2,
+    CalendarDays,
+    CheckCircle2,
+    Clock3,
+    Download,
+    FileCheck2,
+    FileSpreadsheet,
+    History,
+    LoaderCircle,
+    RefreshCw,
+    ShieldCheck,
+    UploadCloud,
+    UserCheck,
+    Users,
+    X,
+    XCircle,
+} from 'lucide-react';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
+import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import AppLayout from '@/layouts/app-layout';
 
 interface Appointment {
-  id: number | string
-  patient_name?: string
-  appointment_date: string
-  status: string
-  service_type?: string
-  appointment_type?: string
+    id: number;
+    patient_name?: string | null;
+    appointment_date: string;
+    status: string;
+    appointment_type: string;
 }
 
-interface Stats {
-  total: number
-  upcoming: number
-  completed: number
+interface ImportError {
+    field: string;
+    message: string;
 }
 
-interface CompanyDashboardProps {
-  appointments: Appointment[]
-  stats: Stats
-  user: any
-  company: any
+interface PreviewRow {
+    row: number;
+    first_name: string;
+    last_name: string;
+    sex: 'Male' | 'Female' | null;
+    birthdate: string | null;
+    age: number | null;
+    status: 'valid' | 'invalid' | 'duplicate';
+    errors: ImportError[];
 }
 
-const CompanyDashboard: React.FC<CompanyDashboardProps> = ({ appointments, stats, user, company }) => {
-  const { data, setData, processing, errors } = useForm({
-    file: null as File | null,
-    appointment_date: '',
-  })
+interface ImportSummary {
+    total: number;
+    valid: number;
+    invalid: number;
+    duplicates: number;
+}
 
-  const [fileKey, setFileKey] = React.useState<number>(Date.now())
+interface ImportPreview {
+    token: string;
+    file_name: string;
+    rows: PreviewRow[];
+    summary: ImportSummary;
+}
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) setData('file', file)
-  }
+interface UploadHistory {
+    id: number;
+    status: string;
+    file_name: string;
+    total: number;
+    imported: number;
+    duplicates: number;
+    failed: number;
+    created_at: string;
+}
 
-  const submitBulkUpload = (e: React.FormEvent) => {
-    e.preventDefault()
+interface ImportResult {
+    total: number;
+    imported: number;
+    duplicates: number;
+    failed: number;
+    updated: number;
+    report_token: string;
+}
 
-    if (!data.file) {
-      toast.error('Please select an Excel file!')
-      return
-    }
+interface DashboardProps {
+    company: {
+        id: number;
+        name: string;
+        address?: string | null;
+        representative_name?: string | null;
+        representative_email?: string | null;
+    };
+    appointments: Appointment[];
+    stats: { total: number; upcoming: number; completed: number };
+    employeeStats: {
+        total: number;
+        active: number;
+        preregistered: number;
+        rejected: number;
+    };
+    uploads: UploadHistory[];
+    importPreview?: ImportPreview;
+    flash?: { import_result?: ImportResult | null };
+    [key: string]: unknown;
+}
 
-    router.post('/company/appointments/bulk', data, {
-      forceFormData: true,
-      onSuccess: () => {
-        toast.success('Appointments uploaded successfully!')
-        setData('file', null)
-        setFileKey(Date.now())
-      },
-      onError: () => {
-        toast.error('Failed to upload appointments!')
-      },
-    })
-  }
+const formatBytes = (bytes: number) =>
+    bytes < 1024 * 1024
+        ? `${(bytes / 1024).toFixed(1)} KB`
+        : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
-  // DATA PROCESSING
-  const statusCounts = appointments.reduce((acc, apt) => {
-    acc[apt.status] = (acc[apt.status] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
+const formatDate = (value: string) =>
+    new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    }).format(new Date(value));
 
-  const typeCounts = appointments.reduce((acc, apt) => {
-    const type = apt.service_type || apt.appointment_type || 'general'
-    acc[type] = (acc[type] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
+const statusStyle: Record<PreviewRow['status'], string> = {
+    valid: 'bg-emerald-50 text-emerald-700 ring-emerald-600/15',
+    invalid: 'bg-red-50 text-red-700 ring-red-600/15',
+    duplicate: 'bg-amber-50 text-amber-700 ring-amber-600/15',
+};
 
-  const totalAppts =
-    Object.values(statusCounts).reduce((a, b) => Number(a) + Number(b), 0) || 1
+export default function CompanyDashboard() {
+    const {
+        company,
+        appointments,
+        stats,
+        employeeStats,
+        uploads,
+        importPreview,
+        flash,
+    } = usePage<DashboardProps>().props;
+    const [isUploadOpen, setIsUploadOpen] = useState(!!importPreview);
+    const [dragging, setDragging] = useState(false);
+    const [confirming, setConfirming] = useState(false);
+    const fileInput = useRef<HTMLInputElement>(null);
+    const previewForm = useForm<{ file: File | null }>({ file: null });
+    const importResult = flash?.import_result;
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return ''
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
+    const chooseFile = (file?: File) => {
+        if (!file) return;
+        const extension = file.name.split('.').pop()?.toLowerCase();
+        if (!extension || !['xlsx', 'xls', 'csv'].includes(extension)) {
+            toast.error('Choose an XLSX, XLS, or CSV spreadsheet.');
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error('The spreadsheet must not exceed 10 MB.');
+            return;
+        }
+        previewForm.setData('file', file);
+        previewForm.clearErrors();
+    };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200'
-      case 'completed':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-200'
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-200'
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-    }
-  }
+    const preview = () => {
+        if (!previewForm.data.file || previewForm.processing) {
+            if (!previewForm.data.file)
+                toast.error('Select an employee spreadsheet first.');
+            return;
+        }
+        previewForm.post('/company/employees/import/preview', {
+            forceFormData: true,
+            preserveScroll: true,
+            onError: () =>
+                toast.error('Review the upload error and try again.'),
+        });
+    };
 
-  // ANIMATIONS
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.15 }
-    }
-  }
+    const confirm = () => {
+        if (!importPreview || confirming || importPreview.summary.valid === 0)
+            return;
+        setConfirming(true);
+        router.post(
+            '/company/employees/import/confirm',
+            { preview_token: importPreview.token },
+            {
+                preserveScroll: true,
+                onError: () =>
+                    toast.error('The import could not be completed.'),
+                onFinish: () => setConfirming(false),
+            },
+        );
+    };
 
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.4 }
-    }
-  }
+    const resetUpload = () => {
+        previewForm.reset();
+        previewForm.clearErrors();
+        if (fileInput.current) fileInput.current.value = '';
+        if (importPreview)
+            router.visit('/company/dashboard', { preserveScroll: true });
+    };
 
-  const card = {
-    hidden: { opacity: 0, y: 30 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5 }
-    }
-  }
+    return (
+        <AppLayout>
+            <Head title="Company Dashboard" />
+            <main className="space-y-6 pb-10">
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div className="flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex items-start gap-4">
+                            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+                                <Building2 className="size-6" />
+                            </span>
+                            <div>
+                                <p className="text-xs font-bold tracking-[.15em] text-blue-600 uppercase">
+                                    Company healthcare portal
+                                </p>
+                                <h1 className="mt-1 text-2xl font-semibold tracking-[-.03em] text-slate-950 sm:text-3xl">
+                                    {company.name}
+                                </h1>
+                                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                                    Manage your employee registry, spreadsheet
+                                    uploads, and clinic appointments in one
+                                    secure workspace.
+                                </p>
+                                {company.address && (
+                                    <p className="mt-2 text-xs text-slate-400">
+                                        {company.address}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <a
+                                href="/company/employees/import/template"
+                                className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                                <Download className="size-4" /> Download
+                                template
+                            </a>
+                            <Button
+                                type="button"
+                                onClick={() => setIsUploadOpen(true)}
+                                className="h-11 rounded-xl bg-blue-600 px-4 hover:bg-blue-700"
+                            >
+                                <UploadCloud className="mr-2 size-4" /> Upload
+                                employee Excel file
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="grid border-t border-slate-100 bg-slate-50/70 sm:grid-cols-2 lg:grid-cols-4">
+                        <Stat
+                            label="Total employees"
+                            value={employeeStats.total}
+                            icon={Users}
+                            tone="blue"
+                        />
+                        <Stat
+                            label="Active records"
+                            value={employeeStats.active}
+                            icon={UserCheck}
+                            tone="green"
+                        />
+                        <Stat
+                            label="Pre-registered"
+                            value={employeeStats.preregistered}
+                            icon={Clock3}
+                            tone="amber"
+                        />
+                        <Stat
+                            label="Rejected rows"
+                            value={employeeStats.rejected}
+                            icon={XCircle}
+                            tone="red"
+                        />
+                    </div>
+                </section>
 
-  return (
-    <AppLayout>
-      <motion.div
-        className="space-y-6"
-        variants={container}
-        initial="hidden"
-        animate="show"
-      >
-      <Head title="Company Dashboard" />
+                {importResult && <ImportResultBanner result={importResult} />}
 
-      {/* HEADER */}
-      <motion.div variants={item}>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Company Dashboard
-        </h1>
-        <p className="text-gray-600 dark:text-gray-300 mt-1">
-          Manage your employee appointments and bulk uploads
-        </p>
-      </motion.div>
+                {isUploadOpen && (
+                    <section
+                        aria-labelledby="upload-title"
+                        className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_18px_50px_-36px_rgba(37,99,235,.45)]"
+                    >
+                        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
+                            <div>
+                                <h2
+                                    id="upload-title"
+                                    className="font-semibold text-slate-950"
+                                >
+                                    Upload employee spreadsheet
+                                </h2>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">
+                                    Preview and validate every row before
+                                    anything is saved.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsUploadOpen(false)}
+                                aria-label="Close upload panel"
+                                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                            >
+                                <X className="size-4" />
+                            </button>
+                        </div>
 
-      {/* STATS */}
-      <motion.div
-        variants={container}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-      >
-        {/* TOTAL */}
-        <motion.div variants={card} whileHover={{ scale: 1.04 }} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
-          <div className="flex items-center justify-between">
+                        {!importPreview ? (
+                            <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+                                <div>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            fileInput.current?.click()
+                                        }
+                                        onDragEnter={(event) => {
+                                            event.preventDefault();
+                                            setDragging(true);
+                                        }}
+                                        onDragOver={(event) =>
+                                            event.preventDefault()
+                                        }
+                                        onDragLeave={() => setDragging(false)}
+                                        onDrop={(event) => {
+                                            event.preventDefault();
+                                            setDragging(false);
+                                            chooseFile(
+                                                event.dataTransfer.files[0],
+                                            );
+                                        }}
+                                        className={`flex min-h-56 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition focus-visible:ring-4 focus-visible:ring-blue-500/15 focus-visible:outline-none ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-slate-50/60 hover:border-blue-300 hover:bg-blue-50/40'}`}
+                                    >
+                                        <span className="flex size-12 items-center justify-center rounded-2xl bg-white text-blue-600 shadow-sm">
+                                            <FileSpreadsheet className="size-6" />
+                                        </span>
+                                        <span className="mt-4 text-sm font-semibold text-slate-800">
+                                            Drop your spreadsheet here or browse
+                                        </span>
+                                        <span className="mt-1 text-xs text-slate-500">
+                                            XLSX, XLS, or CSV · maximum 10 MB
+                                        </span>
+                                    </button>
+                                    <input
+                                        ref={fileInput}
+                                        type="file"
+                                        accept=".xlsx,.xls,.csv"
+                                        onChange={(event) =>
+                                            chooseFile(event.target.files?.[0])
+                                        }
+                                        className="sr-only"
+                                        aria-label="Employee spreadsheet"
+                                    />
+                                    {previewForm.data.file && (
+                                        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
+                                            <div className="flex min-w-0 items-center gap-3">
+                                                <FileCheck2 className="size-5 shrink-0 text-emerald-600" />
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-sm font-medium">
+                                                        {
+                                                            previewForm.data
+                                                                .file.name
+                                                        }
+                                                    </p>
+                                                    <p className="text-xs text-slate-400">
+                                                        {formatBytes(
+                                                            previewForm.data
+                                                                .file.size,
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={resetUpload}
+                                                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                                                aria-label="Remove selected file"
+                                            >
+                                                <X className="size-4" />
+                                            </button>
+                                        </div>
+                                    )}
+                                    <InputError
+                                        message={previewForm.errors.file}
+                                        className="mt-2"
+                                    />
+                                    <Button
+                                        type="button"
+                                        onClick={preview}
+                                        disabled={
+                                            !previewForm.data.file ||
+                                            previewForm.processing
+                                        }
+                                        className="mt-4 h-11 w-full rounded-xl bg-blue-600 hover:bg-blue-700 sm:w-auto"
+                                    >
+                                        {previewForm.processing ? (
+                                            <>
+                                                <LoaderCircle className="mr-2 size-4 animate-spin" />{' '}
+                                                Validating spreadsheet…
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ArrowRight className="mr-2 size-4" />{' '}
+                                                Preview employee records
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                                <ImportInstructions />
+                            </div>
+                        ) : (
+                            <PreviewTable
+                                preview={importPreview}
+                                processing={confirming}
+                                onCancel={resetUpload}
+                                onConfirm={confirm}
+                            />
+                        )}
+                    </section>
+                )}
+
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,.8fr)]">
+                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                        <div className="mb-5 flex items-center justify-between">
+                            <div>
+                                <h2 className="flex items-center gap-2 font-semibold">
+                                    <History className="size-4 text-blue-600" />{' '}
+                                    Recent uploads
+                                </h2>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Your latest employee import activity.
+                                </p>
+                            </div>
+                        </div>
+                        {uploads.length ? (
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[620px] text-left">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 text-[10px] tracking-wider text-slate-400 uppercase">
+                                            <th className="pb-3 font-semibold">
+                                                File
+                                            </th>
+                                            <th className="pb-3 font-semibold">
+                                                Processed
+                                            </th>
+                                            <th className="pb-3 font-semibold">
+                                                Imported
+                                            </th>
+                                            <th className="pb-3 font-semibold">
+                                                Skipped
+                                            </th>
+                                            <th className="pb-3 text-right font-semibold">
+                                                Date
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {uploads.map((upload) => (
+                                            <tr
+                                                key={upload.id}
+                                                className="text-sm"
+                                            >
+                                                <td className="py-3.5">
+                                                    <p className="max-w-52 truncate font-medium text-slate-800">
+                                                        {upload.file_name}
+                                                    </p>
+                                                    <p className="mt-0.5 text-[11px] text-slate-400 capitalize">
+                                                        {upload.status}
+                                                    </p>
+                                                </td>
+                                                <td className="py-3.5 text-slate-600">
+                                                    {upload.total}
+                                                </td>
+                                                <td className="py-3.5 font-medium text-emerald-700">
+                                                    {upload.imported}
+                                                </td>
+                                                <td className="py-3.5 text-amber-700">
+                                                    {upload.duplicates +
+                                                        upload.failed}
+                                                </td>
+                                                <td className="py-3.5 text-right text-xs text-slate-500">
+                                                    {formatDate(
+                                                        upload.created_at,
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <EmptyState
+                                icon={FileSpreadsheet}
+                                title="No uploads yet"
+                                description="Your completed employee imports will appear here."
+                            />
+                        )}
+                    </section>
+
+                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                        <div className="mb-5 flex items-center justify-between">
+                            <div>
+                                <h2 className="flex items-center gap-2 font-semibold">
+                                    <CalendarDays className="size-4 text-blue-600" />{' '}
+                                    Recent appointments
+                                </h2>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    {stats.upcoming} upcoming ·{' '}
+                                    {stats.completed} completed
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Link
+                                    href="/company/appointments/create"
+                                    className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                                >
+                                    Create
+                                </Link>
+                                <Link
+                                    href="/company/appointments"
+                                    className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                                >
+                                    View all
+                                </Link>
+                            </div>
+                        </div>
+                        {appointments.length ? (
+                            <div className="space-y-2">
+                                {appointments.slice(0, 5).map((appointment) => (
+                                    <Link
+                                        key={appointment.id}
+                                        href="/company/appointments"
+                                        className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3 transition hover:border-blue-100 hover:bg-blue-50/40"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-medium text-slate-800">
+                                                {appointment.patient_name ||
+                                                    'Employee appointment'}
+                                            </p>
+                                            <p className="mt-0.5 text-[11px] text-slate-400">
+                                                {formatDate(
+                                                    appointment.appointment_date,
+                                                )}
+                                            </p>
+                                        </div>
+                                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 capitalize">
+                                            {appointment.status.replaceAll(
+                                                '_',
+                                                ' ',
+                                            )}
+                                        </span>
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                            <EmptyState
+                                icon={CalendarDays}
+                                title="No appointments yet"
+                                description="Appointments connected to your company will appear here."
+                            />
+                        )}
+                    </section>
+                </div>
+            </main>
+        </AppLayout>
+    );
+}
+
+function Stat({
+    label,
+    value,
+    icon: Icon,
+    tone,
+}: {
+    label: string;
+    value: number;
+    icon: typeof Users;
+    tone: 'blue' | 'green' | 'amber' | 'red';
+}) {
+    const tones = {
+        blue: 'bg-blue-100 text-blue-700',
+        green: 'bg-emerald-100 text-emerald-700',
+        amber: 'bg-amber-100 text-amber-700',
+        red: 'bg-red-100 text-red-700',
+    };
+    return (
+        <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0">
+            <span
+                className={`flex size-9 items-center justify-center rounded-xl ${tones[tone]}`}
+            >
+                <Icon className="size-4" />
+            </span>
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Total</p>
-              <p className="text-3xl font-bold">{stats.total}</p>
+                <p className="text-xl font-semibold tracking-tight text-slate-900">
+                    {value}
+                </p>
+                <p className="text-[11px] text-slate-500">{label}</p>
             </div>
-            <Calendar className="w-8 h-8 text-blue-500" />
-          </div>
-        </motion.div>
+        </div>
+    );
+}
 
-        {/* UPCOMING */}
-        <motion.div variants={card} whileHover={{ scale: 1.04 }} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Upcoming</p>
-              <p className="text-3xl font-bold">{stats.upcoming}</p>
+function ImportInstructions() {
+    return (
+        <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">
+                <ShieldCheck className="size-4 text-blue-600" /> File
+                requirements
+            </h3>
+            <ul className="mt-4 space-y-3 text-xs leading-5 text-slate-600">
+                <li>
+                    <strong className="text-slate-800">Required:</strong> First
+                    Name, Last Name, Sex, Birthdate
+                </li>
+                <li>
+                    <strong className="text-slate-800">Date format:</strong>{' '}
+                    YYYY-MM-DD is recommended
+                </li>
+                <li>
+                    <strong className="text-slate-800">Sex values:</strong>{' '}
+                    Male, Female, M, or F
+                </li>
+                <li>
+                    <strong className="text-slate-800">Files:</strong> XLSX,
+                    XLS, or CSV up to 10 MB
+                </li>
+            </ul>
+            <a
+                href="/company/employees/import/template"
+                className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-blue-600 hover:text-blue-700"
+            >
+                <Download className="size-3.5" /> Download the formatted
+                template
+            </a>
+        </aside>
+    );
+}
+
+function PreviewTable({
+    preview,
+    processing,
+    onCancel,
+    onConfirm,
+}: {
+    preview: ImportPreview;
+    processing: boolean;
+    onCancel: () => void;
+    onConfirm: () => void;
+}) {
+    return (
+        <div className="p-5 sm:p-6">
+            <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                        {preview.file_name}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                        Review validation results before confirming.
+                    </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <SummaryBadge
+                        label="Total"
+                        value={preview.summary.total}
+                        className="bg-slate-100 text-slate-700"
+                    />
+                    <SummaryBadge
+                        label="Ready"
+                        value={preview.summary.valid}
+                        className="bg-emerald-50 text-emerald-700"
+                    />
+                    <SummaryBadge
+                        label="Invalid"
+                        value={preview.summary.invalid}
+                        className="bg-red-50 text-red-700"
+                    />
+                    <SummaryBadge
+                        label="Duplicate"
+                        value={preview.summary.duplicates}
+                        className="bg-amber-50 text-amber-700"
+                    />
+                </div>
             </div>
-            <Users className="w-8 h-8 text-purple-500" />
-          </div>
-        </motion.div>
-
-        {/* ✅ FIXED COMPLETED */}
-        <motion.div variants={card} whileHover={{ scale: 1.04 }} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Completed</p>
-              <p className="text-3xl font-bold">{stats.completed}</p>
+            <div className="max-h-[480px] overflow-auto rounded-xl border border-slate-200">
+                <table className="w-full min-w-[820px] text-left">
+                    <thead className="sticky top-0 z-10 bg-slate-50">
+                        <tr className="text-[10px] tracking-wider text-slate-400 uppercase">
+                            <th className="px-3 py-3 font-semibold">Row</th>
+                            <th className="px-3 py-3 font-semibold">
+                                First name
+                            </th>
+                            <th className="px-3 py-3 font-semibold">
+                                Last name
+                            </th>
+                            <th className="px-3 py-3 font-semibold">Sex</th>
+                            <th className="px-3 py-3 font-semibold">
+                                Birthdate
+                            </th>
+                            <th className="px-3 py-3 font-semibold">Age</th>
+                            <th className="px-3 py-3 font-semibold">Status</th>
+                            <th className="px-3 py-3 font-semibold">Message</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {preview.rows.map((row) => (
+                            <tr
+                                key={row.row}
+                                className="text-xs text-slate-700"
+                            >
+                                <td className="px-3 py-3 text-slate-400">
+                                    {row.row}
+                                </td>
+                                <td className="px-3 py-3 font-medium">
+                                    {row.first_name || '—'}
+                                </td>
+                                <td className="px-3 py-3 font-medium">
+                                    {row.last_name || '—'}
+                                </td>
+                                <td className="px-3 py-3">{row.sex || '—'}</td>
+                                <td className="px-3 py-3">
+                                    {row.birthdate || '—'}
+                                </td>
+                                <td className="px-3 py-3">{row.age ?? '—'}</td>
+                                <td className="px-3 py-3">
+                                    <span
+                                        className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold capitalize ring-1 ring-inset ${statusStyle[row.status]}`}
+                                    >
+                                        {row.status === 'valid'
+                                            ? 'Ready to import'
+                                            : row.status}
+                                    </span>
+                                </td>
+                                <td className="max-w-64 px-3 py-3 text-slate-500">
+                                    {row.errors
+                                        .map((error) => error.message)
+                                        .join(' ') ||
+                                        (row.status === 'duplicate'
+                                            ? 'Existing employee; will be skipped.'
+                                            : 'Validated successfully.')}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
-            <CheckCircle className="w-8 h-8 text-green-500" />
-          </div>
-        </motion.div>
-      </motion.div>
-
-      {/* CHARTS */}
-      <motion.div variants={container} className="grid lg:grid-cols-2 gap-6">
-        {/* STATUS */}
-        <motion.div variants={card} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
-          <h3 className="flex items-center gap-2 font-semibold mb-4">
-            <BarChart3 className="w-5 h-5" /> Status
-          </h3>
-
-          {Object.entries(statusCounts).map(([status, count]) => {
-            const pct = (count / totalAppts) * 100
-            return (
-              <div key={status} className="mb-3">
-                <div className="flex justify-between text-sm">
-                  <span>{status}</span>
-                  <span>{count}</span>
+            {preview.summary.invalid > 0 && (
+                <div className="mt-4 flex items-start gap-2 rounded-xl bg-red-50 p-3 text-xs leading-5 text-red-700">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" /> Invalid
+                    rows will not be imported. Correct them in the spreadsheet
+                    and upload again for a complete import.
                 </div>
-                <div className="bg-gray-200 h-2 rounded">
-                  <motion.div
-                    className="bg-blue-500 h-2 rounded"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pct}%` }}
-                  />
+            )}
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onCancel}
+                    disabled={processing}
+                    className="h-10 rounded-xl"
+                >
+                    <RefreshCw className="mr-2 size-4" /> Upload another file
+                </Button>
+                <Button
+                    type="button"
+                    onClick={onConfirm}
+                    disabled={processing || preview.summary.valid === 0}
+                    className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700"
+                >
+                    {processing ? (
+                        <>
+                            <LoaderCircle className="mr-2 size-4 animate-spin" />{' '}
+                            Importing…
+                        </>
+                    ) : (
+                        <>
+                            <CheckCircle2 className="mr-2 size-4" /> Confirm{' '}
+                            {preview.summary.valid} valid records
+                        </>
+                    )}
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+function SummaryBadge({
+    label,
+    value,
+    className,
+}: {
+    label: string;
+    value: number;
+    className: string;
+}) {
+    return (
+        <span
+            className={`rounded-lg px-2.5 py-1.5 text-[11px] font-semibold ${className}`}
+        >
+            {label}: {value}
+        </span>
+    );
+}
+
+function ImportResultBanner({ result }: { result: ImportResult }) {
+    return (
+        <section className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+                <div>
+                    <h2 className="text-sm font-semibold text-emerald-900">
+                        Employee import completed
+                    </h2>
+                    <p className="mt-1 text-xs leading-5 text-emerald-700">
+                        {result.imported} imported, {result.duplicates}{' '}
+                        duplicates skipped, and {result.failed} invalid rows
+                        rejected.
+                    </p>
                 </div>
-              </div>
-            )
-          })}
-        </motion.div>
+            </div>
+            {result.failed > 0 && (
+                <a
+                    href={`/company/employees/import/errors/${result.report_token}`}
+                    className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-3 text-xs font-semibold text-emerald-700"
+                >
+                    <Download className="size-3.5" /> Error report
+                </a>
+            )}
+        </section>
+    );
+}
 
-        {/* TYPE */}
-        <motion.div variants={card} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
-          <h3 className="flex items-center gap-2 font-semibold mb-4">
-            <BarChart3 className="w-5 h-5" /> Type
-          </h3>
-
-          {Object.entries(typeCounts).slice(0, 5).map(([type, count]) => {
-            const total =
-              Object.values(typeCounts).reduce((a, b) => Number(a) + Number(b), 0) || 1
-            const pct = (count / total) * 100
-
-            return (
-              <div key={type} className="mb-3">
-                <div className="flex justify-between text-sm">
-                  <span>{type}</span>
-                  <span>{count}</span>
-                </div>
-                <div className="bg-gray-200 h-2 rounded">
-                  <motion.div
-                    className="bg-purple-500 h-2 rounded"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            )
-          })}
-        </motion.div>
-      </motion.div>
-
-      {/* UPLOAD */}
-<motion.div variants={card} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
-  <form onSubmit={submitBulkUpload} className="space-y-4">
-    <div className="space-y-2">
-      <Label htmlFor="appointment-date">Appointment Date</Label>
-      <Input
-        id="appointment-date"
-        type="date"
-        onChange={(e) => setData('appointment_date', e.target.value)}
-      />
-    </div>
-    <div className="space-y-2">
-      <Label htmlFor="excel-file">Excel File</Label>
-      <Input
-        id="excel-file"
-        key={fileKey}
-        type="file"
-        accept=".xlsx,.xls"
-        onChange={handleFileUpload}
-      />
-      <InputError message={errors.file} className="mt-2" />
-    </div>
-    <Button type="submit" disabled={processing}>
-      {processing ? 'Uploading...' : 'Upload Excel'}
-    </Button>
-  </form>
-</motion.div>
-      {/* RECENT */}
-      <motion.div variants={card} className="bg-white dark:bg-gray-900 p-6 rounded-xl border shadow-sm">
-        <h3 className="mb-4 font-semibold">Recent Appointments</h3>
-
-        {appointments.slice(0, 5).map((a) => (
-          <div
-            key={a.id}
-            onClick={() => router.visit('/company/appointments')}
-            className={`p-3 border rounded mb-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${getStatusBadge(a.status)}`}
-          >
-            <p className="font-medium">
-              {a.patient_name || 'N/A'}
+function EmptyState({
+    icon: Icon,
+    title,
+    description,
+}: {
+    icon: typeof FileSpreadsheet;
+    title: string;
+    description: string;
+}) {
+    return (
+        <div className="flex min-h-44 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-6 text-center">
+            <Icon className="size-6 text-slate-300" />
+            <p className="mt-3 text-sm font-semibold text-slate-700">{title}</p>
+            <p className="mt-1 max-w-xs text-xs leading-5 text-slate-400">
+                {description}
             </p>
-            <p className="text-sm text-gray-500">
-              {formatDate(a.appointment_date)} • {a.status}
-            </p>
-          </div>
-        ))}
-      </motion.div>
-
-      {/* ACTIONS */}
-      <div className="flex gap-4">
-        <Link href="/company/appointments/create">
-          <Button variant="outline">Create Appointment</Button>
-        </Link>
-        <Link href="/company/appointments">
-          <Button>View All</Button>
-        </Link>
-      </div>
-    </motion.div>
-    </AppLayout>
-  )
+        </div>
+    );
 }
-
-export default CompanyDashboard
-
