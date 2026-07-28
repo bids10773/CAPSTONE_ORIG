@@ -8,10 +8,10 @@ export default function ReceptionistDashboard() {
         <>
             <Head title="Receptionist Dashboard" />
             <div className="p-6">
-                <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                <h1 className="text-2xl font-semibold text-gray-900">
                     Good day, {auth.user.first_name}
                 </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="mt-1 text-sm text-gray-500">
                     Receptionist · Info Staff
                 </p>
             </div>

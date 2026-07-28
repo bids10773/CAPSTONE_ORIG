@@ -7,10 +7,12 @@ import LogoutModal from './components/logout-modal';
 import { LogoutModalProvider } from './contexts/logout-modal-context';
 import { initializeTheme } from './hooks/use-appearance';
 
+const pages = import.meta.glob('./pages/**/*.tsx');
+
 createInertiaApp({
     // Template: "Page Title - LMIC" or just "LMIC" if no title is set
-     title: (title) => `${title} - LMIC`,
-    resolve: (name) => resolvePageComponent(`./pages/${name}.tsx`, import.meta.glob('./pages/**/*.tsx')),
+    title: (title) => `${title} - LMIC`,
+    resolve: (name) => resolvePageComponent(`./pages/${name}.tsx`, pages),
     setup({ el, App, props }) {
         const root = createRoot(el);
         const pageProps = props.initialPage.props as {
@@ -18,11 +20,11 @@ createInertiaApp({
         };
 
         root.render(
-                <LogoutModalProvider>
-                    <App {...props} />
-                    <LogoutModal userId={pageProps.auth?.user?.id} />
-                    <Toaster position="top-right" richColors />
-                </LogoutModalProvider>
+            <LogoutModalProvider>
+                <App {...props} />
+                <LogoutModal userId={pageProps.auth?.user?.id} />
+                <Toaster position="top-right" richColors />
+            </LogoutModalProvider>,
         );
     },
 });

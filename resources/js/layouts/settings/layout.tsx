@@ -11,7 +11,7 @@ import { show } from '@/routes/two-factor';
 import { edit as editPassword } from '@/routes/user-password';
 import type { NavItem } from '@/types';
 
-import { motion } from "framer-motion";
+import { motion } from 'framer-motion';
 
 const sidebarNavItems: NavItem[] = [
     {
@@ -43,9 +43,9 @@ const container = {
     show: {
         opacity: 1,
         transition: {
-            staggerChildren: 0.12
-        }
-    }
+            staggerChildren: 0.12,
+        },
+    },
 };
 
 const item = {
@@ -53,8 +53,8 @@ const item = {
     show: {
         opacity: 1,
         x: 0,
-        transition: { duration: 0.35 }
-    }
+        transition: { duration: 0.35 },
+    },
 };
 
 const content = {
@@ -62,8 +62,8 @@ const content = {
     show: {
         opacity: 1,
         y: 0,
-        transition: { duration: 0.4 }
-    }
+        transition: { duration: 0.4 },
+    },
 };
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
@@ -75,12 +75,11 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
     return (
         <motion.div
-    className="p-6"
-    initial="hidden"
-    animate="show"
-    variants={container}
->
-
+            className="p-6"
+            initial="hidden"
+            animate="show"
+            variants={container}
+        >
             {/* HEADER */}
 
             <motion.div variants={content}>
@@ -90,40 +89,34 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                 />
             </motion.div>
 
-
             <div className="mt-8 flex flex-col lg:flex-row lg:space-x-12">
-
                 {/* SIDEBAR */}
 
                 <aside className="w-full max-w-xl lg:w-48">
-
                     <motion.nav
                         variants={container}
                         className="flex flex-col space-y-1 space-x-0"
                         aria-label="Settings"
                     >
-
                         {sidebarNavItems.map((itemNav, index) => {
                             const active = isCurrentUrl(itemNav.href);
 
                             return (
-
                                 <motion.div
                                     key={`${toUrl(itemNav.href)}-${index}`}
                                     variants={item}
                                     whileHover={{ scale: 1.03 }}
                                 >
-
                                     <Button
                                         size="sm"
                                         variant="ghost"
                                         asChild
                                         className={cn(
                                             'w-full justify-start transition-all duration-200',
-                                            'hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20',
+                                            'hover:bg-primary/10 hover:text-primary',
                                             active
-                                                ? 'bg-primary/15 text-primary font-bold shadow-sm dark:bg-primary/25'
-                                                : 'text-muted-foreground dark:text-neutral-400'
+                                                ? 'bg-primary/15 font-bold text-primary shadow-sm'
+                                                : 'text-muted-foreground',
                                         )}
                                     >
                                         <Link href={itemNav.href}>
@@ -133,38 +126,22 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                                             {itemNav.title}
                                         </Link>
                                     </Button>
-
                                 </motion.div>
-
                             );
                         })}
-
                     </motion.nav>
-
                 </aside>
 
                 <Separator className="my-6 lg:hidden" />
 
-
                 {/* CONTENT */}
 
-                <motion.div
-                    variants={content}
-                    className="flex-1 md:max-w-2xl"
-                >
-
+                <motion.div variants={content} className="flex-1 md:max-w-2xl">
                     <section className="max-w-xl space-y-12">
-
-                        <div className="text-foreground dark:text-white">
-                            {children}
-                        </div>
-
+                        <div className="text-foreground">{children}</div>
                     </section>
-
                 </motion.div>
-
             </div>
-
         </motion.div>
     );
 }

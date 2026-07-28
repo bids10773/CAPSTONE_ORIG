@@ -200,11 +200,11 @@ export default function CompanyDashboard() {
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div className="flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
                         <div className="flex items-start gap-4">
-                            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+                            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-moss-600 text-white shadow-lg shadow-moss-600/20">
                                 <Building2 className="size-6" />
                             </span>
                             <div>
-                                <p className="text-xs font-bold tracking-[.15em] text-blue-600 uppercase">
+                                <p className="text-xs font-bold tracking-[.15em] text-moss-600 uppercase">
                                     Company healthcare portal
                                 </p>
                                 <h1 className="mt-1 text-2xl font-semibold tracking-[-.03em] text-slate-950 sm:text-3xl">
@@ -233,7 +233,7 @@ export default function CompanyDashboard() {
                             <Button
                                 type="button"
                                 onClick={() => setIsUploadOpen(true)}
-                                className="h-11 rounded-xl bg-blue-600 px-4 hover:bg-blue-700"
+                                className="h-11 rounded-xl bg-moss-600 px-4 hover:bg-moss-700"
                             >
                                 <UploadCloud className="mr-2 size-4" /> Upload
                                 employee Excel file
@@ -273,7 +273,7 @@ export default function CompanyDashboard() {
                 {isUploadOpen && (
                     <section
                         aria-labelledby="upload-title"
-                        className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_18px_50px_-36px_rgba(37,99,235,.45)]"
+                        className="overflow-hidden rounded-2xl border border-moss-100 bg-white shadow-[0_18px_50px_-36px_rgba(37,99,235,.45)]"
                     >
                         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
                             <div>
@@ -321,9 +321,9 @@ export default function CompanyDashboard() {
                                                 event.dataTransfer.files[0],
                                             );
                                         }}
-                                        className={`flex min-h-56 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition focus-visible:ring-4 focus-visible:ring-blue-500/15 focus-visible:outline-none ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-slate-50/60 hover:border-blue-300 hover:bg-blue-50/40'}`}
+                                        className={`flex min-h-56 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${dragging ? 'border-moss-500 bg-moss-50' : 'border-slate-200 bg-slate-50/60 hover:border-moss-300 hover:bg-moss-50/40'}`}
                                     >
-                                        <span className="flex size-12 items-center justify-center rounded-2xl bg-white text-blue-600 shadow-sm">
+                                        <span className="flex size-12 items-center justify-center rounded-2xl bg-white text-moss-600 shadow-sm">
                                             <FileSpreadsheet className="size-6" />
                                         </span>
                                         <span className="mt-4 text-sm font-semibold text-slate-800">
@@ -383,7 +383,7 @@ export default function CompanyDashboard() {
                                             !previewForm.data.file ||
                                             previewForm.processing
                                         }
-                                        className="mt-4 h-11 w-full rounded-xl bg-blue-600 hover:bg-blue-700 sm:w-auto"
+                                        className="mt-4 h-11 w-full rounded-xl bg-moss-600 hover:bg-moss-700 sm:w-auto"
                                     >
                                         {previewForm.processing ? (
                                             <>
@@ -416,7 +416,7 @@ export default function CompanyDashboard() {
                         <div className="mb-5 flex items-center justify-between">
                             <div>
                                 <h2 className="flex items-center gap-2 font-semibold">
-                                    <History className="size-4 text-blue-600" />{' '}
+                                    <History className="size-4 text-moss-600" />{' '}
                                     Recent uploads
                                 </h2>
                                 <p className="mt-1 text-xs text-slate-500">
@@ -493,7 +493,7 @@ export default function CompanyDashboard() {
                         <div className="mb-5 flex items-center justify-between">
                             <div>
                                 <h2 className="flex items-center gap-2 font-semibold">
-                                    <CalendarDays className="size-4 text-blue-600" />{' '}
+                                    <CalendarDays className="size-4 text-moss-600" />{' '}
                                     Recent appointments
                                 </h2>
                                 <p className="mt-1 text-xs text-slate-500">
@@ -504,13 +504,13 @@ export default function CompanyDashboard() {
                             <div className="flex items-center gap-3">
                                 <Link
                                     href="/company/appointments/create"
-                                    className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                                    className="text-xs font-semibold text-moss-600 hover:text-moss-700"
                                 >
                                     Create
                                 </Link>
                                 <Link
                                     href="/company/appointments"
-                                    className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                                    className="text-xs font-semibold text-moss-600 hover:text-moss-700"
                                 >
                                     View all
                                 </Link>
@@ -522,7 +522,7 @@ export default function CompanyDashboard() {
                                     <Link
                                         key={appointment.id}
                                         href="/company/appointments"
-                                        className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3 transition hover:border-blue-100 hover:bg-blue-50/40"
+                                        className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3 transition hover:border-moss-100 hover:bg-moss-50/40"
                                     >
                                         <div className="min-w-0">
                                             <p className="truncate text-sm font-medium text-slate-800">
@@ -570,7 +570,7 @@ function Stat({
     tone: 'blue' | 'green' | 'amber' | 'red';
 }) {
     const tones = {
-        blue: 'bg-blue-100 text-blue-700',
+        blue: 'bg-moss-100 text-moss-700',
         green: 'bg-emerald-100 text-emerald-700',
         amber: 'bg-amber-100 text-amber-700',
         red: 'bg-red-100 text-red-700',
@@ -596,7 +596,7 @@ function ImportInstructions() {
     return (
         <aside className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <ShieldCheck className="size-4 text-blue-600" /> File
+                <ShieldCheck className="size-4 text-moss-600" /> File
                 requirements
             </h3>
             <ul className="mt-4 space-y-3 text-xs leading-5 text-slate-600">
@@ -619,7 +619,7 @@ function ImportInstructions() {
             </ul>
             <a
                 href="/company/employees/import/template"
-                className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-moss-600 hover:text-moss-700"
             >
                 <Download className="size-3.5" /> Download the formatted
                 template
@@ -756,7 +756,7 @@ function PreviewTable({
                     type="button"
                     onClick={onConfirm}
                     disabled={processing || preview.summary.valid === 0}
-                    className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700"
+                    className="h-10 rounded-xl bg-moss-600 hover:bg-moss-700"
                 >
                     {processing ? (
                         <>

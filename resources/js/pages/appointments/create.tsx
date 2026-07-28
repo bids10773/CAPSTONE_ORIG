@@ -5,6 +5,7 @@ import {
     ArrowRight,
     BriefcaseMedical,
     Building2,
+    CakeSlice,
     CalendarDays,
     Check,
     CheckCircle2,
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import AppLayout from '@/layouts/app-layout';
 import type { Doctor } from '@/types/availability';
 
 interface Company {
@@ -497,262 +499,271 @@ export default function CreateAppointment() {
     return (
         <>
             <Head title="Book an appointment" />
-            <div className="min-h-screen bg-[#f6f9fc] text-slate-900">
-                <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
-                    <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-4 sm:px-6">
-                        <Link
-                            href="/dashboard"
-                            className="flex items-center gap-3 rounded-xl focus-visible:ring-4 focus-visible:ring-blue-500/20 focus-visible:outline-none"
-                        >
-                            <span className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-teal-500 text-white shadow-lg shadow-blue-600/20">
-                                <HeartPulse className="size-5" />
-                            </span>
-                            <span>
-                                <span className="block text-sm font-bold tracking-[-.02em]">
-                                    Living Myth Clinic
-                                </span>
-                                <span className="block text-[10px] font-medium tracking-[.12em] text-slate-400 uppercase">
-                                    Patient appointments
-                                </span>
-                            </span>
-                        </Link>
-                        <Link
-                            href="/dashboard"
-                            className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:ring-4 focus-visible:ring-blue-500/15 focus-visible:outline-none"
-                        >
-                            <ArrowLeft className="size-4" />
-                            <span className="hidden sm:inline">
-                                Back to dashboard
-                            </span>
-                        </Link>
-                    </div>
-                </header>
-
-                <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10">
-                    <div className="mb-7 lg:max-w-3xl">
-                        <p className="text-xs font-bold tracking-[.16em] text-blue-600 uppercase">
-                            Online scheduling
-                        </p>
-                        <h1 className="mt-2 text-3xl font-semibold tracking-[-.04em] sm:text-4xl">
-                            Book your clinic visit
-                        </h1>
-                        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-                            Choose your care, find a convenient schedule, and
-                            review everything before confirming.
-                        </p>
-                    </div>
-
-                    <Progress currentStep={currentStep} />
-
-                    {draftRestored && (
-                        <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-700">
-                            <span className="flex items-center gap-2">
-                                <Info className="size-4 shrink-0" /> Your saved
-                                booking draft has been restored.
-                            </span>
-                            <button
-                                onClick={() => setDraftRestored(false)}
-                                className="font-semibold"
-                            >
-                                Dismiss
-                            </button>
+            <AppLayout
+                breadcrumbs={[
+                    { title: 'Appointments', href: '/appointments' },
+                    { title: 'Book Appointment', href: '/appointment' },
+                ]}
+            >
+                <div className="min-h-full bg-background text-slate-900">
+                    <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10">
+                        <div className="mb-7 lg:max-w-3xl">
+                            <p className="text-xs font-bold tracking-[.16em] text-moss-600 uppercase">
+                                Online scheduling
+                            </p>
+                            <h1 className="mt-2 text-3xl font-semibold tracking-[-.04em] sm:text-4xl">
+                                Book your clinic visit
+                            </h1>
+                            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
+                                Choose your care, find a convenient schedule,
+                                and review everything before confirming.
+                            </p>
                         </div>
-                    )}
 
-                    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-                        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_60px_-40px_rgba(15,43,75,.35)]">
-                            <div className="border-b border-slate-100 px-5 py-5 sm:px-8">
-                                <p className="text-xs font-semibold text-blue-600">
-                                    Step {currentStep} of 4
-                                </p>
-                                <h2 className="mt-1 text-xl font-semibold tracking-[-.025em]">
-                                    {currentStep === 1 &&
-                                        'What care do you need?'}
-                                    {currentStep === 2 &&
-                                        'Choose a date and time'}
-                                    {currentStep === 3 &&
-                                        'Confirm your information'}
-                                    {currentStep === 4 &&
-                                        'Review your appointment'}
-                                </h2>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    {currentStep === 1 &&
-                                        'Select a visit type, services, and your preferred doctor.'}
-                                    {currentStep === 2 &&
-                                        'Only currently available schedules are shown.'}
-                                    {currentStep === 3 &&
-                                        'We use the verified information saved in your profile.'}
-                                    {currentStep === 4 &&
-                                        'Check the details below before submitting your request.'}
-                                </p>
-                            </div>
+                        <Progress currentStep={currentStep} />
 
-                            <div className="p-5 sm:p-8">
-                                <AnimatePresence mode="wait">
-                                    <motion.div
-                                        key={currentStep}
-                                        initial={{ opacity: 0, x: 12 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -12 }}
-                                        transition={{ duration: 0.22 }}
-                                    >
-                                        {currentStep === 1 && (
-                                            <VisitStep
-                                                appointmentTypes={
-                                                    appointmentTypeEntries
-                                                }
-                                                serviceTypes={serviceEntries}
-                                                doctors={doctors}
-                                                formData={formData}
-                                                loadingDoctors={loadingDoctors}
-                                                errors={errors}
-                                                needsCompany={needsCompany}
-                                                companySearch={companySearch}
-                                                companyMenuOpen={
-                                                    companyMenuOpen
-                                                }
-                                                filteredCompanies={
-                                                    filteredCompanies
-                                                }
-                                                onType={(type) => {
-                                                    update('type', type);
-                                                    update('company_id', '');
-                                                    setCompanySearch('');
-                                                }}
-                                                onService={toggleService}
-                                                onDoctor={(doctorId) => {
-                                                    setLoadingAvailability(
-                                                        true,
-                                                    );
-                                                    update(
-                                                        'doctor_id',
-                                                        doctorId,
-                                                    );
-                                                    update(
-                                                        'appointment_date',
-                                                        '',
-                                                    );
-                                                    update('start_time', '');
-                                                }}
-                                                onCompanySearch={(value) => {
-                                                    setCompanySearch(value);
-                                                    setCompanyMenuOpen(true);
-                                                    update('company_id', '');
-                                                }}
-                                                onCompanySelect={selectCompany}
-                                                onCompanyFocus={() =>
-                                                    setCompanyMenuOpen(true)
-                                                }
-                                            />
-                                        )}
-                                        {currentStep === 2 && (
-                                            <ScheduleStep
-                                                doctor={selectedDoctor}
-                                                dates={availableDates}
-                                                times={availableTimes}
-                                                selectedDate={
-                                                    formData.appointment_date
-                                                }
-                                                selectedTime={
-                                                    formData.start_time
-                                                }
-                                                loading={loadingAvailability}
-                                                errors={errors}
-                                                onDate={(date) => {
-                                                    setLoadingAvailability(
-                                                        true,
-                                                    );
-                                                    update(
-                                                        'appointment_date',
-                                                        date,
-                                                    );
-                                                    update('start_time', '');
-                                                }}
-                                                onTime={(time) =>
-                                                    update('start_time', time)
-                                                }
-                                            />
-                                        )}
-                                        {currentStep === 3 && (
-                                            <DetailsStep
-                                                user={auth.user}
-                                                profile={patientProfile}
-                                                notes={formData.notes}
-                                                onNotes={(notes) =>
-                                                    update('notes', notes)
-                                                }
-                                            />
-                                        )}
-                                        {currentStep === 4 && (
-                                            <ReviewStep
-                                                formData={formData}
-                                                doctor={selectedDoctor}
-                                                company={selectedCompany}
-                                                appointmentTypes={
-                                                    appointmentTypes
-                                                }
-                                                serviceTypes={serviceTypes}
-                                                user={auth.user}
-                                                onEdit={setCurrentStep}
-                                            />
-                                        )}
-                                    </motion.div>
-                                </AnimatePresence>
-                            </div>
-
-                            <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-8">
+                        {draftRestored && (
+                            <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-moss-100 bg-moss-50 px-4 py-3 text-xs text-moss-700">
+                                <span className="flex items-center gap-2">
+                                    <Info className="size-4 shrink-0" /> Your
+                                    saved booking draft has been restored.
+                                </span>
                                 <button
-                                    type="button"
-                                    onClick={() =>
-                                        setCurrentStep((step) =>
-                                            Math.max(1, step - 1),
-                                        )
-                                    }
-                                    disabled={currentStep === 1 || submitting}
-                                    className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:invisible"
+                                    onClick={() => setDraftRestored(false)}
+                                    className="font-semibold"
                                 >
-                                    <ArrowLeft className="size-4" /> Back
+                                    Dismiss
                                 </button>
-                                {currentStep < 4 ? (
-                                    <button
-                                        type="button"
-                                        onClick={continueForward}
-                                        className="inline-flex h-12 min-w-36 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:ring-4 focus-visible:ring-blue-500/20 focus-visible:outline-none"
-                                    >
-                                        Continue{' '}
-                                        <ArrowRight className="size-4" />
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={submit}
-                                        disabled={submitting}
-                                        className="inline-flex h-12 min-w-44 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:pointer-events-none disabled:opacity-65"
-                                    >
-                                        {submitting ? (
-                                            <>
-                                                <LoaderCircle className="size-4 animate-spin" />{' '}
-                                                Booking securely…
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Check className="size-4" />{' '}
-                                                Confirm booking
-                                            </>
-                                        )}
-                                    </button>
-                                )}
                             </div>
-                        </section>
+                        )}
 
-                        <BookingSummary
-                            formData={formData}
-                            doctor={selectedDoctor}
-                            appointmentTypes={appointmentTypes}
-                        />
-                    </div>
-                </main>
-            </div>
+                        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+                            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_60px_-40px_rgba(15,43,75,.35)]">
+                                <div className="border-b border-slate-100 px-5 py-5 sm:px-8">
+                                    <p className="text-xs font-semibold text-moss-600">
+                                        Step {currentStep} of 4
+                                    </p>
+                                    <h2 className="mt-1 text-xl font-semibold tracking-[-.025em]">
+                                        {currentStep === 1 &&
+                                            'What care do you need?'}
+                                        {currentStep === 2 &&
+                                            'Choose a date and time'}
+                                        {currentStep === 3 &&
+                                            'Confirm your information'}
+                                        {currentStep === 4 &&
+                                            'Review your appointment'}
+                                    </h2>
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        {currentStep === 1 &&
+                                            'Select a visit type, services, and your preferred doctor.'}
+                                        {currentStep === 2 &&
+                                            'Only currently available schedules are shown.'}
+                                        {currentStep === 3 &&
+                                            'We use the verified information saved in your profile.'}
+                                        {currentStep === 4 &&
+                                            'Check the details below before submitting your request.'}
+                                    </p>
+                                </div>
+
+                                <div className="p-5 sm:p-8">
+                                    <AnimatePresence mode="wait">
+                                        <motion.div
+                                            key={currentStep}
+                                            initial={{ opacity: 0, x: 12 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -12 }}
+                                            transition={{ duration: 0.22 }}
+                                        >
+                                            {currentStep === 1 && (
+                                                <VisitStep
+                                                    appointmentTypes={
+                                                        appointmentTypeEntries
+                                                    }
+                                                    serviceTypes={
+                                                        serviceEntries
+                                                    }
+                                                    doctors={doctors}
+                                                    formData={formData}
+                                                    loadingDoctors={
+                                                        loadingDoctors
+                                                    }
+                                                    errors={errors}
+                                                    needsCompany={needsCompany}
+                                                    companySearch={
+                                                        companySearch
+                                                    }
+                                                    companyMenuOpen={
+                                                        companyMenuOpen
+                                                    }
+                                                    filteredCompanies={
+                                                        filteredCompanies
+                                                    }
+                                                    onType={(type) => {
+                                                        update('type', type);
+                                                        update(
+                                                            'company_id',
+                                                            '',
+                                                        );
+                                                        setCompanySearch('');
+                                                    }}
+                                                    onService={toggleService}
+                                                    onDoctor={(doctorId) => {
+                                                        setLoadingAvailability(
+                                                            true,
+                                                        );
+                                                        update(
+                                                            'doctor_id',
+                                                            doctorId,
+                                                        );
+                                                        update(
+                                                            'appointment_date',
+                                                            '',
+                                                        );
+                                                        update(
+                                                            'start_time',
+                                                            '',
+                                                        );
+                                                    }}
+                                                    onCompanySearch={(
+                                                        value,
+                                                    ) => {
+                                                        setCompanySearch(value);
+                                                        setCompanyMenuOpen(
+                                                            true,
+                                                        );
+                                                        update(
+                                                            'company_id',
+                                                            '',
+                                                        );
+                                                    }}
+                                                    onCompanySelect={
+                                                        selectCompany
+                                                    }
+                                                    onCompanyFocus={() =>
+                                                        setCompanyMenuOpen(true)
+                                                    }
+                                                />
+                                            )}
+                                            {currentStep === 2 && (
+                                                <ScheduleStep
+                                                    doctor={selectedDoctor}
+                                                    dates={availableDates}
+                                                    times={availableTimes}
+                                                    selectedDate={
+                                                        formData.appointment_date
+                                                    }
+                                                    selectedTime={
+                                                        formData.start_time
+                                                    }
+                                                    loading={
+                                                        loadingAvailability
+                                                    }
+                                                    errors={errors}
+                                                    onDate={(date) => {
+                                                        setLoadingAvailability(
+                                                            true,
+                                                        );
+                                                        update(
+                                                            'appointment_date',
+                                                            date,
+                                                        );
+                                                        update(
+                                                            'start_time',
+                                                            '',
+                                                        );
+                                                    }}
+                                                    onTime={(time) =>
+                                                        update(
+                                                            'start_time',
+                                                            time,
+                                                        )
+                                                    }
+                                                />
+                                            )}
+                                            {currentStep === 3 && (
+                                                <DetailsStep
+                                                    user={auth.user}
+                                                    profile={patientProfile}
+                                                    notes={formData.notes}
+                                                    onNotes={(notes) =>
+                                                        update('notes', notes)
+                                                    }
+                                                />
+                                            )}
+                                            {currentStep === 4 && (
+                                                <ReviewStep
+                                                    formData={formData}
+                                                    doctor={selectedDoctor}
+                                                    company={selectedCompany}
+                                                    appointmentTypes={
+                                                        appointmentTypes
+                                                    }
+                                                    serviceTypes={serviceTypes}
+                                                    user={auth.user}
+                                                    profile={patientProfile}
+                                                    onEdit={setCurrentStep}
+                                                />
+                                            )}
+                                        </motion.div>
+                                    </AnimatePresence>
+                                </div>
+
+                                <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-8">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setCurrentStep((step) =>
+                                                Math.max(1, step - 1),
+                                            )
+                                        }
+                                        disabled={
+                                            currentStep === 1 || submitting
+                                        }
+                                        className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:invisible"
+                                    >
+                                        <ArrowLeft className="size-4" /> Back
+                                    </button>
+                                    {currentStep < 4 ? (
+                                        <button
+                                            type="button"
+                                            onClick={continueForward}
+                                            className="inline-flex h-12 min-w-36 items-center justify-center gap-2 rounded-xl bg-moss-600 px-5 text-sm font-semibold text-white shadow-lg shadow-moss-600/20 transition hover:-translate-y-0.5 hover:bg-moss-700 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none"
+                                        >
+                                            Continue{' '}
+                                            <ArrowRight className="size-4" />
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={submit}
+                                            disabled={submitting}
+                                            className="inline-flex h-12 min-w-44 items-center justify-center gap-2 rounded-xl bg-moss-600 px-5 text-sm font-semibold text-white shadow-lg shadow-moss-600/20 transition hover:-translate-y-0.5 hover:bg-moss-700 disabled:pointer-events-none disabled:opacity-65"
+                                        >
+                                            {submitting ? (
+                                                <>
+                                                    <LoaderCircle className="size-4 animate-spin" />{' '}
+                                                    Booking securely…
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Check className="size-4" />{' '}
+                                                    Confirm booking
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
+                            </section>
+
+                            <BookingSummary
+                                formData={formData}
+                                doctor={selectedDoctor}
+                                appointmentTypes={appointmentTypes}
+                            />
+                        </div>
+                    </main>
+                </div>
+            </AppLayout>
         </>
     );
 }
@@ -776,7 +787,7 @@ function Progress({ currentStep }: { currentStep: number }) {
                         >
                             <div className="flex items-center gap-2.5">
                                 <span
-                                    className={`flex size-9 items-center justify-center rounded-full text-xs font-bold transition ${complete ? 'bg-teal-500 text-white' : active ? 'bg-blue-600 text-white ring-4 ring-blue-100' : 'border border-slate-200 bg-white text-slate-400'}`}
+                                    className={`flex size-9 items-center justify-center rounded-full text-xs font-bold transition ${complete ? 'bg-moss-500 text-white' : active ? 'bg-moss-600 text-white ring-4 ring-moss-100' : 'border border-slate-200 bg-white text-slate-400'}`}
                                 >
                                     {complete ? (
                                         <Check className="size-4" />
@@ -785,14 +796,14 @@ function Progress({ currentStep }: { currentStep: number }) {
                                     )}
                                 </span>
                                 <span
-                                    className={`text-xs font-semibold ${active ? 'text-slate-900' : complete ? 'text-teal-700' : 'text-slate-400'}`}
+                                    className={`text-xs font-semibold ${active ? 'text-slate-900' : complete ? 'text-moss-700' : 'text-slate-400'}`}
                                 >
                                     {item.short}
                                 </span>
                             </div>
                             {index < STEPS.length - 1 && (
                                 <span
-                                    className={`mx-3 h-px flex-1 ${complete ? 'bg-teal-400' : 'bg-slate-200'}`}
+                                    className={`mx-3 h-px flex-1 ${complete ? 'bg-moss-400' : 'bg-slate-200'}`}
                                 />
                             )}
                         </li>
@@ -858,15 +869,15 @@ function VisitStep({
                                 type="button"
                                 onClick={() => onType(value)}
                                 aria-pressed={selected}
-                                className={`relative min-h-36 rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-4 focus-visible:ring-blue-500/15 focus-visible:outline-none ${selected ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-blue-200'}`}
+                                className={`relative min-h-36 rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50 shadow-sm' : 'border-slate-200 bg-white hover:border-moss-200'}`}
                             >
                                 {selected && (
-                                    <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-blue-600 text-white">
+                                    <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-moss-600 text-white">
                                         <Check className="size-3" />
                                     </span>
                                 )}
                                 <span
-                                    className={`flex size-10 items-center justify-center rounded-xl ${selected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}
+                                    className={`flex size-10 items-center justify-center rounded-xl ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-500'}`}
                                 >
                                     <Icon className="size-5" />
                                 </span>
@@ -898,7 +909,7 @@ function VisitStep({
                             placeholder="Search for your company"
                             aria-label="Referring company"
                             aria-invalid={!!errors.company_id}
-                            className="h-12 w-full rounded-xl border border-slate-200 pr-4 pl-10 text-sm transition outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                            className="h-12 w-full rounded-xl border border-slate-200 pr-4 pl-10 text-sm transition outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
                         />
                         {companyMenuOpen && companySearch && (
                             <div className="absolute z-20 mt-2 max-h-52 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
@@ -911,7 +922,7 @@ function VisitStep({
                                                 onClick={() =>
                                                     onCompanySelect(company)
                                                 }
-                                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-blue-50"
+                                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm hover:bg-moss-50"
                                             >
                                                 <Building2 className="size-4 text-slate-400" />
                                                 {company.company_name}
@@ -945,10 +956,10 @@ function VisitStep({
                                 type="button"
                                 onClick={() => onService(value)}
                                 aria-pressed={selected}
-                                className={`flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition hover:border-blue-300 focus-visible:ring-4 focus-visible:ring-blue-500/15 focus-visible:outline-none ${selected ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}
+                                className={`flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
                             >
                                 <span
-                                    className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${selected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}
+                                    className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-500'}`}
                                 >
                                     <Icon className="size-4" />
                                 </span>
@@ -956,7 +967,7 @@ function VisitStep({
                                     {label}
                                 </span>
                                 <span
-                                    className={`flex size-5 items-center justify-center rounded-md border ${selected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'}`}
+                                    className={`flex size-5 items-center justify-center rounded-md border ${selected ? 'border-moss-600 bg-moss-600 text-white' : 'border-slate-300'}`}
                                 >
                                     {selected && <Check className="size-3" />}
                                 </span>
@@ -987,10 +998,10 @@ function VisitStep({
                                     type="button"
                                     onClick={() => onDoctor(String(doctor.id))}
                                     aria-pressed={selected}
-                                    className={`flex min-h-20 items-center gap-3 rounded-xl border p-3.5 text-left transition hover:-translate-y-0.5 hover:shadow-sm focus-visible:ring-4 focus-visible:ring-blue-500/15 focus-visible:outline-none ${selected ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}
+                                    className={`flex min-h-20 items-center gap-3 rounded-xl border p-3.5 text-left transition hover:-translate-y-0.5 hover:shadow-sm focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
                                 >
                                     <span
-                                        className={`flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-bold ${selected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+                                        className={`flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-bold ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-600'}`}
                                     >
                                         {initials}
                                     </span>
@@ -1009,7 +1020,7 @@ function VisitStep({
                                         </span>
                                     </span>
                                     {selected && (
-                                        <CheckCircle2 className="size-5 shrink-0 text-blue-600" />
+                                        <CheckCircle2 className="size-5 shrink-0 text-moss-600" />
                                     )}
                                 </button>
                             );
@@ -1049,7 +1060,7 @@ function ScheduleStep({
     return (
         <div className="space-y-8">
             <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-                <span className="flex size-10 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm">
+                <span className="flex size-10 items-center justify-center rounded-full bg-white text-moss-600 shadow-sm">
                     <Stethoscope className="size-4" />
                 </span>
                 <div>
@@ -1076,7 +1087,7 @@ function ScheduleStep({
                                     <button
                                         type="button"
                                         onClick={() => onDate(today)}
-                                        className="mb-3 inline-flex h-9 items-center gap-2 rounded-lg bg-teal-50 px-3 text-xs font-semibold text-teal-700 hover:bg-teal-100"
+                                        className="mb-3 inline-flex h-9 items-center gap-2 rounded-lg bg-moss-50 px-3 text-xs font-semibold text-moss-700 hover:bg-moss-100"
                                     >
                                         <CalendarDays className="size-4" />{' '}
                                         Choose today
@@ -1091,10 +1102,10 @@ function ScheduleStep({
                                                 type="button"
                                                 onClick={() => onDate(date)}
                                                 aria-pressed={selected}
-                                                className={`min-h-20 rounded-xl border px-2 py-3 text-center transition hover:border-blue-300 focus-visible:ring-4 focus-visible:ring-blue-500/15 focus-visible:outline-none ${selected ? 'border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-600/15' : 'border-slate-200 bg-white'}`}
+                                                className={`min-h-20 rounded-xl border px-2 py-3 text-center transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-600 bg-moss-600 text-white shadow-md shadow-moss-600/15' : 'border-slate-200 bg-white'}`}
                                             >
                                                 <span
-                                                    className={`block text-[10px] font-bold tracking-wide uppercase ${selected ? 'text-blue-100' : 'text-slate-400'}`}
+                                                    className={`block text-[10px] font-bold tracking-wide uppercase ${selected ? 'text-moss-100' : 'text-slate-400'}`}
                                                 >
                                                     {formatDate(date, {
                                                         weekday: 'short',
@@ -1108,7 +1119,7 @@ function ScheduleStep({
                                                 </span>
                                                 {date === today && (
                                                     <span
-                                                        className={`mt-1 block text-[9px] ${selected ? 'text-blue-100' : 'text-teal-600'}`}
+                                                        className={`mt-1 block text-[9px] ${selected ? 'text-moss-100' : 'text-moss-600'}`}
                                                     >
                                                         Today
                                                     </span>
@@ -1139,13 +1150,13 @@ function ScheduleStep({
                                                 type="button"
                                                 onClick={() => onTime(time)}
                                                 aria-pressed={selected}
-                                                className={`min-h-16 rounded-xl border px-3 py-2 text-center transition hover:border-blue-300 focus-visible:ring-4 focus-visible:ring-blue-500/15 focus-visible:outline-none ${selected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200'}`}
+                                                className={`min-h-16 rounded-xl border px-3 py-2 text-center transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-600 bg-moss-600 text-white' : 'border-slate-200'}`}
                                             >
                                                 <span className="block text-sm font-semibold">
                                                     {formatTime(time)}
                                                 </span>
                                                 <span
-                                                    className={`mt-0.5 block text-[10px] ${selected ? 'text-blue-100' : 'text-slate-400'}`}
+                                                    className={`mt-0.5 block text-[10px] ${selected ? 'text-moss-100' : 'text-slate-400'}`}
                                                 >
                                                     until{' '}
                                                     {formatTime(
@@ -1176,6 +1187,7 @@ interface DetailsStepProps {
 }
 
 function DetailsStep({ user, profile, notes, onNotes }: DetailsStepProps) {
+    const age = calculateAge(profile?.birthdate);
     const details = [
         { label: 'Full name', value: user.name, icon: UserRound },
         { label: 'Email address', value: user.email, icon: Mail },
@@ -1190,6 +1202,11 @@ function DetailsStep({ user, profile, notes, onNotes }: DetailsStepProps) {
                 ? new Date(String(profile.birthdate)).toLocaleDateString()
                 : 'Not provided',
             icon: CalendarDays,
+        },
+        {
+            label: 'Age',
+            value: age === null ? 'Not available' : `${age} years old`,
+            icon: CakeSlice,
         },
     ];
     return (
@@ -1214,7 +1231,7 @@ function DetailsStep({ user, profile, notes, onNotes }: DetailsStepProps) {
                     </div>
                 ))}
             </div>
-            <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-700">
+            <div className="flex items-start gap-3 rounded-xl border border-moss-100 bg-moss-50 p-4 text-xs leading-5 text-moss-700">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0" />
                 <p>
                     Your verified profile information will be attached to this
@@ -1247,7 +1264,7 @@ function DetailsStep({ user, profile, notes, onNotes }: DetailsStepProps) {
                         rows={4}
                         maxLength={500}
                         placeholder="Share symptoms, accessibility needs, or anything the clinic should know."
-                        className="w-full resize-none rounded-xl border border-slate-200 py-3 pr-4 pl-10 text-sm transition outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                        className="w-full resize-none rounded-xl border border-slate-200 py-3 pr-4 pl-10 text-sm transition outline-none placeholder:text-slate-400 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
                     />
                 </div>
                 <p className="mt-1.5 text-right text-[10px] text-slate-400">
@@ -1270,6 +1287,24 @@ function DetailsStep({ user, profile, notes, onNotes }: DetailsStepProps) {
     );
 }
 
+function calculateAge(birthdate?: string | null): number | null {
+    if (!birthdate) return null;
+
+    const dateOfBirth = new Date(birthdate);
+    if (Number.isNaN(dateOfBirth.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - dateOfBirth.getFullYear();
+    const birthdayHasPassed =
+        today.getMonth() > dateOfBirth.getMonth() ||
+        (today.getMonth() === dateOfBirth.getMonth() &&
+            today.getDate() >= dateOfBirth.getDate());
+
+    if (!birthdayHasPassed) age -= 1;
+
+    return age >= 0 ? age : null;
+}
+
 interface ReviewStepProps {
     formData: BookingData;
     doctor?: Doctor;
@@ -1277,6 +1312,7 @@ interface ReviewStepProps {
     appointmentTypes: Record<string, string>;
     serviceTypes: Record<string, string>;
     user: AppointmentUser;
+    profile?: PatientProfile | null;
     onEdit: (step: number) => void;
 }
 
@@ -1294,8 +1330,10 @@ function ReviewStep({
     appointmentTypes,
     serviceTypes,
     user,
+    profile,
     onEdit,
 }: ReviewStepProps) {
+    const age = calculateAge(profile?.birthdate);
     const sections: ReviewSection[] = [
         {
             title: 'Visit and care team',
@@ -1340,6 +1378,7 @@ function ReviewStep({
             icon: UserRound,
             rows: [
                 ['Patient', user.name],
+                ['Age', age === null ? 'Not available' : `${age} years old`],
                 ['Contact', user.contact || user.email],
                 ...(formData.notes
                     ? [['Notes', formData.notes] as [string, string]]
@@ -1349,7 +1388,7 @@ function ReviewStep({
     ];
     return (
         <div className="space-y-4">
-            <div className="flex items-start gap-3 rounded-xl border border-teal-100 bg-teal-50 p-4 text-xs leading-5 text-teal-800">
+            <div className="flex items-start gap-3 rounded-xl border border-moss-100 bg-moss-50 p-4 text-xs leading-5 text-moss-800">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0" /> Your
                 information is encrypted and will only be used to coordinate
                 your care.
@@ -1361,13 +1400,13 @@ function ReviewStep({
                 >
                     <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
                         <h3 className="flex items-center gap-2 text-sm font-semibold">
-                            <Icon className="size-4 text-blue-600" />
+                            <Icon className="size-4 text-moss-600" />
                             {title}
                         </h3>
                         <button
                             type="button"
                             onClick={() => onEdit(step)}
-                            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50"
+                            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-moss-600 hover:bg-moss-50"
                         >
                             Edit
                         </button>
@@ -1414,7 +1453,7 @@ function BookingSummary({
                 Your appointment
             </p>
             <div className="mt-4 flex items-center gap-3">
-                <span className="flex size-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <span className="flex size-11 items-center justify-center rounded-xl bg-moss-50 text-moss-600">
                     <CalendarDays className="size-5" />
                 </span>
                 <div>
@@ -1533,7 +1572,7 @@ function InlineError({ message }: { message?: string }) {
 function LoadingState({ label }: { label: string }) {
     return (
         <div className="flex min-h-24 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
-            <LoaderCircle className="size-4 animate-spin text-blue-600" />
+            <LoaderCircle className="size-4 animate-spin text-moss-600" />
             {label}
         </div>
     );

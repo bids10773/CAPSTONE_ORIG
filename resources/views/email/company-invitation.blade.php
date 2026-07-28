@@ -12,7 +12,7 @@
             <!-- Header with Logo -->
             <div style="background: linear-gradient(to right, #246AFE, #1e58d4); padding: 40px; text-align: center;">
                 <div style="margin-bottom: 20px;">
-                    <img src="{{ config('app.url') }}/images/full_logo.png" 
+                    <img src="{{ config('app.url') }}/images/full_logo2.png" 
                          alt="Living Myth Industrial Clinic" 
                          style="height: 80px; width: auto; display: inline-block; filter: drop-shadow(0px 0px 10px rgba(255,255,255,0.3));">
                 </div>

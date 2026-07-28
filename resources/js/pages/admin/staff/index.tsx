@@ -1,26 +1,33 @@
 import { Head, Link, usePage, router } from '@inertiajs/react';
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-    Users, Plus, Search, Trash2, ToggleLeft, Clock, Filter, RefreshCw
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    Users,
+    Plus,
+    Search,
+    Trash2,
+    ToggleLeft,
+    Clock,
+    Filter,
+    RefreshCw,
 } from 'lucide-react';
-import { useState, useEffect} from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Staff Management', href: "/admin/staff" },
+    { title: 'Staff Management', href: '/admin/staff' },
 ];
 
 const container = {
     hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+    show: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
 
 const item = {
     hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0 }
+    show: { opacity: 1, y: 0 },
 };
 
 interface StaffMember {
@@ -44,21 +51,24 @@ export default function StaffIndex() {
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
-            router.get('/admin/staff', { 
-                search: search || undefined, 
-                role: selectedRole || undefined 
-            }, { preserveState: true, preserveScroll: true, replace: true });
+            router.get(
+                '/admin/staff',
+                {
+                    search: search || undefined,
+                    role: selectedRole || undefined,
+                },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
         }, 300);
         return () => clearTimeout(delayDebounceFn);
     }, [search, selectedRole]);
 
-
     const getRoleBadgeColor = (role: string) => {
         const colors: Record<string, string> = {
-            doctor: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
-            medtech: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
-            radtech: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800',
-            company: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
+            doctor: 'bg-moss-50 text-moss-700 border-moss-200',
+            medtech: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            radtech: 'bg-purple-50 text-purple-700 border-purple-200',
+            company: 'bg-amber-50 text-amber-700 border-amber-200',
         };
         return colors[role] || 'bg-slate-50 text-slate-700 border-slate-200';
     };
@@ -67,49 +77,60 @@ export default function StaffIndex() {
         <>
             <Head title="Staff Management" />
 
-            <motion.div 
-                className="max-w-7xl mx-auto p-6 space-y-4" 
+            <motion.div
+                className="mx-auto max-w-7xl space-y-4 p-6"
                 variants={container}
                 initial="hidden"
                 animate="show"
             >
                 {/* 1. Action Bar (Search & Filter) */}
-                <motion.div variants={item} className="flex flex-col sm:flex-row items-center gap-3 bg-white dark:bg-gray-950 p-2 pl-4 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm transition-all hover:shadow-md">
-                    
-                    <div className="relative flex-1 w-full">
-                        <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Search by name, email, or license..." 
-                            className="pl-8 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-sm h-10 w-full"
+                <motion.div
+                    variants={item}
+                    className="flex flex-col items-center gap-3 rounded-xl border border-gray-200 bg-white p-2 pl-4 shadow-sm transition-all hover:shadow-md sm:flex-row"
+                >
+                    <div className="relative w-full flex-1">
+                        <Search className="absolute top-1/2 left-0 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by name, email, or license..."
+                            className="h-10 w-full border-none bg-transparent pl-8 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
 
-                    <div className="flex items-center gap-3 w-full sm:w-auto pr-1">
-        <div className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-900/50 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800">
-            <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-            <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-                className="bg-transparent text-sm font-medium focus:outline-none cursor-pointer dark:text-white dark:bg-gray-900"
-            >
-                <option value="" className="dark:bg-gray-900 dark:text-white text-gray-900">All Roles</option>
-                {Object.entries(roles).map(([value, label]: any) => (
-                    <option 
-                        key={value} 
-                        value={value} 
-                        className="dark:bg-gray-900 dark:text-white text-gray-900"
-                    >
-                        {label}
-                    </option>
-                ))}
-            </select>
-        </div>
+                    <div className="flex w-full items-center gap-3 pr-1 sm:w-auto">
+                        <div className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-1.5">
+                            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                            <select
+                                value={selectedRole}
+                                onChange={(e) =>
+                                    setSelectedRole(e.target.value)
+                                }
+                                className="cursor-pointer bg-transparent text-sm font-medium focus:outline-none"
+                            >
+                                <option value="" className="text-gray-900">
+                                    All Roles
+                                </option>
+                                {Object.entries(roles).map(
+                                    ([value, label]: any) => (
+                                        <option
+                                            key={value}
+                                            value={value}
+                                            className="text-gray-900"
+                                        >
+                                            {label}
+                                        </option>
+                                    ),
+                                )}
+                            </select>
+                        </div>
 
-                        <Link href="/admin/staff/create" className="w-full sm:w-auto">
-                            <Button className="w-full sm:w-auto h-10 px-4 gap-2 rounded-lg font-semibold shadow-sm">
-                                <Plus className="w-4 h-4" /> 
+                        <Link
+                            href="/admin/staff/create"
+                            className="w-full sm:w-auto"
+                        >
+                            <Button className="h-10 w-full gap-2 rounded-lg px-4 font-semibold shadow-sm sm:w-auto">
+                                <Plus className="h-4 w-4" />
                                 Add Staff
                             </Button>
                         </Link>
@@ -117,125 +138,206 @@ export default function StaffIndex() {
                 </motion.div>
 
                 {/* 2. Symmetrical Table Section */}
-                <motion.div variants={item} className="bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+                <motion.div
+                    variants={item}
+                    className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+                >
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full border-collapse text-left">
                             <thead>
-                                <tr className="bg-gray-50/40 dark:bg-gray-900/40 border-b border-gray-100 dark:border-gray-800">
-                                    <th className="px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Personnel</th>
-                                    <th className="px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Details</th>
-                                    <th className="px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-widest text-center">Status</th>
-                                    <th className="px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-widest text-right pr-6">Actions</th>
+                                <tr className="border-b border-gray-100 bg-gray-50/40">
+                                    <th className="px-6 py-4 text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                                        Personnel
+                                    </th>
+                                    <th className="px-6 py-4 text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                                        Details
+                                    </th>
+                                    <th className="px-6 py-4 text-center text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                                        Status
+                                    </th>
+                                    <th className="px-6 py-4 pr-6 text-right text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                                <AnimatePresence mode='popLayout'>
+                            <tbody className="divide-y divide-gray-50">
+                                <AnimatePresence mode="popLayout">
                                     {staff.data.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="px-6 py-24 text-center opacity-40">
-                                                <Users className="w-10 h-10 mx-auto mb-2" />
-                                                <p className="text-sm font-medium">No results found.</p>
+                                            <td
+                                                colSpan={4}
+                                                className="px-6 py-24 text-center opacity-40"
+                                            >
+                                                <Users className="mx-auto mb-2 h-10 w-10" />
+                                                <p className="text-sm font-medium">
+                                                    No results found.
+                                                </p>
                                             </td>
                                         </tr>
                                     ) : (
-                                        staff.data.map((member: StaffMember) => (
-                                            <motion.tr 
-                                                layout
-                                                key={member.id}
-                                                className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-all duration-150"
-                                            >
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs border border-indigo-100 dark:border-indigo-800 shadow-sm">
-                                                            {member.first_name[0]}{member.last_name[0]}
+                                        staff.data.map(
+                                            (member: StaffMember) => (
+                                                <motion.tr
+                                                    layout
+                                                    key={member.id}
+                                                    className="transition-all duration-150 hover:bg-slate-50/50"
+                                                >
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-xs font-bold text-indigo-600 shadow-sm">
+                                                                {
+                                                                    member
+                                                                        .first_name[0]
+                                                                }
+                                                                {
+                                                                    member
+                                                                        .last_name[0]
+                                                                }
+                                                            </div>
+                                                            <div className="flex min-w-0 flex-col">
+                                                                <span className="truncate text-sm font-bold text-gray-900">
+                                                                    {
+                                                                        member.first_name
+                                                                    }{' '}
+                                                                    {
+                                                                        member.last_name
+                                                                    }
+                                                                </span>
+                                                                <span className="truncate text-[12px] text-muted-foreground">
+                                                                    {
+                                                                        member.email
+                                                                    }
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex flex-col min-w-0">
-                                                            <span className="font-bold text-gray-900 dark:text-white text-sm truncate">
-                                                                {member.first_name} {member.last_name}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col gap-1">
+                                                            <span
+                                                                className={`w-fit rounded border px-2 py-0.5 text-[9px] font-bold tracking-tighter uppercase ${getRoleBadgeColor(member.role)}`}
+                                                            >
+                                                                {roles[
+                                                                    member.role
+                                                                ] ||
+                                                                    member.role}
                                                             </span>
-                                                            <span className="text-[12px] text-muted-foreground truncate">
-                                                                {member.email}
+                                                            <span className="text-xs font-medium text-muted-foreground">
+                                                                {member.specialization ||
+                                                                    'General Staff'}
                                                             </span>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className={`w-fit px-2 py-0.5 rounded border text-[9px] font-black uppercase tracking-tighter ${getRoleBadgeColor(member.role)}`}>
-                                                            {roles[member.role] || member.role}
-                                                        </span>
-                                                        <span className="text-xs text-muted-foreground font-medium">
-                                                            {member.specialization || 'General Staff'}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className={cn(
-                                                        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-tight uppercase border",
-                                                        member.is_active 
-                                                            ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-800" 
-                                                            : "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-800"
-                                                    )}>
-                                                        <div className={cn("w-1.5 h-1.5 rounded-full", member.is_active ? "bg-green-500" : "bg-red-500")} />
-                                                        {member.is_active ? 'Active' : 'Inactive'}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right pr-6">
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        {member.role === 'doctor' && auth.user.role === 'admin' && (
-                                                            <Link href={`/admin/doctor-availability?doctor_id=${member.id}`}>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-100/50 dark:hover:bg-blue-900/30" title="Schedule">
-                                                                    <Clock className="w-3.5 h-3.5" />
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <div
+                                                            className={cn(
+                                                                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-tight uppercase',
+                                                                member.is_active
+                                                                    ? 'border-green-200 bg-green-50 text-green-700'
+                                                                    : 'border-red-200 bg-red-50 text-red-700',
+                                                            )}
+                                                        >
+                                                            <div
+                                                                className={cn(
+                                                                    'h-1.5 w-1.5 rounded-full',
+                                                                    member.is_active
+                                                                        ? 'bg-green-500'
+                                                                        : 'bg-red-500',
+                                                                )}
+                                                            />
+                                                            {member.is_active
+                                                                ? 'Active'
+                                                                : 'Inactive'}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 pr-6 text-right">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            {member.role ===
+                                                                'doctor' &&
+                                                                auth.user
+                                                                    .role ===
+                                                                    'admin' && (
+                                                                    <Link
+                                                                        href={`/admin/doctor-availability?doctor_id=${member.id}`}
+                                                                    >
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-8 w-8 text-moss-500 hover:bg-moss-100/50"
+                                                                            title="Schedule"
+                                                                        >
+                                                                            <Clock className="h-3.5 w-3.5" />
+                                                                        </Button>
+                                                                    </Link>
+                                                                )}
+                                                            {member.must_change_password && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-moss-600 hover:bg-moss-100/50"
+                                                                    title="Resend temporary credentials"
+                                                                    onClick={() => {
+                                                                        if (
+                                                                            confirm(
+                                                                                'Generate and email a new temporary password? The previous temporary password will stop working.',
+                                                                            )
+                                                                        ) {
+                                                                            router.post(
+                                                                                `/admin/staff/${member.id}/resend-credentials`,
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <RefreshCw className="h-3.5 w-3.5" />
                                                                 </Button>
-                                                            </Link>
-                                                         )}
-                                                        {member.must_change_password && (
+                                                            )}
+                                                            <Button
+                                                                asChild
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-amber-500 hover:bg-amber-100/50"
+                                                                title="Toggle Status"
+                                                            >
+                                                                <Link
+                                                                    method="patch"
+                                                                    href={`/admin/staff/${member.id}/toggle-active`}
+                                                                >
+                                                                    <ToggleLeft className="h-4 w-4" />
+                                                                </Link>
+                                                            </Button>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="h-8 w-8 text-blue-600 hover:bg-blue-100/50 dark:hover:bg-blue-900/30"
-                                                                title="Resend temporary credentials"
+                                                                className="h-8 w-8 text-red-500 hover:bg-red-100/50"
                                                                 onClick={() => {
-                                                                    if (confirm('Generate and email a new temporary password? The previous temporary password will stop working.')) {
-                                                                        router.post(`/admin/staff/${member.id}/resend-credentials`);
+                                                                    if (
+                                                                        confirm(
+                                                                            'Permanently delete this staff member?',
+                                                                        )
+                                                                    ) {
+                                                                        router.delete(
+                                                                            `/admin/staff/${member.id}`,
+                                                                            {
+                                                                                onSuccess:
+                                                                                    () =>
+                                                                                        router.reload(
+                                                                                            {
+                                                                                                only: [
+                                                                                                    'staff',
+                                                                                                ],
+                                                                                            },
+                                                                                        ),
+                                                                            },
+                                                                        );
                                                                     }
                                                                 }}
                                                             >
-                                                                <RefreshCw className="w-3.5 h-3.5" />
+                                                                <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
-                                                        )}
-                                                         <Button
-    asChild
-    variant="ghost"
-    size="icon"
-    className="h-8 w-8 text-amber-500 hover:bg-amber-100/50 dark:hover:bg-amber-900/30"
-    title="Toggle Status"
->
-    <Link
-        method="patch"
-        href={`/admin/staff/${member.id}/toggle-active`}
-    >
-        <ToggleLeft className="w-4 h-4" />
-    </Link>
-</Button>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="h-8 w-8 text-red-500 hover:bg-red-100/50 dark:hover:bg-red-900/30"
-                                                            onClick={() => {
-                                                                if (confirm('Permanently delete this staff member?')) {
-                                                                    router.delete(`/admin/staff/${member.id}`, {
-                                                                        onSuccess: () => router.reload({ only: ['staff'] })
-                                                                    });
-                                                                }
-                                                            }}
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                </td>
-                                            </motion.tr>
-                                        ))
+                                                        </div>
+                                                    </td>
+                                                </motion.tr>
+                                            ),
+                                        )
                                     )}
                                 </AnimatePresence>
                             </tbody>

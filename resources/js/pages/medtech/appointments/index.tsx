@@ -1,18 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { 
-    Search, 
-    Filter, 
-    Eye, 
-    TestTube,
-    Play
-} from 'lucide-react';
+import { Search, Filter, Eye, TestTube, Play } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
+import { StatusBadge } from '@/components/status-badge';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Med Tech Queue', href: "/admin/companies" },
+    { title: 'Med Tech Queue', href: '/admin/companies' },
 ];
-
 
 // Define the shape of each appointment
 interface Appointment {
@@ -52,31 +46,34 @@ interface Props {
     pageTitle: string;
 }
 
-export default function MedTechAppointmentsIndex({ appointments, filters, pageTitle }: Props) {
-
-
+export default function MedTechAppointmentsIndex({
+    appointments,
+    filters,
+    pageTitle,
+}: Props) {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'for_diagnostics':
-                return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+                return 'bg-purple-100 text-purple-800';
         }
     };
 
     const getStatusIcon = (status: string) => {
         switch (status) {
             case 'pending_diagnostics':
-                return <TestTube className="w-4 h-4 text-purple-600" />;
+                return <TestTube className="h-4 w-4 text-purple-600" />;
         }
     };
 
     const formatService = (service: any) => {
-    try {
-        const parsed = typeof service === 'string' ? JSON.parse(service) : service;
-        return Array.isArray(parsed) ? parsed.join(', ') : parsed;
-    } catch {
-        return service;
-    }
-};
+        try {
+            const parsed =
+                typeof service === 'string' ? JSON.parse(service) : service;
+            return Array.isArray(parsed) ? parsed.join(', ') : parsed;
+        } catch {
+            return service;
+        }
+    };
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString('en-US', {
@@ -89,13 +86,17 @@ export default function MedTechAppointmentsIndex({ appointments, filters, pageTi
     };
 
     const getStatusLabel = (status: string) => {
-    switch (status) {
-        case 'for_diagnostics': return 'Laboratory';
-        case 'for_xray': return 'X-Ray';
-        case 'for_final_evaluation': return 'Final Evaluation';
-        default: return status.replace('_', ' ');
-    }
-};
+        switch (status) {
+            case 'for_diagnostics':
+                return 'Laboratory';
+            case 'for_xray':
+                return 'X-Ray';
+            case 'for_final_evaluation':
+                return 'Final Evaluation';
+            default:
+                return status.replace('_', ' ');
+        }
+    };
 
     const startLabTest = (appointmentId: number) => {
         router.visit(`/medtech/lab-results/${appointmentId}`);
@@ -103,100 +104,144 @@ export default function MedTechAppointmentsIndex({ appointments, filters, pageTi
 
     return (
         <>
-             <Head title="MedTech Queue" />
+            <Head title="MedTech Queue" />
 
-            <div className="p-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div className="clinical-queue mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+                <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <TestTube className="w-6 h-6 text-blue-600" />
+                        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+                            <TestTube className="h-6 w-6 text-moss-600" />
                             {pageTitle}
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="mt-1 text-gray-500">
                             Process lab requests forwarded from the Doctor.
                         </p>
                     </div>
                 </div>
 
                 {/* Filters */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
+                <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                     <form method="GET" className="flex flex-wrap gap-4">
-                        <div className="flex-1 min-w-[200px] relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <div className="relative min-w-[200px] flex-1">
+                            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
                                 name="search"
                                 defaultValue={filters.search}
                                 placeholder="Search patient name..."
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                className="w-full rounded-2xl border border-gray-300 bg-white py-2 pr-4 pl-10 text-gray-900 focus:ring-2 focus:ring-moss-500"
                             />
                         </div>
-                        <select 
-                            name="status" 
-                            defaultValue={filters.status || 'pending_diagnostics'} 
-                            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                        <select
+                            name="status"
+                            defaultValue={
+                                filters.status || 'pending_diagnostics'
+                            }
+                            className="rounded-2xl border border-gray-300 bg-white px-4 py-2 text-gray-900"
                         >
-                            <option value="pending_diagnostics">Waiting for Lab</option>
+                            <option value="pending_diagnostics">
+                                Waiting for Lab
+                            </option>
                             <option value="arrived">Arrived</option>
                             <option value="completed">Completed</option>
                         </select>
-                        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors">
-                            <Filter className="w-4 h-4" />
+                        <button
+                            type="submit"
+                            className="flex items-center gap-2 rounded-2xl bg-moss-600 px-4 py-2 text-white transition-colors hover:bg-moss-700"
+                        >
+                            <Filter className="h-4 w-4" />
                             Filter
                         </button>
                     </form>
                 </div>
 
                 {/* Table */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                            <thead className="border-b border-gray-200 bg-gray-50">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Patient</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Date</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Service</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Patient
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Date
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Service
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                                        Status
+                                    </th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody className="divide-y divide-gray-200">
                                 {appointments.data.length > 0 ? (
                                     appointments.data.map((apt) => (
-                                        <tr key={apt.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                        <tr
+                                            key={apt.id}
+                                            className="transition-colors hover:bg-gray-50"
+                                        >
                                             <td className="px-6 py-4">
-                                                <div className="font-medium text-gray-900 dark:text-white">{apt.user.first_name} {apt.user.last_name}</div>
-                                                <div className="text-sm text-gray-500">{apt.user.email}</div>
+                                                <div className="font-medium text-gray-900">
+                                                    {apt.user.first_name}{' '}
+                                                    {apt.user.last_name}
+                                                </div>
+                                                <div className="text-sm text-gray-500">
+                                                    {apt.user.email}
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{formatDate(apt.appointment_date)}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{apt.service_type}</td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(apt.status)}`}>
-                                                    {getStatusIcon(apt.status)}
-                                                    {apt.status.replace('_', ' ')}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right space-x-2">
-                                                {apt.status === 'for_diagnostics' && !apt.labResult && (
-                                                    <button
-                                                        onClick={() => startLabTest(apt.id)}
-                                                        className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm inline-flex items-center gap-1 transition-colors"
-                                                    >
-                                                        <Play className="w-3 h-3 fill-current" />
-                                                        Encode Lab
-                                                    </button>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {formatDate(
+                                                    apt.appointment_date,
                                                 )}
-                                                <Link href={`/appointments/${apt.id}`} className="p-2 text-gray-400 hover:text-blue-600 inline-flex items-center">
-                                                    <Eye className="w-5 h-5" />
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {apt.service_type}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <StatusBadge
+                                                    status={apt.status}
+                                                />
+                                            </td>
+                                            <td className="space-x-2 px-6 py-4 text-right">
+                                                {apt.status ===
+                                                    'for_diagnostics' &&
+                                                    !apt.labResult && (
+                                                        <button
+                                                            onClick={() =>
+                                                                startLabTest(
+                                                                    apt.id,
+                                                                )
+                                                            }
+                                                            className="inline-flex items-center gap-1 rounded-xl bg-green-600 px-3 py-1.5 text-sm text-white transition-colors hover:bg-green-700"
+                                                        >
+                                                            <Play className="h-3 w-3 fill-current" />
+                                                            Encode Lab
+                                                        </button>
+                                                    )}
+                                                <Link
+                                                    href={`/appointments/${apt.id}`}
+                                                    className="inline-flex items-center p-2 text-gray-400 hover:text-moss-600"
+                                                >
+                                                    <Eye className="h-5 w-5" />
                                                 </Link>
                                             </td>
                                         </tr>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                                            <TestTube className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                                            <p className="text-lg font-medium">No pending lab requests found.</p>
+                                        <td
+                                            colSpan={5}
+                                            className="px-6 py-12 text-center text-gray-500"
+                                        >
+                                            <TestTube className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+                                            <p className="text-lg font-medium">
+                                                No pending lab requests found.
+                                            </p>
                                         </td>
                                     </tr>
                                 )}
@@ -204,17 +249,23 @@ export default function MedTechAppointmentsIndex({ appointments, filters, pageTi
                         </table>
                     </div>
                     {/* Pagination - Simplified version of your code to fix errors */}
-                    <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 flex justify-between items-center">
-                         <p className="text-sm text-gray-700 dark:text-gray-300">
-                            Total: <span className="font-medium">{appointments.total}</span> records
+                    <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-6 py-4">
+                        <p className="text-sm text-gray-700">
+                            Total:{' '}
+                            <span className="font-medium">
+                                {appointments.total}
+                            </span>{' '}
+                            records
                         </p>
                         <div className="flex gap-2">
                             {appointments.links.map((link, i) => (
                                 <Link
                                     key={i}
                                     href={link.url || '#'}
-                                    className={`px-3 py-1 text-sm rounded ${link.active ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 border dark:border-gray-600'} ${!link.url && 'opacity-50 pointer-events-none'}`}
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                    className={`rounded px-3 py-1 text-sm ${link.active ? 'bg-moss-600 text-white' : 'border bg-white'} ${!link.url && 'pointer-events-none opacity-50'}`}
+                                    dangerouslySetInnerHTML={{
+                                        __html: link.label,
+                                    }}
                                 />
                             ))}
                         </div>
@@ -225,4 +276,6 @@ export default function MedTechAppointmentsIndex({ appointments, filters, pageTi
     );
 }
 
-MedTechAppointmentsIndex.layout = (page: any) => <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
+MedTechAppointmentsIndex.layout = (page: any) => (
+    <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>
+);

@@ -1,16 +1,15 @@
-import { useState } from 'react'
-import { Head, router, Link } from '@inertiajs/react'
-import AppLayout from '@/layouts/app-layout'
-import { Building2, ArrowLeft, Save, Mail, Phone, User } from 'lucide-react'
+import { useState } from 'react';
+import { Head, router, Link } from '@inertiajs/react';
+import AppLayout from '@/layouts/app-layout';
+import { Building2, ArrowLeft, Save, Mail, Phone, User } from 'lucide-react';
 import type { BreadcrumbItem, SharedData } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Companies Management', href: "/admin/companies" },
-    { title: 'Create Company', href: "" },
+    { title: 'Companies Management', href: '/admin/companies' },
+    { title: 'Create Company', href: '' },
 ];
 
 export default function AdminCreateCompany() {
-
     const [formData, setFormData] = useState({
         name: '',
         address: '',
@@ -21,86 +20,86 @@ export default function AdminCreateCompany() {
         representative_email: '',
         representative_contact: '',
         send_invitation: true,
-    })
+    });
 
-    const [errors, setErrors] = useState<Record<string, string | undefined>>({})
-    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [errors, setErrors] = useState<Record<string, string | undefined>>(
+        {},
+    );
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+        e: React.ChangeEvent<
+            HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+        >,
     ) => {
-        const { name, value, type } = e.target
+        const { name, value, type } = e.target;
 
         setFormData((prev) => ({
             ...prev,
-            [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-        }))
+            [name]:
+                type === 'checkbox'
+                    ? (e.target as HTMLInputElement).checked
+                    : value,
+        }));
 
         if (errors[name]) {
             setErrors((prev) => ({
                 ...prev,
                 [name]: '',
-            }))
+            }));
         }
-    }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
+        e.preventDefault();
 
-        setIsSubmitting(true)
-        setErrors({})
+        setIsSubmitting(true);
+        setErrors({});
 
         router.post('/admin/companies', formData, {
             onError: (errors: any) => {
-                setErrors(errors)
-                setIsSubmitting(false)
+                setErrors(errors);
+                setIsSubmitting(false);
             },
-        })
-    }
+        });
+    };
 
     return (
         <>
             <Head title="Add Company - Admin" />
 
-            <div className="p-6 max-w-5xl mx-auto">
-
+            <div className="mx-auto max-w-5xl p-6">
                 {/* Header */}
-                <div className="flex items-center gap-4 mb-6">
-
+                <div className="mb-6 flex items-center gap-4">
                     <Link
                         href="/admin/companies"
-                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                        className="rounded-lg p-2 transition hover:bg-gray-100"
                     >
-                        <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                        <ArrowLeft className="h-5 w-5 text-gray-600" />
                     </Link>
 
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Building2 className="w-6 h-6" />
+                        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+                            <Building2 className="h-6 w-6" />
                             Add Company
                         </h1>
 
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="mt-1 text-sm text-gray-500">
                             Register a new company with partner portal access
                         </p>
                     </div>
-
                 </div>
 
-
                 <form onSubmit={handleSubmit} className="space-y-6">
-
                     {/* Company Information */}
-                    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                        <h2 className="mb-4 text-lg font-semibold text-gray-900">
                             Company Information
                         </h2>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
                                     Company Name *
                                 </label>
 
@@ -109,7 +108,7 @@ export default function AdminCreateCompany() {
                                     name="name"
                                     value={formData.name}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                     placeholder="Enter company name"
                                 />
 
@@ -120,9 +119,8 @@ export default function AdminCreateCompany() {
                                 )}
                             </div>
 
-
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
                                     Status
                                 </label>
 
@@ -130,13 +128,12 @@ export default function AdminCreateCompany() {
                                     name="status"
                                     value={formData.status}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2"
                                 >
                                     <option value="active">Active</option>
                                     <option value="inactive">Inactive</option>
                                 </select>
                             </div>
-
 
                             <div className="flex items-center">
                                 <input
@@ -145,28 +142,27 @@ export default function AdminCreateCompany() {
                                     id="is_partnered"
                                     checked={formData.is_partnered}
                                     onChange={handleChange}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                    className="h-4 w-4 rounded border-gray-300 text-moss-600 focus:ring-moss-500"
                                 />
-                                <label htmlFor="is_partnered" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                <label
+                                    htmlFor="is_partnered"
+                                    className="ml-2 text-sm font-medium text-gray-700"
+                                >
                                     Is Partnered
                                 </label>
                             </div>
-
                         </div>
                     </div>
 
-
                     {/* Address */}
-                    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                        <h2 className="mb-4 text-lg font-semibold text-gray-900">
                             Address
                         </h2>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
                                     Company Address
                                 </label>
 
@@ -175,35 +171,32 @@ export default function AdminCreateCompany() {
                                     value={formData.address}
                                     onChange={handleChange}
                                     rows={2}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-800 dark:text-white"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2"
                                     placeholder="Enter company address"
                                 />
-
                             </div>
-
                         </div>
                     </div>
 
-
                     {/* Representative Information */}
-                    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-
-                        <div className="flex items-center gap-2 mb-4">
-                            <User className="w-5 h-5 text-blue-600" />
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                        <div className="mb-4 flex items-center gap-2">
+                            <User className="h-5 w-5 text-moss-600" />
+                            <h2 className="text-lg font-semibold text-gray-900">
                                 Company Representative
                             </h2>
                         </div>
 
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                            Add the company's HR or admin representative who will manage the company portal. An account will be created with auto-verified email.
+                        <p className="mb-4 text-sm text-gray-500">
+                            Add the company's HR or admin representative who
+                            will manage the company portal. An account will be
+                            created with auto-verified email.
                         </p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    <User className="w-4 h-4 inline mr-1" />
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    <User className="mr-1 inline h-4 w-4" />
                                     Representative Name *
                                 </label>
 
@@ -212,7 +205,7 @@ export default function AdminCreateCompany() {
                                     name="representative_name"
                                     value={formData.representative_name}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                     placeholder="Enter representative's full name"
                                 />
 
@@ -223,10 +216,9 @@ export default function AdminCreateCompany() {
                                 )}
                             </div>
 
-
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    <Mail className="w-4 h-4 inline mr-1" />
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    <Mail className="mr-1 inline h-4 w-4" />
                                     Representative Email *
                                 </label>
 
@@ -235,7 +227,7 @@ export default function AdminCreateCompany() {
                                     name="representative_email"
                                     value={formData.representative_email}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                     placeholder="hr@company.com"
                                 />
 
@@ -246,10 +238,9 @@ export default function AdminCreateCompany() {
                                 )}
                             </div>
 
-
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    <Phone className="w-4 h-4 inline mr-1" />
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    <Phone className="mr-1 inline h-4 w-4" />
                                     Representative Contact *
                                 </label>
 
@@ -260,7 +251,7 @@ export default function AdminCreateCompany() {
                                     onChange={handleChange}
                                     maxLength={11}
                                     pattern="[0-9]*"
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                     placeholder="+63 9XX XXX XXXX (max 11 digits)"
                                 />
 
@@ -271,41 +262,40 @@ export default function AdminCreateCompany() {
                                 )}
                             </div>
 
-
                             <div className="md:col-span-2">
-                                <div className="flex items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <div className="flex items-center rounded-lg border border-moss-200 bg-moss-50 p-4">
                                     <input
                                         type="checkbox"
                                         name="send_invitation"
                                         id="send_invitation"
                                         checked={formData.send_invitation}
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                        className="h-4 w-4 rounded border-gray-300 text-moss-600 focus:ring-moss-500"
                                     />
-                                    <label htmlFor="send_invitation" className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Send invitation email to representative with login credentials
+                                    <label
+                                        htmlFor="send_invitation"
+                                        className="ml-2 text-sm font-medium text-gray-700"
+                                    >
+                                        Send invitation email to representative
+                                        with login credentials
                                     </label>
                                 </div>
                             </div>
-
                         </div>
                     </div>
 
-
                     {/* Error Message */}
                     {errors.general && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
                             {errors.general}
                         </div>
                     )}
 
-
                     {/* Buttons */}
                     <div className="flex justify-end gap-4">
-
                         <Link
                             href="/admin/companies"
-                            className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                            className="rounded-lg border border-gray-300 px-6 py-2 text-gray-700 hover:bg-gray-50"
                         >
                             Cancel
                         </Link>
@@ -313,22 +303,18 @@ export default function AdminCreateCompany() {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                            className="flex items-center gap-2 rounded-lg bg-moss-600 px-6 py-2 text-white hover:bg-moss-700 disabled:opacity-50"
                         >
-                            <Save className="w-4 h-4" />
+                            <Save className="h-4 w-4" />
                             {isSubmitting ? 'Creating...' : 'Create Company'}
                         </button>
-
                     </div>
-
                 </form>
-
             </div>
         </>
-    )
+    );
 }
 
 AdminCreateCompany.layout = (page: any) => {
-    return <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>
-}
-
+    return <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
+};

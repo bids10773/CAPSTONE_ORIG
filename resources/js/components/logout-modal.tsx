@@ -42,7 +42,9 @@ export default function LogoutModal({ userId }: LogoutModalProps) {
             if (event.key !== 'Tab' || !dialogRef.current) return;
 
             const focusableElements = Array.from(
-                dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+                dialogRef.current.querySelectorAll<HTMLElement>(
+                    FOCUSABLE_SELECTOR,
+                ),
             );
             if (!focusableElements.length) return;
 
@@ -52,7 +54,10 @@ export default function LogoutModal({ userId }: LogoutModalProps) {
             if (event.shiftKey && document.activeElement === firstElement) {
                 event.preventDefault();
                 lastElement.focus();
-            } else if (!event.shiftKey && document.activeElement === lastElement) {
+            } else if (
+                !event.shiftKey &&
+                document.activeElement === lastElement
+            ) {
                 event.preventDefault();
                 firstElement.focus();
             }
@@ -78,22 +83,28 @@ export default function LogoutModal({ userId }: LogoutModalProps) {
         setIsLoggingOut(true);
         setErrorMessage('');
 
-        router.post(logout().url, {}, {
-            preserveScroll: false,
-            preserveState: false,
-            onSuccess: () => {
-                if (userId !== undefined) {
-                    localStorage.removeItem(`appointment-draft-${userId}`);
-                }
-                closeModal();
+        router.post(
+            logout().url,
+            {},
+            {
+                preserveScroll: false,
+                preserveState: false,
+                onSuccess: () => {
+                    if (userId !== undefined) {
+                        localStorage.removeItem(`appointment-draft-${userId}`);
+                    }
+                    closeModal();
+                },
+                onError: () => {
+                    setErrorMessage(
+                        'We could not complete the logout request. Please check your connection and try again.',
+                    );
+                },
+                onFinish: () => {
+                    setIsLoggingOut(false);
+                },
             },
-            onError: () => {
-                setErrorMessage('We could not complete the logout request. Please check your connection and try again.');
-            },
-            onFinish: () => {
-                setIsLoggingOut(false);
-            },
-        });
+        );
     };
 
     return (
@@ -108,7 +119,7 @@ export default function LogoutModal({ userId }: LogoutModalProps) {
                         exit={{ opacity: 0 }}
                         onClick={dismiss}
                         disabled={isLoggingOut}
-                        className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-sm disabled:pointer-events-none"
+                        className="absolute inset-0 cursor-default bg-moss-950/25 backdrop-blur-sm disabled:pointer-events-none"
                     />
 
                     <motion.div
@@ -121,44 +132,54 @@ export default function LogoutModal({ userId }: LogoutModalProps) {
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.96, opacity: 0, y: 12 }}
                         transition={{ duration: 0.18, ease: 'easeOut' }}
-                        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20 dark:border-slate-700 dark:bg-slate-900"
+                        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20"
                     >
                         <button
                             type="button"
                             onClick={dismiss}
                             disabled={isLoggingOut}
                             aria-label="Close"
-                            className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-slate-800 dark:hover:text-white"
+                            className="absolute top-4 right-4 flex size-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40"
                         >
                             <X className="size-4" />
                         </button>
 
-                        <div className="px-6 pb-5 pt-7 sm:px-7">
-                            <span className="flex size-12 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+                        <div className="px-6 pt-7 pb-5 sm:px-7">
+                            <span className="flex size-12 items-center justify-center rounded-xl border border-red-100 bg-red-50 text-red-600">
                                 <LogOut className="size-5" aria-hidden="true" />
                             </span>
-                            <h2 id="logout-dialog-title" className="mt-5 pr-9 text-xl font-semibold tracking-[-.025em] text-slate-950 dark:text-white">
+                            <h2
+                                id="logout-dialog-title"
+                                className="mt-5 pr-9 text-xl font-semibold tracking-[-.025em] text-slate-950"
+                            >
                                 Log Out of Your Account?
                             </h2>
-                            <p id="logout-dialog-description" className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                                You will need to sign in again to access your account and clinic services.
+                            <p
+                                id="logout-dialog-description"
+                                className="mt-2 text-sm leading-6 text-slate-500"
+                            >
+                                You will need to sign in again to access your
+                                account and clinic services.
                             </p>
 
                             {errorMessage && (
-                                <div role="alert" className="mt-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs leading-5 text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+                                <div
+                                    role="alert"
+                                    className="mt-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs leading-5 text-red-700"
+                                >
                                     <CircleAlert className="mt-0.5 size-4 shrink-0" />
                                     <span>{errorMessage}</span>
                                 </div>
                             )}
                         </div>
 
-                        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/70 px-6 py-4 sm:flex-row sm:justify-end dark:border-slate-800 dark:bg-slate-950/30">
+                        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/70 px-6 py-4 sm:flex-row sm:justify-end">
                             <button
                                 ref={cancelButtonRef}
                                 type="button"
                                 onClick={dismiss}
                                 disabled={isLoggingOut}
-                                className="h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                                className="h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 Cancel
                             </button>
@@ -166,16 +187,22 @@ export default function LogoutModal({ userId }: LogoutModalProps) {
                                 type="button"
                                 onClick={confirmLogout}
                                 disabled={isLoggingOut}
-                                className="flex h-11 min-w-32 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-500/20 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-70"
+                                className="flex h-11 min-w-32 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus-visible:ring-4 focus-visible:ring-red-500/20 focus-visible:outline-none active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-70"
                             >
                                 {isLoggingOut ? (
                                     <>
-                                        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                                        <Loader2
+                                            className="size-4 animate-spin"
+                                            aria-hidden="true"
+                                        />
                                         Logging Out...
                                     </>
                                 ) : (
                                     <>
-                                        <LogOut className="size-4" aria-hidden="true" />
+                                        <LogOut
+                                            className="size-4"
+                                            aria-hidden="true"
+                                        />
                                         Log Out
                                     </>
                                 )}

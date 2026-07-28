@@ -4,12 +4,23 @@
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 
-@custom-variant dark (&:is(.dark *));
-
 @theme {
     --font-sans:
-        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+        'Inter', 'Manrope', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+
+    --color-moss-50: #f3f7f2;
+    --color-moss-100: #e3ede1;
+    --color-moss-200: #c9ddc5;
+    --color-moss-300: #a8c3a0;
+    --color-moss-400: #88aa82;
+    --color-moss-500: #6b8f71;
+    --color-moss-600: #56765c;
+    --color-moss-700: #455e4a;
+    --color-moss-800: #394c3d;
+    --color-moss-900: #303f34;
+    --color-moss-950: #18231b;
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
@@ -50,64 +61,67 @@
 }
 
 :root {
-    --background: oklch(0.98 0.005 240);
-    --foreground: oklch(0.145 0 0);          /* dark text for light bg */
+    --background: #f7faf7;
+    --foreground: #1f2937;
 
-    --primary: oklch(0.58 0.23 258.8);
-    --primary-foreground: oklch(0.985 0 0);
+    --primary: #6b8f71;
+    --primary-foreground: #ffffff;
 
-    --sidebar: oklch(0.18 0.04 256.4);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.58 0.23 258.8);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.25 0.06 256.4);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(0.25 0.06 256.4 / 0.2);
+    --sidebar: #ffffff;
+    --sidebar-foreground: #374151;
+    --sidebar-primary: #6b8f71;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f3f7f2;
+    --sidebar-accent-foreground: #455e4a;
+    --sidebar-border: #e3e9e3;
 
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
 
-    --secondary: oklch(0.96 0.01 240);
+    --secondary: #f3f7f2;
     --secondary-foreground: var(--primary);
-    --muted: oklch(0.96 0.01 240);
-    --muted-foreground: oklch(0.45 0 0);     /* darker muted so placeholders are visible */
-    --accent: oklch(0.94 0.02 240);
+    --muted: #f5f7f5;
+    --muted-foreground: #6b7280;
+    --accent: #e3ede1;
     --accent-foreground: var(--primary);
 
-    --destructive: oklch(0.577 0.245 27.325);
+    --destructive: #d65c5c;
     --destructive-foreground: oklch(0.985 0 0);
 
-    --border: oklch(0.88 0 0);
-    --input: oklch(0.96 0.005 240);          /* light gray input bg */
+    --border: #e3e9e3;
+    --input: #e3e9e3;
     --ring: var(--primary);
-    --radius: 1rem;
-}
-
-.dark {
-    --background: oklch(0.12 0.02 256);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.14 0.02 256);
-    --card-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.65 0.2 258);
-    --primary-foreground: oklch(0.205 0 0);
-    --sidebar: oklch(0.1 0.03 256);
-    --muted-foreground: oklch(0.75 0 0);
-    --input: oklch(0.2 0.02 256);
-    --border: oklch(0.3 0.02 256);
+    --radius: 0.875rem;
 }
 
 @layer base {
-    * { @apply border-border; }
-    body { @apply bg-background text-foreground; }
+    * {
+        @apply border-border;
+    }
+    html {
+        @apply scroll-smooth;
+        color-scheme: light;
+    }
+    body {
+        @apply bg-background text-foreground antialiased;
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    }
+    ::selection {
+        @apply bg-moss-200 text-moss-950;
+    }
 }
 
 @layer components {
     .auth-grid {
         background-image:
-            linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
+            linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+            linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0.08) 1px,
+                transparent 1px
+            );
         background-size: 46px 46px;
         mask-image: linear-gradient(to bottom, black, transparent 90%);
     }
@@ -117,16 +131,16 @@
     }
 
     .auth-input-icon {
-        @apply pointer-events-none absolute left-3.5 top-1/2 z-10 size-4 -translate-y-1/2 text-slate-400 transition-colors;
+        @apply pointer-events-none absolute top-1/2 left-3.5 z-10 size-4 -translate-y-1/2 text-slate-400 transition-colors;
     }
 
     .auth-input,
     .auth-select {
-        @apply h-12 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10;
+        @apply h-12 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-900 transition-all duration-200 outline-none placeholder:text-slate-400 hover:border-moss-300 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10;
     }
 
     .auth-input {
-        @apply pl-10 pr-4;
+        @apply pr-4 pl-10;
     }
 
     .auth-select {
@@ -134,7 +148,7 @@
     }
 
     .auth-input-wrap:focus-within .auth-input-icon {
-        @apply text-blue-600;
+        @apply text-moss-600;
     }
 
     .auth-input-error {
@@ -142,25 +156,25 @@
     }
 
     .auth-password-toggle {
-        @apply absolute right-1.5 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500;
+        @apply absolute top-1/2 right-1.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none;
     }
 
     .auth-primary-button {
-        @apply flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-600/25 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25 active:translate-y-0 disabled:pointer-events-none disabled:opacity-60 disabled:shadow-none;
+        @apply flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-moss-500 px-5 text-sm font-semibold text-white shadow-lg shadow-moss-600/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-moss-600 hover:shadow-xl hover:shadow-moss-600/25 focus-visible:ring-4 focus-visible:ring-moss-500/25 focus-visible:outline-none active:translate-y-0 disabled:pointer-events-none disabled:opacity-60 disabled:shadow-none;
     }
 
     .topbar-icon {
-        @apply flex size-10 items-center justify-center rounded-xl text-slate-500 transition-all hover:bg-slate-100 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/15 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-blue-400;
+        @apply flex size-10 items-center justify-center rounded-xl text-slate-500 transition-all hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none;
     }
 
     /* Shared enterprise workspace treatment. Existing pages retain their logic
        while receiving one consistent, accessible component language. */
     .app-workspace main {
-        @apply text-slate-700 dark:text-slate-200;
+        @apply text-slate-700;
     }
 
-    .app-workspace main > div > div[class*="p-6"],
-    .app-workspace main > div > div[class*="p-8"] {
+    .app-workspace main > div > div[class*='p-6'],
+    .app-workspace main > div > div[class*='p-8'] {
         @apply px-4 py-6 sm:px-6 lg:px-8;
     }
 
@@ -169,35 +183,57 @@
     }
 
     .app-workspace main thead {
-        @apply sticky top-0 z-10 bg-slate-50/95 backdrop-blur dark:bg-slate-900/95;
+        @apply sticky top-0 z-10 bg-slate-50/95 backdrop-blur;
     }
 
     .app-workspace main th {
-        @apply border-b border-slate-200 px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[.08em] text-slate-500 dark:border-slate-800 dark:text-slate-400;
+        @apply border-b border-slate-200 px-4 py-3 text-left text-[11px] font-semibold tracking-[.08em] text-slate-500 uppercase;
     }
 
     .app-workspace main td {
-        @apply border-b border-slate-100 px-4 py-3.5 align-middle dark:border-slate-800/70;
+        @apply border-b border-slate-100 px-4 py-3.5 align-middle;
     }
 
     .app-workspace main tbody tr {
-        @apply transition-colors hover:bg-blue-50/40 dark:hover:bg-blue-950/20;
+        @apply transition-colors hover:bg-moss-50/70;
     }
 
-    .app-workspace main input:not([type="checkbox"]):not([type="radio"]),
+    .app-workspace main input:not([type='checkbox']):not([type='radio']),
     .app-workspace main select,
     .app-workspace main textarea {
-        @apply rounded-xl border-slate-200 bg-white text-slate-900 shadow-none outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-white;
+        @apply min-h-11 rounded-xl border-slate-200 bg-white text-slate-900 shadow-none transition outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10;
     }
 
     .app-workspace main button,
     .app-workspace main a {
-        @apply focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20;
+        @apply focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none;
+    }
+
+    .app-workspace main > div {
+        animation: page-enter 240ms ease-out both;
+    }
+
+    .app-workspace main section,
+    .app-workspace main [data-slot='card'] {
+        isolation: isolate;
+    }
+}
+
+@keyframes page-enter {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
         scroll-behavior: auto !important;
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
@@ -224,24 +260,24 @@
         color: oklch(0.45 0 0) !important;
     }
     /* Input fields: visible bg + dark text */
-    .auth-panel-right input[type="email"],
-    .auth-panel-right input[type="password"],
-    .auth-panel-right input[type="text"] {
+    .auth-panel-right input[type='email'],
+    .auth-panel-right input[type='password'],
+    .auth-panel-right input[type='text'] {
         background-color: oklch(0.96 0.005 240);
         color: oklch(0.145 0 0);
         border-color: oklch(0.88 0 0);
     }
 
     /* ─── Checkbox fix ─── */
-    .auth-panel-right button[role="checkbox"] {
+    .auth-panel-right button[role='checkbox'] {
         border: 2px solid oklch(0.5 0 0) !important;
         background-color: oklch(0.96 0.005 240) !important;
     }
-    .auth-panel-right button[role="checkbox"][data-state="checked"] {
-        background-color: #0097A7 !important;
-        border-color: #0097A7 !important;
+    .auth-panel-right button[role='checkbox'][data-state='checked'] {
+        background-color: #6b8f71 !important;
+        border-color: #6b8f71 !important;
     }
-    .auth-panel-right button[role="checkbox"][data-state="checked"] svg {
+    .auth-panel-right button[role='checkbox'][data-state='checked'] svg {
         color: white !important;
         stroke: white !important;
     }

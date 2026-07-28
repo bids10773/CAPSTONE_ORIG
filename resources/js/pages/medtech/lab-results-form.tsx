@@ -1,18 +1,42 @@
-import { useForm, router} from '@inertiajs/react';
-import { Microscope, Save, ArrowLeft, Beaker, ShieldCheck } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
+import { router, useForm } from '@inertiajs/react';
+import {
+    ArrowLeft,
+    Beaker,
+    CheckCircle2,
+    ClipboardCheck,
+    FlaskConical,
+    Microscope,
+    Save,
+    ShieldCheck,
+    TestTube2,
+    UserRound,
+} from 'lucide-react';
+import type React from 'react';
+import {
+    ClinicalSection,
+    PatientSummaryCard,
+    SegmentedChoice,
+    StickyActionFooter,
+    WorkflowTimeline,
+} from '@/components/clinical-workflow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Med Tech Queue', href: "/medtech/appointments" },
-    { title: 'Laboratory Examination', href: "" },
+    { title: 'MedTech Queue', href: '/medtech/appointments' },
+    { title: 'Laboratory Examination', href: '' },
 ];
-
 
 interface PatientProfile {
     sex?: string;
@@ -22,11 +46,8 @@ interface PatientProfile {
 
 interface Appointment {
     id: number;
-    user: {
-        first_name: string;
-        last_name: string;
-    };
-        patient_profile?: PatientProfile; 
+    user: { first_name: string; last_name: string };
+    patient_profile?: PatientProfile;
 }
 
 interface Props {
@@ -34,11 +55,43 @@ interface Props {
     labResult: any;
 }
 
+const labParts = [
+    {
+        label: 'Complete Blood Count',
+        shortLabel: 'CBC',
+        field: 'cbc',
+        icon: TestTube2,
+    },
+    {
+        label: 'Urinalysis',
+        shortLabel: 'Urinalysis',
+        field: 'urinalysis',
+        icon: Beaker,
+    },
+    {
+        label: 'Fecalysis',
+        shortLabel: 'Fecalysis',
+        field: 'fecalysis',
+        icon: Microscope,
+    },
+];
+
+function getAge(birthdate?: string) {
+    if (!birthdate) return 'Not available';
+    const birth = new Date(birthdate);
+    if (Number.isNaN(birth.getTime())) return 'Not available';
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    if (
+        today.getMonth() < birth.getMonth() ||
+        (today.getMonth() === birth.getMonth() &&
+            today.getDate() < birth.getDate())
+    )
+        age -= 1;
+    return age >= 0 ? `${age} years` : 'Not available';
+}
+
 export default function LabResultsForm({ appointment, labResult }: Props) {
-    
-
-
-
     const { data, setData, post, processing } = useForm<any>({
         cbc_status: labResult?.cbc_status || 'normal',
         cbc_findings: labResult?.cbc_findings || '',
@@ -54,256 +107,347 @@ export default function LabResultsForm({ appointment, labResult }: Props) {
         remarks: labResult?.remarks || '',
     });
 
-    const labParts = [
-        { label: 'A. Complete Blood Count (CBC)', field: 'cbc' },
-        { label: 'B. Urinalysis', field: 'urinalysis' },
-        { label: 'C. Fecalysis', field: 'fecalysis' },
-    ];
-
-    const onSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const onSubmit = (event: React.FormEvent) => {
+        event.preventDefault();
         post(`/medtech/lab-results/${appointment.id}`);
     };
-
-    const getAge = (birthdate?: string) => {
-    if (!birthdate) return 'N/A';
-
-    const today = new Date();
-    const birth = new Date(birthdate);
-
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-        age--;
-    }
-
-    return age;
-};
+    const patientName = `${appointment.user.first_name} ${appointment.user.last_name}`;
 
     return (
-        <div className="p-6 max-w-5xl mx-auto space-y-6">
-
-            {/* HEADER */}
-            <div className="flex items-center justify-between bg-white/70 backdrop-blur-md border border-white p-4 rounded-2xl shadow-sm">
-                <div className="flex items-center gap-4">
-    <Button 
-        variant="ghost" 
-        onClick={() => router.visit('/medtech/dashboard')}
-        className="hover:bg-blue-50 transition"
-    >
-        <ArrowLeft className="w-5 h-5 text-[#246AFE]" />
-    </Button>
-
-    <div>
-        <h1 className="text-xl font-bold text-gray-900 uppercase tracking-tight mb-2">
-            Laboratory Examination
-        </h1>
-
-        {/* ✅ PATIENT INFO GRID */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-gray-50/70 p-3 rounded-xl border">
-
-            <div>
-                <p className="text-gray-500 text-xs">Patient</p>
-                <p className="font-semibold text-gray-900">
-                    {appointment.user.first_name} {appointment.user.last_name}
-                </p>
-            </div>
-
-            <div>
-                <p className="text-gray-500 text-xs">Gender</p>
-                <p className="font-semibold text-gray-900">
-                    {appointment?.patient_profile?.sex || 'N/A'}
-                </p>
-            </div>
-
-            <div>
-                <p className="text-gray-500 text-xs">Age</p>
-                <p className="font-semibold text-gray-900">
-                    {getAge(appointment?.patient_profile?.birthdate)}
-                </p>
-            </div>
-
-            <div>
-                <p className="text-gray-500 text-xs">Civil Status</p>
-                <p className="font-semibold text-gray-900">
-                    {appointment?.patient_profile?.civil_status || 'N/A'}
-                </p>
-            </div>
-
-        </div>
-    </div>
-</div>
-
-                <Button 
-                    onClick={onSubmit} 
-                    disabled={processing}
-                    className="bg-[#246AFE] hover:bg-blue-700 text-white transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 disabled:opacity-50"
-                >
-                    <Save className="w-4 h-4 mr-2"/> 
-                    {processing ? 'Saving...' : 'Save & Forward'}
-                </Button>
-            </div>
-
-            {/* LAB CHECKLIST */}
-            <Card className="overflow-visible">
-                <CardHeader className="bg-gray-50/70 border-b">
-                    <CardTitle className="text-sm font-semibold flex items-center gap-2 text-gray-700">
-                        <Microscope className="w-4 h-4 text-[#246AFE]" /> 
-                        Laboratory Clearance Checklist
-                    </CardTitle>
-                </CardHeader>
-
-                <CardContent className="divide-y p-0">
-                    {labParts.map((part) => (
-                        <div key={part.field} className="p-4 grid md:grid-cols-12 gap-4 items-center">
-                            
-                            <Label className="md:col-span-4 text-sm font-medium">
-                                {part.label}
-                            </Label>
-
-                            <div className="md:col-span-3 flex gap-6">
-                                {['normal', 'findings'].map((status) => (
-                                    <label key={status} className="flex items-center gap-2 text-xs font-semibold uppercase">
-                                        <input 
-                                            type="radio"
-                                            checked={data[`${part.field}_status`] === status}
-                                            onChange={() => {
-                                                setData(`${part.field}_status`, status);
-                                                if (status === 'normal') setData(`${part.field}_findings`, '');
-                                            }}
-                                            className="w-4 h-4 text-[#246AFE] focus:ring-[#246AFE]"
-                                        />
-                                        {status}
-                                    </label>
-                                ))}
-                            </div>
-
-                            <div className="md:col-span-5">
-                                <Input
-                                    placeholder="Specify findings..."
-                                    value={data[`${part.field}_findings`]}
-                                    disabled={data[`${part.field}_status`] === 'normal'}
-                                    onChange={e => setData(`${part.field}_findings`, e.target.value)}
-                                    className="h-9 text-sm focus:ring-[#246AFE] focus:border-[#246AFE]"
-                                />
-                            </div>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-    {/* RAPID TESTS */}
-    <CardContent className="p-4 space-y-4 ">
-
-    {/* ✅ HEP A + B SIDE BY SIDE */}
-    <div className="grid grid-cols-2 gap-4">
-
-    {/* Hepatitis B */}
-    <div className="p-3 border rounded-xl bg-gray-50/70">
-        <Label className="text-xs font-bold text-gray-500 uppercase">
-            Hepatitis B
-        </Label>
-        <Select 
-            value={data.hepa_b_status ?? ''} 
-            onValueChange={(v) => setData('hepa_b_status', v)}
+        <form
+            onSubmit={onSubmit}
+            className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 sm:px-6 lg:px-8"
         >
-            <SelectTrigger className="h-9 mt-2">
-                <SelectValue placeholder="Select result" />
-            </SelectTrigger>
-            <SelectContent className="z-50">
-                <SelectItem value="non-reactive">Non-reactive</SelectItem>
-                <SelectItem value="reactive">Reactive</SelectItem>
-            </SelectContent>
-        </Select>
-    </div>
+            <PatientSummaryCard
+                name={patientName}
+                subtitle="Laboratory diagnostic workflow"
+                stage="Laboratory Examination"
+                details={[
+                    {
+                        label: 'Age',
+                        value: getAge(appointment.patient_profile?.birthdate),
+                        icon: UserRound,
+                    },
+                    {
+                        label: 'Sex',
+                        value: appointment.patient_profile?.sex,
+                    },
+                    {
+                        label: 'Civil status',
+                        value: appointment.patient_profile?.civil_status,
+                    },
+                    { label: 'Queue', value: `#${appointment.id}` },
+                ]}
+            />
 
-    {/* Hepatitis A */}
-    <div className="p-3 border rounded-xl bg-gray-50/70">
-        <Label className="text-xs font-bold text-gray-500 uppercase">
-            Hepatitis A
-        </Label>
-        <Select 
-            value={data.hepa_a_status ?? ''} 
-            onValueChange={(v) => setData('hepa_a_status', v)}
-        >
-            <SelectTrigger className="h-9 mt-2">
-                <SelectValue placeholder="Select result" />
-            </SelectTrigger>
-            <SelectContent className="z-50">
-                <SelectItem value="non-reactive">Non-reactive</SelectItem>
-                <SelectItem value="reactive">Reactive</SelectItem>
-            </SelectContent>
-        </Select>
-    </div>
+            <WorkflowTimeline
+                current={3}
+                steps={[
+                    'Patient',
+                    'Requested Tests',
+                    'Specimen Collection',
+                    'Result Entry',
+                    'Review',
+                    'Complete',
+                ]}
+            />
 
-</div>
-
-    {/* ✅ PREGNANCY (ONLY IF FEMALE) */}
-    {appointment?.patient_profile?.sex?.toLowerCase() === 'female' && (
-        <div>
-            <Label className="text-xs font-bold text-gray-500 uppercase">
-                Pregnancy Test
-            </Label>
-            <Select 
-                value={data.pregnancy_test_status ?? ''} 
-                onValueChange={(v) => setData('pregnancy_test_status', v)}
+            <ClinicalSection
+                icon={FlaskConical}
+                title="Requested laboratory examinations"
+                description="Complete each requested examination and document notable findings."
             >
-                <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Select result" />
-                </SelectTrigger>
-                <SelectContent className="z-50">
-                    <SelectItem value="negative">Negative</SelectItem>
-                    <SelectItem value="positive">Positive</SelectItem>
-                    <SelectItem value="na">N/A</SelectItem>
-                </SelectContent>
-            </Select>
-        </div>
-    )}
+                <div className="grid gap-3 md:grid-cols-3">
+                    {labParts.map(
+                        ({ label, shortLabel, icon: Icon, field }) => {
+                            const abnormal =
+                                data[`${field}_status`] === 'findings';
+                            return (
+                                <article
+                                    key={field}
+                                    className="rounded-2xl border border-border bg-slate-50/50 p-4"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <span className="flex size-10 items-center justify-center rounded-xl bg-white text-moss-700 shadow-sm">
+                                            <Icon className="size-5" />
+                                        </span>
+                                        <span
+                                            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                                                abnormal
+                                                    ? 'border-amber-200 bg-amber-50 text-amber-800'
+                                                    : 'border-green-200 bg-green-50 text-green-800'
+                                            }`}
+                                        >
+                                            {abnormal
+                                                ? 'Findings recorded'
+                                                : 'Normal'}
+                                        </span>
+                                    </div>
+                                    <h3 className="mt-4 text-sm font-semibold text-slate-900">
+                                        {label}
+                                    </h3>
+                                    <p className="mt-1 text-xs text-slate-500">
+                                        {shortLabel} · Routine priority
+                                    </p>
+                                </article>
+                            );
+                        },
+                    )}
+                </div>
+            </ClinicalSection>
 
-</CardContent>
-
-    {/* DRUG SCREENING */}
-    <Card>
-        <CardHeader className="bg-gray-50/70 border-b">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-gray-700">
-                <ShieldCheck className="w-4 h-4 text-[#246AFE]" /> Drug Screening
-            </CardTitle>
-        </CardHeader>
-
-        <CardContent className="p-4 space-y-4">
-            {[
-                { label: 'Methamphetamine', field: 'meth_status' },
-                { label: 'Marijuana', field: 'marijuana_status' },
-            ].map((item) => (
-                <div key={item.field}>
-                    <Label className="text-xs font-bold text-gray-500 uppercase">{item.label}</Label>
-                    <div className="flex gap-4 p-2 border rounded-md bg-gray-50/50">
-                        {['negative', 'positive'].map((s) => (
-                            <label key={s} className="flex items-center gap-2 text-xs font-bold uppercase">
-                                <input
-                                    type="radio"
-                                    checked={data[item.field] === s}
-                                    onChange={() => setData(item.field, s)}
-                                    className="w-4 h-4 text-[#246AFE]"
-                                />
-                                {s}
-                            </label>
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+                <ClinicalSection
+                    icon={Microscope}
+                    title="Laboratory result entry"
+                    description="Normal results are clearly distinguished from results requiring clinical attention."
+                >
+                    <div className="space-y-4">
+                        {labParts.map(({ label, field, icon: Icon }) => (
+                            <article
+                                key={field}
+                                className="rounded-2xl border border-border p-4 sm:p-5"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Icon className="size-4 text-moss-600" />
+                                    <h3 className="text-sm font-semibold text-slate-900">
+                                        {label}
+                                    </h3>
+                                </div>
+                                <div className="mt-4 grid gap-4 lg:grid-cols-[280px_1fr]">
+                                    <SegmentedChoice
+                                        ariaLabel={`${label} result`}
+                                        value={data[`${field}_status`]}
+                                        onChange={(status) => {
+                                            setData(`${field}_status`, status);
+                                            if (status === 'normal')
+                                                setData(
+                                                    `${field}_findings`,
+                                                    '',
+                                                );
+                                        }}
+                                        options={[
+                                            {
+                                                value: 'normal',
+                                                label: 'Normal',
+                                            },
+                                            {
+                                                value: 'findings',
+                                                label: 'With findings',
+                                                tone: 'warning',
+                                            },
+                                        ]}
+                                    />
+                                    <div>
+                                        <Label
+                                            htmlFor={`${field}-findings`}
+                                            className="sr-only"
+                                        >
+                                            {label} findings
+                                        </Label>
+                                        <Input
+                                            id={`${field}-findings`}
+                                            value={data[`${field}_findings`]}
+                                            disabled={
+                                                data[`${field}_status`] ===
+                                                'normal'
+                                            }
+                                            onChange={(event) =>
+                                                setData(
+                                                    `${field}_findings`,
+                                                    event.target.value,
+                                                )
+                                            }
+                                            placeholder={
+                                                data[`${field}_status`] ===
+                                                'normal'
+                                                    ? 'No abnormal findings'
+                                                    : 'Document abnormal or critical findings'
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            </article>
                         ))}
                     </div>
-                </div>
-            ))}
-        </CardContent>
-    </Card>
+                </ClinicalSection>
 
-</div>
-</div>
+                <aside className="space-y-5">
+                    <ClinicalSection
+                        icon={ClipboardCheck}
+                        title="Specimen progress"
+                        description="Visual guide for the current laboratory stage."
+                    >
+                        <ol className="space-y-1">
+                            {[
+                                'Requested',
+                                'Collected',
+                                'Received',
+                                'Processing',
+                            ].map((step, index) => (
+                                <li
+                                    key={step}
+                                    className="flex items-center gap-3 rounded-xl px-2 py-2.5"
+                                >
+                                    <span
+                                        className={`flex size-8 items-center justify-center rounded-full ${
+                                            index < 3
+                                                ? 'bg-moss-100 text-moss-700'
+                                                : 'bg-amber-100 text-amber-700'
+                                        }`}
+                                    >
+                                        {index < 3 ? (
+                                            <CheckCircle2 className="size-4" />
+                                        ) : (
+                                            <Microscope className="size-4" />
+                                        )}
+                                    </span>
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-800">
+                                            {step}
+                                        </p>
+                                        <p className="text-[11px] text-slate-400">
+                                            {index < 3
+                                                ? 'Stage acknowledged'
+                                                : 'Current result entry stage'}
+                                        </p>
+                                    </div>
+                                </li>
+                            ))}
+                        </ol>
+                    </ClinicalSection>
+
+                    <ClinicalSection
+                        icon={Beaker}
+                        title="Rapid and serology tests"
+                    >
+                        <div className="space-y-4">
+                            {[
+                                ['Hepatitis B', 'hepa_b_status'],
+                                ['Hepatitis A', 'hepa_a_status'],
+                            ].map(([label, field]) => (
+                                <div key={field}>
+                                    <Label>{label}</Label>
+                                    <Select
+                                        value={data[field] ?? ''}
+                                        onValueChange={(value) =>
+                                            setData(field, value)
+                                        }
+                                    >
+                                        <SelectTrigger className="mt-1.5">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="non-reactive">
+                                                Non-reactive
+                                            </SelectItem>
+                                            <SelectItem value="reactive">
+                                                Reactive
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            ))}
+                            {appointment.patient_profile?.sex?.toLowerCase() ===
+                                'female' && (
+                                <div>
+                                    <Label>Pregnancy test</Label>
+                                    <Select
+                                        value={data.pregnancy_test_status ?? ''}
+                                        onValueChange={(value) =>
+                                            setData(
+                                                'pregnancy_test_status',
+                                                value,
+                                            )
+                                        }
+                                    >
+                                        <SelectTrigger className="mt-1.5">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="negative">
+                                                Negative
+                                            </SelectItem>
+                                            <SelectItem value="positive">
+                                                Positive
+                                            </SelectItem>
+                                            <SelectItem value="na">
+                                                Not applicable
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                        </div>
+                    </ClinicalSection>
+
+                    <ClinicalSection icon={ShieldCheck} title="Drug screening">
+                        <div className="space-y-4">
+                            {[
+                                ['Methamphetamine', 'meth_status'],
+                                ['Marijuana', 'marijuana_status'],
+                            ].map(([label, field]) => (
+                                <div key={field}>
+                                    <Label className="mb-2 block">
+                                        {label}
+                                    </Label>
+                                    <SegmentedChoice
+                                        ariaLabel={`${label} result`}
+                                        value={data[field]}
+                                        onChange={(value) =>
+                                            setData(field, value)
+                                        }
+                                        options={[
+                                            {
+                                                value: 'negative',
+                                                label: 'Negative',
+                                            },
+                                            {
+                                                value: 'positive',
+                                                label: 'Positive',
+                                                tone: 'warning',
+                                            },
+                                        ]}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </ClinicalSection>
+                </aside>
+            </div>
+
+            <ClinicalSection
+                icon={ClipboardCheck}
+                title="Laboratory notes"
+                description="Document specimen quality, critical values, or communication notes."
+            >
+                <Textarea
+                    value={data.remarks}
+                    onChange={(event) => setData('remarks', event.target.value)}
+                    placeholder="Enter laboratory notes and relevant observations"
+                />
+            </ClinicalSection>
+
+            <StickyActionFooter hint="Submitting forwards the completed laboratory stage through the existing workflow.">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.visit('/medtech/appointments')}
+                >
+                    <ArrowLeft className="size-4" />
+                    Back to queue
+                </Button>
+                <Button type="submit" disabled={processing}>
+                    <Save className="size-4" />
+                    {processing
+                        ? 'Completing laboratory…'
+                        : 'Complete laboratory'}
+                </Button>
+            </StickyActionFooter>
+        </form>
     );
 }
 
-
-LabResultsForm.layout = (page: any) => (
+LabResultsForm.layout = (page: React.ReactNode) => (
     <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>
 );

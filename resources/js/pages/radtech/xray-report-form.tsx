@@ -1,45 +1,62 @@
-import { Head, useForm, router } from '@inertiajs/react';
-import { Image, Save, ArrowLeft } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
+import { Head, router, useForm } from '@inertiajs/react';
+import {
+    ArrowLeft,
+    CheckCircle2,
+    ClipboardCheck,
+    MonitorCheck,
+    Save,
+    ScanLine,
+    UserRound,
+} from 'lucide-react';
+import type React from 'react';
+import {
+    ClinicalSection,
+    PatientSummaryCard,
+    SegmentedChoice,
+    StickyActionFooter,
+    WorkflowTimeline,
+} from '@/components/clinical-workflow';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'RadTech Queue', href: "/radtech/appointments" },
-    { title: 'X-Ray Examination', href: "" },
+    { title: 'RadTech Queue', href: '/radtech/appointments' },
+    { title: 'X-Ray Examination', href: '' },
 ];
 
 interface Props {
-  appointment: {
-    id: number;
-    user: {
-      first_name: string;
-      last_name: string;
+    appointment: {
+        id: number;
+        user: { first_name: string; last_name: string };
+        patient_profile?: {
+            sex?: string;
+            birthdate?: string;
+            civil_status?: string;
+        };
+        service_types: string;
     };
-    patient_profile?: {
-      sex?: string;
-      birthdate?: string;
-      civil_status?: string;
-    };
-    service_types: string;
-  };
-  xrayReport?: any;
+    xrayReport?: any;
+}
+
+function getAge(birthdate?: string) {
+    if (!birthdate) return 'Not available';
+    const birth = new Date(birthdate);
+    if (Number.isNaN(birth.getTime())) return 'Not available';
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    if (
+        today.getMonth() < birth.getMonth() ||
+        (today.getMonth() === birth.getMonth() &&
+            today.getDate() < birth.getDate())
+    )
+        age -= 1;
+    return age >= 0 ? `${age} years` : 'Not available';
 }
 
 export default function XrayReportForm({ appointment, xrayReport }: Props) {
-
-    const getAge = (birthdate?: string) => {
-        if (!birthdate) return 'N/A';
-        const today = new Date();
-        const birth = new Date(birthdate);
-        let age = today.getFullYear() - birth.getFullYear();
-        const m = today.getMonth() - birth.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-        return age;
-    };
-
     const { data, setData, post, processing } = useForm({
         chest_status: xrayReport?.findings ? 'findings' : 'normal',
         chest_findings: xrayReport?.findings || '',
@@ -47,172 +64,256 @@ export default function XrayReportForm({ appointment, xrayReport }: Props) {
         remarks: xrayReport?.remarks || '',
     });
 
-    const onSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const onSubmit = (event: React.FormEvent) => {
+        event.preventDefault();
         post(`/radtech/xrays/${appointment.id}`);
     };
+    const patientName = `${appointment.user.first_name} ${appointment.user.last_name}`;
 
     return (
         <>
             <Head title="X-Ray Report" />
-
-            <form onSubmit={onSubmit}className="p-6 max-w-5xl mx-auto space-y-6">
-
-    {/* 🔥 HEADER (MATCH LAB STYLE) */}
-    <div className="flex items-center justify-between bg-white/70 backdrop-blur-md border border-white p-4 rounded-2xl shadow-sm">
-
-        <div className="flex items-center gap-4">
-            <Button 
-                variant="ghost" 
-                onClick={() => router.visit('/radtech/appointments')}
-                className="hover:bg-blue-50 transition"
+            <form
+                onSubmit={onSubmit}
+                className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 sm:px-6 lg:px-8"
             >
-                <ArrowLeft className="w-5 h-5 text-[#246AFE]" />
-            </Button>
+                <PatientSummaryCard
+                    name={patientName}
+                    subtitle="Diagnostic imaging workflow"
+                    stage="Image Review and Reporting"
+                    details={[
+                        {
+                            label: 'Age',
+                            value: getAge(
+                                appointment.patient_profile?.birthdate,
+                            ),
+                            icon: UserRound,
+                        },
+                        {
+                            label: 'Sex',
+                            value: appointment.patient_profile?.sex,
+                        },
+                        {
+                            label: 'Examination',
+                            value: appointment.service_types || 'Chest X-ray',
+                            icon: ScanLine,
+                        },
+                        { label: 'Queue', value: `#${appointment.id}` },
+                    ]}
+                />
 
-            <div>
-                <h1 className="text-xl font-bold text-gray-900 uppercase tracking-tight mb-2">
-                    X-Ray Examination
-                </h1>
+                <WorkflowTimeline
+                    current={3}
+                    steps={[
+                        'Patient',
+                        'Requested X-Ray',
+                        'Examination',
+                        'Result Entry',
+                        'Review',
+                        'Complete',
+                    ]}
+                />
 
-                {/* ✅ PATIENT INFO GRID */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-gray-50/70 p-3 rounded-xl border">
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">
+                    <div className="space-y-5">
+                        <ClinicalSection
+                            icon={ScanLine}
+                            title="Requested X-ray examination"
+                            description="Confirm the requested examination before documenting the result."
+                        >
+                            <div className="grid gap-3 sm:grid-cols-3">
+                                <div className="rounded-2xl border border-border bg-slate-50/60 p-4">
+                                    <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
+                                        Examination
+                                    </p>
+                                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                                        {appointment.service_types ||
+                                            'Chest X-ray'}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-border bg-slate-50/60 p-4">
+                                    <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
+                                        Priority
+                                    </p>
+                                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                                        Routine
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-moss-200 bg-moss-50 p-4">
+                                    <p className="text-[10px] font-semibold tracking-wide text-moss-600 uppercase">
+                                        Current task
+                                    </p>
+                                    <p className="mt-1 text-sm font-semibold text-moss-900">
+                                        Enter X-ray result
+                                    </p>
+                                </div>
+                            </div>
+                        </ClinicalSection>
 
-                    <div>
-                        <p className="text-gray-500 text-xs">Patient</p>
-                        <p className="font-semibold text-gray-900">
-                            {appointment.user.first_name} {appointment.user.last_name}
-                        </p>
-                    </div>
-
-                    <div>
-                        <p className="text-gray-500 text-xs">Gender</p>
-                        <p className="font-semibold text-gray-900">
-                            {appointment?.patient_profile?.sex || 'N/A'}
-                        </p>
-                    </div>
-
-                    <div>
-                        <p className="text-gray-500 text-xs">Age</p>
-                        <p className="font-semibold text-gray-900">
-                            {getAge(appointment?.patient_profile?.birthdate)}
-                        </p>
-                    </div>
-
-                    <div>
-                        <p className="text-gray-500 text-xs">Civil Status</p>
-                        <p className="font-semibold text-gray-900">
-                            {appointment.patient_profile?.civil_status}
-                        </p>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-        {/* SAVE BUTTON */}
-        <Button 
-            type="submit"
-            disabled={processing}
-            className="bg-[#246AFE] hover:bg-blue-700 text-white transition-all duration-200 shadow-sm hover:shadow-md active:scale-95"
-        >
-            <Save className="w-4 h-4 mr-2"/> 
-            {processing ? 'Saving...' : 'Save & Forward'}
-        </Button>
-    </div>
-
-    {/* 🔥 X-RAY CARD */}
-    <Card className="overflow-visible">
-
-        <CardHeader className="bg-gray-50/70 border-b">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-gray-700">
-                <Image className="w-4 h-4 text-[#246AFE]" /> 
-                Chest X-Ray Result
-            </CardTitle>
-        </CardHeader>
-
-        <CardContent className="p-4 space-y-6">
-
-            {/* STATUS */}
-            <div className="space-y-3">
-                <Label className="text-xs font-bold text-gray-500 uppercase">
-                    Result Type
-                </Label>
-
-                <div className="flex gap-6">
-                    {['normal', 'findings'].map((status) => (
-                        <label key={status} className="flex items-center gap-2 text-xs font-bold uppercase">
-                            <input
-                                type="radio"
-                                checked={data.chest_status === status}
-                                onChange={() => {
-                                    setData('chest_status', status);
-
-                                    if (status === 'normal') {
-                                        setData('chest_findings', `BOTH LUNGS ARE CLEAR
+                        <ClinicalSection
+                            icon={ScanLine}
+                            title="Structured findings"
+                            description="Choose the result classification, then document observable findings."
+                        >
+                            <div className="max-w-lg">
+                                <Label className="mb-2 block">
+                                    Result classification
+                                </Label>
+                                <SegmentedChoice
+                                    ariaLabel="Chest X-ray result"
+                                    value={data.chest_status}
+                                    onChange={(status) => {
+                                        setData('chest_status', status);
+                                        if (status === 'normal') {
+                                            setData(
+                                                'chest_findings',
+                                                `BOTH LUNGS ARE CLEAR
 HEART SIZE IS NOT ENLARGED
-THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`);
+THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
+                                            );
+                                            setData(
+                                                'impression',
+                                                'ESSENTIALLY NORMAL CHEST X-RAY.',
+                                            );
+                                        } else {
+                                            setData('chest_findings', '');
+                                            setData('impression', '');
+                                        }
+                                    }}
+                                    options={[
+                                        {
+                                            value: 'normal',
+                                            label: 'Normal study',
+                                        },
+                                        {
+                                            value: 'findings',
+                                            label: 'With findings',
+                                            tone: 'warning',
+                                        },
+                                    ]}
+                                />
+                            </div>
 
-                                        setData('impression', 'ESSENTIALLY NORMAL CHEST X-RAY.');
-                                    } else {
-                                        setData('chest_findings', '');
-                                        setData('impression', '');
+                            <div className="mt-5">
+                                <Label htmlFor="chest-findings">
+                                    Radiographic findings
+                                </Label>
+                                <Textarea
+                                    id="chest-findings"
+                                    className="mt-1.5 min-h-52 font-mono text-sm leading-6"
+                                    value={data.chest_findings}
+                                    disabled={data.chest_status === 'normal'}
+                                    onChange={(event) =>
+                                        setData(
+                                            'chest_findings',
+                                            event.target.value,
+                                        )
                                     }
-                                }}
-                                className="w-4 h-4 text-[#246AFE]"
+                                    placeholder="Describe the lungs, cardiac silhouette, mediastinum, pleura, and osseous structures"
+                                />
+                            </div>
+                        </ClinicalSection>
+                    </div>
+
+                    <aside className="space-y-5">
+                        <ClinicalSection
+                            icon={MonitorCheck}
+                            title="X-ray examination status"
+                            description="Current position in the examination workflow."
+                        >
+                            <ol className="space-y-1">
+                                {[
+                                    'Waiting',
+                                    'In progress',
+                                    'Examined',
+                                    'Result entry',
+                                ].map((step, index) => (
+                                    <li
+                                        key={step}
+                                        className="flex items-center gap-3 rounded-xl px-2 py-2.5"
+                                    >
+                                        <span
+                                            className={`flex size-8 items-center justify-center rounded-full ${
+                                                index < 3
+                                                    ? 'bg-moss-100 text-moss-700'
+                                                    : 'bg-amber-100 text-amber-700'
+                                            }`}
+                                        >
+                                            {index < 3 ? (
+                                                <CheckCircle2 className="size-4" />
+                                            ) : (
+                                                <MonitorCheck className="size-4" />
+                                            )}
+                                        </span>
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-800">
+                                                {step}
+                                            </p>
+                                            <p className="text-[11px] text-slate-400">
+                                                {index < 3
+                                                    ? 'Stage acknowledged'
+                                                    : 'Current result stage'}
+                                            </p>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ol>
+                        </ClinicalSection>
+
+                        <ClinicalSection
+                            icon={ClipboardCheck}
+                            title="Radiologic impression"
+                            description="Provide a concise diagnostic summary."
+                        >
+                            <Label htmlFor="impression">Impression</Label>
+                            <Textarea
+                                id="impression"
+                                className="mt-1.5 min-h-40"
+                                value={data.impression}
+                                disabled={data.chest_status === 'normal'}
+                                onChange={(event) =>
+                                    setData('impression', event.target.value)
+                                }
+                                placeholder="Enter the radiologic impression"
                             />
-                            {status}
-                        </label>
-                    ))}
+
+                            <Label htmlFor="remarks" className="mt-5 block">
+                                Technologist notes
+                            </Label>
+                            <Textarea
+                                id="remarks"
+                                className="mt-1.5 min-h-28"
+                                value={data.remarks}
+                                onChange={(event) =>
+                                    setData('remarks', event.target.value)
+                                }
+                                placeholder="Document positioning, image quality, or relevant notes"
+                            />
+                        </ClinicalSection>
+                    </aside>
                 </div>
-            </div>
 
-            {/* FINDINGS */}
-            <div>
-                <Label className="text-xs font-bold text-gray-500 uppercase">
-                    Findings
-                </Label>
-                <textarea
-                    rows={5}
-                    value={data.chest_findings}
-                    disabled={data.chest_status === 'normal'}
-                    onChange={(e) => setData('chest_findings', e.target.value)}
-                    className="w-full mt-2 p-3 border rounded-lg bg-gray-50/50 focus:ring-[#246AFE]"
-                />
-            </div>
-
-            {/* IMPRESSION */}
-            <div>
-                <Label className="text-xs font-bold text-gray-500 uppercase">
-                    Impression
-                </Label>
-                <textarea
-                    rows={4}
-                    value={data.impression}
-                    disabled={data.chest_status === 'normal'}
-                    onChange={(e) => setData('impression', e.target.value)}
-                    className="w-full mt-2 p-3 border rounded-lg bg-gray-50/50"
-                />
-            </div>
-
-            {/* REMARKS */}
-            <div>
-                <Label className="text-xs font-bold text-gray-500 uppercase">
-                    Remarks
-                </Label>
-                <textarea
-                    rows={3}
-                    value={data.remarks}
-                    onChange={(e) => setData('remarks', e.target.value)}
-                    className="w-full mt-2 p-3 border rounded-lg bg-gray-50/50"
-                />
-            </div>
-
-        </CardContent>
-    </Card>
-</form>
+                <StickyActionFooter hint="Submitting forwards the completed imaging report through the existing workflow.">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => router.visit('/radtech/appointments')}
+                    >
+                        <ArrowLeft className="size-4" />
+                        Back to queue
+                    </Button>
+                    <Button type="submit" disabled={processing}>
+                        <Save className="size-4" />
+                        {processing
+                            ? 'Completing imaging…'
+                            : 'Complete imaging'}
+                    </Button>
+                </StickyActionFooter>
+            </form>
         </>
     );
 }
 
-XrayReportForm.layout = (page: any) => <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
+XrayReportForm.layout = (page: React.ReactNode) => (
+    <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>
+);

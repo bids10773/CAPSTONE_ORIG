@@ -16,7 +16,7 @@ function Checkbox({
         "peer size-5 shrink-0 rounded-md border-2 border-white/40 bg-white/10 shadow-lg transition-all outline-none",
         
         // CHECKED STATE: Turns solid white so the blue checkmark is visible
-        "data-[state=checked]:bg-white data-[state=checked]:border-white data-[state=checked]:text-[#246AFE]",
+        "data-[state=checked]:bg-white data-[state=checked]:border-white data-[state=checked]:text-moss-600",
         
         // HOVER & FOCUS
         "hover:border-white/60 focus-visible:ring-2 focus-visible:ring-white/30",

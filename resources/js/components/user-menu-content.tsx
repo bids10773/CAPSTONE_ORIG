@@ -1,4 +1,4 @@
-import { LogOut} from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -8,7 +8,6 @@ import {
 import { UserInfo } from '@/components/user-info';
 import { useLogoutModal } from '@/contexts/logout-modal-context';
 import type { User } from '@/types';
-
 
 type Props = {
     user: User;
@@ -26,11 +25,10 @@ export function UserMenuContent({ user }: Props) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-                <DropdownMenuItem asChild>
-                </DropdownMenuItem>
+                <DropdownMenuItem asChild></DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            <DropdownMenuItem
                 className="cursor-pointer"
                 onSelect={() => openModal()}
                 data-test="logout-button"

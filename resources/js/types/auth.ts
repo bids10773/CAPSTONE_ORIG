@@ -22,7 +22,7 @@ export interface User {
 }
 
 export interface Auth {
-    user: User
+    user: User;
 }
 
 export interface TwoFactorSetupData {

@@ -50,7 +50,14 @@ class PatientDashboardController extends Controller
         $upcomingAppointments = Appointment::with('company')
             ->where('user_id', $user->id)
             ->whereDate('appointment_date', '>=', now())
-            ->whereIn('status', ['pending', 'arrived'])
+            ->whereIn('status', [
+                'pending',
+                'accepted',
+                'arrived',
+                'for_diagnostics',
+                'for_xray',
+                'for_final_evaluation',
+            ])
             ->orderBy('appointment_date', 'asc')
             ->limit(5)
             ->get();
@@ -67,6 +74,18 @@ class PatientDashboardController extends Controller
                 ->count(),
             'pending' => Appointment::where('user_id', $user->id)
                 ->where('status', 'pending')
+                ->count(),
+            'accepted' => Appointment::where('user_id', $user->id)
+                ->where('status', 'accepted')
+                ->count(),
+            'physical' => Appointment::where('user_id', $user->id)
+                ->where('status', 'arrived')
+                ->count(),
+            'laboratory' => Appointment::where('user_id', $user->id)
+                ->where('status', 'for_diagnostics')
+                ->count(),
+            'final_evaluation' => Appointment::where('user_id', $user->id)
+                ->where('status', 'for_final_evaluation')
                 ->count(),
         ];
 

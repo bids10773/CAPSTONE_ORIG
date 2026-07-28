@@ -5,8 +5,8 @@ import { ArrowLeft, Save, Mail } from 'lucide-react';
 import { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Companies Management', href: "/admin/companies" },
-    { title: 'Edit Company', href: "" },
+    { title: 'Companies Management', href: '/admin/companies' },
+    { title: 'Edit Company', href: '' },
 ];
 
 interface Company {
@@ -31,14 +31,23 @@ export default function AdminEditCompany() {
         is_partnered: company.is_partnered || false,
     });
 
-    const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+    const [errors, setErrors] = useState<Record<string, string | undefined>>(
+        {},
+    );
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const handleChange = (
+        e: React.ChangeEvent<
+            HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+        >,
+    ) => {
         const { name, value, type } = e.target;
         setFormData((prev) => ({
             ...prev,
-            [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+            [name]:
+                type === 'checkbox'
+                    ? (e.target as HTMLInputElement).checked
+                    : value,
         }));
 
         if (errors[name]) {
@@ -64,36 +73,32 @@ export default function AdminEditCompany() {
             <Head title="Edit Company - Admin" />
 
             <div className="p-6">
-
                 <div className="max-w-3xl space-y-6">
-
                     {/* BACK BUTTON */}
                     <div>
                         <Link
                             href="/admin/companies"
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg 
-                            bg-gray-100 dark:bg-gray-800 
-                            text-gray-700 dark:text-gray-300 
-                            hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                            className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-gray-700 transition hover:bg-gray-200"
                         >
-                            <ArrowLeft className="w-4 h-4" />
+                            <ArrowLeft className="h-4 w-4" />
                             Back to Companies
                         </Link>
                     </div>
 
                     {/* FORM */}
-                    <form onSubmit={handleSubmit} className="space-y-6 p-4 mb-6">
-
+                    <form
+                        onSubmit={handleSubmit}
+                        className="mb-6 space-y-6 p-4"
+                    >
                         {/* COMPANY INFO */}
-                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+                        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                            <h2 className="mb-6 text-lg font-semibold text-gray-900">
                                 Company Information
                             </h2>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">
                                         Company Name *
                                     </label>
                                     <input
@@ -101,54 +106,51 @@ export default function AdminEditCompany() {
                                         name="name"
                                         value={formData.name}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 
-                                        bg-white dark:bg-gray-700 
-                                        text-gray-900 dark:text-gray-100 
-                                        rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:ring-2 focus:ring-moss-500"
                                         placeholder="Enter company name"
                                     />
                                     {errors.name && (
-                                        <p className="mt-1 text-sm text-red-500">{errors.name}</p>
+                                        <p className="mt-1 text-sm text-red-500">
+                                            {errors.name}
+                                        </p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">
                                         Status
                                     </label>
                                     <select
                                         name="status"
                                         value={formData.status}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 
-                                        bg-white dark:bg-gray-700 
-                                        text-gray-900 dark:text-gray-100 
-                                        rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:ring-2 focus:ring-moss-500"
                                     >
                                         <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
+                                        <option value="inactive">
+                                            Inactive
+                                        </option>
                                     </select>
                                 </div>
 
-                                <div className="flex items-center mt-6">
+                                <div className="mt-6 flex items-center">
                                     <input
                                         type="checkbox"
                                         name="is_partnered"
                                         checked={formData.is_partnered}
                                         onChange={handleChange}
-                                        className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
+                                        className="h-4 w-4 rounded border-gray-300 text-moss-600 focus:ring-moss-500"
                                     />
-                                    <label className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <label className="ml-2 text-sm text-gray-700">
                                         Is Partnered
                                     </label>
                                 </div>
-
                             </div>
                         </div>
 
                         {/* ADDRESS */}
-                        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+                        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                            <h2 className="mb-6 text-lg font-semibold text-gray-900">
                                 Address
                             </h2>
 
@@ -157,32 +159,42 @@ export default function AdminEditCompany() {
                                 value={formData.address}
                                 onChange={handleChange}
                                 rows={3}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 
-                                bg-white dark:bg-gray-700 
-                                text-gray-900 dark:text-gray-100 
-                                rounded-lg focus:ring-2 focus:ring-blue-500"
+                                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:ring-2 focus:ring-moss-500"
                                 placeholder="Enter company address"
                             />
                         </div>
 
                         {/* REPRESENTATIVE */}
                         {company.representative_email && (
-                            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-6">
-                                <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-4 flex items-center gap-2">
-                                    <Mail className="w-5 h-5" />
+                            <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-6">
+                                <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-yellow-900">
+                                    <Mail className="h-5 w-5" />
                                     Company Representative
                                 </h3>
 
-                                <div className="text-sm space-y-1 text-gray-700 dark:text-gray-300">
-                                    <p><strong>Name:</strong> {company.representative_name}</p>
-                                    <p><strong>Email:</strong> {company.representative_email}</p>
-                                    <p><strong>Contact:</strong> {company.representative_contact}</p>
+                                <div className="space-y-1 text-sm text-gray-700">
+                                    <p>
+                                        <strong>Name:</strong>{' '}
+                                        {company.representative_name}
+                                    </p>
+                                    <p>
+                                        <strong>Email:</strong>{' '}
+                                        {company.representative_email}
+                                    </p>
+                                    <p>
+                                        <strong>Contact:</strong>{' '}
+                                        {company.representative_contact}
+                                    </p>
                                 </div>
 
                                 <button
                                     type="button"
-                                    onClick={() => router.post(`/admin/companies/${company.id}/resend-invitation`)}
-                                    className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition"
+                                    onClick={() =>
+                                        router.post(
+                                            `/admin/companies/${company.id}/resend-invitation`,
+                                        )
+                                    }
+                                    className="mt-4 rounded-lg bg-yellow-600 px-4 py-2 text-white transition hover:bg-yellow-700"
                                 >
                                     Resend Invitation Email
                                 </button>
@@ -191,7 +203,7 @@ export default function AdminEditCompany() {
 
                         {/* ERROR */}
                         {errors.general && (
-                            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 px-4 py-3 rounded-lg">
+                            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-600">
                                 {errors.general}
                             </div>
                         )}
@@ -200,9 +212,7 @@ export default function AdminEditCompany() {
                         <div className="flex justify-end gap-4">
                             <Link
                                 href="/admin/companies"
-                                className="px-6 py-2 border border-gray-300 dark:border-gray-600 
-                                text-gray-700 dark:text-gray-300 
-                                rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                                className="rounded-lg border border-gray-300 px-6 py-2 text-gray-700 transition hover:bg-gray-100"
                             >
                                 Cancel
                             </Link>
@@ -210,13 +220,12 @@ export default function AdminEditCompany() {
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                                className="flex items-center gap-2 rounded-lg bg-moss-600 px-6 py-2 text-white transition hover:bg-moss-700 disabled:opacity-50"
                             >
-                                <Save className="w-4 h-4" />
+                                <Save className="h-4 w-4" />
                                 {isSubmitting ? 'Saving...' : 'Save Changes'}
                             </button>
                         </div>
-
                     </form>
                 </div>
             </div>

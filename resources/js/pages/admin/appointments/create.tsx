@@ -1,14 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { Calendar, ArrowLeft, Save, Upload, FileText, Users } from 'lucide-react';
+import {
+    Calendar,
+    ArrowLeft,
+    Save,
+    Upload,
+    FileText,
+    Users,
+} from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import type { BreadcrumbItem, SharedData } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Create Appointment',
-        href: "",
+        href: '',
     },
 ];
 
@@ -45,7 +52,9 @@ export default function AdminCreateAppointment() {
         notes: '',
     });
 
-    const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+    const [errors, setErrors] = useState<Record<string, string | undefined>>(
+        {},
+    );
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [companySearch, setCompanySearch] = useState('');
     const [patientSearch, setPatientSearch] = useState('');
@@ -58,7 +67,9 @@ export default function AdminCreateAppointment() {
     useEffect(() => {
         if (companySearch) {
             const filtered = (companies || []).filter((c: Company) =>
-                c.company_name.toLowerCase().includes(companySearch.toLowerCase())
+                c.company_name
+                    .toLowerCase()
+                    .includes(companySearch.toLowerCase()),
             );
             setFilteredCompanies(filtered);
         } else {
@@ -69,9 +80,12 @@ export default function AdminCreateAppointment() {
     // Filter patients based on search
     useEffect(() => {
         if (patientSearch) {
-            const filtered = (patients || []).filter((p: Patient) =>
-                `${p.first_name} ${p.last_name}`.toLowerCase().includes(patientSearch.toLowerCase()) ||
-                p.email.toLowerCase().includes(patientSearch.toLowerCase())
+            const filtered = (patients || []).filter(
+                (p: Patient) =>
+                    `${p.first_name} ${p.last_name}`
+                        .toLowerCase()
+                        .includes(patientSearch.toLowerCase()) ||
+                    p.email.toLowerCase().includes(patientSearch.toLowerCase()),
             );
             setFilteredPatients(filtered);
         } else {
@@ -79,15 +93,23 @@ export default function AdminCreateAppointment() {
         }
     }, [patientSearch, patients]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const handleChange = (
+        e: React.ChangeEvent<
+            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+        >,
+    ) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
-        
+
         // Reset company_id when type changes to individual
         if (name === 'type' && value === 'individual') {
-            setFormData((prev) => ({ ...prev, company_id: '', referral_code: '' }));
+            setFormData((prev) => ({
+                ...prev,
+                company_id: '',
+                referral_code: '',
+            }));
         }
-        
+
         // Clear error when user starts typing
         if (errors[name]) {
             setErrors((prev) => ({ ...prev, [name]: '' }));
@@ -105,7 +127,9 @@ export default function AdminCreateAppointment() {
 
     const handlePatientSelect = (patient: Patient) => {
         setFormData((prev) => ({ ...prev, patient_id: patient.id.toString() }));
-        setPatientSearch(`${patient.first_name} ${patient.last_name} (${patient.email})`);
+        setPatientSearch(
+            `${patient.first_name} ${patient.last_name} (${patient.email})`,
+        );
         setShowPatientDropdown(false);
         if (errors.patient_id) {
             setErrors((prev) => ({ ...prev, patient_id: '' }));
@@ -126,7 +150,9 @@ export default function AdminCreateAppointment() {
         });
     };
 
-    const showCompanyField = formData.type === 'company_referral' || formData.type === 'company_bulk';
+    const showCompanyField =
+        formData.type === 'company_referral' ||
+        formData.type === 'company_bulk';
     const showReferralCode = formData.type === 'company_referral';
 
     return (
@@ -135,19 +161,19 @@ export default function AdminCreateAppointment() {
 
             <div className="p-6">
                 {/* Header */}
-                <div className="flex items-center gap-4 mb-6">
+                <div className="mb-6 flex items-center gap-4">
                     <Link
                         href="/admin/appointments"
-                        className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="rounded-lg p-2 transition-colors hover:bg-gray-100"
                     >
-                        <ArrowLeft className="w-5 h-5 text-gray-600" />
+                        <ArrowLeft className="h-5 w-5 text-gray-600" />
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                            <Calendar className="w-6 h-6" />
+                        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+                            <Calendar className="h-6 w-6" />
                             Create Appointment
                         </h1>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="mt-1 text-sm text-gray-500">
                             Schedule an appointment for a patient
                         </p>
                     </div>
@@ -156,13 +182,13 @@ export default function AdminCreateAppointment() {
                 <div className="max-w-3xl">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Patient Selection */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <Users className="w-5 h-5" />
+                        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                                <Users className="h-5 w-5" />
                                 Patient Information
                             </h2>
                             <div className="relative">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
                                     Select Patient *
                                 </label>
                                 <input
@@ -175,45 +201,68 @@ export default function AdminCreateAppointment() {
                                     }}
                                     onFocus={() => setShowPatientDropdown(true)}
                                     placeholder="Search for a patient..."
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                     autoComplete="off"
                                 />
-                                <input type="hidden" name="patient_id" value={formData.patient_id} />
-                                
-                                {showPatientDropdown && filteredPatients.length > 0 && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                        {filteredPatients.map((patient: Patient) => (
-                                            <button
-                                                key={patient.id}
-                                                type="button"
-                                                onClick={() => handlePatientSelect(patient)}
-                                                className="w-full px-4 py-2 text-left hover:bg-blue-50 transition-colors"
-                                            >
-                                                <p className="font-medium">{patient.first_name} {patient.last_name}</p>
-                                                <p className="text-sm text-gray-500">{patient.email}</p>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
+                                <input
+                                    type="hidden"
+                                    name="patient_id"
+                                    value={formData.patient_id}
+                                />
+
+                                {showPatientDropdown &&
+                                    filteredPatients.length > 0 && (
+                                        <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                                            {filteredPatients.map(
+                                                (patient: Patient) => (
+                                                    <button
+                                                        key={patient.id}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            handlePatientSelect(
+                                                                patient,
+                                                            )
+                                                        }
+                                                        className="w-full px-4 py-2 text-left transition-colors hover:bg-moss-50"
+                                                    >
+                                                        <p className="font-medium">
+                                                            {patient.first_name}{' '}
+                                                            {patient.last_name}
+                                                        </p>
+                                                        <p className="text-sm text-gray-500">
+                                                            {patient.email}
+                                                        </p>
+                                                    </button>
+                                                ),
+                                            )}
+                                        </div>
+                                    )}
                                 {errors.patient_id && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.patient_id}</p>
+                                    <p className="mt-1 text-sm text-red-600">
+                                        {errors.patient_id}
+                                    </p>
                                 )}
                             </div>
                         </div>
 
                         {/* Appointment Type */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <FileText className="w-5 h-5" />
+                        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                                <FileText className="h-5 w-5" />
                                 Appointment Type
                             </h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {(Object.entries(appointmentTypes) as [string, string][]).map(([value, label]) => (
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                {(
+                                    Object.entries(appointmentTypes) as [
+                                        string,
+                                        string,
+                                    ][]
+                                ).map(([value, label]) => (
                                     <label
                                         key={value}
-                                        className={`relative flex items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                        className={`relative flex cursor-pointer items-center justify-center rounded-lg border-2 p-4 transition-all ${
                                             formData.type === value
-                                                ? 'border-blue-500 bg-blue-50'
+                                                ? 'border-moss-500 bg-moss-50'
                                                 : 'border-gray-200 hover:border-gray-300'
                                         }`}
                                     >
@@ -226,10 +275,18 @@ export default function AdminCreateAppointment() {
                                             className="sr-only"
                                         />
                                         <div className="text-center">
-                                            {value === 'individual' && <Users className="w-6 h-6 mx-auto mb-2 text-gray-600" />}
-                                            {value === 'company_referral' && <FileText className="w-6 h-6 mx-auto mb-2 text-gray-600" />}
-                                            {value === 'company_bulk' && <Upload className="w-6 h-6 mx-auto mb-2 text-gray-600" />}
-                                            <span className="text-sm font-medium">{label}</span>
+                                            {value === 'individual' && (
+                                                <Users className="mx-auto mb-2 h-6 w-6 text-gray-600" />
+                                            )}
+                                            {value === 'company_referral' && (
+                                                <FileText className="mx-auto mb-2 h-6 w-6 text-gray-600" />
+                                            )}
+                                            {value === 'company_bulk' && (
+                                                <Upload className="mx-auto mb-2 h-6 w-6 text-gray-600" />
+                                            )}
+                                            <span className="text-sm font-medium">
+                                                {label}
+                                            </span>
                                         </div>
                                     </label>
                                 ))}
@@ -238,10 +295,12 @@ export default function AdminCreateAppointment() {
 
                         {/* Company Selection (for Referral/Bulk) */}
                         {showCompanyField && (
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                                <h2 className="text-lg font-semibold mb-4">Company Information</h2>
+                            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                                <h2 className="mb-4 text-lg font-semibold">
+                                    Company Information
+                                </h2>
                                 <div className="relative">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">
                                         Select Company *
                                     </label>
                                     <input
@@ -252,35 +311,52 @@ export default function AdminCreateAppointment() {
                                             setCompanySearch(e.target.value);
                                             setShowCompanyDropdown(true);
                                         }}
-                                        onFocus={() => setShowCompanyDropdown(true)}
+                                        onFocus={() =>
+                                            setShowCompanyDropdown(true)
+                                        }
                                         placeholder="Search for a company..."
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                         autoComplete="off"
                                     />
-                                    <input type="hidden" name="company_id" value={formData.company_id} />
-                                    
-                                    {showCompanyDropdown && filteredCompanies.length > 0 && (
-                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                            {filteredCompanies.map((company: Company) => (
-                                                <button
-                                                    key={company.id}
-                                                    type="button"
-                                                    onClick={() => handleCompanySelect(company)}
-                                                    className="w-full px-4 py-2 text-left hover:bg-blue-50 transition-colors"
-                                                >
-                                                    {company.company_name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <input
+                                        type="hidden"
+                                        name="company_id"
+                                        value={formData.company_id}
+                                    />
+
+                                    {showCompanyDropdown &&
+                                        filteredCompanies.length > 0 && (
+                                            <div className="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                                                {filteredCompanies.map(
+                                                    (company: Company) => (
+                                                        <button
+                                                            key={company.id}
+                                                            type="button"
+                                                            onClick={() =>
+                                                                handleCompanySelect(
+                                                                    company,
+                                                                )
+                                                            }
+                                                            className="w-full px-4 py-2 text-left transition-colors hover:bg-moss-50"
+                                                        >
+                                                            {
+                                                                company.company_name
+                                                            }
+                                                        </button>
+                                                    ),
+                                                )}
+                                            </div>
+                                        )}
                                     {errors.company_id && (
-                                        <p className="mt-1 text-sm text-red-600">{errors.company_id}</p>
+                                        <p className="mt-1 text-sm text-red-600">
+                                            {errors.company_id}
+                                        </p>
                                     )}
                                 </div>
 
                                 {showReferralCode && (
                                     <div className="mt-4">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">
                                             Referral Code
                                         </label>
                                         <input
@@ -289,7 +365,7 @@ export default function AdminCreateAppointment() {
                                             value={formData.referral_code}
                                             onChange={handleChange}
                                             placeholder="Enter referral code (optional)"
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                         />
                                     </div>
                                 )}
@@ -297,125 +373,157 @@ export default function AdminCreateAppointment() {
                         )}
 
                         {/* Patient Details - Conditional for individual/company_referral */}
-                        {(formData.type === 'individual' || formData.type === 'company_referral') && (
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                    <Users className="w-5 h-5 text-blue-600" />
+                        {(formData.type === 'individual' ||
+                            formData.type === 'company_referral') && (
+                            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                                <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                                    <Users className="h-5 w-5 text-moss-600" />
                                     Patient Medical Details *
                                 </h2>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    
+
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     {/* Birthdate & Age */}
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <label className="mb-2 block text-sm font-medium text-gray-700">
                                             Birthdate *
                                         </label>
                                         <div className="flex gap-3">
                                             <input
                                                 type="date"
                                                 name="birthdate"
-                                                max={new Date().toISOString().split('T')[0]}
-                                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                max={
+                                                    new Date()
+                                                        .toISOString()
+                                                        .split('T')[0]
+                                                }
+                                                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                                 onChange={handleChange}
                                             />
-                                            <div className="flex items-center px-4 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-800 min-w-[100px]">
-                                                Age: <span id="calculatedAge"> - </span>
+                                            <div className="flex min-w-[100px] items-center rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-800">
+                                                Age:{' '}
+                                                <span id="calculatedAge">
+                                                    {' '}
+                                                    -{' '}
+                                                </span>
                                             </div>
                                         </div>
                                         {errors.birthdate && (
-                                            <p className="mt-1 text-sm text-red-600">{errors.birthdate}</p>
+                                            <p className="mt-1 text-sm text-red-600">
+                                                {errors.birthdate}
+                                            </p>
                                         )}
                                     </div>
 
                                     {/* Sex */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">
                                             Sex *
                                         </label>
                                         <select
                                             name="sex"
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                             onChange={handleChange}
                                         >
                                             <option value="">Select sex</option>
                                             <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
+                                            <option value="Female">
+                                                Female
+                                            </option>
                                         </select>
                                         {errors.sex && (
-                                            <p className="mt-1 text-sm text-red-600">{errors.sex}</p>
+                                            <p className="mt-1 text-sm text-red-600">
+                                                {errors.sex}
+                                            </p>
                                         )}
                                     </div>
 
                                     {/* Civil Status */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">
                                             Civil Status *
                                         </label>
                                         <select
                                             name="civil_status"
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                             onChange={handleChange}
                                         >
-                                            <option value="">Select civil status</option>
-                                            <option value="Single">Single</option>
-                                            <option value="Married">Married</option>
-                                            <option value="Divorced">Divorced</option>
-                                            <option value="Widowed">Widowed</option>
+                                            <option value="">
+                                                Select civil status
+                                            </option>
+                                            <option value="Single">
+                                                Single
+                                            </option>
+                                            <option value="Married">
+                                                Married
+                                            </option>
+                                            <option value="Divorced">
+                                                Divorced
+                                            </option>
+                                            <option value="Widowed">
+                                                Widowed
+                                            </option>
                                         </select>
                                         {errors.civil_status && (
-                                            <p className="mt-1 text-sm text-red-600">{errors.civil_status}</p>
+                                            <p className="mt-1 text-sm text-red-600">
+                                                {errors.civil_status}
+                                            </p>
                                         )}
                                     </div>
 
                                     {/* Address */}
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">
                                             Address *
                                         </label>
                                         <textarea
                                             name="address"
                                             rows={2}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                             placeholder="Complete address"
                                             onChange={handleChange}
                                         />
                                         {errors.address && (
-                                            <p className="mt-1 text-sm text-red-600">{errors.address}</p>
+                                            <p className="mt-1 text-sm text-red-600">
+                                                {errors.address}
+                                            </p>
                                         )}
                                     </div>
 
                                     {/* Emergency Contact */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">
                                             Emergency Contact Name *
                                         </label>
                                         <input
                                             type="text"
                                             name="emergency_contact_name"
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                             placeholder="Emergency contact full name"
                                             onChange={handleChange}
                                         />
                                         {errors.emergency_contact_name && (
-                                            <p className="mt-1 text-sm text-red-600">{errors.emergency_contact_name}</p>
+                                            <p className="mt-1 text-sm text-red-600">
+                                                {errors.emergency_contact_name}
+                                            </p>
                                         )}
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">
                                             Emergency Contact Number *
                                         </label>
                                         <input
                                             type="tel"
                                             name="emergency_contact_no"
                                             maxLength={11}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                             placeholder="09XXXXXXXXX"
                                             onChange={handleChange}
                                         />
                                         {errors.emergency_contact_no && (
-                                            <p className="mt-1 text-sm text-red-600">{errors.emergency_contact_no}</p>
+                                            <p className="mt-1 text-sm text-red-600">
+                                                {errors.emergency_contact_no}
+                                            </p>
                                         )}
                                     </div>
                                 </div>
@@ -423,34 +531,47 @@ export default function AdminCreateAppointment() {
                         )}
 
                         {/* Service Type */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                            <h2 className="text-lg font-semibold mb-4">Service Type</h2>
+                        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                            <h2 className="mb-4 text-lg font-semibold">
+                                Service Type
+                            </h2>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
                                     Select Service *
                                 </label>
                                 <select
                                     name="service_type"
                                     value={formData.service_type}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                 >
                                     <option value="">Select a service</option>
-                                    {(Object.entries(serviceTypes) as [string, string][]).map(([value, label]) => (
-                                        <option key={value} value={value}>{label}</option>
+                                    {(
+                                        Object.entries(serviceTypes) as [
+                                            string,
+                                            string,
+                                        ][]
+                                    ).map(([value, label]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
                                     ))}
                                 </select>
                                 {errors.service_type && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.service_type}</p>
+                                    <p className="mt-1 text-sm text-red-600">
+                                        {errors.service_type}
+                                    </p>
                                 )}
                             </div>
                         </div>
 
                         {/* Appointment Date */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                            <h2 className="text-lg font-semibold mb-4">Schedule</h2>
+                        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                            <h2 className="mb-4 text-lg font-semibold">
+                                Schedule
+                            </h2>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
                                     Preferred Date & Time *
                                 </label>
                                 <input
@@ -458,19 +579,23 @@ export default function AdminCreateAppointment() {
                                     name="appointment_date"
                                     value={formData.appointment_date}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                 />
                                 {errors.appointment_date && (
-                                    <p className="mt-1 text-sm text-red-600">{errors.appointment_date}</p>
+                                    <p className="mt-1 text-sm text-red-600">
+                                        {errors.appointment_date}
+                                    </p>
                                 )}
                             </div>
                         </div>
 
                         {/* Notes */}
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                            <h2 className="text-lg font-semibold mb-4">Additional Information</h2>
+                        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+                            <h2 className="mb-4 text-lg font-semibold">
+                                Additional Information
+                            </h2>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
                                     Notes (Optional)
                                 </label>
                                 <textarea
@@ -479,14 +604,14 @@ export default function AdminCreateAppointment() {
                                     onChange={handleChange}
                                     rows={3}
                                     placeholder="Any special requests or information..."
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                 />
                             </div>
                         </div>
 
                         {/* Error Message */}
                         {errors.general && (
-                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
                                 {errors.general}
                             </div>
                         )}
@@ -495,17 +620,19 @@ export default function AdminCreateAppointment() {
                         <div className="flex justify-end gap-4">
                             <Link
                                 href="/admin/appointments"
-                                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                                className="rounded-lg border border-gray-300 px-6 py-2 text-gray-700 transition-colors hover:bg-gray-50"
                             >
                                 Cancel
                             </Link>
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center gap-2 rounded-lg bg-moss-600 px-6 py-2 text-white transition-colors hover:bg-moss-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                <Save className="w-4 h-4" />
-                                {isSubmitting ? 'Creating...' : 'Create Appointment'}
+                                <Save className="h-4 w-4" />
+                                {isSubmitting
+                                    ? 'Creating...'
+                                    : 'Create Appointment'}
                             </button>
                         </div>
                     </form>
@@ -518,4 +645,3 @@ export default function AdminCreateAppointment() {
 AdminCreateAppointment.layout = (page: any) => {
     return <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
 };
-

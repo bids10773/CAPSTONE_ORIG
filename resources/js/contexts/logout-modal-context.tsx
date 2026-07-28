@@ -1,4 +1,10 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react';
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useRef,
+    useState,
+} from 'react';
 import type { ReactNode } from 'react';
 
 interface LogoutModalContextValue {
@@ -7,7 +13,9 @@ interface LogoutModalContextValue {
     closeModal: () => void;
 }
 
-const LogoutModalContext = createContext<LogoutModalContextValue | undefined>(undefined);
+const LogoutModalContext = createContext<LogoutModalContextValue | undefined>(
+    undefined,
+);
 
 export function LogoutModalProvider({ children }: { children: ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -23,8 +31,13 @@ export function LogoutModalProvider({ children }: { children: ReactNode }) {
 
         window.requestAnimationFrame(() => {
             const originalTrigger = triggerRef.current;
-            const sidebarTrigger = document.querySelector<HTMLElement>('[data-test="sidebar-menu-button"]');
-            (originalTrigger?.isConnected ? originalTrigger : sidebarTrigger)?.focus();
+            const sidebarTrigger = document.querySelector<HTMLElement>(
+                '[data-test="sidebar-menu-button"]',
+            );
+            (originalTrigger?.isConnected
+                ? originalTrigger
+                : sidebarTrigger
+            )?.focus();
             triggerRef.current = null;
         });
     }, []);
@@ -39,7 +52,9 @@ export function LogoutModalProvider({ children }: { children: ReactNode }) {
 export function useLogoutModal(): LogoutModalContextValue {
     const context = useContext(LogoutModalContext);
     if (!context) {
-        throw new Error('useLogoutModal must be used within a LogoutModalProvider');
+        throw new Error(
+            'useLogoutModal must be used within a LogoutModalProvider',
+        );
     }
     return context;
 }

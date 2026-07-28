@@ -3,10 +3,11 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import type { BreadcrumbItem } from '@/types';
+import logo from '/resources/images/full_logo2.png';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Doctor Queue', href: "/doctor/appointments" },
-    { title: 'Final Evaluation', href: "" },
+    { title: 'Doctor Queue', href: '/doctor/appointments' },
+    { title: 'Final Evaluation', href: '' },
 ];
 
 interface Props {
@@ -22,10 +23,10 @@ export default function FinalEvaluation({ appointment }: Props) {
     const handleClassChange = (value: string) => {
         setData('medical_class', value);
         const remarksMap: Record<string, string> = {
-            'A': 'FIT TO WORK\nPhysically fit for all types of work. Has no noted defects.',
-            'B': 'FIT TO WORK\nPhysically fit for all types of work. Has minor defect(s) or ailment(s) that is easily curable and offers no handicap to job applied for.',
-            'C': 'Employment at the risk and under the discretion of management.',
-            'pending': 'Pending further laboratory results or clearance.',
+            A: 'FIT TO WORK\nPhysically fit for all types of work. Has no noted defects.',
+            B: 'FIT TO WORK\nPhysically fit for all types of work. Has minor defect(s) or ailment(s) that is easily curable and offers no handicap to job applied for.',
+            C: 'Employment at the risk and under the discretion of management.',
+            pending: 'Pending further laboratory results or clearance.',
         };
         setData('final_remarks', remarksMap[value] || '');
     };
@@ -147,14 +148,12 @@ export default function FinalEvaluation({ appointment }: Props) {
     ];
 
     const isNeg = (s?: string): boolean =>
-    !!(
-        s &&
-        (
-            s.toLowerCase().includes('negative') ||
-            s.toLowerCase().includes('non-reactive') ||
-            s.toLowerCase().includes('normal')
-        )
-    );
+        !!(
+            s &&
+            (s.toLowerCase().includes('negative') ||
+                s.toLowerCase().includes('non-reactive') ||
+                s.toLowerCase().includes('normal'))
+        );
 
     const classItems = [
         {
@@ -163,7 +162,7 @@ export default function FinalEvaluation({ appointment }: Props) {
         },
         {
             key: 'B',
-            desc: "Physical fit for all types of work. Has minor defect(s) or ailment(s) that is easily curable and offers no handicap to job applied for.",
+            desc: 'Physical fit for all types of work. Has minor defect(s) or ailment(s) that is easily curable and offers no handicap to job applied for.',
         },
         {
             key: 'C',
@@ -176,7 +175,7 @@ export default function FinalEvaluation({ appointment }: Props) {
         <>
             <Head title="Medical Examination Report" />
 
-            <div className="min-h-screen bg-gray-100 py-8 px-4">
+            <div className="min-h-screen bg-gray-100 px-4 py-8">
                 <form onSubmit={submit}>
                     <div
                         className="mx-auto bg-white shadow-lg"
@@ -189,28 +188,42 @@ export default function FinalEvaluation({ appointment }: Props) {
                     >
                         {/* ── HEADER ── */}
                         <div
-                            className="text-center border-b-2 border-black px-6 py-3"
+                            className="grid grid-cols-[110px_1fr_110px] items-center border-b-2 border-black px-6 py-3"
                             style={{ borderBottom: '2px solid black' }}
                         >
-                            <p className="text-xs">
-                                2nd Floor, Serafin Business Center, National
-                                Highway Banlic, Cabuyao, Laguna
-                            </p>
-                            <p className="text-xs">
-                                Mobile No. 0920-631-1130
-                            </p>
-                            <h1
-                                className="font-bold mt-1"
-                                style={{ fontSize: '15px' }}
-                            >
-                                MEDICAL EXAMINATION REPORT
-                            </h1>
+                            <img
+                                src={logo}
+                                alt="Living Myth Industrial Clinic"
+                                className="h-16 w-[100px] rounded-sm object-cover"
+                            />
+                            <div className="text-center">
+                                <p
+                                    className="font-bold tracking-wide"
+                                    style={{ fontSize: '14px' }}
+                                >
+                                    LIVING MYTH INDUSTRIAL CLINIC
+                                </p>
+                                <p className="mt-0.5 text-xs">
+                                    2nd Floor, Serafin Business Center, National
+                                    Highway Banlic, Cabuyao, Laguna
+                                </p>
+                                <p className="text-xs">
+                                    Mobile No. 0920-631-1130
+                                </p>
+                                <h1
+                                    className="mt-1 font-bold"
+                                    style={{ fontSize: '15px' }}
+                                >
+                                    MEDICAL EXAMINATION REPORT
+                                </h1>
+                            </div>
+                            <div aria-hidden="true" />
                         </div>
 
-                        <div className="px-6 py-3 space-y-0">
+                        <div className="space-y-0 px-6 py-3">
                             {/* ── PATIENT INFO ── */}
                             <div
-                                className="grid grid-cols-2 gap-x-6 mb-1"
+                                className="mb-1 grid grid-cols-2 gap-x-6"
                                 style={{
                                     borderBottom: '1px solid #999',
                                     paddingBottom: '4px',
@@ -228,17 +241,17 @@ export default function FinalEvaluation({ appointment }: Props) {
                                     label="Age/Sex"
                                     value={`${age ?? '—'} / ${profile?.sex?.toUpperCase() ?? '—'}`}
                                 />
-                                <InfoRow
-                                    label="Date"
-                                    value={formattedDate}
-                                />
+                                <InfoRow label="Date" value={formattedDate} />
                                 <InfoRow
                                     label="Address"
                                     value={profile?.address || ''}
                                 />
                                 <InfoRow
                                     label="Civil Status"
-                                    value={profile?.civil_status?.toUpperCase() || ''}
+                                    value={
+                                        profile?.civil_status?.toUpperCase() ||
+                                        ''
+                                    }
                                 />
                                 <InfoRow
                                     label="Date of Examination"
@@ -251,27 +264,79 @@ export default function FinalEvaluation({ appointment }: Props) {
                             <div className="grid grid-cols-2 gap-x-8 pt-2">
                                 {/* LEFT: History + Physical */}
                                 <div>
-                                    <SectionTitle>I. MEDICAL HISTORY</SectionTitle>
+                                    <SectionTitle>
+                                        I. MEDICAL HISTORY
+                                    </SectionTitle>
 
-<HistoryRow label="A. Present Illness" value={history?.present_illness} />
-<HistoryRow label="B. Past Medical History" value={history?.past_medical_history} />
-<HistoryRow label="C. Operation(s) / Accident(s)" value={history?.operations_accidents} />
-<HistoryRow label="D. Family History" value={history?.family_history} />
-<HistoryRow label="E. Allergies" value={history?.allergies} />
-<HistoryRow label="F. Personal / Social History" value={history?.personal_social_history} />
-<HistoryRow label="G. OB / Menstrual History" value={history?.ob_menstrual_history} />
+                                    <HistoryRow
+                                        label="A. Present Illness"
+                                        value={history?.present_illness}
+                                    />
+                                    <HistoryRow
+                                        label="B. Past Medical History"
+                                        value={history?.past_medical_history}
+                                    />
+                                    <HistoryRow
+                                        label="C. Operation(s) / Accident(s)"
+                                        value={history?.operations_accidents}
+                                    />
+                                    <HistoryRow
+                                        label="D. Family History"
+                                        value={history?.family_history}
+                                    />
+                                    <HistoryRow
+                                        label="E. Allergies"
+                                        value={history?.allergies}
+                                    />
+                                    <HistoryRow
+                                        label="F. Personal / Social History"
+                                        value={history?.personal_social_history}
+                                    />
+                                    <HistoryRow
+                                        label="G. OB / Menstrual History"
+                                        value={history?.ob_menstrual_history}
+                                    />
 
                                     <SectionTitle className="mt-3">
                                         II. PHYSICAL EXAMINATION
                                     </SectionTitle>
-                                    <VitalRow label="A. Height" value={physical?.height} unit="cm" />
-                                    <VitalRow label="B. Weight" value={physical?.weight} unit="kg" />
-                                    <VitalRow label="C. Blood Pressure" value={physical?.blood_pressure} />
-                                    <VitalRow label="D. Temperature" value={physical?.temperature} unit="°C" />
-                                    <VitalRow label="E. Pulse Rate" value={physical?.pulse_rate} unit="bpm" />
-                                    <VitalRow label="F. Respiration" value={physical?.respiration} unit="cpm" />
-                                    <VitalRow label="G. Hearing" value={physical?.hearing} />
-                                    <VitalRow label="H. Visual Acuity" value={physical?.visual_acuity} />
+                                    <VitalRow
+                                        label="A. Height"
+                                        value={physical?.height}
+                                        unit="cm"
+                                    />
+                                    <VitalRow
+                                        label="B. Weight"
+                                        value={physical?.weight}
+                                        unit="kg"
+                                    />
+                                    <VitalRow
+                                        label="C. Blood Pressure"
+                                        value={physical?.blood_pressure}
+                                    />
+                                    <VitalRow
+                                        label="D. Temperature"
+                                        value={physical?.temperature}
+                                        unit="°C"
+                                    />
+                                    <VitalRow
+                                        label="E. Pulse Rate"
+                                        value={physical?.pulse_rate}
+                                        unit="bpm"
+                                    />
+                                    <VitalRow
+                                        label="F. Respiration"
+                                        value={physical?.respiration}
+                                        unit="cpm"
+                                    />
+                                    <VitalRow
+                                        label="G. Hearing"
+                                        value={physical?.hearing}
+                                    />
+                                    <VitalRow
+                                        label="H. Visual Acuity"
+                                        value={physical?.visual_acuity}
+                                    />
                                 </div>
 
                                 {/* RIGHT: Systemic exam table */}
@@ -287,17 +352,17 @@ export default function FinalEvaluation({ appointment }: Props) {
                                         <thead>
                                             <tr>
                                                 <th
-                                                    className="text-left font-bold pb-1"
+                                                    className="pb-1 text-left font-bold"
                                                     style={{ width: '55%' }}
                                                 ></th>
                                                 <th
-                                                    className="text-center font-bold pb-1"
+                                                    className="pb-1 text-center font-bold"
                                                     style={{ width: '15%' }}
                                                 >
                                                     Normal
                                                 </th>
                                                 <th
-                                                    className="text-left font-bold pb-1 pl-2"
+                                                    className="pb-1 pl-2 text-left font-bold"
                                                     style={{ width: '30%' }}
                                                 >
                                                     Findings
@@ -316,8 +381,10 @@ export default function FinalEvaluation({ appointment }: Props) {
                                                     <td className="py-0.5">
                                                         {item.label}
                                                     </td>
-                                                    <td className="text-center py-0.5">
-                                                        {isNormal(item.value) ? (
+                                                    <td className="py-0.5 text-center">
+                                                        {isNormal(
+                                                            item.value,
+                                                        ) ? (
                                                             <span className="font-bold">
                                                                 /
                                                             </span>
@@ -325,7 +392,7 @@ export default function FinalEvaluation({ appointment }: Props) {
                                                             ''
                                                         )}
                                                     </td>
-                                                    <td className="pl-2 py-0.5 text-xs">
+                                                    <td className="py-0.5 pl-2 text-xs">
                                                         {!isNormal(item.value)
                                                             ? item.value
                                                             : ''}
@@ -344,7 +411,7 @@ export default function FinalEvaluation({ appointment }: Props) {
                             >
                                 <SectionTitle>III. LABORATORY</SectionTitle>
                                 <table
-                                    className="w-full mt-1"
+                                    className="mt-1 w-full"
                                     style={{
                                         borderCollapse: 'collapse',
                                         fontSize: '11px',
@@ -371,9 +438,7 @@ export default function FinalEvaluation({ appointment }: Props) {
                                                         className="py-0.5"
                                                         style={{ width: '22%' }}
                                                     >
-                                                        <span
-                                                            className="inline-flex items-center gap-1"
-                                                        >
+                                                        <span className="inline-flex items-center gap-1">
                                                             <CheckBox
                                                                 checked={neg}
                                                             />{' '}
@@ -453,7 +518,10 @@ export default function FinalEvaluation({ appointment }: Props) {
                                                         </span>
                                                     </td>
                                                     <td className="py-0.5 text-xs italic">
-                                                        {d.result || (d.status ? 'SEE ATTACHED RESULT' : '')}
+                                                        {d.result ||
+                                                            (d.status
+                                                                ? 'SEE ATTACHED RESULT'
+                                                                : '')}
                                                     </td>
                                                 </tr>
                                             );
@@ -468,7 +536,7 @@ export default function FinalEvaluation({ appointment }: Props) {
                                 style={{ borderTop: '1px solid #999' }}
                             >
                                 <SectionTitle>IV. CHEST X-RAY</SectionTitle>
-                                <div className="flex items-start gap-6 mt-1 text-xs">
+                                <div className="mt-1 flex items-start gap-6 text-xs">
                                     <span className="inline-flex items-center gap-1">
                                         <CheckBox
                                             checked={
@@ -497,7 +565,7 @@ export default function FinalEvaluation({ appointment }: Props) {
                                         </span>
                                     )}
                                     {!xray?.findings && (
-                                        <span className="italic text-gray-400">
+                                        <span className="text-gray-400 italic">
                                             SEE ATTACHED RESULT
                                         </span>
                                     )}
@@ -521,7 +589,7 @@ export default function FinalEvaluation({ appointment }: Props) {
                                     V. ELECTROCARDIOGRAM / AUDIOMETRY
                                 </SectionTitle>
                                 <table
-                                    className="w-full mt-1"
+                                    className="mt-1 w-full"
                                     style={{
                                         borderCollapse: 'collapse',
                                         fontSize: '11px',
@@ -541,8 +609,7 @@ export default function FinalEvaluation({ appointment }: Props) {
                                             <tr
                                                 key={r.label}
                                                 style={{
-                                                    borderTop:
-                                                        '1px solid #ddd',
+                                                    borderTop: '1px solid #ddd',
                                                 }}
                                             >
                                                 <td
@@ -558,7 +625,7 @@ export default function FinalEvaluation({ appointment }: Props) {
                                                     <span className="inline-flex items-center gap-1">
                                                         <CheckBox
                                                             checked={isNeg(
-                                                                r.val
+                                                                r.val,
                                                             )}
                                                         />{' '}
                                                         Normal
@@ -593,7 +660,7 @@ export default function FinalEvaluation({ appointment }: Props) {
                             >
                                 <SectionTitle>VI. OTHERS</SectionTitle>
                                 <table
-                                    className="w-full mt-1"
+                                    className="mt-1 w-full"
                                     style={{
                                         borderCollapse: 'collapse',
                                         fontSize: '11px',
@@ -614,7 +681,7 @@ export default function FinalEvaluation({ appointment }: Props) {
                                                 <span className="inline-flex items-center gap-1">
                                                     <CheckBox
                                                         checked={isNeg(
-                                                            lab?.blood_chem_status
+                                                            lab?.blood_chem_status,
                                                         )}
                                                     />{' '}
                                                     Normal
@@ -626,7 +693,7 @@ export default function FinalEvaluation({ appointment }: Props) {
                                                         checked={
                                                             !!lab?.blood_chem_status &&
                                                             !isNeg(
-                                                                lab?.blood_chem_status
+                                                                lab?.blood_chem_status,
                                                             )
                                                         }
                                                     />{' '}
@@ -645,18 +712,18 @@ export default function FinalEvaluation({ appointment }: Props) {
 
                             {/* ── CLASSIFICATION + BMI + CERTIFICATION ── */}
                             <div
-                                className="mt-4 pt-3 grid grid-cols-2 gap-x-8"
+                                className="mt-4 grid grid-cols-2 gap-x-8 pt-3"
                                 style={{ borderTop: '2px solid #000' }}
                             >
                                 {/* LEFT: Classification + Remarks */}
                                 <div>
-                                    <p className="font-bold mb-2 text-xs uppercase tracking-wide">
+                                    <p className="mb-2 text-xs font-bold tracking-wide uppercase">
                                         Medical Classification
                                     </p>
                                     {classItems.map((c) => (
                                         <label
                                             key={c.key}
-                                            className="flex items-start gap-2 mb-1 cursor-pointer"
+                                            className="mb-1 flex cursor-pointer items-start gap-2"
                                         >
                                             <input
                                                 type="radio"
@@ -685,7 +752,7 @@ export default function FinalEvaluation({ appointment }: Props) {
                                     ))}
 
                                     <div className="mt-3">
-                                        <p className="font-bold mb-1 text-xs uppercase tracking-wide">
+                                        <p className="mb-1 text-xs font-bold tracking-wide uppercase">
                                             Remarks
                                         </p>
                                         <Textarea
@@ -693,10 +760,10 @@ export default function FinalEvaluation({ appointment }: Props) {
                                             onChange={(e) =>
                                                 setData(
                                                     'final_remarks',
-                                                    e.target.value
+                                                    e.target.value,
                                                 )
                                             }
-                                            className="text-xs min-h-[70px] border border-black rounded-none resize-none"
+                                            className="min-h-[70px] resize-none rounded-none border border-black text-xs"
                                             style={{
                                                 fontFamily:
                                                     '"Times New Roman", Times, serif',
@@ -711,31 +778,32 @@ export default function FinalEvaluation({ appointment }: Props) {
                                 <div>
                                     {/* BMI */}
                                     <div
-                                        className="mb-3 p-2 border border-black"
-                                        style={{ display: 'inline-block', minWidth: '100%' }}
+                                        className="mb-3 border border-black p-2"
+                                        style={{
+                                            display: 'inline-block',
+                                            minWidth: '100%',
+                                        }}
                                     >
-                                        <p className="font-bold text-xs uppercase tracking-wide mb-1">
+                                        <p className="mb-1 text-xs font-bold tracking-wide uppercase">
                                             Body Mass Index (BMI)
                                         </p>
                                         <p className="text-sm font-bold">
-                                            {bmi
-                                                ? `${bmi} - ${bmiLabel}`
-                                                : '—'}
+                                            {bmi ? `${bmi} - ${bmiLabel}` : '—'}
                                         </p>
                                     </div>
 
                                     {/* Certification */}
                                     <div className="mt-2 text-xs leading-snug">
-                                        <p className="font-bold mb-1">
+                                        <p className="mb-1 font-bold">
                                             CERTIFICATION
                                         </p>
                                         <p className="italic">
                                             "I certify that I am the same person
                                             whose name and picture appears on
                                             this medical record, and that I have
-                                            truthfully answered all the questions
-                                            asked regarding my person being
-                                            medically examined,"
+                                            truthfully answered all the
+                                            questions asked regarding my person
+                                            being medically examined,"
                                         </p>
                                         <div className="mt-4 border-t border-black pt-1 text-center">
                                             <p className="font-semibold">
@@ -752,25 +820,25 @@ export default function FinalEvaluation({ appointment }: Props) {
 
                             {/* ── PHYSICIAN SIGNATURES ── */}
                             <div
-                                className="mt-4 pt-3 grid grid-cols-2 gap-x-8"
+                                className="mt-4 grid grid-cols-2 gap-x-8 pt-3"
                                 style={{ borderTop: '1px solid #999' }}
                             >
                                 <div className="text-center">
                                     <div
-                                        className="border-t border-black mt-8 pt-1"
+                                        className="mt-8 border-t border-black pt-1"
                                         style={{ marginTop: '32px' }}
                                     >
-                                        <p className="font-semibold text-xs">
+                                        <p className="text-xs font-semibold">
                                             Examining Physician
                                         </p>
                                     </div>
                                 </div>
                                 <div className="text-center">
                                     <div
-                                        className="border-t border-black mt-8 pt-1"
+                                        className="mt-8 border-t border-black pt-1"
                                         style={{ marginTop: '32px' }}
                                     >
-                                        <p className="font-semibold text-xs">
+                                        <p className="text-xs font-semibold">
                                             Classified By
                                         </p>
                                     </div>
@@ -779,15 +847,13 @@ export default function FinalEvaluation({ appointment }: Props) {
 
                             {/* ── SUBMIT BUTTON ── */}
                             <div
-                                className="mt-4 pt-3 flex justify-end"
+                                className="mt-4 flex justify-end pt-3"
                                 style={{ borderTop: '2px solid #000' }}
                             >
                                 <Button
                                     type="submit"
-                                    disabled={
-                                        processing || !data.medical_class
-                                    }
-                                    className="px-8 py-2 text-sm font-bold uppercase tracking-widest rounded-none"
+                                    disabled={processing || !data.medical_class}
+                                    className="rounded-none px-8 py-2 text-sm font-bold tracking-widest uppercase"
                                     style={{
                                         background: '#1a1a1a',
                                         color: '#fff',
@@ -818,7 +884,7 @@ function SectionTitle({
 }) {
     return (
         <p
-            className={`font-bold uppercase text-xs tracking-wide mb-1 ${className}`}
+            className={`mb-1 text-xs font-bold tracking-wide uppercase ${className}`}
             style={{ borderBottom: '1px solid #000', paddingBottom: '2px' }}
         >
             {children}
@@ -837,9 +903,9 @@ function InfoRow({
 }) {
     return (
         <div
-            className={`flex gap-2 text-xs py-0.5 ${span ? 'col-span-2' : ''}`}
+            className={`flex gap-2 py-0.5 text-xs ${span ? 'col-span-2' : ''}`}
         >
-            <span className="font-semibold shrink-0 w-36">{label}:</span>
+            <span className="w-36 shrink-0 font-semibold">{label}:</span>
             <span
                 className="flex-1 border-b border-black"
                 style={{ minWidth: '80px' }}
@@ -852,13 +918,11 @@ function InfoRow({
 
 function HistoryRow({ label, value }: { label: string; value?: string }) {
     return (
-        <div className="flex gap-2 text-xs py-0.5">
+        <div className="flex gap-2 py-0.5 text-xs">
             <span className="shrink-0" style={{ width: '170px' }}>
                 {label}
             </span>
-            <span className="border-b border-black flex-1">
-                {value || '-'}
-            </span>
+            <span className="flex-1 border-b border-black">{value || '-'}</span>
         </div>
     );
 }
@@ -873,11 +937,11 @@ function VitalRow({
     unit?: string;
 }) {
     return (
-        <div className="flex gap-2 text-xs py-0.5">
+        <div className="flex gap-2 py-0.5 text-xs">
             <span className="shrink-0" style={{ width: '130px' }}>
                 {label}
             </span>
-            <span className="border-b border-black flex-1">
+            <span className="flex-1 border-b border-black">
                 {value ? `${value}${unit ? ' ' + unit : ''}` : '—'}
             </span>
         </div>
@@ -904,4 +968,6 @@ function CheckBox({ checked }: { checked: boolean }) {
     );
 }
 
-FinalEvaluation.layout = (page: any) => <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
+FinalEvaluation.layout = (page: any) => (
+    <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>
+);

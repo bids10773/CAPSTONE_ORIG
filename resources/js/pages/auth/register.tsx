@@ -1,6 +1,18 @@
 import { Form, Head } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CalendarDays, Check, ChevronDown, Eye, EyeOff, LockKeyhole, Mail, Phone, ShieldCheck, UserRound, X } from 'lucide-react';
+import {
+    CalendarDays,
+    Check,
+    ChevronDown,
+    Eye,
+    EyeOff,
+    LockKeyhole,
+    Mail,
+    Phone,
+    ShieldCheck,
+    UserRound,
+    X,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
@@ -35,71 +47,163 @@ export default function Register() {
             <Head title="Create your account" />
             <AuthLayout variant="register">
                 <header className="mb-7">
-                    <p className="text-xs font-semibold uppercase tracking-[.16em] text-blue-600">Patient registration</p>
-                    <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-slate-950">Create your account</h1>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">Register to access the Medical Services Management System.</p>
+                    <p className="text-xs font-semibold tracking-[.16em] text-moss-600 uppercase">
+                        Patient registration
+                    </p>
+                    <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-slate-950">
+                        Create your account
+                    </h1>
+                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                        Register to access the Medical Services Management
+                        System.
+                    </p>
                 </header>
 
-                <Form {...store.form()} resetOnSuccess={['password', 'password_confirmation']} className="space-y-5">
+                <Form
+                    {...store.form()}
+                    resetOnSuccess={['password', 'password_confirmation']}
+                    className="space-y-5"
+                >
                     {({ processing, errors }) => (
                         <>
                             <div className="grid gap-4 sm:grid-cols-2">
-                                <Field label="First name" error={errors.first_name}>
+                                <Field
+                                    label="First name"
+                                    error={errors.first_name}
+                                >
                                     <div className="auth-input-wrap">
                                         <UserRound className="auth-input-icon" />
-                                        <input name="first_name" required autoFocus autoComplete="given-name" placeholder="Juan" className="auth-input" />
+                                        <input
+                                            name="first_name"
+                                            required
+                                            autoFocus
+                                            autoComplete="given-name"
+                                            placeholder="Juan"
+                                            className="auth-input"
+                                        />
                                     </div>
                                 </Field>
-                                <Field label="Last name" error={errors.last_name}>
+                                <Field
+                                    label="Last name"
+                                    error={errors.last_name}
+                                >
                                     <div className="auth-input-wrap">
                                         <UserRound className="auth-input-icon" />
-                                        <input name="last_name" required autoComplete="family-name" placeholder="Dela Cruz" className="auth-input" />
+                                        <input
+                                            name="last_name"
+                                            required
+                                            autoComplete="family-name"
+                                            placeholder="Dela Cruz"
+                                            className="auth-input"
+                                        />
                                     </div>
                                 </Field>
                             </div>
 
                             <div className="grid gap-4 sm:grid-cols-2">
-                                <Field label="Middle name" optional error={errors.middle_name}>
+                                <Field
+                                    label="Middle name"
+                                    optional
+                                    error={errors.middle_name}
+                                >
                                     <div className="auth-input-wrap">
                                         <UserRound className="auth-input-icon" />
-                                        <input name="middle_name" autoComplete="additional-name" placeholder="Optional" className="auth-input" />
+                                        <input
+                                            name="middle_name"
+                                            autoComplete="additional-name"
+                                            placeholder="Optional"
+                                            className="auth-input"
+                                        />
                                     </div>
                                 </Field>
-                                <Field label="Phone number" error={errors.contact}>
+                                <Field
+                                    label="Phone number"
+                                    error={errors.contact}
+                                >
                                     <div className="auth-input-wrap">
                                         <Phone className="auth-input-icon" />
-                                        <input name="contact" type="tel" required inputMode="numeric" maxLength={11} pattern="09[0-9]{9}" autoComplete="tel" placeholder="09XX XXX XXXX" className="auth-input" />
+                                        <input
+                                            name="contact"
+                                            type="tel"
+                                            required
+                                            inputMode="numeric"
+                                            maxLength={11}
+                                            pattern="09[0-9]{9}"
+                                            autoComplete="tel"
+                                            placeholder="09XX XXX XXXX"
+                                            className="auth-input"
+                                        />
                                     </div>
                                 </Field>
                             </div>
 
                             <div className="grid gap-4 sm:grid-cols-3">
-                                <Field label="Birthdate" error={errors.birthdate}>
+                                <Field
+                                    label="Birthdate"
+                                    error={errors.birthdate}
+                                >
                                     <div className="auth-input-wrap">
                                         <CalendarDays className="auth-input-icon" />
-                                        <input name="birthdate" type="date" required max={new Date().toISOString().split('T')[0]} className="auth-input pl-10 text-sm" />
+                                        <input
+                                            name="birthdate"
+                                            type="date"
+                                            required
+                                            max={
+                                                new Date()
+                                                    .toISOString()
+                                                    .split('T')[0]
+                                            }
+                                            className="auth-input pl-10 text-sm"
+                                        />
                                     </div>
                                 </Field>
                                 <Field label="Sex" error={errors.sex}>
                                     <div className="auth-input-wrap">
-                                        <select name="sex" required defaultValue="" className="auth-select">
-                                            <option value="" disabled>Select</option>
+                                        <select
+                                            name="sex"
+                                            required
+                                            defaultValue=""
+                                            className="auth-select"
+                                        >
+                                            <option value="" disabled>
+                                                Select
+                                            </option>
                                             <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
+                                            <option value="Female">
+                                                Female
+                                            </option>
                                         </select>
-                                        <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                                        <ChevronDown className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-slate-400" />
                                     </div>
                                 </Field>
-                                <Field label="Civil status" error={errors.civil_status}>
+                                <Field
+                                    label="Civil status"
+                                    error={errors.civil_status}
+                                >
                                     <div className="auth-input-wrap">
-                                        <select name="civil_status" required defaultValue="" className="auth-select">
-                                            <option value="" disabled>Select</option>
-                                            <option value="Single">Single</option>
-                                            <option value="Married">Married</option>
-                                            <option value="Divorced">Divorced</option>
-                                            <option value="Widowed">Widowed</option>
+                                        <select
+                                            name="civil_status"
+                                            required
+                                            defaultValue=""
+                                            className="auth-select"
+                                        >
+                                            <option value="" disabled>
+                                                Select
+                                            </option>
+                                            <option value="Single">
+                                                Single
+                                            </option>
+                                            <option value="Married">
+                                                Married
+                                            </option>
+                                            <option value="Divorced">
+                                                Divorced
+                                            </option>
+                                            <option value="Widowed">
+                                                Widowed
+                                            </option>
                                         </select>
-                                        <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                                        <ChevronDown className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-slate-400" />
                                     </div>
                                 </Field>
                             </div>
@@ -107,7 +211,14 @@ export default function Register() {
                             <Field label="Email address" error={errors.email}>
                                 <div className="auth-input-wrap">
                                     <Mail className="auth-input-icon" />
-                                    <input name="email" type="email" required autoComplete="email" placeholder="you@example.com" className="auth-input" />
+                                    <input
+                                        name="email"
+                                        type="email"
+                                        required
+                                        autoComplete="email"
+                                        placeholder="you@example.com"
+                                        className="auth-input"
+                                    />
                                 </div>
                             </Field>
 
@@ -115,66 +226,229 @@ export default function Register() {
                                 <Field label="Password" error={errors.password}>
                                     <div className="auth-input-wrap">
                                         <LockKeyhole className="auth-input-icon" />
-                                        <input name="password" value={password} onChange={(e) => setPassword(e.target.value)} type={showPassword ? 'text' : 'password'} required autoComplete="new-password" placeholder="At least 8 characters" className="auth-input pr-11" />
-                                        <PasswordToggle shown={showPassword} onClick={() => setShowPassword(!showPassword)} />
+                                        <input
+                                            name="password"
+                                            value={password}
+                                            onChange={(e) =>
+                                                setPassword(e.target.value)
+                                            }
+                                            type={
+                                                showPassword
+                                                    ? 'text'
+                                                    : 'password'
+                                            }
+                                            required
+                                            autoComplete="new-password"
+                                            placeholder="At least 8 characters"
+                                            className="auth-input pr-11"
+                                        />
+                                        <PasswordToggle
+                                            shown={showPassword}
+                                            onClick={() =>
+                                                setShowPassword(!showPassword)
+                                            }
+                                        />
                                     </div>
                                     {password && (
                                         <div className="mt-2">
-                                            <div className="flex gap-1" aria-label={`Password strength: ${strengthLabel}`}>
-                                                {[1, 2, 3, 4].map((level) => <span key={level} className={`h-1 flex-1 rounded-full transition-colors ${level <= strength ? (strength < 3 ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200'}`} />)}
+                                            <div
+                                                className="flex gap-1"
+                                                aria-label={`Password strength: ${strengthLabel}`}
+                                            >
+                                                {[1, 2, 3, 4].map((level) => (
+                                                    <span
+                                                        key={level}
+                                                        className={`h-1 flex-1 rounded-full transition-colors ${level <= strength ? (strength < 3 ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200'}`}
+                                                    />
+                                                ))}
                                             </div>
-                                            <p className="mt-1.5 text-[11px] text-slate-500">{strengthLabel} password</p>
+                                            <p className="mt-1.5 text-[11px] text-slate-500">
+                                                {strengthLabel} password
+                                            </p>
                                         </div>
                                     )}
                                 </Field>
-                                <Field label="Confirm password" error={errors.password_confirmation}>
+                                <Field
+                                    label="Confirm password"
+                                    error={errors.password_confirmation}
+                                >
                                     <div className="auth-input-wrap">
                                         <LockKeyhole className="auth-input-icon" />
-                                        <input name="password_confirmation" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} type={showConfirm ? 'text' : 'password'} required autoComplete="new-password" placeholder="Repeat your password" className={`auth-input pr-11 ${confirmation && !matches ? 'auth-input-error' : ''}`} />
-                                        <PasswordToggle shown={showConfirm} onClick={() => setShowConfirm(!showConfirm)} />
+                                        <input
+                                            name="password_confirmation"
+                                            value={confirmation}
+                                            onChange={(e) =>
+                                                setConfirmation(e.target.value)
+                                            }
+                                            type={
+                                                showConfirm
+                                                    ? 'text'
+                                                    : 'password'
+                                            }
+                                            required
+                                            autoComplete="new-password"
+                                            placeholder="Repeat your password"
+                                            className={`auth-input pr-11 ${confirmation && !matches ? 'auth-input-error' : ''}`}
+                                        />
+                                        <PasswordToggle
+                                            shown={showConfirm}
+                                            onClick={() =>
+                                                setShowConfirm(!showConfirm)
+                                            }
+                                        />
                                     </div>
-                                    {confirmation && <p className={`mt-1.5 flex items-center gap-1 text-[11px] ${matches ? 'text-emerald-600' : 'text-red-600'}`}>{matches && <Check className="size-3" />}{matches ? 'Passwords match' : 'Passwords do not match'}</p>}
+                                    {confirmation && (
+                                        <p
+                                            className={`mt-1.5 flex items-center gap-1 text-[11px] ${matches ? 'text-emerald-600' : 'text-red-600'}`}
+                                        >
+                                            {matches && (
+                                                <Check className="size-3" />
+                                            )}
+                                            {matches
+                                                ? 'Passwords match'
+                                                : 'Passwords do not match'}
+                                        </p>
+                                    )}
                                 </Field>
                             </div>
 
                             <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-3.5">
-                                <Checkbox id="terms" name="terms" checked={acceptedTerms} onCheckedChange={(value) => setAcceptedTerms(!!value)} required className="mt-0.5 size-5 rounded border-slate-300 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600" />
-                                <label htmlFor="terms" className="text-xs leading-5 text-slate-600">
-                                    I agree to the <button type="button" onClick={() => setShowTerms(true)} className="font-semibold text-blue-600 underline-offset-2 hover:underline">Terms of Service and Privacy Policy</button>.
+                                <Checkbox
+                                    id="terms"
+                                    name="terms"
+                                    checked={acceptedTerms}
+                                    onCheckedChange={(value) =>
+                                        setAcceptedTerms(!!value)
+                                    }
+                                    required
+                                    className="mt-0.5 size-5 rounded border-slate-300 data-[state=checked]:border-moss-600 data-[state=checked]:bg-moss-600"
+                                />
+                                <label
+                                    htmlFor="terms"
+                                    className="text-xs leading-5 text-slate-600"
+                                >
+                                    I agree to the{' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowTerms(true)}
+                                        className="font-semibold text-moss-600 underline-offset-2 hover:underline"
+                                    >
+                                        Terms of Service and Privacy Policy
+                                    </button>
+                                    .
                                 </label>
                             </div>
 
-                            <button type="submit" disabled={processing || !acceptedTerms || (!!confirmation && !matches)} className="auth-primary-button">
-                                {processing ? <><Spinner className="size-4" /> Creating your account…</> : 'Create account'}
+                            <button
+                                type="submit"
+                                disabled={
+                                    processing ||
+                                    !acceptedTerms ||
+                                    (!!confirmation && !matches)
+                                }
+                                className="auth-primary-button"
+                            >
+                                {processing ? (
+                                    <>
+                                        <Spinner className="size-4" /> Creating
+                                        your account…
+                                    </>
+                                ) : (
+                                    'Create account'
+                                )}
                             </button>
                         </>
                     )}
                 </Form>
 
                 <div className="mt-6 text-center text-sm text-slate-500">
-                    Already have an account? <TextLink href={login()} className="font-semibold text-blue-600 hover:text-blue-700">Sign in</TextLink>
+                    Already have an account?{' '}
+                    <TextLink
+                        href={login()}
+                        className="font-semibold text-moss-600 hover:text-moss-700"
+                    >
+                        Sign in
+                    </TextLink>
                 </div>
             </AuthLayout>
 
             <AnimatePresence>
                 {showTerms && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="terms-title" onMouseDown={(e) => e.target === e.currentTarget && setShowTerms(false)}>
-                        <motion.div initial={{ scale: .96, y: 10 }} animate={{ scale: 1, y: 0 }} className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-moss-950/25 p-5 backdrop-blur-sm"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="terms-title"
+                        onMouseDown={(e) =>
+                            e.target === e.currentTarget && setShowTerms(false)
+                        }
+                    >
+                        <motion.div
+                            initial={{ scale: 0.96, y: 10 }}
+                            animate={{ scale: 1, y: 0 }}
+                            className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+                        >
                             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
                                 <div className="flex items-center gap-3">
-                                    <span className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600"><ShieldCheck className="size-5" /></span>
-                                    <div><h2 id="terms-title" className="font-semibold text-slate-900">Terms & Privacy</h2><p className="text-xs text-slate-500">Your data, handled responsibly</p></div>
+                                    <span className="flex size-10 items-center justify-center rounded-xl bg-moss-50 text-moss-600">
+                                        <ShieldCheck className="size-5" />
+                                    </span>
+                                    <div>
+                                        <h2
+                                            id="terms-title"
+                                            className="font-semibold text-slate-900"
+                                        >
+                                            Terms & Privacy
+                                        </h2>
+                                        <p className="text-xs text-slate-500">
+                                            Your data, handled responsibly
+                                        </p>
+                                    </div>
                                 </div>
-                                <button onClick={() => setShowTerms(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close"><X className="size-5" /></button>
+                                <button
+                                    onClick={() => setShowTerms(false)}
+                                    className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                    aria-label="Close"
+                                >
+                                    <X className="size-5" />
+                                </button>
                             </div>
                             <div className="max-h-[55vh] space-y-4 overflow-y-auto px-6 py-5 text-sm leading-6 text-slate-600">
-                                <p className="font-semibold text-slate-900">Living Myth Industrial Clinic Data Privacy Agreement</p>
-                                <p>Your medical and personal information is handled in accordance with the Data Privacy Act of 2012 (RA 10173).</p>
-                                <p>We collect your name, email, contact number, and profile information only for medical record verification, patient care, and appointment scheduling.</p>
-                                <p>Your data is stored securely, accessed only by authorized personnel, and retained only as long as necessary for legitimate clinic operations.</p>
+                                <p className="font-semibold text-slate-900">
+                                    Living Myth Industrial Clinic Data Privacy
+                                    Agreement
+                                </p>
+                                <p>
+                                    Your medical and personal information is
+                                    handled in accordance with the Data Privacy
+                                    Act of 2012 (RA 10173).
+                                </p>
+                                <p>
+                                    We collect your name, email, contact number,
+                                    and profile information only for medical
+                                    record verification, patient care, and
+                                    appointment scheduling.
+                                </p>
+                                <p>
+                                    Your data is stored securely, accessed only
+                                    by authorized personnel, and retained only
+                                    as long as necessary for legitimate clinic
+                                    operations.
+                                </p>
                             </div>
                             <div className="border-t border-slate-100 bg-slate-50 px-6 py-4">
-                                <button onClick={() => { setAcceptedTerms(true); setShowTerms(false); }} className="auth-primary-button ml-auto max-w-52">Accept and continue</button>
+                                <button
+                                    onClick={() => {
+                                        setAcceptedTerms(true);
+                                        setShowTerms(false);
+                                    }}
+                                    className="auth-primary-button ml-auto max-w-52"
+                                >
+                                    Accept and continue
+                                </button>
                             </div>
                         </motion.div>
                     </motion.div>
@@ -184,19 +458,47 @@ export default function Register() {
     );
 }
 
-function Field({ label, optional, error, children }: { label: string; optional?: boolean; error?: string; children: React.ReactNode }) {
+function Field({
+    label,
+    optional,
+    error,
+    children,
+}: {
+    label: string;
+    optional?: boolean;
+    error?: string;
+    children: React.ReactNode;
+}) {
     return (
         <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">{label} {optional && <span className="font-normal text-slate-400">(optional)</span>}</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+                {label}{' '}
+                {optional && (
+                    <span className="font-normal text-slate-400">
+                        (optional)
+                    </span>
+                )}
+            </label>
             {children}
             <InputError message={error} className="mt-1.5 text-xs" />
         </div>
     );
 }
 
-function PasswordToggle({ shown, onClick }: { shown: boolean; onClick: () => void }) {
+function PasswordToggle({
+    shown,
+    onClick,
+}: {
+    shown: boolean;
+    onClick: () => void;
+}) {
     return (
-        <button type="button" onClick={onClick} className="auth-password-toggle" aria-label={shown ? 'Hide password' : 'Show password'}>
+        <button
+            type="button"
+            onClick={onClick}
+            className="auth-password-toggle"
+            aria-label={shown ? 'Hide password' : 'Show password'}
+        >
             {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>
     );

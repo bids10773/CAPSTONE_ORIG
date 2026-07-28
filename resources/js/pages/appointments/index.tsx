@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { 
-    Calendar, Plus, Search, Eye, CheckCircle, 
-    XCircle, Clock, Filter, Building2
+import {
+    Calendar,
+    Plus,
+    Search,
+    Eye,
+    CheckCircle,
+    XCircle,
+    Clock,
+    Filter,
+    Building2,
 } from 'lucide-react';
 import type { BreadcrumbItem } from '@/types';
 import { cn } from '@/lib/utils';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Appointments', href: "" },
-];
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Appointments', href: '' }];
 
 interface AppointmentData {
     id: number;
@@ -19,8 +24,8 @@ interface AppointmentData {
     status: string;
     service_type: string;
     referral_code: string | null;
-    user: { id: number; first_name: string; last_name: string; email: string; };
-    company: { id: number; name: string; } | null;
+    user: { id: number; first_name: string; last_name: string; email: string };
+    company: { id: number; name: string } | null;
 }
 
 export default function AppointmentsIndex() {
@@ -35,32 +40,52 @@ export default function AppointmentsIndex() {
     useEffect(() => {
         setLoading(true);
         const delayDebounce = setTimeout(() => {
-            router.get('/appointments', {
-                search, status: statusFilter, type: typeFilter,
-            }, {
-                preserveState: true, replace: true,
-                onFinish: () => setLoading(false),
-            });
+            router.get(
+                '/appointments',
+                {
+                    search,
+                    status: statusFilter,
+                    type: typeFilter,
+                },
+                {
+                    preserveState: true,
+                    replace: true,
+                    onFinish: () => setLoading(false),
+                },
+            );
         }, 500);
         return () => clearTimeout(delayDebounce);
     }, [search, statusFilter, typeFilter]);
 
     const getStatusStyles = (status: string) => {
         switch (status) {
-            case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800';
-            case 'accepted': return 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800';
-            case 'arrived': return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800';
-            case 'completed': return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800';
-            case 'cancelled': return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800';
-            default: return 'bg-slate-50 text-slate-700 border-slate-200';
+            case 'pending':
+                return 'bg-amber-50 text-amber-700 border-amber-200';
+            case 'accepted':
+                return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+            case 'arrived':
+                return 'bg-moss-50 text-moss-700 border-moss-200';
+            case 'completed':
+                return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'cancelled':
+                return 'bg-rose-50 text-rose-700 border-rose-200';
+            default:
+                return 'bg-slate-50 text-slate-700 border-slate-200';
         }
     };
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         return {
-            main: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+            main: date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+            }),
+            time: date.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+            }),
         };
     };
 
@@ -68,53 +93,63 @@ export default function AppointmentsIndex() {
         <>
             <Head title="Appointments" />
 
-            <div className="p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
+            <div className="mx-auto max-w-7xl space-y-8 p-6 lg:p-8">
                 {/* PAGE HEADER */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Appointments</h1>
-                        <p className="text-muted-foreground mt-1"></p>
+                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+                            Appointments
+                        </h1>
+                        <p className="mt-1 text-muted-foreground"></p>
                     </div>
                     {can?.create && (
                         <Link
                             href="/appointments/create"
-                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-sm transition-all active:scale-95"
+                            className="flex items-center gap-2 rounded-xl bg-moss-600 px-5 py-2.5 text-white shadow-sm transition-all hover:bg-moss-700 active:scale-95"
                         >
-                            <Plus className="w-4 h-4" />
-                            <span className="font-semibold">New Appointment</span>
+                            <Plus className="h-4 w-4" />
+                            <span className="font-semibold">
+                                New Appointment
+                            </span>
                         </Link>
                     )}
                 </div>
 
                 {/* SEARCH & FILTERS TOOLBAR */}
-                <div className="bg-white dark:bg-gray-800/50 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm">
-                    <div className="flex flex-col lg:flex-row gap-4">
-                        <div className="relative flex-1 group">
-                            <Search className={cn(
-                                "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors",
-                                loading ? "text-blue-500" : "text-gray-400 group-focus-within:text-blue-500"
-                            )} />
+                <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm backdrop-blur-sm">
+                    <div className="flex flex-col gap-4 lg:flex-row">
+                        <div className="group relative flex-1">
+                            <Search
+                                className={cn(
+                                    'absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transition-colors',
+                                    loading
+                                        ? 'text-moss-500'
+                                        : 'text-gray-400 group-focus-within:text-moss-500',
+                                )}
+                            />
                             <input
                                 type="text"
                                 placeholder="Search by patient name or email..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-10 pr-12 py-2.5 bg-gray-50 dark:bg-gray-900 border-transparent focus:border-blue-500 focus:ring-0 rounded-xl transition-all"
+                                className="w-full rounded-xl border-transparent bg-gray-50 py-2.5 pr-12 pl-10 transition-all focus:border-moss-500 focus:ring-0"
                             />
                             {loading && (
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                <div className="absolute top-1/2 right-3 -translate-y-1/2">
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-moss-500 border-t-transparent" />
                                 </div>
                             )}
                         </div>
 
                         <div className="flex flex-wrap gap-3">
-                            <div className="flex items-center gap-2 px-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-transparent focus-within:border-blue-500">
-                                <Filter className="w-4 h-4 text-gray-400" />
+                            <div className="flex items-center gap-2 rounded-xl border border-transparent bg-gray-50 px-3 focus-within:border-moss-500">
+                                <Filter className="h-4 w-4 text-gray-400" />
                                 <select
                                     value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="bg-transparent border-none py-2.5 focus:ring-0 text-sm font-medium cursor-pointer"
+                                    onChange={(e) =>
+                                        setStatusFilter(e.target.value)
+                                    }
+                                    className="cursor-pointer border-none bg-transparent py-2.5 text-sm font-medium focus:ring-0"
                                 >
                                     <option value="">All Statuses</option>
                                     <option value="pending">Pending</option>
@@ -123,16 +158,22 @@ export default function AppointmentsIndex() {
                                 </select>
                             </div>
 
-                            <div className="flex items-center gap-2 px-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-transparent focus-within:border-blue-500">
-                                <Building2 className="w-4 h-4 text-gray-400" />
+                            <div className="flex items-center gap-2 rounded-xl border border-transparent bg-gray-50 px-3 focus-within:border-moss-500">
+                                <Building2 className="h-4 w-4 text-gray-400" />
                                 <select
                                     value={typeFilter}
-                                    onChange={(e) => setTypeFilter(e.target.value)}
-                                    className="bg-transparent border-none py-2.5 focus:ring-0 text-sm font-medium cursor-pointer"
+                                    onChange={(e) =>
+                                        setTypeFilter(e.target.value)
+                                    }
+                                    className="cursor-pointer border-none bg-transparent py-2.5 text-sm font-medium focus:ring-0"
                                 >
                                     <option value="">All Booking Types</option>
-                                    <option value="individual">Individual</option>
-                                    <option value="company_referral">Company Referral</option>
+                                    <option value="individual">
+                                        Individual
+                                    </option>
+                                    <option value="company_referral">
+                                        Company Referral
+                                    </option>
                                 </select>
                             </div>
                         </div>
@@ -140,88 +181,167 @@ export default function AppointmentsIndex() {
                 </div>
 
                 {/* TABLE CONTAINER */}
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
+                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full border-collapse text-left">
                             <thead>
-                                <tr className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Patient Details</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Date & Time</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Service / Type</th>
-                                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Status</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500">Actions</th>
+                                <tr className="border-b border-gray-200 bg-gray-50/50">
+                                    <th className="px-6 py-4 text-xs font-bold tracking-wider text-gray-500 uppercase">
+                                        Patient Details
+                                    </th>
+                                    <th className="px-6 py-4 text-xs font-bold tracking-wider text-gray-500 uppercase">
+                                        Date & Time
+                                    </th>
+                                    <th className="px-6 py-4 text-xs font-bold tracking-wider text-gray-500 uppercase">
+                                        Service / Type
+                                    </th>
+                                    <th className="px-6 py-4 text-xs font-bold tracking-wider text-gray-500 uppercase">
+                                        Status
+                                    </th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold tracking-wider text-gray-500 uppercase">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                            <tbody className="divide-y divide-gray-100">
                                 {appointments?.data?.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-20 text-center">
+                                        <td
+                                            colSpan={5}
+                                            className="px-6 py-20 text-center"
+                                        >
                                             <div className="flex flex-col items-center justify-center space-y-3">
-                                                <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-full text-gray-400">
-                                                    <Calendar className="w-8 h-8" />
+                                                <div className="rounded-full bg-gray-50 p-4 text-gray-400">
+                                                    <Calendar className="h-8 w-8" />
                                                 </div>
-                                                <p className="text-gray-500 font-medium">No appointments match your criteria</p>
+                                                <p className="font-medium text-gray-500">
+                                                    No appointments match your
+                                                    criteria
+                                                </p>
                                             </div>
                                         </td>
                                     </tr>
                                 ) : (
-                                    appointments.data.map((appointment: AppointmentData) => {
-                                        const dateInfo = formatDate(appointment.appointment_date);
-                                        return (
-                                            <tr key={appointment.id} className="group hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm border border-blue-200 dark:border-blue-800">
-                                                            {appointment.user.first_name[0]}{appointment.user.last_name[0]}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-bold text-gray-900 dark:text-white">
-                                                                {appointment.user.first_name} {appointment.user.last_name}
+                                    appointments.data.map(
+                                        (appointment: AppointmentData) => {
+                                            const dateInfo = formatDate(
+                                                appointment.appointment_date,
+                                            );
+                                            return (
+                                                <tr
+                                                    key={appointment.id}
+                                                    className="group transition-colors hover:bg-gray-50/80"
+                                                >
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-moss-200 bg-moss-100 text-sm font-bold text-moss-600">
+                                                                {
+                                                                    appointment
+                                                                        .user
+                                                                        .first_name[0]
+                                                                }
+                                                                {
+                                                                    appointment
+                                                                        .user
+                                                                        .last_name[0]
+                                                                }
                                                             </div>
-                                                            <div className="text-xs text-muted-foreground">{appointment.user.email}</div>
+                                                            <div>
+                                                                <div className="font-bold text-gray-900">
+                                                                    {
+                                                                        appointment
+                                                                            .user
+                                                                            .first_name
+                                                                    }{' '}
+                                                                    {
+                                                                        appointment
+                                                                            .user
+                                                                            .last_name
+                                                                    }
+                                                                </div>
+                                                                <div className="text-xs text-muted-foreground">
+                                                                    {
+                                                                        appointment
+                                                                            .user
+                                                                            .email
+                                                                    }
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-sm">
-                                                    <div className="font-medium text-gray-900 dark:text-white">{dateInfo.main}</div>
-                                                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                                        <Clock className="w-3 h-3" /> {dateInfo.time}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{appointment.service_type}</div>
-                                                    <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight">
-                                                        {appointment.type.replace('_', ' ')}
-                                                    </div>
-                                                    {appointment.company && (
-                                                        <div className="mt-1 flex items-center gap-1 text-[11px] text-blue-600 font-medium">
-                                                            <Building2 className="w-3 h-3" /> {appointment.company.name}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-sm">
+                                                        <div className="font-medium text-gray-900">
+                                                            {dateInfo.main}
                                                         </div>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={cn(
-                                                        "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors",
-                                                        getStatusStyles(appointment.status)
-                                                    )}>
-                                                        {appointment.status === 'pending' && <Clock className="w-3 h-3" />}
-                                                        {appointment.status === 'completed' && <CheckCircle className="w-3 h-3" />}
-                                                        {appointment.status === 'cancelled' && <XCircle className="w-3 h-3" />}
-                                                        <span className="capitalize">{appointment.status}</span>
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <Link
-                                                        href={`/appointments/${appointment.id}`}
-                                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
-                                                    >
-                                                        <Eye className="w-4 h-4" />
-                                                        Details
-                                                    </Link>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
+                                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                            <Clock className="h-3 w-3" />{' '}
+                                                            {dateInfo.time}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-sm font-semibold text-gray-900">
+                                                            {
+                                                                appointment.service_type
+                                                            }
+                                                        </div>
+                                                        <div className="text-[10px] font-bold tracking-tight text-muted-foreground uppercase">
+                                                            {appointment.type.replace(
+                                                                '_',
+                                                                ' ',
+                                                            )}
+                                                        </div>
+                                                        {appointment.company && (
+                                                            <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-moss-600">
+                                                                <Building2 className="h-3 w-3" />{' '}
+                                                                {
+                                                                    appointment
+                                                                        .company
+                                                                        .name
+                                                                }
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span
+                                                            className={cn(
+                                                                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition-colors',
+                                                                getStatusStyles(
+                                                                    appointment.status,
+                                                                ),
+                                                            )}
+                                                        >
+                                                            {appointment.status ===
+                                                                'pending' && (
+                                                                <Clock className="h-3 w-3" />
+                                                            )}
+                                                            {appointment.status ===
+                                                                'completed' && (
+                                                                <CheckCircle className="h-3 w-3" />
+                                                            )}
+                                                            {appointment.status ===
+                                                                'cancelled' && (
+                                                                <XCircle className="h-3 w-3" />
+                                                            )}
+                                                            <span className="capitalize">
+                                                                {
+                                                                    appointment.status
+                                                                }
+                                                            </span>
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <Link
+                                                            href={`/appointments/${appointment.id}`}
+                                                            className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-moss-600 transition-all hover:bg-moss-50"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                            Details
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        },
+                                    )
                                 )}
                             </tbody>
                         </table>
@@ -232,4 +352,6 @@ export default function AppointmentsIndex() {
     );
 }
 
-AppointmentsIndex.layout = (page: any) => <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
+AppointmentsIndex.layout = (page: any) => (
+    <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>
+);

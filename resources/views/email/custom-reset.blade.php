@@ -13,7 +13,7 @@
             <!-- Header -->
             <div style="background: linear-gradient(to right, #246AFE, #1e58d4); padding: 40px; text-align: center;">
                 <div style="margin-bottom: 20px;">
-                    <img src="{{ $message->embed(public_path('images/full_logo.png')) }}" 
+                    <img src="{{ $message->embed(public_path('images/full_logo2.png')) }}" 
                          alt="Living Myth Industrial Clinic" 
                          style="height: 80px; width: auto; display: inline-block;">
                 </div>

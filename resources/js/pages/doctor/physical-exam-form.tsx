@@ -1,49 +1,89 @@
-import { useForm, router } from '@inertiajs/react';
-import React, { useState, useEffect} from 'react';
-import { HeartPulse, Activity, Save, ArrowLeft } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
+import { router, useForm } from '@inertiajs/react';
+import {
+    Activity,
+    ArrowLeft,
+    ClipboardList,
+    HeartPulse,
+    History,
+    Ruler,
+    Save,
+    Stethoscope,
+    Thermometer,
+    UserRound,
+    Weight,
+} from 'lucide-react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import {
+    ClinicalSection,
+    MedicalMetricCard,
+    PatientSummaryCard,
+    SegmentedChoice,
+    StickyActionFooter,
+    WorkflowTimeline,
+} from '@/components/clinical-workflow';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Doctor Queue', href: "/doctor/appointments" },
-    { title: 'Physical Examination', href: "" },
+    { title: 'Doctor Queue', href: '/doctor/appointments' },
+    { title: 'Physical Examination', href: '' },
 ];
 
 interface Props {
     appointment: {
         id: number;
-        user: { first_name: string; last_name: string; };
-        patient_profile?: { 
-    sex?: string; 
-    birthdate?: string; 
-    civil_status?: string;
-};
+        user: { first_name: string; last_name: string };
+        patient_profile?: {
+            sex?: string;
+            birthdate?: string;
+            civil_status?: string;
+        };
     };
     physicalExam: any;
 }
 
-export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
-    const getAge = (birthdate?: string) => {
-    if (!birthdate) return 'N/A';
+const bodyParts = [
+    { label: 'Head and scalp', field: 'head_scalp' },
+    { label: 'Eyes', field: 'eyes' },
+    { label: 'Ears', field: 'ears' },
+    { label: 'Nose and sinuses', field: 'nose_sinuses' },
+    { label: 'Mouth and throat', field: 'mouth_throat' },
+    { label: 'Neck and thyroid', field: 'neck_thyroid' },
+    { label: 'Chest and breasts', field: 'chest_breast' },
+    { label: 'Lungs', field: 'lungs' },
+    { label: 'Heart', field: 'heart' },
+    { label: 'Abdomen', field: 'abdomen' },
+    { label: 'Extremities', field: 'extremities' },
+];
 
+const historyFields = [
+    ['Present illness', 'present_illness'],
+    ['Past medical history', 'past_medical_history'],
+    ['Operations or accidents', 'operations_accidents'],
+    ['Family history', 'family_history'],
+    ['Allergies', 'allergies'],
+] as const;
+
+function getAge(birthdate?: string) {
+    if (!birthdate) return 'Not available';
     const today = new Date();
     const birth = new Date(birthdate);
-
+    if (Number.isNaN(birth.getTime())) return 'Not available';
     let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
+    const beforeBirthday =
+        today.getMonth() < birth.getMonth() ||
+        (today.getMonth() === birth.getMonth() &&
+            today.getDate() < birth.getDate());
+    if (beforeBirthday) age -= 1;
+    return age >= 0 ? `${age} years` : 'Not available';
+}
 
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-        age--;
-    }
-
-    return age;
-};
-
-
+export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
     const { data, setData, post, processing } = useForm<any>({
         height: physicalExam?.height || '',
         weight: physicalExam?.weight || '',
@@ -58,224 +98,335 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
         allergies: physicalExam?.allergies || '',
         personal_social_history: physicalExam?.personal_social_history || '',
         ob_menstrual_history: physicalExam?.ob_menstrual_history || '',
-        ...Object.fromEntries([
-            'head_scalp','eyes','ears','nose_sinuses','mouth_throat',
-            'neck_thyroid','chest_breast','lungs','heart','abdomen',
-            'extremities'
-        ].flatMap(field => [
-            [field, physicalExam?.[field] || ''],
-            [`${field}_status`, physicalExam?.[field] ? 'with_findings' : 'normal']
-        ]))
+        ...Object.fromEntries(
+            bodyParts.flatMap(({ field }) => [
+                [field, physicalExam?.[field] || ''],
+                [
+                    `${field}_status`,
+                    physicalExam?.[field] ? 'with_findings' : 'normal',
+                ],
+            ]),
+        ),
     });
-
-    const bodyParts = [
-        { label: 'Head/Scalp', field: 'head_scalp' },
-        { label: 'Eyes', field: 'eyes' },
-        { label: 'Ears', field: 'ears' },
-        { label: 'Nose/Sinuses', field: 'nose_sinuses' },
-        { label: 'Mouth/Throat', field: 'mouth_throat' },
-        { label: 'Neck/Thyroid', field: 'neck_thyroid' },
-        { label: 'Chest/Breasts', field: 'chest_breast' },
-        { label: 'Lungs', field: 'lungs' },
-        { label: 'Heart', field: 'heart' },
-        { label: 'Abdomen', field: 'abdomen' },
-        { label: 'Extremities', field: 'extremities' },
-    ];
-
     const [bmi, setBmi] = useState<number | null>(null);
 
     useEffect(() => {
-        const h = parseFloat(data.height);
-        const w = parseFloat(data.weight);
-        if (h > 0 && w > 0) {
-            const bmiValue = w / ((h / 100) ** 2);
-            setBmi(Number(bmiValue.toFixed(1)));
-        } else {
-            setBmi(null);
-        }
+        const height = Number.parseFloat(data.height);
+        const weight = Number.parseFloat(data.weight);
+        setBmi(
+            height > 0 && weight > 0
+                ? Number((weight / (height / 100) ** 2).toFixed(1))
+                : null,
+        );
     }, [data.height, data.weight]);
 
-    const getBMICategory = (val: number) => {
-        if (val < 18.5) return { label: 'Underweight', color: 'text-blue-500' };
-        if (val < 25) return { label: 'Normal', color: 'text-green-600' };
-        if (val < 30) return { label: 'Overweight', color: 'text-orange-500' };
-        return { label: 'Obese', color: 'text-red-600' };
-    };
+    const bmiCategory =
+        bmi === null
+            ? null
+            : bmi < 18.5
+              ? 'Underweight'
+              : bmi < 25
+                ? 'Normal'
+                : bmi < 30
+                  ? 'Overweight'
+                  : 'Obese';
 
-    const onSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const onSubmit = (event: React.FormEvent) => {
+        event.preventDefault();
         post(`/doctor/physical-exam-form/${appointment.id}`);
     };
 
+    const patientName = `${appointment.user.first_name} ${appointment.user.last_name}`;
+
     return (
-        <div className="p-6 max-w-6xl mx-auto space-y-6">
+        <form
+            onSubmit={onSubmit}
+            className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 sm:px-6 lg:px-8"
+        >
+            <PatientSummaryCard
+                name={patientName}
+                subtitle="Occupational health physical examination"
+                stage="Physical Examination"
+                details={[
+                    {
+                        label: 'Age',
+                        value: getAge(appointment.patient_profile?.birthdate),
+                        icon: UserRound,
+                    },
+                    {
+                        label: 'Sex',
+                        value: appointment.patient_profile?.sex,
+                    },
+                    {
+                        label: 'Civil status',
+                        value: appointment.patient_profile?.civil_status,
+                    },
+                    {
+                        label: 'Queue',
+                        value: `#${appointment.id}`,
+                    },
+                ]}
+            />
 
-            {/* HEADER */}
-            <Card className="bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg border-0">
-                <CardContent className="flex justify-between items-center p-5">
-                    <div className="flex items-center gap-4">
-                        <Button 
-    variant="ghost" 
-    onClick={() => router.visit('/doctor/dashboard')}
-    className="hover:bg-white/20 hover:text-white transition"
->
-                            <ArrowLeft />
-                        </Button>
-                        <div>
-    <h1 className="text-xl font-bold mb-2">Physical Examination</h1>
+            <WorkflowTimeline
+                current={3}
+                steps={[
+                    'Appointment',
+                    'Registration',
+                    'Vital Signs',
+                    'Physical Exam',
+                    'Laboratory',
+                    'X-Ray',
+                    'Final Evaluation',
+                ]}
+            />
 
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-white/10 p-3 rounded-xl">
-        
-        <div>
-            <p className="text-white/70 text-xs">Patient</p>
-            <p className="font-semibold">
-                {appointment.user.first_name} {appointment.user.last_name}
-            </p>
-        </div>
-
-        <div>
-            <p className="text-white/70 text-xs">Gender</p>
-            <p className="font-semibold">
-                {appointment?.patient_profile?.sex || 'N/A'}
-            </p>
-        </div>
-
-        <div>
-            <p className="text-white/70 text-xs">Age</p>
-            <p className="font-semibold">
-                {getAge(appointment?.patient_profile?.birthdate)}
-            </p>
-        </div>
-
-        <div>
-            <p className="text-white/70 text-xs">Civil Status</p>
-            <p className="font-semibold">
-                {appointment?.patient_profile?.civil_status || 'N/A'}
-            </p>
-        </div>
-
-    </div>
-</div>
-                    </div>
-                    <Button
-    onClick={onSubmit}
-    disabled={processing}
-    className="bg-white text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
->
-    <Save className="mr-2 h-4 w-4"/> 
-    {processing ? 'Saving...' : 'Save'}
-</Button>
-                </CardContent>
-            </Card>
-
-            {/* MEDICAL HISTORY */}
-            <Card className="shadow-sm">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-red-500">
-                        <HeartPulse size={18}/> Medical History
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="grid md:grid-cols-2 gap-4">
-                    {[
-                        ['Present Illness','present_illness'],
-                        ['Past Medical History','past_medical_history'],
-                        ['Operations/Accidents','operations_accidents'],
-                        ['Family History','family_history'],
-                        ['Allergies','allergies']
-                    ].map(([label, field]) => (
-                        <div key={field}>
-                            <Label>{label}</Label>
-                            <textarea
-                                className="w-full border rounded-md p-2 mt-1 text-sm focus:ring-2 focus:ring-blue-500"
-                                value={data[field]}
-                                onChange={(e)=>setData(field, e.target.value)}
-                            />
-                        </div>
-                    ))}
-                    <div className="md:col-span-2">
-                        <Label>Personal/Social History</Label>
-                        <textarea
-                            className="w-full border rounded-md p-2 mt-1 text-sm"
-                            value={data.personal_social_history}
-                            onChange={(e)=>setData('personal_social_history', e.target.value)}
-                        />
-                    </div>
-                    <div className="md:col-span-2">
-                        <Label>
-                            OB / Menstrual History
-                        </Label>
-                        <textarea
-                            value={data.ob_menstrual_history}
-                            onChange={(e) => setData('ob_menstrual_history', e.target.value)}
-                            className="w-full border rounded-md  p-2 mt-1 text-sm"
-                        />
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* VITALS */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-blue-600">
-                        <Activity size={18}/> Vitals & BMI
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="grid md:grid-cols-6 gap-4 items-end">
-                    {['height','weight','blood_pressure','pulse_rate','temperature'].map(v => (
-                        <div key={v}>
-                            <Label className="capitalize">{v.replace('_',' ')}</Label>
-                            <Input
-                                type="text"
-                                value={data[v]}
-                                onChange={(e)=>setData(v,e.target.value)}
-                            />
-                        </div>
-                    ))}
-
-                    <div className="text-center">
-                        <p className="text-xs text-gray-500">BMI</p>
-                        <p className="text-2xl font-bold">{bmi || '--'}</p>
-                        {bmi && <span className={getBMICategory(bmi).color}>{getBMICategory(bmi).label}</span>}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* SYSTEM REVIEW */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-red-500">System Review</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                    {bodyParts.map(part => (
-                        <div key={part.field} className="grid md:grid-cols-12 gap-2 items-center border-b pb-2">
-                            <span className="md:col-span-3 text-sm font-medium">{part.label}</span>
-
-                            <div className="md:col-span-3 flex gap-3 text-xs">
-                                {['normal','with_findings'].map(status => (
-                                    <label key={status}>
-                                        <input
-                                            type="radio"
-                                            checked={data[`${part.field}_status`] === status}
-                                            onChange={()=>setData(`${part.field}_status`, status)}
-                                        /> {status}
-                                    </label>
-                                ))}
-                            </div>
-
-                            <div className="md:col-span-6">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div className="space-y-5">
+                    <ClinicalSection
+                        icon={Activity}
+                        title="Vital signs and measurements"
+                        description="Record the patient's current measurements. BMI is calculated automatically."
+                    >
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            <MedicalMetricCard
+                                icon={Ruler}
+                                label="Height"
+                                unit="cm"
+                            >
                                 <Input
-                                    placeholder="Findings..."
-                                    value={data[part.field]}
-                                    onChange={(e)=>setData(part.field,e.target.value)}
+                                    value={data.height}
+                                    inputMode="decimal"
+                                    onChange={(event) =>
+                                        setData('height', event.target.value)
+                                    }
+                                    placeholder="e.g. 170"
+                                />
+                            </MedicalMetricCard>
+                            <MedicalMetricCard
+                                icon={Weight}
+                                label="Weight"
+                                unit="kg"
+                            >
+                                <Input
+                                    value={data.weight}
+                                    inputMode="decimal"
+                                    onChange={(event) =>
+                                        setData('weight', event.target.value)
+                                    }
+                                    placeholder="e.g. 65"
+                                />
+                            </MedicalMetricCard>
+                            <MedicalMetricCard
+                                icon={HeartPulse}
+                                label="Blood pressure"
+                                unit="mmHg"
+                            >
+                                <Input
+                                    value={data.blood_pressure}
+                                    onChange={(event) =>
+                                        setData(
+                                            'blood_pressure',
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder="120/80"
+                                />
+                            </MedicalMetricCard>
+                            <MedicalMetricCard
+                                icon={Activity}
+                                label="Pulse rate"
+                                unit="bpm"
+                            >
+                                <Input
+                                    value={data.pulse_rate}
+                                    onChange={(event) =>
+                                        setData(
+                                            'pulse_rate',
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder="e.g. 72"
+                                />
+                            </MedicalMetricCard>
+                            <MedicalMetricCard
+                                icon={Thermometer}
+                                label="Temperature"
+                                unit="°C"
+                            >
+                                <Input
+                                    value={data.temperature}
+                                    onChange={(event) =>
+                                        setData(
+                                            'temperature',
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder="e.g. 36.5"
+                                />
+                            </MedicalMetricCard>
+                            <div className="flex flex-col justify-center rounded-2xl border border-moss-200 bg-moss-50 p-4">
+                                <p className="text-xs font-semibold text-moss-700">
+                                    Body mass index
+                                </p>
+                                <div className="mt-2 flex items-end gap-2">
+                                    <strong className="text-3xl text-moss-900">
+                                        {bmi ?? '—'}
+                                    </strong>
+                                    {bmiCategory && (
+                                        <span className="mb-1 rounded-full bg-white px-2 py-1 text-xs font-semibold text-moss-700">
+                                            {bmiCategory}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </ClinicalSection>
+
+                    <ClinicalSection
+                        icon={Stethoscope}
+                        title="Physical examination"
+                        description="Mark each system as normal or document the relevant finding."
+                    >
+                        <div className="grid gap-3 lg:grid-cols-2">
+                            {bodyParts.map((part) => (
+                                <article
+                                    key={part.field}
+                                    className="rounded-2xl border border-border p-4"
+                                >
+                                    <h3 className="mb-3 text-sm font-semibold text-slate-900">
+                                        {part.label}
+                                    </h3>
+                                    <SegmentedChoice
+                                        ariaLabel={`${part.label} assessment`}
+                                        value={data[`${part.field}_status`]}
+                                        onChange={(status) =>
+                                            setData(
+                                                `${part.field}_status`,
+                                                status,
+                                            )
+                                        }
+                                        options={[
+                                            {
+                                                value: 'normal',
+                                                label: 'Normal',
+                                            },
+                                            {
+                                                value: 'with_findings',
+                                                label: 'With findings',
+                                                tone: 'warning',
+                                            },
+                                        ]}
+                                    />
+                                    <Input
+                                        className="mt-3"
+                                        value={data[part.field]}
+                                        onChange={(event) =>
+                                            setData(
+                                                part.field,
+                                                event.target.value,
+                                            )
+                                        }
+                                        placeholder="Document findings, if any"
+                                    />
+                                </article>
+                            ))}
+                        </div>
+                    </ClinicalSection>
+                </div>
+
+                <aside className="space-y-5">
+                    <ClinicalSection
+                        icon={History}
+                        title="Medical history"
+                        description="Relevant history for this evaluation."
+                    >
+                        <div className="space-y-4">
+                            {historyFields.map(([label, field]) => (
+                                <div key={field}>
+                                    <Label htmlFor={field}>{label}</Label>
+                                    <Textarea
+                                        id={field}
+                                        className="mt-1.5 min-h-24"
+                                        value={data[field]}
+                                        onChange={(event) =>
+                                            setData(field, event.target.value)
+                                        }
+                                    />
+                                </div>
+                            ))}
+                            <div>
+                                <Label htmlFor="personal_social_history">
+                                    Personal and social history
+                                </Label>
+                                <Textarea
+                                    id="personal_social_history"
+                                    className="mt-1.5"
+                                    value={data.personal_social_history}
+                                    onChange={(event) =>
+                                        setData(
+                                            'personal_social_history',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="ob_menstrual_history">
+                                    OB / menstrual history
+                                </Label>
+                                <Textarea
+                                    id="ob_menstrual_history"
+                                    className="mt-1.5"
+                                    value={data.ob_menstrual_history}
+                                    onChange={(event) =>
+                                        setData(
+                                            'ob_menstrual_history',
+                                            event.target.value,
+                                        )
+                                    }
                                 />
                             </div>
                         </div>
-                    ))}
-                </CardContent>
-            </Card>
+                    </ClinicalSection>
 
-        </div>
+                    <ClinicalSection
+                        icon={ClipboardList}
+                        title="Clinical assessment"
+                        description="Overall notes and recommendations for the next stage."
+                    >
+                        <Label htmlFor="remarks">Assessment and remarks</Label>
+                        <Textarea
+                            id="remarks"
+                            className="mt-1.5 min-h-40"
+                            value={data.remarks}
+                            onChange={(event) =>
+                                setData('remarks', event.target.value)
+                            }
+                            placeholder="Enter assessment, recommendations, and follow-up notes"
+                        />
+                    </ClinicalSection>
+                </aside>
+            </div>
+
+            <StickyActionFooter hint="Saving completes this examination stage using the existing clinical workflow.">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.visit('/doctor/appointments')}
+                >
+                    <ArrowLeft className="size-4" />
+                    Back to queue
+                </Button>
+                <Button type="submit" disabled={processing}>
+                    <Save className="size-4" />
+                    {processing ? 'Saving examination…' : 'Save examination'}
+                </Button>
+            </StickyActionFooter>
+        </form>
     );
 }
 
-PhysicalExamForm.layout = (page: any) => <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
+PhysicalExamForm.layout = (page: React.ReactNode) => (
+    <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>
+);

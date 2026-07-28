@@ -14,38 +14,46 @@ export default function TermsModal({ isOpen, onClose, title, content }: Props) {
         <AnimatePresence>
             {isOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-gray-950/60 backdrop-blur-md"
+                        className="absolute inset-0 bg-moss-950/25 backdrop-blur-sm"
                     />
-                    <motion.div 
+                    <motion.div
                         initial={{ scale: 0.9, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                        className="relative w-full max-w-2xl max-h-[80vh] overflow-hidden bg-white rounded-[2rem] shadow-2xl flex flex-col"
+                        className="relative flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] bg-white shadow-2xl"
                     >
                         {/* Header */}
-                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-blue-50/50">
+                        <div className="flex items-center justify-between border-b border-gray-100 bg-moss-50/50 p-6">
                             <div className="flex items-center gap-3">
-                                <ShieldCheck className="text-[#246AFE] h-6 w-6" />
-                                <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+                                <ShieldCheck className="h-6 w-6 text-moss-600" />
+                                <h2 className="text-xl font-bold text-gray-900">
+                                    {title}
+                                </h2>
                             </div>
-                            <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                            <button
+                                onClick={onClose}
+                                className="rounded-full p-2 transition-colors hover:bg-gray-200"
+                            >
                                 <X className="h-5 w-5 text-gray-500" />
                             </button>
                         </div>
 
                         {/* Content Area */}
-                        <div className="p-8 overflow-y-auto text-gray-600 leading-relaxed text-sm">
+                        <div className="overflow-y-auto p-8 text-sm leading-relaxed text-gray-600">
                             {content}
                         </div>
 
                         {/* Footer */}
-                        <div className="p-6 border-t border-gray-100 flex justify-end bg-gray-50">
-                            <Button onClick={onClose} className="bg-[#246AFE] px-8">
+                        <div className="flex justify-end border-t border-gray-100 bg-gray-50 p-6">
+                            <Button
+                                onClick={onClose}
+                                className="bg-moss-500 px-8"
+                            >
                                 I Understand
                             </Button>
                         </div>

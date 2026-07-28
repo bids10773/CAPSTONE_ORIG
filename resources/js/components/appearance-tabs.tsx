@@ -1,45 +1,37 @@
-import type { LucideIcon } from 'lucide-react';
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { CheckCircle2, Sun } from 'lucide-react';
 import type { HTMLAttributes } from 'react';
-import type { Appearance } from '@/hooks/use-appearance';
-import { useAppearance } from '@/hooks/use-appearance';
 import { cn } from '@/lib/utils';
 
-export default function AppearanceToggleTab({
+export default function AppearanceThemeCard({
     className = '',
     ...props
 }: HTMLAttributes<HTMLDivElement>) {
-    const { appearance, updateAppearance } = useAppearance();
-
-    const tabs: { value: Appearance; icon: LucideIcon; label: string }[] = [
-        { value: 'light', icon: Sun, label: 'Light' },
-        { value: 'dark', icon: Moon, label: 'Dark' },
-        { value: 'system', icon: Monitor, label: 'System' },
-    ];
-
     return (
         <div
             className={cn(
-                'inline-flex gap-1 rounded-lg bg-neutral-100 p-1 dark:bg-neutral-800',
+                'flex max-w-lg items-start gap-4 rounded-2xl border border-moss-200 bg-moss-50 p-5',
                 className,
             )}
             {...props}
         >
-            {tabs.map(({ value, icon: Icon, label }) => (
-                <button
-                    key={value}
-                    onClick={() => updateAppearance(value)}
-                    className={cn(
-                        'flex items-center rounded-md px-3.5 py-1.5 transition-colors',
-                        appearance === value
-                            ? 'bg-white shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
-                            : 'text-neutral-500 hover:bg-neutral-200/60 hover:text-black dark:text-neutral-400 dark:hover:bg-neutral-700/60',
-                    )}
-                >
-                    <Icon className="-ml-1 h-4 w-4" />
-                    <span className="ml-1.5 text-sm">{label}</span>
-                </button>
-            ))}
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-moss-700 shadow-sm">
+                <Sun className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-slate-900">
+                        Healthcare light theme
+                    </h3>
+                    <CheckCircle2
+                        className="size-4 text-moss-600"
+                        aria-label="Active"
+                    />
+                </div>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                    The clinic workspace uses a consistent bright theme for
+                    comfortable reading and dependable color contrast.
+                </p>
+            </div>
         </div>
     );
 }
