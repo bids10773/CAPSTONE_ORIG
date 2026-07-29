@@ -1,6 +1,8 @@
 import { Link, usePage } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import {
     BarChart3,
+    ChartSpline,
     Building2,
     CalendarDays,
     ClipboardList,
@@ -11,8 +13,8 @@ import {
     Stethoscope,
     UserCog,
     UsersRound,
+    UserRoundSearch,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { NavUser } from '@/components/nav-user';
 import {
     Sidebar,
@@ -49,6 +51,16 @@ const navigation: Record<string, Item[]> = {
             icon: Stethoscope,
         },
         { title: 'Trend analytics', href: '/admin/analytics', icon: BarChart3 },
+        {
+            title: 'Disease forecast',
+            href: '/admin/forecast',
+            icon: ChartSpline,
+        },
+        {
+            title: 'Patient visit forecast',
+            href: '/admin/patient-visits',
+            icon: UserRoundSearch,
+        },
         { title: 'Reports', href: '/admin/reports', icon: ClipboardList },
         { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],

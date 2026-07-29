@@ -6,10 +6,12 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
 use App\Http\Controllers\CompanyEmployeeImportController;
 use App\Http\Controllers\DoctorAvailabilityController;
+use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\DoctorDashboardController;
 use App\Http\Controllers\LaboratoryController;
 use App\Http\Controllers\MedTechDashboardController;
 use App\Http\Controllers\PatientDashboardController;
+use App\Http\Controllers\PatientVisitForecastController;
 use App\Http\Controllers\PhysicalExamController;
 use App\Http\Controllers\RadTechDashboardController;
 use App\Http\Controllers\ReceptionistDashboardController;
@@ -131,6 +133,12 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::post('/companies/{company}/resend-invitation', [CompanyController::class, 'resendInvitation'])->name('companies.resend-invitation');
 
         Route::get('/analytics', [AdminDashboardController::class, 'analytics'])->name('analytics');
+        Route::get('/forecast', [ForecastController::class, 'index'])->name('forecast.index');
+        Route::get('/api/forecast', [ForecastController::class, 'dashboard'])->name('forecast.dashboard');
+        Route::get('/api/forecast/history', [ForecastController::class, 'history'])->name('forecast.history');
+        Route::get('/api/forecast/{disease}', [ForecastController::class, 'disease'])->name('forecast.disease');
+        Route::get('/patient-visits', [PatientVisitForecastController::class, 'index'])->name('patient-visits.index');
+        Route::get('/api/patient-visits', [PatientVisitForecastController::class, 'dashboard'])->name('patient-visits.dashboard');
         Route::get('/reports', [AdminDashboardController::class, 'reports'])->name('reports');
     });
 });
