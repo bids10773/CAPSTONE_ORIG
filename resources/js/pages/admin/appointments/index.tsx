@@ -1,3 +1,4 @@
+import type { PageProps } from '@inertiajs/core'; // Import this at the top
 import { Head, usePage, router } from '@inertiajs/react';
 import {
     Eye,
@@ -7,12 +8,14 @@ import {
     Search,
     UserCheck,
     FileWarning,
-    MapPin,
     Phone,
+    Mail,
     User,
     ArrowRight,
 } from 'lucide-react';
 
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -21,11 +24,8 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 
-import { Button } from '@/components/ui/button';
-import { useState, useEffect } from 'react';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import { PageProps } from '@inertiajs/core'; // Import this at the top
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Appointments', href: '/admin/appointments' },
@@ -72,16 +72,22 @@ interface Props extends PageProps {
         search: string;
         status: string;
     };
+    bulkOnly: boolean;
 }
 
 export default function AdminAppointmentsIndex() {
-    const { appointments, filters } = usePage<Props>().props;
+    const { appointments, filters, bulkOnly } = usePage<Props>().props;
+    const endpoint = bulkOnly
+        ? '/admin/bulk-appointments'
+        : '/admin/appointments';
     const [selectedAppointment, setSelectedAppointment] =
         useState<Appointment | null>(null);
     const [search, setSearch] = useState(filters.search ?? '');
 
     // 1. Validation Logic: Checks if the profile is ready for the Doctor
     const getMissingFields = (apt: Appointment) => {
+        if (apt.type === 'company_bulk') return [];
+
         const fields = [];
         const p = apt.user.patient_profile;
         if (!p?.birthdate) fields.push('Birthdate');
@@ -92,23 +98,13 @@ export default function AdminAppointmentsIndex() {
     };
 
     //for service_types arraay format
-    const formatService = (service: any) => {
-        try {
-            const parsed =
-                typeof service === 'string' ? JSON.parse(service) : service;
-            return Array.isArray(parsed) ? parsed.join(', ') : parsed;
-        } catch {
-            return service;
-        }
-    };
-
     const isComplete = (apt: Appointment) => getMissingFields(apt).length === 0;
 
     // 2. Debounced Search
     useEffect(() => {
         const timeout = setTimeout(() => {
             router.get(
-                '/admin/appointments',
+                endpoint,
                 { ...filters, search },
                 {
                     preserveState: true,
@@ -118,7 +114,7 @@ export default function AdminAppointmentsIndex() {
             );
         }, 400);
         return () => clearTimeout(timeout);
-    }, [search]);
+    }, [search, endpoint, filters]);
 
     const acceptAppointment = (id: number) => {
         router.patch(
@@ -193,8 +189,24 @@ export default function AdminAppointmentsIndex() {
 
     return (
         <>
-            <Head title="Admin - Appointment Setting" />
+            <Head
+                title={
+                    bulkOnly ? 'Admin - Bulk Requests' : 'Admin - Appointments'
+                }
+            />
             <div className="p-6">
+                <div className="mb-5">
+                    <h1 className="text-2xl font-bold text-slate-950">
+                        {bulkOnly
+                            ? 'Company Bulk Requests'
+                            : 'Individual Appointments'}
+                    </h1>
+                    <p className="mt-1 text-sm text-slate-500">
+                        {bulkOnly
+                            ? 'Approve company requests without individual patient-profile requirements.'
+                            : 'Review patient readiness before approving individual appointments.'}
+                    </p>
+                </div>
                 {/* Search and Filters */}
                 <div className="mb-6 flex flex-col gap-4 rounded-xl border bg-white p-4 md:flex-row">
                     <div className="relative flex-1">
@@ -210,7 +222,7 @@ export default function AdminAppointmentsIndex() {
                     <select
                         value={filters.status}
                         onChange={(e) =>
-                            router.get('/admin/appointments', {
+                            router.get(endpoint, {
                                 ...filters,
                                 status: e.target.value,
                             })
@@ -233,7 +245,11 @@ export default function AdminAppointmentsIndex() {
                     <table className="w-full text-left">
                         <thead className="border-b bg-gray-50 text-xs font-bold text-gray-500 uppercase">
                             <tr>
-                                <th className="px-6 py-4">Patient Profile</th>
+                                <th className="px-6 py-4">
+                                    {bulkOnly
+                                        ? 'Company Contact'
+                                        : 'Patient Profile'}
+                                </th>
                                 <th className="px-6 py-4">Readiness</th>
                                 <th className="px-6 py-4">Schedule</th>
                                 <th className="px-6 py-4">Appointment type</th>
@@ -250,16 +266,37 @@ export default function AdminAppointmentsIndex() {
                                     className="transition-colors hover:bg-gray-50"
                                 >
                                     <td className="px-6 py-4">
-                                        <p className="font-bold text-gray-900">
-                                            {apt.user.first_name}{' '}
-                                            {apt.user.last_name}
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {apt.user.email}
-                                        </p>
+                                        {apt.type === 'company_bulk' ? (
+                                            <div className="space-y-1">
+                                                <p className="flex items-center gap-1.5 text-sm text-gray-700">
+                                                    <Mail className="h-3.5 w-3.5 text-gray-400" />
+                                                    {apt.user.email}
+                                                </p>
+                                                <p className="flex items-center gap-1.5 text-xs text-gray-500">
+                                                    <Phone className="h-3.5 w-3.5 text-gray-400" />
+                                                    {apt.user.contact ||
+                                                        'Not provided'}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <p className="font-bold text-gray-900">
+                                                    {apt.user.first_name}{' '}
+                                                    {apt.user.last_name}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    {apt.user.email}
+                                                </p>
+                                            </>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4">
-                                        {isComplete(apt) ? (
+                                        {apt.type === 'company_bulk' ? (
+                                            <span className="flex items-center gap-1 text-[10px] font-bold text-orange-600 uppercase">
+                                                <UserCheck className="h-3.5 w-3.5" />{' '}
+                                                Bulk Request
+                                            </span>
+                                        ) : isComplete(apt) ? (
                                             <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 uppercase">
                                                 <UserCheck className="h-3.5 w-3.5" />{' '}
                                                 Profile Complete
@@ -390,11 +427,14 @@ export default function AdminAppointmentsIndex() {
                             <DialogHeader>
                                 <DialogTitle className="flex items-center gap-2 text-xl">
                                     <User className="h-5 w-5 text-moss-600" />
-                                    Review Patient Information
+                                    {selectedAppointment.type === 'company_bulk'
+                                        ? 'Review Company Bulk Request'
+                                        : 'Review Patient Information'}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    Verify all fields before sending to the
-                                    medical queue.
+                                    {selectedAppointment.type === 'company_bulk'
+                                        ? 'Verify the company contact details before approving this request.'
+                                        : 'Verify all fields before sending to the medical queue.'}
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -404,48 +444,83 @@ export default function AdminAppointmentsIndex() {
                                     <h4 className="text-sm font-bold tracking-widest text-gray-400 uppercase">
                                         Personal Data
                                     </h4>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div>
-                                            <p className="text-[10px] text-gray-500">
-                                                Age / Sex
-                                            </p>
-                                            <p className="font-semibold">
-                                                {getAge(
-                                                    selectedAppointment.user
-                                                        .patient_profile
-                                                        ?.birthdate,
-                                                )}{' '}
-                                                /{' '}
-                                                {selectedAppointment.user
-                                                    .patient_profile?.sex ||
-                                                    '?'}
-                                            </p>
+                                    {selectedAppointment.type ===
+                                    'company_bulk' ? (
+                                        <div className="space-y-3">
+                                            <div>
+                                                <p className="flex items-center gap-1 text-[10px] text-gray-500">
+                                                    <Mail className="h-3 w-3" />{' '}
+                                                    Email
+                                                </p>
+                                                <p className="font-semibold">
+                                                    {
+                                                        selectedAppointment.user
+                                                            .email
+                                                    }
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <p className="flex items-center gap-1 text-[10px] text-gray-500">
+                                                    <Phone className="h-3 w-3" />{' '}
+                                                    Contact number
+                                                </p>
+                                                <p className="font-semibold">
+                                                    {selectedAppointment.user
+                                                        .contact ||
+                                                        'Not provided'}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-[10px] text-gray-500">
-                                                Civil Status
-                                            </p>
-                                            <p className="font-semibold">
-                                                {selectedAppointment.user
-                                                    .patient_profile
-                                                    ?.civil_status || 'N/A'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p className="flex items-center gap-1 text-[10px] text-gray-500">
-                                            <Phone className="h-3 w-3" />{' '}
-                                            Contact
-                                        </p>
-                                        <p className="font-semibold">
-                                            {selectedAppointment.user
-                                                .contact || (
-                                                <span className="text-red-500">
-                                                    Missing
-                                                </span>
-                                            )}
-                                        </p>
-                                    </div>
+                                    ) : (
+                                        <>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <p className="text-[10px] text-gray-500">
+                                                        Age / Sex
+                                                    </p>
+                                                    <p className="font-semibold">
+                                                        {getAge(
+                                                            selectedAppointment
+                                                                .user
+                                                                .patient_profile
+                                                                ?.birthdate,
+                                                        )}{' '}
+                                                        /{' '}
+                                                        {selectedAppointment
+                                                            .user
+                                                            .patient_profile
+                                                            ?.sex || '?'}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-gray-500">
+                                                        Civil Status
+                                                    </p>
+                                                    <p className="font-semibold">
+                                                        {selectedAppointment
+                                                            .user
+                                                            .patient_profile
+                                                            ?.civil_status ||
+                                                            'N/A'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="flex items-center gap-1 text-[10px] text-gray-500">
+                                                    <Phone className="h-3 w-3" />{' '}
+                                                    Contact
+                                                </p>
+                                                <p className="font-semibold">
+                                                    {selectedAppointment.user
+                                                        .contact || (
+                                                        <span className="text-red-500">
+                                                            Missing
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* Checklist Card */}
@@ -453,7 +528,21 @@ export default function AdminAppointmentsIndex() {
                                     <h4 className="mb-4 text-center text-sm font-bold tracking-widest text-gray-400 uppercase">
                                         Readiness Checklist
                                     </h4>
-                                    {isComplete(selectedAppointment) ? (
+                                    {selectedAppointment.type ===
+                                    'company_bulk' ? (
+                                        <div className="space-y-2 text-center">
+                                            <div className="inline-flex rounded-full bg-orange-100 p-3 text-orange-600">
+                                                <CheckCircle className="h-8 w-8" />
+                                            </div>
+                                            <p className="text-sm font-bold text-orange-700">
+                                                Ready for Admin Approval
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                Patient birthdate and sex are
+                                                not required for a bulk request.
+                                            </p>
+                                        </div>
+                                    ) : isComplete(selectedAppointment) ? (
                                         <div className="space-y-2 text-center">
                                             <div className="inline-flex rounded-full bg-green-100 p-3 text-green-600">
                                                 <CheckCircle className="h-8 w-8" />
@@ -529,7 +618,10 @@ export default function AdminAppointmentsIndex() {
                                         }`}
                                     >
                                         <CheckCircle2 className="h-4 w-4" />
-                                        Approve & Forward
+                                        {selectedAppointment.type ===
+                                        'company_bulk'
+                                            ? 'Approve Bulk Request'
+                                            : 'Approve & Forward'}
                                         <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 )}

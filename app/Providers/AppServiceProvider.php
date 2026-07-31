@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\Appointment;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Date;
-use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -27,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureReceptionistPermissions();
 
         // 1. CUSTOM EMAIL VERIFICATION LOGIC
         VerifyEmail::toMailUsing(function (object $notifiable, string $url) {
@@ -60,6 +63,20 @@ class AppServiceProvider extends ServiceProvider
                     'expire_message' => 'This password reset link will expire in 60 minutes.',
                 ]);
         });
+    }
+
+    private function configureReceptionistPermissions(): void
+    {
+        foreach (['walkin.view', 'walkin.create', 'patient.search', 'patient.register'] as $permission) {
+            Gate::define($permission, fn ($user): bool => $user->role === 'receptionist');
+        }
+
+        Gate::define(
+            'walkin.update',
+            fn ($user, Appointment $appointment): bool => $user->role === 'receptionist'
+                && $appointment->type === 'walk_in'
+                && $appointment->appointment_date->isToday(),
+        );
     }
 
     /**

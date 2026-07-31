@@ -6,8 +6,8 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
 use App\Http\Controllers\CompanyEmployeeImportController;
 use App\Http\Controllers\DoctorAvailabilityController;
-use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\DoctorDashboardController;
+use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\LaboratoryController;
 use App\Http\Controllers\MedTechDashboardController;
 use App\Http\Controllers\PatientDashboardController;
@@ -15,6 +15,7 @@ use App\Http\Controllers\PatientVisitForecastController;
 use App\Http\Controllers\PhysicalExamController;
 use App\Http\Controllers\RadTechDashboardController;
 use App\Http\Controllers\ReceptionistDashboardController;
+use App\Http\Controllers\ReceptionistWalkInController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TemporaryPasswordController;
 use App\Http\Controllers\XrayController;
@@ -72,17 +73,14 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::get('/company/employees/import/errors/{token}', [CompanyEmployeeImportController::class, 'errorReport'])->whereUuid('token')->name('company.employees.import.errors');
     });
 
-    Route::middleware('role:receptionist')->group(function () {
-        Route::get('/receptionist/dashboard', ReceptionistDashboardController::class)->name('receptionist.dashboard');
-    });
-
-    Route::middleware('role:receptionist')->prefix('staff')->name('staff.')->group(function () {
-        Route::get('/', fn () => redirect()->route('staff.appointments.index'))->name('dashboard');
-        Route::get('/appointments', [AppointmentController::class, 'staffDashboard'])->name('appointments.index');
-        Route::post('/appointments', [AppointmentController::class, 'staffStore'])->name('appointments.store');
-        Route::patch('/appointments/{appointment}', [AppointmentController::class, 'staffUpdate'])->name('appointments.update');
-        Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'staffUpdateStatus'])->name('appointments.status');
-        Route::get('/patients/search', [AppointmentController::class, 'searchPatients'])->name('patients.search');
+    Route::middleware('role:receptionist')->prefix('receptionist')->name('receptionist.')->group(function () {
+        Route::get('/dashboard', ReceptionistDashboardController::class)->name('dashboard');
+        Route::get('/walk-ins', [ReceptionistWalkInController::class, 'index'])->name('walk-ins.index');
+        Route::post('/walk-ins', [ReceptionistWalkInController::class, 'store'])->name('walk-ins.store');
+        Route::patch('/walk-ins/{appointment}/status', [ReceptionistWalkInController::class, 'updateStatus'])->name('walk-ins.status');
+        Route::get('/queue', [ReceptionistWalkInController::class, 'queue'])->name('queue.index');
+        Route::get('/patients', [ReceptionistWalkInController::class, 'patients'])->name('patients.index');
+        Route::get('/patients/search', [ReceptionistWalkInController::class, 'searchPatients'])->name('patients.search');
     });
 
     Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(function () {
@@ -123,6 +121,7 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
             ->name('staff.resend-credentials');
 
         Route::get('/appointments', [AppointmentController::class, 'adminIndex'])->name('appointments.index');
+        Route::get('/bulk-appointments', [AppointmentController::class, 'adminIndex'])->name('bulk-appointments.index');
         Route::get('/appointments/create', [AppointmentController::class, 'adminCreate'])->name('appointments.create');
         Route::post('/appointments', [AppointmentController::class, 'adminStore'])->name('appointments.store');
         Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');

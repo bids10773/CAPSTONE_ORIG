@@ -1,0 +1,114 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\SearchPatientsRequest;
+use App\Http\Requests\StoreWalkInRequest;
+use App\Http\Requests\UpdateWalkInStatusRequest;
+use App\Models\Appointment;
+use App\Models\User;
+use App\Services\WalkInService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class ReceptionistWalkInController extends Controller
+{
+    public function __construct(private readonly WalkInService $walkIns) {}
+
+    public function index(Request $request): Response
+    {
+        return $this->renderIndex($request, 'queue');
+    }
+
+    public function queue(Request $request): Response
+    {
+        return $this->renderIndex($request, 'queue');
+    }
+
+    public function patients(Request $request): Response
+    {
+        return $this->renderIndex($request, 'patients');
+    }
+
+    private function renderIndex(Request $request, string $mode): Response
+    {
+        abort_unless($request->user()->can('walkin.view'), 403);
+
+        $status = $request->string('status')->toString();
+        $search = $request->string('search')->toString();
+        $queuePositions = Appointment::query()
+            ->where('type', 'walk_in')
+            ->whereDate('appointment_date', today())
+            ->orderBy('id')
+            ->pluck('id')
+            ->flip();
+
+        $walkIns = Appointment::query()
+            ->with('user.patientProfile')
+            ->where('type', 'walk_in')
+            ->whereDate('appointment_date', today())
+            ->when($status !== '', fn ($query) => $query->where('status', $status))
+            ->when($search !== '', fn ($query) => $query->whereHas('user', fn ($patient) => $patient
+                ->where('first_name', 'like', "%{$search}%")
+                ->orWhere('last_name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")))
+            ->orderByRaw("CASE status WHEN 'arrived' THEN 1 WHEN 'pending' THEN 2 WHEN 'completed' THEN 3 ELSE 4 END")
+            ->orderBy('id')
+            ->get()
+            ->values()
+            ->map(function (Appointment $appointment) use ($queuePositions): Appointment {
+                $position = ((int) $queuePositions->get($appointment->id)) + 1;
+                $appointment->setAttribute('queue_number', 'W-'.str_pad((string) $position, 3, '0', STR_PAD_LEFT));
+
+                return $appointment;
+            });
+
+        return Inertia::render('receptionist/walk-ins', [
+            'walkIns' => $walkIns,
+            'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'filters' => compact('status', 'search'),
+            'mode' => $mode,
+        ]);
+    }
+
+    public function store(StoreWalkInRequest $request): RedirectResponse
+    {
+        $appointment = $this->walkIns->create($request->validated());
+        $position = Appointment::query()
+            ->where('type', 'walk_in')
+            ->whereDate('appointment_date', today())
+            ->where('id', '<=', $appointment->id)
+            ->count();
+
+        return back()->with('success', 'Walk-in registered. Queue number: W-'.str_pad((string) $position, 3, '0', STR_PAD_LEFT).'.');
+    }
+
+    public function updateStatus(UpdateWalkInStatusRequest $request, Appointment $appointment): RedirectResponse
+    {
+        $appointment->update($request->validated());
+
+        return back()->with('success', 'Walk-in status updated.');
+    }
+
+    public function searchPatients(SearchPatientsRequest $request): JsonResponse
+    {
+        $search = $request->validated('q');
+
+        $patients = User::query()
+            ->where('role', 'patient')
+            ->where('is_active', true)
+            ->where(fn ($query) => $query
+                ->where('first_name', 'like', "%{$search}%")
+                ->orWhere('last_name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")
+                ->orWhere('contact', 'like', "%{$search}%"))
+            ->orderBy('last_name')
+            ->limit(10)
+            ->get(['id', 'first_name', 'middle_name', 'last_name', 'email', 'contact']);
+
+        return response()->json($patients);
+    }
+}

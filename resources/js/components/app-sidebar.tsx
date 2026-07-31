@@ -14,6 +14,7 @@ import {
     UserCog,
     UsersRound,
     UserRoundSearch,
+    ListOrdered,
 } from 'lucide-react';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -42,6 +43,11 @@ const navigation: Record<string, Item[]> = {
             title: 'Appointments',
             href: '/admin/appointments',
             icon: CalendarDays,
+        },
+        {
+            title: 'Bulk Requests',
+            href: '/admin/bulk-appointments',
+            icon: UsersRound,
         },
         { title: 'Staff', href: '/admin/staff', icon: UserCog },
         { title: 'Companies', href: '/admin/companies', icon: Building2 },
@@ -106,16 +112,26 @@ const navigation: Record<string, Item[]> = {
     ],
     receptionist: [
         {
-            title: 'Overview',
+            title: 'Dashboard',
             href: '/receptionist/dashboard',
             icon: LayoutDashboard,
         },
         {
-            title: 'Appointments',
-            href: '/staff/appointments',
-            icon: CalendarDays,
+            title: 'Walk-in Patients',
+            href: '/receptionist/walk-ins',
+            icon: UsersRound,
         },
-        { title: 'Settings', href: '/settings/profile', icon: Settings },
+        {
+            title: 'Queue Management',
+            href: '/receptionist/queue',
+            icon: ListOrdered,
+        },
+        {
+            title: 'Patient Search',
+            href: '/receptionist/patients',
+            icon: UserRoundSearch,
+        },
+        { title: 'Profile', href: '/settings/profile', icon: Settings },
     ],
     company: [
         {

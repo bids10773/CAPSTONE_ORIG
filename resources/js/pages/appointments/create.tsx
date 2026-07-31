@@ -55,6 +55,7 @@ interface AppointmentUser {
     email: string;
     contact?: string | null;
     role: string;
+    company_id?: number | null;
     patient_profile?: PatientProfile | null;
 }
 
@@ -223,10 +224,19 @@ export default function CreateAppointment() {
         auth,
     } = usePage<AppointmentPageProps>().props;
     const storageKey = `appointment-draft-${auth.user.id}`;
+    const isCompanyAccount = auth.user.role === 'company';
 
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState<BookingData>(() => {
-        return restoreDraft(storageKey);
+        const draft = restoreDraft(storageKey);
+
+        return isCompanyAccount
+            ? {
+                  ...draft,
+                  type: 'company_bulk',
+                  company_id: String(auth.user.company_id ?? ''),
+              }
+            : draft;
     });
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [availability, setAvailability] =
@@ -255,7 +265,9 @@ export default function CreateAppointment() {
     ).filter(
         ([value]) =>
             value !== 'walk_in' &&
-            (auth.user.role === 'company' || value !== 'company_bulk'),
+            (isCompanyAccount
+                ? value === 'company_bulk'
+                : value !== 'company_bulk'),
     );
     const serviceEntries = Object.entries(serviceTypes) as OptionEntry[];
     const needsCompany = ['company_referral', 'company_bulk'].includes(
@@ -431,15 +443,15 @@ export default function CreateAppointment() {
             if (!formData.service_types.length)
                 nextErrors.service_types =
                     'Choose at least one medical service.';
-            if (!formData.doctor_id)
+            if (formData.type === 'individual' && !formData.doctor_id)
                 nextErrors.doctor_id = 'Choose a doctor to continue.';
-            if (needsCompany && !formData.company_id)
+            if (!isCompanyAccount && needsCompany && !formData.company_id)
                 nextErrors.company_id = 'Select the referring company.';
         }
         if (currentStep === 2) {
             if (!formData.appointment_date)
                 nextErrors.appointment_date = 'Choose an available date.';
-            if (!formData.start_time)
+            if (formData.type === 'individual' && !formData.start_time)
                 nextErrors.start_time = 'Choose an available time.';
         }
         setErrors((current) => ({ ...current, ...nextErrors }));
@@ -589,6 +601,9 @@ export default function CreateAppointment() {
                                                     }
                                                     errors={errors}
                                                     needsCompany={needsCompany}
+                                                    isCompanyAccount={
+                                                        isCompanyAccount
+                                                    }
                                                     companySearch={
                                                         companySearch
                                                     }
@@ -659,6 +674,10 @@ export default function CreateAppointment() {
                                                         loadingAvailability
                                                     }
                                                     errors={errors}
+                                                    requiresDoctor={
+                                                        formData.type ===
+                                                        'individual'
+                                                    }
                                                     onDate={(date) => {
                                                         setLoadingAvailability(
                                                             true,
@@ -684,6 +703,9 @@ export default function CreateAppointment() {
                                                 <DetailsStep
                                                     user={auth.user}
                                                     profile={patientProfile}
+                                                    isCompanyAccount={
+                                                        isCompanyAccount
+                                                    }
                                                     notes={formData.notes}
                                                     onNotes={(notes) =>
                                                         update('notes', notes)
@@ -822,6 +844,7 @@ interface VisitStepProps {
     loadingDoctors: boolean;
     errors: BookingErrors;
     needsCompany: boolean;
+    isCompanyAccount: boolean;
     companySearch: string;
     companyMenuOpen: boolean;
     filteredCompanies: Company[];
@@ -841,6 +864,7 @@ function VisitStep({
     loadingDoctors,
     errors,
     needsCompany,
+    isCompanyAccount,
     companySearch,
     companyMenuOpen,
     filteredCompanies,
@@ -857,43 +881,55 @@ function VisitStep({
                 title="Visit type"
                 description="How will this appointment be arranged?"
             >
-                <div className="grid gap-3 sm:grid-cols-3">
-                    {appointmentTypes.map(([value, label]) => {
-                        const detail =
-                            TYPE_DETAILS[value] ?? TYPE_DETAILS.individual;
-                        const Icon = detail.icon;
-                        const selected = formData.type === value;
-                        return (
-                            <button
-                                key={value}
-                                type="button"
-                                onClick={() => onType(value)}
-                                aria-pressed={selected}
-                                className={`relative min-h-36 rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50 shadow-sm' : 'border-slate-200 bg-white hover:border-moss-200'}`}
-                            >
-                                {selected && (
-                                    <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-moss-600 text-white">
-                                        <Check className="size-3" />
-                                    </span>
-                                )}
-                                <span
-                                    className={`flex size-10 items-center justify-center rounded-xl ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-500'}`}
+                {isCompanyAccount ? (
+                    <div className="rounded-2xl border border-moss-200 bg-moss-50 p-4">
+                        <p className="text-sm font-semibold text-moss-900">
+                            Company bulk booking
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-moss-700">
+                            This booking is automatically linked to your company
+                            account. No company selection is required.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                        {appointmentTypes.map(([value, label]) => {
+                            const detail =
+                                TYPE_DETAILS[value] ?? TYPE_DETAILS.individual;
+                            const Icon = detail.icon;
+                            const selected = formData.type === value;
+                            return (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => onType(value)}
+                                    aria-pressed={selected}
+                                    className={`relative min-h-36 rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50 shadow-sm' : 'border-slate-200 bg-white hover:border-moss-200'}`}
                                 >
-                                    <Icon className="size-5" />
-                                </span>
-                                <span className="mt-3 block text-sm font-semibold text-slate-900">
-                                    {label}
-                                </span>
-                                <span className="mt-1 block text-xs leading-5 text-slate-500">
-                                    {detail.description}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
+                                    {selected && (
+                                        <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-moss-600 text-white">
+                                            <Check className="size-3" />
+                                        </span>
+                                    )}
+                                    <span
+                                        className={`flex size-10 items-center justify-center rounded-xl ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-500'}`}
+                                    >
+                                        <Icon className="size-5" />
+                                    </span>
+                                    <span className="mt-3 block text-sm font-semibold text-slate-900">
+                                        {label}
+                                    </span>
+                                    <span className="mt-1 block text-xs leading-5 text-slate-500">
+                                        {detail.description}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </FieldGroup>
 
-            {needsCompany && (
+            {needsCompany && !isCompanyAccount && (
                 <FieldGroup
                     title="Referring company"
                     description="Select the company associated with this appointment."
@@ -978,57 +1014,61 @@ function VisitStep({
                 <InlineError message={errors.service_types} />
             </FieldGroup>
 
-            <FieldGroup
-                title="Preferred doctor"
-                description="Choose the clinician who will handle your appointment."
-            >
-                {loadingDoctors ? (
-                    <LoadingState label="Finding available doctors…" />
-                ) : errors.doctors ? (
-                    <InlineError message={errors.doctors} />
-                ) : (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        {doctors.map((doctor: Doctor) => {
-                            const selected =
-                                formData.doctor_id === String(doctor.id);
-                            const initials = `${doctor.first_name?.[0] ?? ''}${doctor.last_name?.[0] ?? ''}`;
-                            return (
-                                <button
-                                    key={doctor.id}
-                                    type="button"
-                                    onClick={() => onDoctor(String(doctor.id))}
-                                    aria-pressed={selected}
-                                    className={`flex min-h-20 items-center gap-3 rounded-xl border p-3.5 text-left transition hover:-translate-y-0.5 hover:shadow-sm focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
-                                >
-                                    <span
-                                        className={`flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-bold ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+            {formData.type === 'individual' && (
+                <FieldGroup
+                    title="Preferred doctor"
+                    description="Choose the clinician who will handle your appointment."
+                >
+                    {loadingDoctors ? (
+                        <LoadingState label="Finding available doctors…" />
+                    ) : errors.doctors ? (
+                        <InlineError message={errors.doctors} />
+                    ) : (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {doctors.map((doctor: Doctor) => {
+                                const selected =
+                                    formData.doctor_id === String(doctor.id);
+                                const initials = `${doctor.first_name?.[0] ?? ''}${doctor.last_name?.[0] ?? ''}`;
+                                return (
+                                    <button
+                                        key={doctor.id}
+                                        type="button"
+                                        onClick={() =>
+                                            onDoctor(String(doctor.id))
+                                        }
+                                        aria-pressed={selected}
+                                        className={`flex min-h-20 items-center gap-3 rounded-xl border p-3.5 text-left transition hover:-translate-y-0.5 hover:shadow-sm focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
                                     >
-                                        {initials}
-                                    </span>
-                                    <span className="min-w-0 flex-1">
-                                        <span className="block truncate text-sm font-semibold text-slate-900">
-                                            Dr. {doctor.first_name}{' '}
-                                            {doctor.last_name}
+                                        <span
+                                            className={`flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-bold ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+                                        >
+                                            {initials}
                                         </span>
-                                        <span className="mt-0.5 block truncate text-xs text-slate-500">
-                                            {doctor.specialization ||
-                                                'Clinic physician'}
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm font-semibold text-slate-900">
+                                                Dr. {doctor.first_name}{' '}
+                                                {doctor.last_name}
+                                            </span>
+                                            <span className="mt-0.5 block truncate text-xs text-slate-500">
+                                                {doctor.specialization ||
+                                                    'Clinic physician'}
+                                            </span>
+                                            <span className="mt-1 block text-[11px] font-medium text-slate-500">
+                                                Gender:{' '}
+                                                {formatDoctorSex(doctor.sex)}
+                                            </span>
                                         </span>
-                                        <span className="mt-1 block text-[11px] font-medium text-slate-500">
-                                            Gender:{' '}
-                                            {formatDoctorSex(doctor.sex)}
-                                        </span>
-                                    </span>
-                                    {selected && (
-                                        <CheckCircle2 className="size-5 shrink-0 text-moss-600" />
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
-                )}
-                <InlineError message={errors.doctor_id} />
-            </FieldGroup>
+                                        {selected && (
+                                            <CheckCircle2 className="size-5 shrink-0 text-moss-600" />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                    <InlineError message={errors.doctor_id} />
+                </FieldGroup>
+            )}
         </div>
     );
 }
@@ -1041,6 +1081,7 @@ interface ScheduleStepProps {
     selectedTime: string;
     loading: boolean;
     errors: BookingErrors;
+    requiresDoctor: boolean;
     onDate: (date: string) => void;
     onTime: (time: string) => void;
 }
@@ -1053,10 +1094,30 @@ function ScheduleStep({
     selectedTime,
     loading,
     errors,
+    requiresDoctor,
     onDate,
     onTime,
 }: ScheduleStepProps) {
     const today = new Date().toISOString().slice(0, 10);
+
+    if (!requiresDoctor) {
+        return (
+            <FieldGroup
+                title="Requested appointment date"
+                description="Choose the preferred date for this bulk booking. The clinic will coordinate staffing and timing separately."
+            >
+                <input
+                    type="date"
+                    min={today}
+                    value={selectedDate}
+                    onChange={(event) => onDate(event.target.value)}
+                    className="h-12 w-full max-w-sm rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
+                />
+                <InlineError message={errors.appointment_date} />
+            </FieldGroup>
+        );
+    }
+
     return (
         <div className="space-y-8">
             <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
@@ -1182,11 +1243,18 @@ function ScheduleStep({
 interface DetailsStepProps {
     user: AppointmentUser;
     profile?: PatientProfile | null;
+    isCompanyAccount: boolean;
     notes: string;
     onNotes: (notes: string) => void;
 }
 
-function DetailsStep({ user, profile, notes, onNotes }: DetailsStepProps) {
+function DetailsStep({
+    user,
+    profile,
+    isCompanyAccount,
+    notes,
+    onNotes,
+}: DetailsStepProps) {
     const age = calculateAge(profile?.birthdate);
     const details = [
         { label: 'Full name', value: user.name, icon: UserRound },
@@ -1211,40 +1279,79 @@ function DetailsStep({ user, profile, notes, onNotes }: DetailsStepProps) {
     ];
     return (
         <div className="space-y-7">
-            <div className="grid gap-3 sm:grid-cols-2">
-                {details.map(({ label, value, icon: Icon }) => (
-                    <div
-                        key={label}
-                        className="flex min-h-18 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
-                    >
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm">
-                            <Icon className="size-4" />
-                        </span>
-                        <div className="min-w-0">
-                            <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
-                                {label}
-                            </p>
-                            <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">
-                                {value}
-                            </p>
+            {isCompanyAccount ? (
+                <div className="space-y-4">
+                    <div className="rounded-xl border border-moss-100 bg-moss-50 p-4 text-sm text-moss-800">
+                        Only the company representative's contact information is
+                        needed for this bulk request.
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="flex min-h-18 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm">
+                                <Mail className="size-4" />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
+                                    Email address
+                                </p>
+                                <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">
+                                    {user.email}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex min-h-18 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm">
+                                <Phone className="size-4" />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
+                                    Contact number
+                                </p>
+                                <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">
+                                    {user.contact || 'Not provided'}
+                                </p>
+                            </div>
                         </div>
                     </div>
-                ))}
-            </div>
-            <div className="flex items-start gap-3 rounded-xl border border-moss-100 bg-moss-50 p-4 text-xs leading-5 text-moss-700">
-                <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-                <p>
-                    Your verified profile information will be attached to this
-                    appointment. To correct it, visit{' '}
-                    <Link
-                        href="/settings/profile"
-                        className="font-semibold underline underline-offset-2"
-                    >
-                        Profile Settings
-                    </Link>{' '}
-                    before booking.
-                </p>
-            </div>
+                </div>
+            ) : (
+                <>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {details.map(({ label, value, icon: Icon }) => (
+                            <div
+                                key={label}
+                                className="flex min-h-18 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
+                            >
+                                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm">
+                                    <Icon className="size-4" />
+                                </span>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
+                                        {label}
+                                    </p>
+                                    <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">
+                                        {value}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex items-start gap-3 rounded-xl border border-moss-100 bg-moss-50 p-4 text-xs leading-5 text-moss-700">
+                        <ShieldCheck className="mt-0.5 size-4 shrink-0" />
+                        <p>
+                            Your verified profile information will be attached
+                            to this appointment. To correct it, visit{' '}
+                            <Link
+                                href="/settings/profile"
+                                className="font-semibold underline underline-offset-2"
+                            >
+                                Profile Settings
+                            </Link>{' '}
+                            before booking.
+                        </p>
+                    </div>
+                </>
+            )}
             <div>
                 <label
                     htmlFor="booking-notes"
@@ -1344,11 +1451,18 @@ function ReviewStep({
                     'Appointment type',
                     appointmentTypes[formData.type] || formData.type,
                 ],
-                [
-                    'Doctor',
-                    `Dr. ${doctor?.first_name || ''} ${doctor?.last_name || ''}`,
-                ],
-                ['Doctor gender', formatDoctorSex(doctor?.sex)],
+                ...(doctor
+                    ? [
+                          [
+                              'Doctor',
+                              `Dr. ${doctor.first_name} ${doctor.last_name}`,
+                          ] as [string, string],
+                          ['Doctor gender', formatDoctorSex(doctor.sex)] as [
+                              string,
+                              string,
+                          ],
+                      ]
+                    : []),
                 ...(company
                     ? [['Company', company.company_name] as [string, string]]
                     : []),
@@ -1366,24 +1480,50 @@ function ReviewStep({
             icon: CalendarDays,
             rows: [
                 ['Date', formatDate(formData.appointment_date)],
-                [
-                    'Time',
-                    `${formatTime(formData.start_time)} – ${formatTime(add30Minutes(formData.start_time))}`,
-                ],
+                ...(formData.start_time
+                    ? [
+                          [
+                              'Time',
+                              `${formatTime(formData.start_time)} – ${formatTime(add30Minutes(formData.start_time))}`,
+                          ] as [string, string],
+                      ]
+                    : [
+                          ['Time', 'To be coordinated by the clinic'] as [
+                              string,
+                              string,
+                          ],
+                      ]),
             ],
         },
         {
-            title: 'Patient details',
+            title:
+                formData.type === 'company_bulk'
+                    ? 'Company contact details'
+                    : 'Patient details',
             step: 3,
             icon: UserRound,
-            rows: [
-                ['Patient', user.name],
-                ['Age', age === null ? 'Not available' : `${age} years old`],
-                ['Contact', user.contact || user.email],
-                ...(formData.notes
-                    ? [['Notes', formData.notes] as [string, string]]
-                    : []),
-            ],
+            rows:
+                formData.type === 'company_bulk'
+                    ? [
+                          ['Email', user.email],
+                          ['Contact number', user.contact || 'Not provided'],
+                          ...(formData.notes
+                              ? [['Notes', formData.notes] as [string, string]]
+                              : []),
+                      ]
+                    : [
+                          ['Patient', user.name],
+                          [
+                              'Age',
+                              age === null
+                                  ? 'Not available'
+                                  : `${age} years old`,
+                          ],
+                          ['Contact', user.contact || user.email],
+                          ...(formData.notes
+                              ? [['Notes', formData.notes] as [string, string]]
+                              : []),
+                      ],
         },
     ];
     return (
@@ -1474,9 +1614,11 @@ function BookingSummary({
                     label={
                         doctor
                             ? `Dr. ${doctor.first_name} ${doctor.last_name}`
-                            : 'Choose a doctor'
+                            : formData.type === 'individual'
+                              ? 'Choose a doctor'
+                              : 'Clinic team to be assigned'
                     }
-                    active={!!doctor}
+                    active={!!doctor || formData.type !== 'individual'}
                 />
                 <SummaryLine
                     icon={CalendarDays}
@@ -1496,9 +1638,13 @@ function BookingSummary({
                     label={
                         formData.start_time
                             ? formatTime(formData.start_time)
-                            : 'Choose a time'
+                            : formData.type === 'individual'
+                              ? 'Choose a time'
+                              : 'Time to be coordinated'
                     }
-                    active={!!formData.start_time}
+                    active={
+                        !!formData.start_time || formData.type !== 'individual'
+                    }
                 />
                 <SummaryLine
                     icon={MapPin}

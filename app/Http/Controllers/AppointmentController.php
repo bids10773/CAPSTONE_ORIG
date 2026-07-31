@@ -81,9 +81,18 @@ class AppointmentController extends Controller
      */
     public function create(Request $request): Response
     {
-        $companies = Company::where('is_active', true)
-            ->orderBy('company_name')
-            ->get(['id', 'company_name']);
+        $companies = Company::query()
+            ->where('status', 'active')
+            ->when(
+                $request->user()->role === 'company',
+                fn ($query) => $query->whereKey($request->user()->company_id),
+            )
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Company $company) => [
+                'id' => $company->id,
+                'company_name' => $company->name,
+            ]);
 
         $user = $request->user()->load('patientProfile'); // ✅ LOAD RELATION
 
@@ -104,9 +113,24 @@ class AppointmentController extends Controller
     {
         $user = $request->user();
 
+        if ($user->role === 'company') {
+            $company = Company::query()
+                ->whereKey($user->company_id)
+                ->where('status', 'active')
+                ->firstOrFail();
+
+            $request->merge([
+                'type' => 'company_bulk',
+                'company_id' => $company->id,
+                'company_name' => $company->name,
+                'doctor_id' => null,
+                'start_time' => null,
+            ]);
+        }
+
         $rules = [
-            'doctor_id' => ['required', 'exists:users,id'],
-            'start_time' => ['required', 'date_format:H:i'],
+            'doctor_id' => ['nullable', 'required_if:type,individual', 'exists:users,id'],
+            'start_time' => ['nullable', 'required_if:type,individual', 'date_format:H:i'],
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
             'company_id' => ['nullable', 'exists:companies,id'],
             'company_name' => ['nullable', 'string', 'max:255'],
@@ -135,37 +159,40 @@ class AppointmentController extends Controller
 
         $data = $validator->validated();
 
-        // Validate doctor availability
-        $doctor = User::findOrFail($data['doctor_id']);
-        if ($doctor->role !== 'doctor' || ! $doctor->is_active) {
-            return back()->withErrors(['doctor_id' => 'Invalid doctor selected.'])->withInput();
-        }
+        $startTime = null;
+        $endTime = null;
 
-        $appointmentDate = new \DateTime($data['appointment_date']);
-        $dayKey = strtolower($appointmentDate->format('D'));
-        $availSlot = collect($doctor->availability ?? [])->firstWhere('day', $dayKey);
+        if ($data['type'] === 'individual') {
+            $doctor = User::findOrFail($data['doctor_id']);
+            if ($doctor->role !== 'doctor' || ! $doctor->is_active) {
+                return back()->withErrors(['doctor_id' => 'Invalid doctor selected.'])->withInput();
+            }
 
-        if (! $availSlot) {
-            return back()->withErrors(['doctor_id' => "Doctor not available on {$appointmentDate->format('l')}."])->withInput();
-        }
+            $appointmentDate = new \DateTime($data['appointment_date']);
+            $dayKey = strtolower($appointmentDate->format('D'));
+            $availSlot = collect($doctor->availability ?? [])->firstWhere('day', $dayKey);
 
-        $startTime = new \DateTime($data['appointment_date'].' '.$data['start_time']);
-        $endTime = clone $startTime;
-        $endTime->add(new \DateInterval('PT30M'));  // 30min slot
+            if (! $availSlot) {
+                return back()->withErrors(['doctor_id' => "Doctor not available on {$appointmentDate->format('l')}."])->withInput();
+            }
 
-        if ($startTime->format('H:i') < $availSlot['start'] || $endTime->format('H:i') > $availSlot['end']) {
-            return back()->withErrors(['start_time' => 'Selected time outside doctor\'s availability.'])->withInput();
-        }
+            $startTime = new \DateTime($data['appointment_date'].' '.$data['start_time']);
+            $endTime = (clone $startTime)->add(new \DateInterval('PT30M'));
 
-        $overlap = Appointment::where('doctor_id', $doctor->id)
-            ->whereDate('appointment_date', $data['appointment_date'])
-            ->where('status', '!=', 'cancelled')
-            ->where('start_time', '<', $endTime->format('H:i'))
-            ->where('end_time', '>', $startTime->format('H:i'))
-            ->exists();
+            if ($startTime->format('H:i') < $availSlot['start'] || $endTime->format('H:i') > $availSlot['end']) {
+                return back()->withErrors(['start_time' => 'Selected time outside doctor\'s availability.'])->withInput();
+            }
 
-        if ($overlap) {
-            return back()->withErrors(['start_time' => 'Time slot already booked.'])->withInput();
+            $overlap = Appointment::where('doctor_id', $doctor->id)
+                ->whereDate('appointment_date', $data['appointment_date'])
+                ->where('status', '!=', 'cancelled')
+                ->where('start_time', '<', $endTime->format('H:i'))
+                ->where('end_time', '>', $startTime->format('H:i'))
+                ->exists();
+
+            if ($overlap) {
+                return back()->withErrors(['start_time' => 'Time slot already booked.'])->withInput();
+            }
         }
 
         if ($data['type'] === 'company_referral') {
@@ -178,9 +205,9 @@ class AppointmentController extends Controller
                 'company_id' => $data['company_id'] ?? null,
                 'company_name' => $data['company_name']
                     ?? (isset($data['company_id']) ? Company::find($data['company_id'])?->company_name : null),
-                'doctor_id' => $data['doctor_id'],
-                'start_time' => $startTime->format('H:i'),
-                'end_time' => $endTime->format('H:i'),
+                'doctor_id' => $data['doctor_id'] ?? null,
+                'start_time' => $startTime?->format('H:i'),
+                'end_time' => $endTime?->format('H:i'),
                 'appointment_date' => $data['appointment_date'],
                 'type' => $data['type'],
                 'status' => 'pending',
@@ -246,12 +273,29 @@ class AppointmentController extends Controller
             return back()->withErrors($validator);
         }
 
+        if ($request->status === 'accepted' && $appointment->type === 'individual') {
+            $appointment->loadMissing('user.patientProfile');
+            $missing = collect([
+                'birthdate' => $appointment->user->patientProfile?->birthdate,
+                'sex' => $appointment->user->patientProfile?->sex,
+                'contact' => $appointment->user->contact,
+            ])->filter(fn ($value) => blank($value))->keys();
+
+            if ($missing->isNotEmpty()) {
+                return back()->withErrors([
+                    'profile' => 'Complete the patient birthdate, sex, and contact number before accepting an individual appointment.',
+                ]);
+            }
+        }
+
         $appointment->update([
             'status' => $request->status,
         ]);
 
         return back()->with('success', match ($request->status) {
-            'accepted' => 'Appointment accepted and forwarded to doctor.',
+            'accepted' => $appointment->type === 'company_bulk'
+                ? 'Company bulk request approved for clinic coordination.'
+                : 'Appointment accepted and forwarded to doctor.',
             'arrived' => 'Patient marked as arrived.',
             'completed' => 'Appointment marked as completed.',
             'cancelled' => 'Appointment has been cancelled.',
@@ -402,6 +446,7 @@ class AppointmentController extends Controller
      */
     public function adminIndex(Request $request): Response
     {
+        $bulkOnly = $request->routeIs('admin.bulk-appointments.index');
         $search = $request->get('search', '');
         $status = $request->get('status', '');
         $type = $request->get('type', '');
@@ -409,6 +454,12 @@ class AppointmentController extends Controller
         $dateTo = $request->get('date_to', '');
 
         $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
+
+        $query->when(
+            $bulkOnly,
+            fn ($query) => $query->where('type', 'company_bulk'),
+            fn ($query) => $query->where('type', '!=', 'company_bulk'),
+        );
 
         if ($search) {
             $query->where(function ($query) use ($search) {
@@ -473,6 +524,7 @@ class AppointmentController extends Controller
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
             ],
+            'bulkOnly' => $bulkOnly,
         ]);
     }
 
