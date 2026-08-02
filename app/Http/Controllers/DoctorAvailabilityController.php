@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Validation\Rule;
 
 class DoctorAvailabilityController extends Controller
 {
@@ -24,7 +24,7 @@ class DoctorAvailabilityController extends Controller
                 'first_name',
                 'last_name',
                 'specialization',
-                'availability'
+                'availability',
             ]);
 
         // Pre-selected doctor
@@ -53,7 +53,7 @@ class DoctorAvailabilityController extends Controller
         $request->validate([
             'doctor_id' => [
                 'required',
-                Rule::exists('users', 'id')->where(fn($query) => $query->where('role', 'doctor')),
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'doctor')),
             ],
             'availability' => 'nullable|array',
             'availability.*.day' => 'required|string|in:mon,tue,wed,thu,fri,sat,sun',
@@ -63,20 +63,20 @@ class DoctorAvailabilityController extends Controller
 
         $doctor = \App\Models\User::findOrFail($request->doctor_id);
 
-if ($doctor->role !== 'doctor') {
-    abort(403, 'Invalid doctor selected.');
-}
+        if ($doctor->role !== 'doctor') {
+            abort(403, 'Invalid doctor selected.');
+        }
 
         // Update availability (empty array if none)
         $doctor->update([
             'availability' => $request->availability ?? [],
         ]);
 
-       if ($request->action === 'clear') {
-    return back()->with('success', 'Doctor availability cleared successfully.');
-}
+        if ($request->action === 'clear') {
+            return back()->with('success', 'Doctor availability cleared successfully.');
+        }
 
-return redirect()->route('admin.staff.index')
-    ->with('success', "Dr. {$doctor->first_name} {$doctor->last_name} availability updated successfully.");
+        return redirect()->route('admin.staff.index')
+            ->with('success', "Dr. {$doctor->first_name} {$doctor->last_name} availability updated successfully.");
     }
 }

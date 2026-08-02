@@ -34,6 +34,26 @@ class ReceptionistDashboardController extends Controller
             $currentQueueNumber = 'W-'.str_pad((string) $position, 3, '0', STR_PAD_LEFT);
         }
 
+        $onlineQueue = Appointment::query()
+            ->with('user:id,first_name,middle_name,last_name')
+            ->whereIn('type', ['individual', 'company_referral'])
+            ->whereDate('appointment_date', today())
+            ->whereNotIn('status', ['cancelled', 'completed'])
+            ->orderByRaw("CASE status WHEN 'arrived' THEN 1 WHEN 'accepted' THEN 2 WHEN 'pending' THEN 3 ELSE 4 END")
+            ->orderBy('start_time')
+            ->orderBy('id')
+            ->get()
+            ->values()
+            ->map(fn (Appointment $appointment, int $index): array => [
+                'id' => $appointment->id,
+                'queue_number' => 'O-'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT),
+                'patient_name' => $appointment->user?->name ?? 'Unknown patient',
+                'start_time' => $appointment->start_time?->format('h:i A'),
+                'services' => $appointment->service_types ?? [],
+                'status' => $appointment->status,
+                'type' => $appointment->type,
+            ]);
+
         return Inertia::render('receptionist/dashboard', [
             'metrics' => [
                 'total' => $counts->sum(),
@@ -42,7 +62,9 @@ class ReceptionistDashboardController extends Controller
                 'completed' => $counts->get('completed', 0),
                 'cancelled' => $counts->get('cancelled', 0),
                 'currentQueueNumber' => $currentQueueNumber,
+                'online' => $onlineQueue->count(),
             ],
+            'onlineQueue' => $onlineQueue,
         ]);
     }
 }

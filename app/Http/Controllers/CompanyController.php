@@ -2,208 +2,117 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreCompanyRequest;
+use App\Http\Requests\UpdateCompanyRequest;
 use App\Models\Company;
-use App\Models\User;
+use App\Services\CompanyAccountService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Hash;
-
+use Throwable;
 
 class CompanyController extends Controller
 {
-    /**
-     * Display a listing of companies.
-     */
     public function index(Request $request): Response
     {
-        $search = $request->get('search', '');
-        $status = $request->get('status', '');
+        Gate::authorize('viewAny', Company::class);
+        $search = trim((string) $request->get('search', ''));
+        $status = (string) $request->get('status', '');
 
-        $query = Company::query();
-
-        if ($search) {
-            $query->where('name', 'like', "%{$search}%");
-        }
-
-        if ($status === 'active') {
-            $query->where('status', 'active');
-        } elseif ($status === 'inactive') {
-            $query->where('status', 'inactive');
-        }
-
-        $companies = $query->orderBy('name')
+        $companies = Company::query()
+            ->with(['account:id,company_id,must_change_password'])
+            ->when($search, fn ($query) => $query->where(fn ($q) => $q
+                ->where('company_name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")))
+            ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('status', $status))
+            ->orderBy('company_name')
             ->paginate(15)
             ->withQueryString();
 
         return Inertia::render('admin/companies/index', [
             'companies' => $companies,
-            'filters' => [
-                'search' => $search,
-                'status' => $status,
-            ],
+            'filters' => compact('search', 'status'),
         ]);
     }
 
-    /**
-     * Show the form for creating a new company.
-     */
     public function create(): Response
     {
-        return Inertia::render('admin/companies/create');
+        Gate::authorize('create', Company::class);
+
+        return Inertia::render('admin/companies/create', ['industryTypes' => Company::getIndustryTypes()]);
     }
 
-    /**
-     * Store a newly created company.
-     */
-    public function store(Request $request)
+    public function store(StoreCompanyRequest $request, CompanyAccountService $service): RedirectResponse
     {
-        $validator = Validator::make($request->all(), [
-            'name' => ['required', 'string', 'max:255'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'status' => ['nullable', 'string', 'max:50'],
-            'is_partnered' => ['nullable', 'boolean'],
-            // Representative fields
-            'representative_name' => ['required', 'string', 'max:255'],
-            'representative_email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'representative_contact' => ['required', 'string', 'max:20'],
-            'send_invitation' => ['nullable', 'boolean'],
-        ]);
+        try {
+            $service->create($request->safe()->except('logo'), $request->file('logo'), $request->user());
+        } catch (Throwable $exception) {
+            report($exception);
 
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
-        }
-
-        $data = $validator->validated();
-        $data['status'] = $data['status'] ?? 'active';
-        $data['is_partnered'] = $data['is_partnered'] ?? false;
-        
-        // Determine if we should send invitation
-        $sendInvitation = $data['send_invitation'] ?? true;
-        unset($data['send_invitation']);
-
-        $company = Company::create($data);
-
-        // Create representative user and send invitation
-        if ($sendInvitation && $company->representative_email) {
-            try {
-                $user = $company->createRepresentativeUser();
-
-if ($user->role !== 'company') {
-$user->update(['role' => 'company']);
-                }
-                \Log::info('Company invitation sent to: ' . $company->representative_email);
-                $message = 'Company created successfully! Invitation email sent to representative.';
-            } catch (\Exception $e) {
-                \Log::error('Company invitation failed for ' . $company->representative_email . ': ' . $e->getMessage());
-                $message = 'Company created successfully! But failed to send invitation email: ' . $e->getMessage();
-            }
-        } else {
-            $message = 'Company created successfully!';
+            return back()->withInput()->with('error', 'The company was not created because the invitation could not be sent. Check the email service and try again.');
         }
 
         return redirect()->route('admin.companies.index')
-            ->with('success', $message);
+            ->with('success', 'Company account created. Temporary login credentials were sent to the company email.');
     }
 
-    /**
-     * Show the form for editing the specified company.
-     */
+    public function show(Company $company): Response
+    {
+        Gate::authorize('view', $company);
+
+        return Inertia::render('admin/companies/show', ['company' => $company->load('account:id,company_id,must_change_password')]);
+    }
+
     public function edit(Company $company): Response
     {
+        Gate::authorize('update', $company);
+
         return Inertia::render('admin/companies/edit', [
-            'company' => $company,
+            'company' => $company->load('account:id,company_id,must_change_password'),
+            'industryTypes' => Company::getIndustryTypes(),
         ]);
     }
 
-    /**
-     * Update the specified company.
-     */
-    public function update(Request $request, Company $company)
+    public function update(UpdateCompanyRequest $request, Company $company, CompanyAccountService $service): RedirectResponse
     {
-        $validator = Validator::make($request->all(), [
-            'name' => ['required', 'string', 'max:255'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'status' => ['nullable', 'string', 'max:50'],
-            'is_partnered' => ['nullable', 'boolean'],
-        ]);
+        $service->update($company, $request->safe()->except('logo'), $request->file('logo'));
 
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
-        }
-
-        $company->update($validator->validated());
-
-        return redirect()->route('admin.companies.index')
-            ->with('success', 'Company updated successfully!');
+        return redirect()->route('admin.companies.index')->with('success', 'Company account updated successfully.');
     }
 
-    /**
-     * Remove the specified company.
-     */
-    public function destroy(Company $company)
+    public function destroy(Company $company): RedirectResponse
     {
-        // Check if company has appointments
-        if ($company->appointments()->count() > 0) {
-            return back()->with('error', 'Cannot delete company with existing appointments.');
-        }
+        Gate::authorize('delete', $company);
 
-        $company->delete();
-
-        return redirect()->route('admin.companies.index')
-            ->with('success', 'Company deleted successfully!');
+        return back()->with('error', 'Company records are retained for medical and transaction history. Deactivate the account instead.');
     }
 
-    /**
-     * Toggle company partner status.
-     */
-    public function toggleActive(Company $company)
+    public function toggleActive(Company $company, CompanyAccountService $service): RedirectResponse
     {
-        $company->update(['is_partnered' => !$company->is_partnered]);
+        Gate::authorize('update', $company);
+        $status = $company->status === 'active' ? 'inactive' : 'active';
+        $service->update($company, ['status' => $status], null);
 
-        $status = $company->is_partnered ? 'partnered' : 'un-partnered';
-
-        return back()->with('success', "Company {$status} successfully!");
+        return back()->with('success', "Company account {$status}. Existing records were preserved.");
     }
 
-    /**
-     * Resend invitation email to company representative.
-     */
-    public function resendInvitation(Company $company)
+    public function resendInvitation(Request $request, Company $company, CompanyAccountService $service): RedirectResponse
     {
-        if (!$company->representative_email) {
-            return back()->with('error', 'No representative email found.');
+        Gate::authorize('update', $company);
+        if ($company->status !== 'active') {
+            return back()->with('error', 'Activate the company before sending login credentials.');
         }
 
         try {
-            // Generate new temp password
-            $tempPassword = substr(md5(uniqid(rand(), true)), 0, 8);
-            
-            // Update user password
-            $user = $company->users()->where('role', 'company')->first();
-            if ($user) {
-                $user->update([
-                    'password' => Hash::make($tempPassword),
-                ]);
-            }
+            $service->resendInvitation($company, $request->user());
+        } catch (Throwable $exception) {
+            report($exception);
 
-            // Store temp password and send email
-            $company->temp_password = $tempPassword;
-            $company->save();
-
-            Mail::to($company->representative_email)->send(new CompanyInvitation($company, $tempPassword));
-            
-            \Log::info('Company invitation resent to: ' . $company->representative_email);
-            
-            return back()->with('success', 'Invitation email resent successfully!');
-        } catch (\Exception $e) {
-            \Log::error('Resend invitation failed for ' . $company->representative_email . ': ' . $e->getMessage());
-            return back()->with('error', 'Failed to resend invitation: ' . $e->getMessage());
+            return back()->with('error', 'Credentials were not changed because the invitation could not be sent.');
         }
+
+        return back()->with('success', 'New temporary credentials were sent. The previous temporary password is no longer valid.');
     }
 }
-
-

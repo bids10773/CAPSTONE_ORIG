@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Company;
 use App\Models\MedicalHistory;
 use App\Models\User;
+use App\Services\LaboratoryFormDefinition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -87,11 +88,11 @@ class AppointmentController extends Controller
                 $request->user()->role === 'company',
                 fn ($query) => $query->whereKey($request->user()->company_id),
             )
-            ->orderBy('name')
-            ->get(['id', 'name'])
+            ->orderBy('company_name')
+            ->get(['id', 'company_name'])
             ->map(fn (Company $company) => [
                 'id' => $company->id,
-                'company_name' => $company->name,
+                'company_name' => $company->company_name,
             ]);
 
         $user = $request->user()->load('patientProfile'); // ✅ LOAD RELATION
@@ -122,7 +123,7 @@ class AppointmentController extends Controller
             $request->merge([
                 'type' => 'company_bulk',
                 'company_id' => $company->id,
-                'company_name' => $company->name,
+                'company_name' => $company->company_name,
                 'doctor_id' => null,
                 'start_time' => null,
             ]);
@@ -238,7 +239,7 @@ class AppointmentController extends Controller
     /**
      * Display the specified appointment.
      */
-    public function show(Appointment $appointment): Response
+    public function show(Appointment $appointment, LaboratoryFormDefinition $definitions): Response
     {
         $user = request()->user();
         $canView = $user->role === 'admin'
@@ -257,6 +258,11 @@ class AppointmentController extends Controller
 
         return Inertia::render('appointments/show', [
             'appointment' => $appointment,
+            'laboratorySections' => collect($definitions->sectionsFor($appointment))
+                ->map(fn (array $section): array => [
+                    'label' => $section['label'],
+                    'column' => $section['column'],
+                ]),
         ]);
     }
 
@@ -340,7 +346,7 @@ class AppointmentController extends Controller
     {
         $search = $request->get('search', '');
 
-        $companies = Company::where('is_active', true)
+        $companies = Company::where('status', 'active')
             ->when($search, function ($query) use ($search) {
                 $query->where('company_name', 'like', "%{$search}%");
             })
@@ -533,7 +539,7 @@ class AppointmentController extends Controller
      */
     public function adminCreate(Request $request): Response
     {
-        $companies = Company::where('is_active', true)
+        $companies = Company::where('status', 'active')
             ->orderBy('company_name')
             ->get(['id', 'company_name']);
 

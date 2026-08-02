@@ -13,57 +13,57 @@ return new class extends Migration
     {
         Schema::create('physical_exams', function (Blueprint $table) {
 
-    $table->id();
+            $table->id();
 
-    $table->foreignId('appointment_id')->constrained();
+            $table->foreignId('appointment_id')->constrained();
 
-    $table->foreignId('doctor_id')->constrained('users');
+            $table->foreignId('doctor_id')->constrained('users');
 
-    $table->decimal('height',5,2)->nullable();
-    $table->decimal('weight',5,2)->nullable();
+            $table->decimal('height', 5, 2)->nullable();
+            $table->decimal('weight', 5, 2)->nullable();
 
-    $table->string('blood_pressure')->nullable();
+            $table->string('blood_pressure')->nullable();
 
-    $table->integer('pulse_rate')->nullable();
-    $table->integer('respiration_rate')->nullable();
+            $table->integer('pulse_rate')->nullable();
+            $table->integer('respiration_rate')->nullable();
 
-    /* ======================
-       PHYSICAL FINDINGS
-    ======================*/
+            /* ======================
+               PHYSICAL FINDINGS
+            ======================*/
 
-    $table->string('head_scalp')->nullable();
-    $table->string('eyes')->nullable();
-    $table->string('ears')->nullable();
-    $table->string('nose_sinuses')->nullable();
-    $table->string('mouth_throat')->nullable();
-    $table->string('neck_thyroid')->nullable();
-    $table->string('chest_breast')->nullable();
-    $table->string('lungs')->nullable();
-    $table->string('heart')->nullable();
-    $table->string('abdomen')->nullable();
-    $table->string('back')->nullable();
-    $table->string('anus')->nullable();
-    $table->string('genitals')->nullable();
-    $table->string('extremities')->nullable();
-    $table->string('skin')->nullable();
-    $table->string('dental')->nullable();
+            $table->string('head_scalp')->nullable();
+            $table->string('eyes')->nullable();
+            $table->string('ears')->nullable();
+            $table->string('nose_sinuses')->nullable();
+            $table->string('mouth_throat')->nullable();
+            $table->string('neck_thyroid')->nullable();
+            $table->string('chest_breast')->nullable();
+            $table->string('lungs')->nullable();
+            $table->string('heart')->nullable();
+            $table->string('abdomen')->nullable();
+            $table->string('back')->nullable();
+            $table->string('anus')->nullable();
+            $table->string('genitals')->nullable();
+            $table->string('extremities')->nullable();
+            $table->string('skin')->nullable();
+            $table->string('dental')->nullable();
 
-    $table->boolean('is_lungs_normal')->default(true);
+            $table->boolean('is_lungs_normal')->default(true);
 
-    $table->text('lungs_remarks')->nullable();
+            $table->text('lungs_remarks')->nullable();
 
-    $table->enum('classification',[
-        'Class A',
-        'Class B',
-        'Class C',
-        'Pending',
-        'Unfit'
-    ]);
+            $table->enum('classification', [
+                'Class A',
+                'Class B',
+                'Class C',
+                'Pending',
+                'Unfit',
+            ]);
 
-    $table->text('doctor_remarks')->nullable();
+            $table->text('doctor_remarks')->nullable();
 
-    $table->timestamps();
-});
+            $table->timestamps();
+        });
     }
 
     /**

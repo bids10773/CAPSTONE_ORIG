@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Models\Appointment;
-use Carbon\Carbon;
-
 
 class RadTechDashboardController extends Controller
 {
@@ -16,9 +14,9 @@ class RadTechDashboardController extends Controller
         $user = $request->user();
 
         // ✅ Today's scans
-     $todayScans = Appointment::where('status', 'for_xray')
-     ->whereDate('appointment_date' , today())
-     ->count();
+        $todayScans = Appointment::where('status', 'for_xray')
+            ->whereDate('appointment_date', today())
+            ->count();
 
         // ✅ Pending scans (waiting for X-ray)
         $pendingScans = Appointment::where('status', 'for_xray')->count();
@@ -32,17 +30,17 @@ class RadTechDashboardController extends Controller
         $totalToday = Appointment::whereDate('appointment_date', today())->count();
 
         $pendingAppointments = Appointment::with('user')
-    ->where('status', 'for_xray')
-    ->orderBy('appointment_date')
-    ->take(5)
-    ->get();
+            ->where('status', 'for_xray')
+            ->orderBy('appointment_date')
+            ->take(5)
+            ->get();
 
-return Inertia::render('radtech/dashboard', [
-    'user' => $user,
-    'todayScans' => $todayScans,
-    'pendingScans' => $pendingScans,
-    'completedScans' => $completedScans,
-    'pendingAppointments' => $pendingAppointments, // 👈 ADD THIS
-]);
+        return Inertia::render('radtech/dashboard', [
+            'user' => $user,
+            'todayScans' => $todayScans,
+            'pendingScans' => $pendingScans,
+            'completedScans' => $completedScans,
+            'pendingAppointments' => $pendingAppointments, // 👈 ADD THIS
+        ]);
     }
 }

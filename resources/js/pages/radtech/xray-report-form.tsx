@@ -39,6 +39,7 @@ interface Props {
         service_types: string;
     };
     xrayReport?: any;
+    submitUrl: string;
 }
 
 function getAge(birthdate?: string) {
@@ -56,7 +57,11 @@ function getAge(birthdate?: string) {
     return age >= 0 ? `${age} years` : 'Not available';
 }
 
-export default function XrayReportForm({ appointment, xrayReport }: Props) {
+export default function XrayReportForm({
+    appointment,
+    xrayReport,
+    submitUrl,
+}: Props) {
     const { data, setData, post, processing } = useForm({
         chest_status: xrayReport?.findings ? 'findings' : 'normal',
         chest_findings: xrayReport?.findings || '',
@@ -66,7 +71,7 @@ export default function XrayReportForm({ appointment, xrayReport }: Props) {
 
     const onSubmit = (event: React.FormEvent) => {
         event.preventDefault();
-        post(`/radtech/xrays/${appointment.id}`);
+        post(submitUrl);
     };
     const patientName = `${appointment.user.first_name} ${appointment.user.last_name}`;
 

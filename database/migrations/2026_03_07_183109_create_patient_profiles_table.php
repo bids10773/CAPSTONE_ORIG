@@ -13,20 +13,20 @@ return new class extends Migration
     {
         Schema::create('patient_profiles', function (Blueprint $table) {
 
-    $table->id();
+            $table->id();
 
-    $table->foreignId('user_id')->constrained();
+            $table->foreignId('user_id')->constrained();
 
-    $table->date('birthdate');
+            $table->date('birthdate');
 
-    $table->enum('sex',['Male','Female']);
+            $table->enum('sex', ['Male', 'Female']);
 
-    $table->string('contact_no');
+            $table->string('contact_no');
 
-    $table->string('civil_status');
+            $table->string('civil_status');
 
-    $table->timestamps();
-});
+            $table->timestamps();
+        });
     }
 
     /**

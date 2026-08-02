@@ -1,10 +1,10 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
-    Building2,
     Plus,
     Search,
     Filter,
     Edit,
+    Eye,
     ToggleLeft,
     ToggleRight,
     ChevronLeft,
@@ -19,26 +19,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 interface Company {
     id: number;
-    name: string;
+    company_name: string;
+    email: string;
+    contact_number: string;
     address: string | null;
     status: string;
-    is_partnered: boolean;
+    industry_type: string;
     created_at: string;
-}
-
-interface Props {
-    companies: {
-        data: Company[];
-        current_page: number;
-        last_page: number;
-        per_page: number;
-        total: number;
-        links: { url: string | null; label: string; active: boolean }[];
-    };
-    filters: {
-        search: string;
-        status: string;
-    };
 }
 
 export default function AdminCompaniesIndex() {
@@ -102,13 +89,13 @@ export default function AdminCompaniesIndex() {
                                         Company Name
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                        Address
+                                        Email / Contact
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                                         Status
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                        Partnered
+                                        Industry
                                     </th>
                                     <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
                                         Actions
@@ -124,12 +111,16 @@ export default function AdminCompaniesIndex() {
                                         >
                                             <td className="px-6 py-4">
                                                 <p className="font-medium text-gray-900">
-                                                    {company.name}
+                                                    {company.company_name}
                                                 </p>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <p className="text-gray-600">
-                                                    {company.address || '-'}
+                                                    {company.email}
+                                                    <br />
+                                                    <span className="text-xs text-gray-500">
+                                                        {company.contact_number}
+                                                    </span>
                                                 </p>
                                             </td>
                                             <td className="px-6 py-4">
@@ -147,20 +138,19 @@ export default function AdminCompaniesIndex() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span
-                                                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                                        company.is_partnered
-                                                            ? 'bg-moss-100 text-moss-800'
-                                                            : 'bg-gray-100 text-gray-800'
-                                                    }`}
-                                                >
-                                                    {company.is_partnered
-                                                        ? 'Partnered'
-                                                        : 'Not Partnered'}
+                                                <span className="text-sm text-gray-700">
+                                                    {company.industry_type}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
+                                                    <Link
+                                                        href={`/admin/companies/${company.id}`}
+                                                        className="p-1 text-gray-400 hover:text-moss-600"
+                                                        title="View"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Link>
                                                     <Link
                                                         href={`/admin/companies/${company.id}/edit`}
                                                         className="p-1 text-gray-400 hover:text-moss-600"
@@ -171,15 +161,17 @@ export default function AdminCompaniesIndex() {
                                                     <Link
                                                         href={`/admin/companies/${company.id}/toggle-active`}
                                                         method="patch"
-                                                        className={`p-1 ${company.is_partnered ? 'text-green-600 hover:text-green-800' : 'text-gray-400 hover:text-gray-600'}`}
+                                                        className={`p-1 ${company.status === 'active' ? 'text-green-600 hover:text-green-800' : 'text-gray-400 hover:text-gray-600'}`}
                                                         title={
-                                                            company.is_partnered
-                                                                ? 'Unpartner'
-                                                                : 'Partner'
+                                                            company.status ===
+                                                            'active'
+                                                                ? 'Deactivate'
+                                                                : 'Activate'
                                                         }
                                                         as="button"
                                                     >
-                                                        {company.is_partnered ? (
+                                                        {company.status ===
+                                                        'active' ? (
                                                             <ToggleRight className="h-4 w-4" />
                                                         ) : (
                                                             <ToggleLeft className="h-4 w-4" />

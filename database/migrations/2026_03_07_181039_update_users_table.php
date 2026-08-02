@@ -13,18 +13,18 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
 
-    $table->string('role')->default('patient');
+            $table->string('role')->default('patient');
 
-    $table->string('license_no')->nullable();
-    $table->string('specialization')->nullable();
+            $table->string('license_no')->nullable();
+            $table->string('specialization')->nullable();
 
-    $table->string('signature_path')->nullable();
+            $table->string('signature_path')->nullable();
 
-    $table->unsignedBigInteger('company_id')->nullable();
+            $table->unsignedBigInteger('company_id')->nullable();
 
-    $table->boolean('is_active')->default(true);
+            $table->boolean('is_active')->default(true);
 
-});
+        });
     }
 
     /**

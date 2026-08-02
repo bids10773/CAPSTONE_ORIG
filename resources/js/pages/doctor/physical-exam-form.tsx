@@ -13,7 +13,6 @@ import {
     Weight,
 } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useState } from 'react';
 import {
     ClinicalSection,
     MedicalMetricCard,
@@ -43,8 +42,10 @@ interface Props {
             birthdate?: string;
             civil_status?: string;
         };
+        medical_history?: Record<string, string | null>;
     };
     physicalExam: any;
+    submitUrl: string;
 }
 
 const bodyParts = [
@@ -58,7 +59,12 @@ const bodyParts = [
     { label: 'Lungs', field: 'lungs' },
     { label: 'Heart', field: 'heart' },
     { label: 'Abdomen', field: 'abdomen' },
+    { label: 'Back and spine', field: 'back' },
+    { label: 'Anus and rectum', field: 'anus' },
+    { label: 'Genitourinary', field: 'genitals' },
     { label: 'Extremities', field: 'extremities' },
+    { label: 'Skin', field: 'skin' },
+    { label: 'Dental', field: 'dental' },
 ];
 
 const historyFields = [
@@ -83,21 +89,29 @@ function getAge(birthdate?: string) {
     return age >= 0 ? `${age} years` : 'Not available';
 }
 
-export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
-    const { data, setData, post, processing } = useForm<any>({
+export default function PhysicalExamForm({
+    appointment,
+    physicalExam,
+    submitUrl,
+}: Props) {
+    const { data, setData, post, processing, errors } = useForm<any>({
         height: physicalExam?.height || '',
         weight: physicalExam?.weight || '',
         blood_pressure: physicalExam?.blood_pressure || '',
         pulse_rate: physicalExam?.pulse_rate || '',
         temperature: physicalExam?.temperature || '',
         remarks: physicalExam?.remarks || '',
-        present_illness: physicalExam?.present_illness || '',
-        past_medical_history: physicalExam?.past_medical_history || '',
-        operations_accidents: physicalExam?.operations_accidents || '',
-        family_history: physicalExam?.family_history || '',
-        allergies: physicalExam?.allergies || '',
-        personal_social_history: physicalExam?.personal_social_history || '',
-        ob_menstrual_history: physicalExam?.ob_menstrual_history || '',
+        present_illness: appointment.medical_history?.present_illness || '',
+        past_medical_history:
+            appointment.medical_history?.past_medical_history || '',
+        operations_accidents:
+            appointment.medical_history?.operations_accidents || '',
+        family_history: appointment.medical_history?.family_history || '',
+        allergies: appointment.medical_history?.allergies || '',
+        personal_social_history:
+            appointment.medical_history?.personal_social_history || '',
+        ob_menstrual_history:
+            appointment.medical_history?.ob_menstrual_history || '',
         ...Object.fromEntries(
             bodyParts.flatMap(({ field }) => [
                 [field, physicalExam?.[field] || ''],
@@ -108,17 +122,12 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
             ]),
         ),
     });
-    const [bmi, setBmi] = useState<number | null>(null);
-
-    useEffect(() => {
-        const height = Number.parseFloat(data.height);
-        const weight = Number.parseFloat(data.weight);
-        setBmi(
-            height > 0 && weight > 0
-                ? Number((weight / (height / 100) ** 2).toFixed(1))
-                : null,
-        );
-    }, [data.height, data.weight]);
+    const height = Number.parseFloat(data.height);
+    const weight = Number.parseFloat(data.weight);
+    const bmi =
+        height > 0 && weight > 0
+            ? Number((weight / (height / 100) ** 2).toFixed(1))
+            : null;
 
     const bmiCategory =
         bmi === null
@@ -133,7 +142,13 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
 
     const onSubmit = (event: React.FormEvent) => {
         event.preventDefault();
-        post(`/doctor/physical-exam-form/${appointment.id}`);
+        post(submitUrl, {
+            preserveScroll: true,
+            onError: () =>
+                document
+                    .getElementById('physical-exam-errors')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+        });
     };
 
     const patientName = `${appointment.user.first_name} ${appointment.user.last_name}`;
@@ -167,6 +182,20 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
                     },
                 ]}
             />
+
+            {Object.keys(errors).length > 0 && (
+                <div
+                    id="physical-exam-errors"
+                    role="alert"
+                    className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800"
+                >
+                    <p className="font-bold">Unable to save the examination</p>
+                    <p className="mt-1 text-sm">
+                        {errors.form ||
+                            'Review the highlighted fields below and try again.'}
+                    </p>
+                </div>
+            )}
 
             <WorkflowTimeline
                 current={3}
@@ -202,6 +231,7 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
                                     }
                                     placeholder="e.g. 170"
                                 />
+                                <FieldError message={errors.height} />
                             </MedicalMetricCard>
                             <MedicalMetricCard
                                 icon={Weight}
@@ -216,6 +246,7 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
                                     }
                                     placeholder="e.g. 65"
                                 />
+                                <FieldError message={errors.weight} />
                             </MedicalMetricCard>
                             <MedicalMetricCard
                                 icon={HeartPulse}
@@ -232,6 +263,7 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
                                     }
                                     placeholder="120/80"
                                 />
+                                <FieldError message={errors.blood_pressure} />
                             </MedicalMetricCard>
                             <MedicalMetricCard
                                 icon={Activity}
@@ -248,6 +280,7 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
                                     }
                                     placeholder="e.g. 72"
                                 />
+                                <FieldError message={errors.pulse_rate} />
                             </MedicalMetricCard>
                             <MedicalMetricCard
                                 icon={Thermometer}
@@ -264,6 +297,7 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
                                     }
                                     placeholder="e.g. 36.5"
                                 />
+                                <FieldError message={errors.temperature} />
                             </MedicalMetricCard>
                             <div className="flex flex-col justify-center rounded-2xl border border-moss-200 bg-moss-50 p-4">
                                 <p className="text-xs font-semibold text-moss-700">
@@ -321,6 +355,10 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
                                     <Input
                                         className="mt-3"
                                         value={data[part.field]}
+                                        disabled={
+                                            data[`${part.field}_status`] ===
+                                            'normal'
+                                        }
                                         onChange={(event) =>
                                             setData(
                                                 part.field,
@@ -329,6 +367,7 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
                                         }
                                         placeholder="Document findings, if any"
                                     />
+                                    <FieldError message={errors[part.field]} />
                                 </article>
                             ))}
                         </div>
@@ -430,3 +469,11 @@ export default function PhysicalExamForm({ appointment, physicalExam }: Props) {
 PhysicalExamForm.layout = (page: React.ReactNode) => (
     <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>
 );
+
+function FieldError({ message }: { message?: string }) {
+    if (!message) return null;
+
+    return (
+        <p className="mt-1.5 text-xs font-semibold text-red-600">{message}</p>
+    );
+}

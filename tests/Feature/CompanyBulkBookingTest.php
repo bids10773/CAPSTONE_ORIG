@@ -7,7 +7,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 test('company accounts always create company bulk appointments', function () {
     $company = Company::create([
-        'name' => 'Acme Medical Partner',
+        'company_name' => 'Acme Medical Partner',
         'status' => 'active',
         'is_partnered' => true,
     ]);
@@ -29,7 +29,7 @@ test('company accounts always create company bulk appointments', function () {
     $this->assertDatabaseHas('appointments', [
         'user_id' => $representative->id,
         'company_id' => $company->id,
-        'company_name' => $company->name,
+        'company_name' => $company->company_name,
         'type' => 'company_bulk',
         'doctor_id' => null,
         'start_time' => null,
@@ -39,7 +39,7 @@ test('company accounts always create company bulk appointments', function () {
 test('bulk requests have a separate admin approval queue and do not require patient demographics', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $company = Company::create([
-        'name' => 'Bulk Request Company',
+        'company_name' => 'Bulk Request Company',
         'status' => 'active',
         'is_partnered' => true,
     ]);

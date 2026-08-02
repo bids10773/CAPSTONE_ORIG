@@ -1,14 +1,20 @@
 import { usePage } from '@inertiajs/react';
-import { Bell, CalendarDays, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Bell, CalendarDays, ChevronDown, Search } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Breadcrumbs } from '@/components/breadcrumbs';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
     SidebarInset,
     SidebarProvider,
     SidebarTrigger,
 } from '@/components/ui/sidebar';
+import { UserMenuContent } from '@/components/user-menu-content';
 import type { AppLayoutProps } from '@/types';
 
 export default function ClinicDashboardLayout({
@@ -26,7 +32,6 @@ export default function ClinicDashboardLayout({
             .filter(Boolean)
             .join('')
             .toUpperCase() || 'LM';
-    const pageTitle = breadcrumbs.at(-1)?.title || 'Workspace';
     const currentDate = new Intl.DateTimeFormat('en-PH', {
         weekday: 'short',
         month: 'short',
@@ -41,9 +46,6 @@ export default function ClinicDashboardLayout({
                     <div className="flex w-full items-center gap-3">
                         <SidebarTrigger className="size-10 rounded-xl text-slate-500 hover:bg-moss-50 hover:text-moss-700" />
                         <div className="hidden min-w-0 sm:block">
-                            <h1 className="truncate text-base font-semibold tracking-[-.02em] text-slate-950">
-                                {pageTitle}
-                            </h1>
                             <Breadcrumbs breadcrumbs={breadcrumbs} />
                         </div>
 
@@ -74,21 +76,42 @@ export default function ClinicDashboardLayout({
                                 <Bell className="size-[18px]" />
                                 <span className="absolute top-2 right-2.5 size-2 rounded-full border-2 border-white bg-red-500" />
                             </button>
-                            <div className="ml-2 hidden items-center gap-2.5 border-l border-slate-200 pl-4 md:flex">
-                                <Avatar className="size-9">
-                                    <AvatarFallback className="bg-moss-100 text-xs font-bold text-moss-700">
-                                        {initials}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="max-w-36">
-                                    <p className="truncate text-xs font-semibold text-slate-800">
-                                        {fullName}
-                                    </p>
-                                    <p className="truncate text-[10px] text-slate-400 capitalize">
-                                        {user?.role || 'patient'}
-                                    </p>
-                                </div>
-                            </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button
+                                        type="button"
+                                        data-test="navbar-user-menu-button"
+                                        aria-label="Open account menu"
+                                        className="ml-1 flex items-center gap-2 rounded-xl border-l border-slate-200 py-1 pr-1 pl-3 text-left transition outline-none hover:bg-moss-50 focus-visible:ring-4 focus-visible:ring-moss-500/15 sm:ml-2 sm:pl-4"
+                                    >
+                                        <Avatar className="size-9">
+                                            <AvatarImage
+                                                src={user?.avatar}
+                                                alt={fullName}
+                                            />
+                                            <AvatarFallback className="bg-moss-100 text-xs font-bold text-moss-700">
+                                                {initials}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="hidden max-w-36 md:block">
+                                            <p className="truncate text-xs font-semibold text-slate-800">
+                                                {fullName}
+                                            </p>
+                                            <p className="truncate text-[10px] text-slate-400 capitalize">
+                                                {user?.role || 'patient'}
+                                            </p>
+                                        </div>
+                                        <ChevronDown className="hidden size-4 text-slate-400 md:block" />
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    className="w-64 rounded-xl"
+                                    align="end"
+                                    sideOffset={8}
+                                >
+                                    <UserMenuContent user={user} />
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     </div>
                 </header>

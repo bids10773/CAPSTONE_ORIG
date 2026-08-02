@@ -13,12 +13,15 @@ class XrayReport extends Model
         'findings',
         'impression',
         'is_completed',
+        'finalized_by',
+        'finalized_at',
     ];
 
     protected function casts(): array
     {
         return [
             'is_completed' => 'boolean',
+            'finalized_at' => 'datetime',
         ];
     }
 

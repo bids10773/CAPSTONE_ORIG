@@ -4,11 +4,11 @@ namespace App\Actions\Fortify;
 
 use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
-use App\Models\User;
 use App\Models\PatientProfile;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 class CreateNewUser implements CreatesNewUsers
@@ -22,19 +22,19 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
-     Validator::make($input, [
-                'first_name' => ['required', 'string', 'max:255'],
-                'middle_name' => ['nullable', 'string', 'max:255'],
-                'last_name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-                'contact' => ['required', 'string', 'max:11'],
+        Validator::make($input, [
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'contact' => ['required', 'string', 'max:11'],
 
-                'birthdate' => ['required', 'date'],
-                'sex' => ['required', 'string'],
-                'civil_status' => ['required', 'string'],
+            'birthdate' => ['required', 'date'],
+            'sex' => ['required', 'string'],
+            'civil_status' => ['required', 'string'],
 
-                'password' => $this->passwordRules(),
-            ])->validate();
+            'password' => $this->passwordRules(),
+        ])->validate();
 
         return DB::transaction(function () use ($input): User {
             $user = User::create([

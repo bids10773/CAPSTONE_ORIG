@@ -31,12 +31,12 @@ export function LogoutModalProvider({ children }: { children: ReactNode }) {
 
         window.requestAnimationFrame(() => {
             const originalTrigger = triggerRef.current;
-            const sidebarTrigger = document.querySelector<HTMLElement>(
-                '[data-test="sidebar-menu-button"]',
+            const accountMenuTrigger = document.querySelector<HTMLElement>(
+                '[data-test="navbar-user-menu-button"]',
             );
             (originalTrigger?.isConnected
                 ? originalTrigger
-                : sidebarTrigger
+                : accountMenuTrigger
             )?.focus();
             triggerRef.current = null;
         });

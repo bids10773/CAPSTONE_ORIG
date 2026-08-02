@@ -13,35 +13,35 @@ return new class extends Migration
     {
         Schema::create('appointments', function (Blueprint $table) {
 
-    $table->id();
+            $table->id();
 
-    $table->foreignId('user_id')->constrained();
+            $table->foreignId('user_id')->constrained();
 
-    $table->foreignId('company_id')->nullable()->constrained();
+            $table->foreignId('company_id')->nullable()->constrained();
 
-    $table->dateTime('appointment_date');
+            $table->dateTime('appointment_date');
 
-    $table->enum('type', [
-    'individual',
-    'company_referral',
-    'company_bulk',
-    'walk_in'
-]);
+            $table->enum('type', [
+                'individual',
+                'company_referral',
+                'company_bulk',
+                'walk_in',
+            ]);
 
-$table->enum('status', [
-    'pending',
-    'accepted',
-    'arrived',
-    'for_diagnostics',
-    'for_xray',
-    'for_final_evaluation',
-    'completed',
-    'cancelled'
-]);
+            $table->enum('status', [
+                'pending',
+                'accepted',
+                'arrived',
+                'for_diagnostics',
+                'for_xray',
+                'for_final_evaluation',
+                'completed',
+                'cancelled',
+            ]);
 
-    $table->timestamps();
+            $table->timestamps();
 
-});
+        });
     }
 
     /**

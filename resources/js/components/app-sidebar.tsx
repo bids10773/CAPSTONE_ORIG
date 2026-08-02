@@ -16,11 +16,9 @@ import {
     UserRoundSearch,
     ListOrdered,
 } from 'lucide-react';
-import { NavUser } from '@/components/nav-user';
 import {
     Sidebar,
     SidebarContent,
-    SidebarFooter,
     SidebarGroup,
     SidebarGroupLabel,
     SidebarHeader,
@@ -236,10 +234,6 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                     </SidebarMenu>
                 </SidebarGroup>
             </SidebarContent>
-
-            <SidebarFooter className="border-t border-slate-100 p-3">
-                <NavUser />
-            </SidebarFooter>
         </Sidebar>
     );
 }

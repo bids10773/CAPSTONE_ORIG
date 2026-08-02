@@ -27,7 +27,7 @@ function employeeSpreadsheet(array $rows): UploadedFile
 }
 
 test('company employee spreadsheets are previewed and imported without fabricated credentials', function () {
-    $company = Company::create(['name' => 'Acme Health']);
+    $company = Company::create(['company_name' => 'Acme Health']);
     $service = app(CompanyEmployeeImportService::class);
     $file = employeeSpreadsheet([
         ['First Name', 'Last Name', 'Gender', 'Birth Date'],
@@ -56,8 +56,8 @@ test('company employee spreadsheets are previewed and imported without fabricate
 });
 
 test('invalid rows and company-scoped duplicates are identified before import', function () {
-    $company = Company::create(['name' => 'Acme Health']);
-    $otherCompany = Company::create(['name' => 'Other Company']);
+    $company = Company::create(['company_name' => 'Acme Health']);
+    $otherCompany = Company::create(['company_name' => 'Other Company']);
 
     foreach ([$company, $otherCompany] as $owner) {
         $employee = User::factory()->create([

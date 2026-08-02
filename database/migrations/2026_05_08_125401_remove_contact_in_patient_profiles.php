@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('patient_profiles', function (Blueprint $table) {
-             $table->dropColumn([
-               'contact_no',
-             ]);
+            $table->dropColumn([
+                'contact_no',
+            ]);
             //
         });
     }

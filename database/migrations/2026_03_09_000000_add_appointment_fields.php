@@ -14,13 +14,13 @@ return new class extends Migration
         Schema::table('appointments', function (Blueprint $table) {
             // Add service type for the appointment
             $table->json('service_types')->nullable()->after('company_id');
-            
+
             // Add referral code for company referrals
             $table->string('referral_code')->nullable()->after('service_type');
-            
+
             // Add notes field
             $table->text('notes')->nullable()->after('referral_code');
-            
+
             // Add bulk batch identifier for company bulk bookings
             $table->string('batch_id')->nullable()->after('notes');
         });
@@ -41,4 +41,3 @@ return new class extends Migration
         });
     }
 };
-

@@ -25,7 +25,7 @@ interface AppointmentData {
     service_type: string;
     referral_code: string | null;
     user: { id: number; first_name: string; last_name: string; email: string };
-    company: { id: number; name: string } | null;
+    company: { id: number; company_name: string } | null;
 }
 
 export default function AppointmentsIndex() {
@@ -296,7 +296,7 @@ export default function AppointmentsIndex() {
                                                                 {
                                                                     appointment
                                                                         .company
-                                                                        .name
+                                                                        .company_name
                                                                 }
                                                             </div>
                                                         )}

@@ -11,13 +11,13 @@ class ReceptionistSeeder extends Seeder
     public function run(): void
     {
         User::create([
-            'first_name'        => 'Info',
-            'last_name'         => 'Staff',
-            'email'             => 'receptionist@lmic.com',
-            'password'          => Hash::make('password'),
-            'role'              => 'receptionist',
-            'contact'           => '0090567570', // ← add this
-            'is_active'         => true,
+            'first_name' => 'Info',
+            'last_name' => 'Staff',
+            'email' => 'receptionist@lmic.com',
+            'password' => Hash::make('password'),
+            'role' => 'receptionist',
+            'contact' => '0090567570', // ← add this
+            'is_active' => true,
             'email_verified_at' => now(),
         ]);
     }

@@ -40,7 +40,7 @@ type Appointment = {
     type?: string;
     status: string;
     service_types?: string[] | null;
-    company?: { name?: string } | null;
+    company?: { company_name?: string } | null;
 };
 
 type PageProps = {
@@ -481,12 +481,13 @@ export default function Dashboard() {
                                                     }
                                                 </p>
                                                 {nextAppointment.company
-                                                    ?.name && (
+                                                    ?.company_name && (
                                                     <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
                                                         <UserRound size={15} />
                                                         {
                                                             nextAppointment
-                                                                .company.name
+                                                                .company
+                                                                .company_name
                                                         }
                                                     </p>
                                                 )}

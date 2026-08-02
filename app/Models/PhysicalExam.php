@@ -14,39 +14,42 @@ class PhysicalExam extends Model
      * @var list<string>
      */
     protected $fillable = [
-    'appointment_id',
-    'doctor_id',
+        'appointment_id',
+        'doctor_id',
 
-    // Vital Signs
-    'height',
-    'weight',
-    'blood_pressure',
-    'pulse_rate',
-    'temperature',
-    'remarks',
+        // Vital Signs
+        'height',
+        'weight',
+        'blood_pressure',
+        'pulse_rate',
+        'temperature',
+        'remarks',
 
-    // ✅ PHYSICAL FINDINGS (ADD THESE)
-    'head_scalp',
-    'eyes',
-    'ears',
-    'nose_sinuses',
-    'mouth_throat',
-    'neck_thyroid',
-    'chest_breast',
-    'lungs',
-    'heart',
-    'abdomen',
-    'back',
-    'anus',
-    'genitals',
-    'extremities',
-    'skin',
-    'dental',
+        // ✅ PHYSICAL FINDINGS (ADD THESE)
+        'head_scalp',
+        'eyes',
+        'ears',
+        'nose_sinuses',
+        'mouth_throat',
+        'neck_thyroid',
+        'chest_breast',
+        'lungs',
+        'heart',
+        'abdomen',
+        'back',
+        'anus',
+        'genitals',
+        'extremities',
+        'skin',
+        'dental',
 
-    // Classification
-    'classification',
-    'doctor_remarks',
-];
+        // Classification
+        'classification',
+        'doctor_remarks',
+        'is_completed',
+        'finalized_by',
+        'finalized_at',
+    ];
 
     /**
      * The attributes that should be cast.
@@ -60,6 +63,7 @@ class PhysicalExam extends Model
             'height' => 'decimal:2',
             'weight' => 'decimal:2',
             'temperature' => 'decimal:2',
+            'finalized_at' => 'datetime',
         ];
     }
 

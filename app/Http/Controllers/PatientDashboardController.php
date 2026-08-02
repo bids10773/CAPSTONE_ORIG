@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Http\RedirectResponse;
 
 class PatientDashboardController extends Controller
 {
@@ -20,7 +20,7 @@ class PatientDashboardController extends Controller
         |--------------------------------------------------------------------------
         | If user is not logged in, show welcome/landing page
         */
-        if (!$user) {
+        if (! $user) {
             return Inertia::render('welcome');
         }
 
@@ -31,7 +31,7 @@ class PatientDashboardController extends Controller
         | Ensures only verified patients can access dashboard
         | (Admins/staff can bypass via your staff.verified middleware)
         */
-        if (!$user->hasVerifiedEmail()) {
+        if (! $user->hasVerifiedEmail()) {
             return redirect()->route('verification.notice');
         }
 

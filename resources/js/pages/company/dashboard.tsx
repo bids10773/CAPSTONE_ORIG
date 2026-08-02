@@ -86,7 +86,7 @@ interface ImportResult {
 interface DashboardProps {
     company: {
         id: number;
-        name: string;
+        company_name: string;
         address?: string | null;
         representative_name?: string | null;
         representative_email?: string | null;
@@ -208,7 +208,7 @@ export default function CompanyDashboard() {
                                     Company healthcare portal
                                 </p>
                                 <h1 className="mt-1 text-2xl font-semibold tracking-[-.03em] text-slate-950 sm:text-3xl">
-                                    {company.name}
+                                    {company.company_name}
                                 </h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
                                     Manage your employee registry, spreadsheet

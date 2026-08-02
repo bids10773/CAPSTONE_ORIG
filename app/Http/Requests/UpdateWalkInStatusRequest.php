@@ -19,7 +19,7 @@ class UpdateWalkInStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['required', Rule::in(['pending', 'arrived', 'completed', 'cancelled'])],
+            'status' => ['required', Rule::in(['pending', 'accepted', 'arrived', 'completed', 'cancelled'])],
         ];
     }
 }

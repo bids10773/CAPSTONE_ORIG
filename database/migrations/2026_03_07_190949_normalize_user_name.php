@@ -21,15 +21,16 @@ return new class extends Migration
             $table->dropColumn('name');
         });
     }
+
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-            Schema::table('users', function (Blueprint $table) {
-        $table->string('name')->after('id');
-        $table->dropColumn(['first_name', 'middle_name', 'last_name']);
-    });
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('name')->after('id');
+            $table->dropColumn(['first_name', 'middle_name', 'last_name']);
+        });
 
     }
 };

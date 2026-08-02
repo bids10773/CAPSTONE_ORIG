@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Appointment;
+use App\Models\Company;
+use App\Models\LabResult;
+use App\Models\PhysicalExam;
+use App\Models\User;
+use App\Models\XrayReport;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Models\User;
-use App\Models\Company;
-use App\Models\Appointment;
-use App\Models\LabResult;
-use App\Models\PhysicalExam;
-use App\Models\XrayReport;
-use Carbon\Carbon;
 
 class AdminDashboardController extends Controller
 {
@@ -23,7 +23,7 @@ class AdminDashboardController extends Controller
         $today = Carbon::today();
         $thisWeek = Carbon::now()->startOfWeek();
         $thisMonth = Carbon::now()->startOfMonth();
-        
+
         $stats = [
             'totalStaff' => User::whereIn('role', ['doctor', 'medtech', 'radtech'])->count(),
             'totalCompanies' => Company::count(),
@@ -37,7 +37,7 @@ class AdminDashboardController extends Controller
             'totalPhysicalExams' => PhysicalExam::count(),
             'totalXrayReports' => XrayReport::count(),
         ];
-        
+
         $recentAppointments = Appointment::with(['user', 'company'])
             ->whereNotIn('status', ['completed', 'cancelled'])
             ->orderBy('appointment_date', 'desc')
@@ -54,34 +54,34 @@ class AdminDashboardController extends Controller
             ->whereDate('appointment_date', $today)
             ->orderBy('appointment_date', 'asc')
             ->get();
-            
+
         $appointmentsByStatus = Appointment::selectRaw('status, COUNT(*) as count')
             ->groupBy('status')->get()->pluck('count', 'status')->toArray();
-            
+
         $appointmentsByType = Appointment::selectRaw('type, COUNT(*) as count')
             ->groupBy('type')->get()->pluck('count', 'type')->toArray();
-            
+
         // --- LEVEL 3 MACHINE LEARNING TRENDS ---
-$historicalTrends = [];
+        $historicalTrends = [];
 
-for ($i = 5; $i >= 0; $i--) {
-    $month = Carbon::now()->subMonths($i);
+        for ($i = 5; $i >= 0; $i--) {
+            $month = Carbon::now()->subMonths($i);
 
-    $actualCount = Appointment::whereYear('appointment_date', $month->year)
-        ->whereMonth('appointment_date', $month->month)
-        ->count();
+            $actualCount = Appointment::whereYear('appointment_date', $month->year)
+                ->whereMonth('appointment_date', $month->month)
+                ->count();
 
-    $historicalTrends[] = [
-        'month' => $month->format('M Y'),
-        'count' => $actualCount > 0 
-            ? $actualCount 
-            : (25 + ($i * 6)), // 🔥 smooth dummy trend
-        'is_predicted'   => false
-    ];
-}
+            $historicalTrends[] = [
+                'month' => $month->format('M Y'),
+                'count' => $actualCount > 0
+                    ? $actualCount
+                    : (25 + ($i * 6)), // 🔥 smooth dummy trend
+                'is_predicted' => false,
+            ];
+        }
 
         // Generate Level 3 Forecast
-        $predictions = $this->generateLevel3Forecast($historicalTrends, 6   );
+        $predictions = $this->generateLevel3Forecast($historicalTrends, 6);
         $monthlyTrends = array_merge($historicalTrends, $predictions);
 
         return Inertia::render('admin/dashboard', [
@@ -109,7 +109,7 @@ for ($i = 5; $i >= 0; $i--) {
                 'count' => Appointment::whereYear('appointment_date', $month->year)
                     ->whereMonth('appointment_date', $month->month)
                     ->count(),
-                'is_predicted' => false
+                'is_predicted' => false,
             ];
         }
 
@@ -125,7 +125,7 @@ for ($i = 5; $i >= 0; $i--) {
 
         $companyAppointments = Appointment::with('company:id,company_name')
             ->whereNotNull('company_id')->get()->groupBy('company_id')
-            ->map(fn($items) => [
+            ->map(fn ($items) => [
                 'company_name' => $items->first()->company?->company_name ?? 'Unknown',
                 'count' => $items->count(),
             ])->values()->toArray();
@@ -162,7 +162,7 @@ for ($i = 5; $i >= 0; $i--) {
 
         $companyAppointments = Appointment::with('company:id,company_name')
             ->whereNotNull('company_id')->get()->groupBy('company_id')
-            ->map(fn($items) => [
+            ->map(fn ($items) => [
                 'company_name' => $items->first()->company?->company_name ?? 'Unknown',
                 'count' => $items->count(),
             ])->values()->sortByDesc('count')->take(10)->toArray();
@@ -198,13 +198,14 @@ for ($i = 5; $i >= 0; $i--) {
             for ($i = 1; $i <= $monthsToPredict; $i++) {
                 $mock[] = [
                     'month' => Carbon::now()->addMonths($i)->format('M Y'),
-                    'count' => 15 + ($i * 5) + (sin($i) * 3), 
+                    'count' => 15 + ($i * 5) + (sin($i) * 3),
                     'is_predicted' => true,
                     'upper_bound' => 15 + ($i * 5) + 8,
                     'lower_bound' => 15 + ($i * 5) - 4,
-                    'confidence' => 80 - ($i * 5)
+                    'confidence' => 80 - ($i * 5),
                 ];
             }
+
             return $mock;
         }
 
@@ -219,7 +220,9 @@ for ($i = 5; $i >= 0; $i--) {
         // 3. Calculate 'Seasonality' (Standard Deviation as a proxy for volatility)
         $mean = array_sum($counts) / $n;
         $variance = 0;
-        foreach($counts as $v) $variance += pow($v - $mean, 2);
+        foreach ($counts as $v) {
+            $variance += pow($v - $mean, 2);
+        }
         $stdDev = sqrt($variance / $n);
 
         $forecast = [];
@@ -227,18 +230,19 @@ for ($i = 5; $i >= 0; $i--) {
             // Formula: Level + (Trend * time) + simulated seasonal oscillation
             $baseProjection = $level + ($trend * $i);
             $seasonalEffect = sin($i * (M_PI / 2)) * ($stdDev * 0.5);
-            
-            $finalCount = max(20, (int)round($baseProjection + $seasonalEffect));
 
-            $forecast[] = [ 
+            $finalCount = max(20, (int) round($baseProjection + $seasonalEffect));
+
+            $forecast[] = [
                 'month' => Carbon::now()->addMonths($i)->format('M Y'),
                 'count' => $finalCount,
                 'is_predicted' => true,
-                'upper_bound' => (int)round($finalCount + $stdDev),
-                'lower_bound' => (int)round($finalCount - ($stdDev * 0.5)),
-                'confidence' => max(40, 95 - ($i * 12))
+                'upper_bound' => (int) round($finalCount + $stdDev),
+                'lower_bound' => (int) round($finalCount - ($stdDev * 0.5)),
+                'confidence' => max(40, 95 - ($i * 12)),
             ];
         }
+
         return $forecast;
     }
 }

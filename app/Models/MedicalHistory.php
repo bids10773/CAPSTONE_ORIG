@@ -41,4 +41,3 @@ class MedicalHistory extends Model
         return $this->belongsTo(Appointment::class);
     }
 }
-

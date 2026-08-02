@@ -2,80 +2,112 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SaveLaboratoryResultRequest;
 use App\Models\Appointment;
-use App\Models\LabResult;
+use App\Services\ClinicalFormWorkflowService;
+use App\Services\LaboratoryFormDefinition;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class LaboratoryController extends Controller
 {
-    /**
-     * Display a listing of appointments waiting for lab work.
-     */
-    public function index(Request $request): Response
+    public function create(Appointment $appointment, LaboratoryFormDefinition $definitions): Response
     {
-        $query = Appointment::with(['user', 'company'])
-            ->where('status', 'for_diagnostics') 
-            ->orderBy('updated_at', 'desc');
+        Gate::authorize('updateLaboratory', $appointment);
+        $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy']);
 
-            
-        // ✅ SEARCH LOGIC (Moved up so it actually runs)
-        if ($request->search) {
-            $query->whereHas('user', function($q) use ($request) {
-                $q->where('first_name', 'like', "%{$request->search}%")
-                  ->orWhere('last_name', 'like', "%{$request->search}%");
-            });
-        }
-
-        return Inertia::render('medtech/index', [
-            'appointments' => $query->paginate(10)->withQueryString(),
-            'filters' => $request->only(['search']),
-            'pageTitle' => 'Laboratory Queue'
-        ]);
-    }
-
-    public function create(Appointment $appointment): Response
-    {
-        $appointment->load('user', 'company' ,'patientProfile'); // patientProfile changed to company based on index
-        
         return Inertia::render('medtech/lab-results-form', [
             'appointment' => $appointment,
-            'labResult' => LabResult::where('appointment_id', $appointment->id)->first(),
+            'labResult' => $appointment->labResult,
+            'sections' => $definitions->sectionsFor($appointment),
+            'patientSummary' => $this->patientSummary($appointment),
+            'locked' => $appointment->labResult?->isFinalized() && request()->user()->role !== 'admin',
+            'submitUrl' => request()->user()->role === 'admin'
+                ? route('admin.lab-results.update', $appointment)
+                : route('medtech.lab-results.store', $appointment),
         ]);
     }
 
-    public function store(Request $request, Appointment $appointment)
-{
-    $validated = $request->validate([
-        'cbc_status' => 'nullable|string',
-        'cbc_remarks' => 'nullable|string',
-        'urinalysis_status' => 'nullable|string',
-        'urinalysis_remarks' => 'nullable|string',
-        'fecalysis_status' => 'nullable|string',
-        'fecalysis_remarks' => 'nullable|string',
-        'hepa_b_status' => 'nullable|string',
-        'hepa_a_status' => 'nullable|string',
-        'pregnancy_test_status' => 'nullable|string',
-        'meth_status' => 'nullable|string',
-        'marijuana_status' => 'nullable|string',
-    ]);
+    public function store(SaveLaboratoryResultRequest $request, Appointment $appointment, ClinicalFormWorkflowService $workflow): RedirectResponse
+    {
+        $workflow->saveLaboratory($appointment, $request->user(), $request->validated(), $request);
+        $message = $request->boolean('finalize')
+            ? 'Laboratory report finalized and forwarded to the next required stage.'
+            : 'Laboratory draft saved successfully.';
 
-    // ✅ SAVE LAB RESULT (ONLY ONCE)
-    LabResult::updateOrCreate(
-        ['appointment_id' => $appointment->id],
-        array_merge($validated, [
-            'encoded_by' => auth()->id(),
-            'is_completed' => true
-        ])
-    );
+        return redirect()->route('medtech.appointments')->with('success', $message);
+    }
 
-    // ✅ MOVE TO XRAY
-    $appointment->update([
-        'status' => 'for_xray'
-    ]);
+    public function pdf(Request $request, Appointment $appointment, LaboratoryFormDefinition $definitions, ClinicalFormWorkflowService $workflow): HttpResponse
+    {
+        Gate::authorize('viewClinicalForms', $appointment);
+        $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'labResult.verifiedBy']);
+        abort_unless($appointment->labResult, 404, 'No laboratory report exists for this appointment.');
+        $workflow->auditDocumentAccess($appointment, $request->user(), 'laboratory', $request);
 
-    return redirect()->route('medtech.appointments')
-        ->with('success', 'Laboratory results saved and forwarded to X-Ray.');
-}
+        $pdf = Pdf::loadView('pdf.laboratory-report', [
+            'appointment' => $appointment,
+            'result' => $appointment->labResult,
+            'sections' => $definitions->sectionsFor($appointment),
+            'patient' => $this->patientSummary($appointment),
+        ])->setPaper('letter');
+
+        return $request->boolean('preview')
+            ? $pdf->stream("LMIC-Laboratory-{$appointment->id}.pdf")
+            : $pdf->download("LMIC-Laboratory-{$appointment->id}.pdf");
+    }
+
+    public function sectionPdf(
+        Request $request,
+        Appointment $appointment,
+        string $section,
+        LaboratoryFormDefinition $definitions,
+        ClinicalFormWorkflowService $workflow,
+    ): HttpResponse {
+        Gate::authorize('viewClinicalForms', $appointment);
+        $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'labResult.verifiedBy']);
+
+        $availableSections = $definitions->sectionsFor($appointment);
+        abort_unless(array_key_exists($section, $availableSections), 404, 'This laboratory test was not selected for the appointment.');
+        abort_unless($appointment->labResult, 404, 'No laboratory report exists for this appointment.');
+
+        $column = $availableSections[$section]['column'];
+        abort_unless(filled($appointment->labResult->{$column}), 404, 'This laboratory result is not available yet.');
+
+        $workflow->auditDocumentAccess($appointment, $request->user(), "laboratory_{$section}", $request);
+
+        $pdf = Pdf::loadView('pdf.laboratory-report', [
+            'appointment' => $appointment,
+            'result' => $appointment->labResult,
+            'sections' => [$section => $availableSections[$section]],
+            'patient' => $this->patientSummary($appointment),
+        ])->setPaper('letter');
+        $filename = 'LMIC-'.str($section)->replace('_', '-')->title()."-{$appointment->id}.pdf";
+
+        return $request->boolean('preview')
+            ? $pdf->stream($filename)
+            : $pdf->download($filename);
+    }
+
+    private function patientSummary(Appointment $appointment): array
+    {
+        $profile = $appointment->user->patientProfile;
+
+        return [
+            'name' => $appointment->user->name,
+            'birthdate' => $profile?->birthdate?->toDateString(),
+            'age' => $profile?->birthdate?->age,
+            'sex' => $profile?->sex ?? $appointment->user->sex,
+            'company' => $appointment->company?->company_name ?? $appointment->company_name ?? 'OPD',
+            'employee_number' => $profile?->employee_number,
+            'appointment' => $appointment->id,
+            'date' => $appointment->appointment_date?->toDateString(),
+            'doctor' => $appointment->doctor?->name,
+        ];
+    }
 }

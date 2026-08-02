@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Appointment extends Model
 {
@@ -22,7 +21,7 @@ class Appointment extends Model
         'start_time',
         'end_time',
         'appointment_date',
-        'type', 
+        'type',
         'status',
         'service_types',
         'referral_code',
@@ -53,11 +52,10 @@ class Appointment extends Model
         return $this->belongsTo(User::class);
     }
 
-
-public function patientProfile(): HasOne
-{
-    return $this->hasOne(\App\Models\PatientProfile::class, 'user_id', 'user_id');
-}
+    public function patientProfile(): HasOne
+    {
+        return $this->hasOne(\App\Models\PatientProfile::class, 'user_id', 'user_id');
+    }
 
     /**
      * Get the company associated with this appointment.
@@ -112,7 +110,7 @@ public function patientProfile(): HasOne
      */
     public function getStatusBadgeAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'pending' => 'yellow',
             'accepted' => 'indigo',
             'arrived' => 'blue',
@@ -138,7 +136,7 @@ public function patientProfile(): HasOne
     /**
      * Get service type options.
      */
-      // ✅ ADD THIS BACK (IMPORTANT)
+    // ✅ ADD THIS BACK (IMPORTANT)
     public static function getServiceTypeOptions(): array
     {
         return [
@@ -153,8 +151,10 @@ public function patientProfile(): HasOne
             'Hepatitis' => 'Hepatitis B Screening',
             'Blood Typing' => 'Blood Typing',
             'Pregnancy Test' => 'Pregnancy Test',
+            'FBS' => 'Fasting Blood Sugar (FBS)',
+            'Blood Chemistry' => 'Blood Chemistry Panel',
             'Neuro Psychiatric Test' => 'Neuro Psychiatric Test',
-            
+
         ];
     }
 

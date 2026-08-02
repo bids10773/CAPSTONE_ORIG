@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
+use App\Actions\Fortify\CustomLoginResponse;
 use App\Actions\Fortify\ResetUserPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -10,11 +11,10 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
-use Laravel\Fortify\Features;
-use Laravel\Fortify\Fortify;
-use App\Actions\Fortify\CustomLoginResponse;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\VerifyEmailResponse;
+use Laravel\Fortify\Features;
+use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -22,15 +22,16 @@ class FortifyServiceProvider extends ServiceProvider
      * Register any application services.
      */
     public function register(): void
-{
-    $this->app->singleton(LoginResponse::class, CustomLoginResponse::class);
-    $this->app->singleton(VerifyEmailResponse::class, fn () => new class implements VerifyEmailResponse {
-        public function toResponse($request)
+    {
+        $this->app->singleton(LoginResponse::class, CustomLoginResponse::class);
+        $this->app->singleton(VerifyEmailResponse::class, fn () => new class implements VerifyEmailResponse
         {
-            return redirect('/dashboard?verified=1')->with('status', 'email-verified');
-        }
-    });
-}
+            public function toResponse($request)
+            {
+                return redirect('/dashboard?verified=1')->with('status', 'email-verified');
+            }
+        });
+    }
 
     /**
      * Bootstrap any application services.

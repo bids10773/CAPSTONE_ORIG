@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\ClinicalDocumentController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
 use App\Http\Controllers\CompanyEmployeeImportController;
@@ -88,10 +89,10 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor')->name('appointments');
         Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
         Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');
-        Route::get('/physical-exam-form/{appointmentId}', [PhysicalExamController::class, 'create'])->name('physical-exams.create');
-        Route::post('/physical-exam-form/{appointmentId}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
-        Route::get('/final-evaluation/{appointmentId}', [PhysicalExamController::class, 'final'])->name('final-evaluation');
-        Route::post('/final-evaluation/{appointmentId}', [PhysicalExamController::class, 'finalStore'])->name('final-evaluation.store');
+        Route::get('/physical-exam-form/{appointment}', [PhysicalExamController::class, 'create'])->name('physical-exams.create');
+        Route::post('/physical-exam-form/{appointment}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
+        Route::get('/final-evaluation/{appointment}', [PhysicalExamController::class, 'final'])->name('final-evaluation');
+        Route::post('/final-evaluation/{appointment}', [PhysicalExamController::class, 'finalStore'])->name('final-evaluation.store');
     });
 
     Route::middleware('role:medtech')->prefix('medtech')->name('medtech.')->group(function () {
@@ -100,6 +101,16 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::get('/lab-results/{appointment}', [LaboratoryController::class, 'create'])->name('lab-results.create');
         Route::post('/lab-results/{appointment}', [LaboratoryController::class, 'store'])->name('lab-results.store');
     });
+
+    Route::get('/clinical-forms/{appointment}/laboratory.pdf', [LaboratoryController::class, 'pdf'])
+        ->name('clinical-forms.laboratory.pdf');
+    Route::get('/clinical-forms/{appointment}/laboratory/{section}.pdf', [LaboratoryController::class, 'sectionPdf'])
+        ->where('section', '[a-z_]+')
+        ->name('clinical-forms.laboratory.section.pdf');
+    Route::get('/clinical-forms/{appointment}/physical-exam.pdf', [ClinicalDocumentController::class, 'physicalExam'])
+        ->name('clinical-forms.physical-exam.pdf');
+    Route::get('/clinical-forms/{appointment}/xray.pdf', [ClinicalDocumentController::class, 'xray'])
+        ->name('clinical-forms.xray.pdf');
 
     Route::middleware('role:radtech')->prefix('radtech')->name('radtech.')->group(function () {
         Route::get('/dashboard', RadTechDashboardController::class)->name('dashboard');
@@ -126,8 +137,14 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::post('/appointments', [AppointmentController::class, 'adminStore'])->name('appointments.store');
         Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
         Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.update-status');
+        Route::get('/appointments/{appointment}/physical-exam', [PhysicalExamController::class, 'create'])->name('physical-exams.edit');
+        Route::post('/appointments/{appointment}/physical-exam', [PhysicalExamController::class, 'store'])->name('physical-exams.update');
+        Route::get('/appointments/{appointment}/laboratory', [LaboratoryController::class, 'create'])->name('lab-results.edit');
+        Route::post('/appointments/{appointment}/laboratory', [LaboratoryController::class, 'store'])->name('lab-results.update');
+        Route::get('/appointments/{appointment}/xray', [XrayController::class, 'create'])->name('xrays.edit');
+        Route::post('/appointments/{appointment}/xray', [XrayController::class, 'store'])->name('xrays.update');
 
-        Route::resource('companies', CompanyController::class)->except('show');
+        Route::resource('companies', CompanyController::class);
         Route::patch('/companies/{company}/toggle-active', [CompanyController::class, 'toggleActive'])->name('companies.toggle-active');
         Route::post('/companies/{company}/resend-invitation', [CompanyController::class, 'resendInvitation'])->name('companies.resend-invitation');
 

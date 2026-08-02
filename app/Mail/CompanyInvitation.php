@@ -40,9 +40,11 @@ class CompanyInvitation extends Mailable
             view: 'email.company-invitation',
             with: [
                 'company' => $this->company,
-                'companyName' => $this->company->name,
-                'representativeName' => $this->company->representative_name,
-                'tempPassword' => $this->tempPassword,
+                'companyName' => $this->company->company_name,
+                'loginEmail' => $this->company->email,
+                'temporaryPassword' => $this->tempPassword,
+                'expiresAt' => $this->company->account()->value('temporary_password_expires_at'),
+                'loginUrl' => route('login'),
             ],
         );
     }

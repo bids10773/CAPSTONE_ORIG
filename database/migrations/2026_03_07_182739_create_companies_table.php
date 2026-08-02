@@ -11,19 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-      Schema::create('companies', function (Blueprint $table) {
+        Schema::create('companies', function (Blueprint $table) {
 
-    $table->id();
+            $table->id();
 
-    $table->string('name');
-    $table->string('address')->nullable();
+            $table->string('name');
+            $table->string('address')->nullable();
 
-    $table->string('status')->default('active');
+            $table->string('status')->default('active');
 
-    $table->boolean('is_partnered')->default(false);
+            $table->boolean('is_partnered')->default(false);
 
-    $table->timestamps();
-});
+            $table->timestamps();
+        });
     }
 
     /**

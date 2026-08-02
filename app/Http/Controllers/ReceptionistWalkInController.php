@@ -40,28 +40,35 @@ class ReceptionistWalkInController extends Controller
         $status = $request->string('status')->toString();
         $search = $request->string('search')->toString();
         $queuePositions = Appointment::query()
-            ->where('type', 'walk_in')
+            ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
             ->whereDate('appointment_date', today())
+            ->orderByRaw("CASE WHEN type = 'walk_in' THEN 2 ELSE 1 END")
+            ->orderBy('start_time')
             ->orderBy('id')
-            ->pluck('id')
-            ->flip();
+            ->get(['id', 'type'])
+            ->groupBy(fn (Appointment $appointment): string => $appointment->type === 'walk_in' ? 'walk_in' : 'online')
+            ->map(fn ($appointments) => $appointments->pluck('id')->flip());
 
         $walkIns = Appointment::query()
             ->with('user.patientProfile')
-            ->where('type', 'walk_in')
+            ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
             ->whereDate('appointment_date', today())
             ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->when($search !== '', fn ($query) => $query->whereHas('user', fn ($patient) => $patient
                 ->where('first_name', 'like', "%{$search}%")
                 ->orWhere('last_name', 'like', "%{$search}%")
                 ->orWhere('email', 'like', "%{$search}%")))
-            ->orderByRaw("CASE status WHEN 'arrived' THEN 1 WHEN 'pending' THEN 2 WHEN 'completed' THEN 3 ELSE 4 END")
+            ->orderByRaw("CASE WHEN type = 'walk_in' THEN 2 ELSE 1 END")
+            ->orderByRaw("CASE status WHEN 'arrived' THEN 1 WHEN 'accepted' THEN 2 WHEN 'pending' THEN 3 WHEN 'completed' THEN 4 ELSE 5 END")
+            ->orderBy('start_time')
             ->orderBy('id')
             ->get()
             ->values()
             ->map(function (Appointment $appointment) use ($queuePositions): Appointment {
-                $position = ((int) $queuePositions->get($appointment->id)) + 1;
-                $appointment->setAttribute('queue_number', 'W-'.str_pad((string) $position, 3, '0', STR_PAD_LEFT));
+                $group = $appointment->type === 'walk_in' ? 'walk_in' : 'online';
+                $position = ((int) $queuePositions->get($group, collect())->get($appointment->id)) + 1;
+                $prefix = $group === 'walk_in' ? 'W' : 'O';
+                $appointment->setAttribute('queue_number', $prefix.'-'.str_pad((string) $position, 3, '0', STR_PAD_LEFT));
 
                 return $appointment;
             });
