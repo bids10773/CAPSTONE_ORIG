@@ -14,24 +14,32 @@ class ClinicalDocumentController extends Controller
     public function physicalExam(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow): Response
     {
         Gate::authorize('viewClinicalForms', $appointment);
-        $appointment->load(['user.patientProfile', 'company', 'medicalExamination.examiningDoctor', 'physicalExam.doctor', 'medicalHistory']);
+        $this->ensurePatientResultIsReleased($request, $appointment);
+        $appointment->load([
+            'user.patientProfile', 'company', 'medicalExamination.examiningDoctor',
+            'medicalExamination.finalizedBy', 'medicalExamination.diagnosticResults',
+            'physicalExam.doctor', 'medicalHistory', 'labResult', 'xrayReport.verifiedBy',
+        ]);
         abort_unless($appointment->physicalExam, 404, 'No physical examination exists.');
         $workflow->auditDocumentAccess($appointment, $request->user(), 'physical_exam', $request);
 
-        return $this->render($request, $appointment, 'Physical Examination', [
-            ...$appointment->physicalExam->toArray(),
-            'medical_classification' => $appointment->medicalExamination?->medical_classification,
-            'fit_to_work' => $appointment->medicalExamination?->fit_to_work,
-            'final_diagnosis' => $appointment->medicalExamination?->final_diagnosis,
-            'final_remarks' => $appointment->medicalExamination?->final_remarks,
-            'recommendations' => $appointment->medicalExamination?->recommendations,
-            'finalized_at' => $appointment->medicalExamination?->finalized_at,
-        ], 'physical-exam');
+        $pdf = Pdf::loadView('pdf.physical-examination-report', [
+            'appointment' => $appointment,
+            'examination' => $appointment->medicalExamination,
+            'physical' => $appointment->physicalExam,
+            'history' => $appointment->medicalHistory,
+            'laboratory' => $appointment->labResult,
+            'xray' => $appointment->xrayReport,
+        ])->setPaper('letter', 'portrait');
+        $filename = "LMIC-Physical-Examination-{$appointment->id}.pdf";
+
+        return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
     }
 
     public function xray(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow): Response
     {
         Gate::authorize('viewClinicalForms', $appointment);
+        $this->ensurePatientResultIsReleased($request, $appointment);
         $appointment->load(['user.patientProfile', 'company', 'xrayReport.radiologist']);
         abort_unless($appointment->xrayReport, 404, 'No X-ray report exists.');
         $workflow->auditDocumentAccess($appointment, $request->user(), 'xray', $request);
@@ -48,5 +56,13 @@ class ClinicalDocumentController extends Controller
         $filename = "LMIC-{$slug}-{$appointment->id}.pdf";
 
         return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
+    }
+
+    private function ensurePatientResultIsReleased(Request $request, Appointment $appointment): void
+    {
+        if ($request->user()->role === 'patient' && $appointment->isPePackage()) {
+            $appointment->loadMissing('medicalExamination');
+            abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final PE report has not been released yet.');
+        }
     }
 }

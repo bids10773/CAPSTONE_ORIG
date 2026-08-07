@@ -98,6 +98,9 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::post('/physical-exam-form/{appointment}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
         Route::get('/final-evaluation/{appointment}', [PhysicalExamController::class, 'final'])->name('final-evaluation');
         Route::post('/final-evaluation/{appointment}', [PhysicalExamController::class, 'finalStore'])->name('final-evaluation.store');
+        Route::post('/final-evaluation/{appointment}/drug-test', [\App\Http\Controllers\DoctorDiagnosticResultController::class, 'drugTest'])->name('diagnostics.drug-test.verify');
+        Route::post('/final-evaluation/{appointment}/xray', [\App\Http\Controllers\DoctorDiagnosticResultController::class, 'xray'])->name('diagnostics.xray.verify');
+        Route::post('/final-evaluation/{appointment}/release', [PhysicalExamController::class, 'release'])->name('medical-reports.release');
     });
 
     Route::middleware('role:medtech')->prefix('medtech')->name('medtech.')->group(function () {
@@ -148,6 +151,7 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::post('/appointments/{appointment}/laboratory', [LaboratoryController::class, 'store'])->name('lab-results.update');
         Route::get('/appointments/{appointment}/xray', [XrayController::class, 'create'])->name('xrays.edit');
         Route::post('/appointments/{appointment}/xray', [XrayController::class, 'store'])->name('xrays.update');
+        Route::post('/appointments/{appointment}/release-report', [PhysicalExamController::class, 'release'])->name('medical-reports.release');
 
         Route::resource('companies', CompanyController::class);
         Route::patch('/companies/{company}/toggle-active', [CompanyController::class, 'toggleActive'])->name('companies.toggle-active');

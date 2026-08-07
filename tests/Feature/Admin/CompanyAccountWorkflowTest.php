@@ -41,6 +41,20 @@ test('admin creates a company and its secure first-login account atomically', fu
     });
 });
 
+test('company contact accepts a landline telephone number with area code', function () {
+    Mail::fake();
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $this->actingAs($admin)->post(route('admin.companies.store'), companyPayload([
+        'contact_number' => '(049) 833-3127',
+    ]))->assertRedirect(route('admin.companies.index'));
+
+    $this->assertDatabaseHas('companies', [
+        'email' => 'portal@acme.test',
+        'contact_number' => '(049) 833-3127',
+    ]);
+});
+
 test('duplicate company names and login emails are rejected', function () {
     Mail::fake();
     $admin = User::factory()->create(['role' => 'admin']);

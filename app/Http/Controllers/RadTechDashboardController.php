@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\XrayReport;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -40,6 +41,11 @@ class RadTechDashboardController extends Controller
             'todayScans' => $todayScans,
             'pendingScans' => $pendingScans,
             'completedScans' => $completedScans,
+            'workflowCounts' => XrayReport::query()
+                ->selectRaw('status, COUNT(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status'),
+            'activeStationCount' => XrayReport::query()->whereNull('performed_at')->count(),
             'pendingAppointments' => $pendingAppointments, // 👈 ADD THIS
         ]);
     }

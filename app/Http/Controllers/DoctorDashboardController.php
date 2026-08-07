@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MedicalExamination;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,6 +20,11 @@ class DoctorDashboardController extends Controller
         $pendingCount = $doctor->doctorAppointments()
             ->whereIn('status', ['accepted', 'for_final_evaluation'])
             ->count();
+        $workflowCounts = MedicalExamination::query()
+            ->whereHas('appointment', fn ($query) => $query->where('doctor_id', $doctor->id))
+            ->selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
         $todayCount = $doctor->doctorAppointments()
             ->whereIn('status', ['accepted', 'arrived', 'for_final_evaluation'])
             ->whereDate('appointment_date', today())
@@ -33,8 +39,16 @@ class DoctorDashboardController extends Controller
             ->count();
 
         $upcomingAppointments = $doctor->doctorAppointments()
-            ->with('user')
-            ->whereIn('status', ['accepted', 'arrived', 'for_final_evaluation'])
+            ->with(['user', 'medicalExamination:id,appointment_id,status'])
+            ->where(function ($query): void {
+                $query->whereIn('status', ['accepted', 'arrived', 'for_final_evaluation'])
+                    ->orWhere(function ($completed): void {
+                        $completed->where('status', 'completed')
+                            ->whereHas('medicalExamination', fn ($examination) => $examination
+                                ->whereNotNull('finalized_at')
+                                ->whereNull('released_at'));
+                    });
+            })
             ->where('appointment_date', '>=', Carbon::today()) // 👈 FIX
             ->orderBy('appointment_date', 'asc')
             ->take(5)
@@ -48,6 +62,7 @@ class DoctorDashboardController extends Controller
             'availabilityDays' => $availabilityDays,
             'upcomingAppointments' => $upcomingAppointments,
             'user' => $doctor,
+            'workflowCounts' => $workflowCounts,
         ]);
     }
 }

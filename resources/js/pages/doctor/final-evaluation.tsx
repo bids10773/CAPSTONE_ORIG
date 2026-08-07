@@ -63,12 +63,23 @@ export default function FinalEvaluation({
         final_remarks: '',
         recommendations: '',
     });
+    const releaseForm = useForm({});
+    const drugForm = useForm({
+        result: 'negative',
+        official_reference_number: '',
+        official_result_date: new Date().toISOString().slice(0, 10),
+        remarks: '',
+        supporting_document: null as File | null,
+    });
     const patient = appointment.user;
     const profile = appointment.patient_profile;
     const physical = appointment.physical_exam;
     const history = appointment.medical_history;
     const lab = appointment.lab_result;
     const xray = appointment.xray_report;
+    const drugWorkflow = medicalExamination.diagnostic_results?.find(
+        (result: any) => result.service_key === 'drug_test',
+    );
     const has = (service: string) => selectedServices.includes(service);
     const selectedLabs = selectedServices
         .filter((service) => laboratoryMapping[service])
@@ -174,6 +185,35 @@ export default function FinalEvaluation({
                     </div>
                 </header>
 
+                {medicalExamination.finalized_at && (
+                    <section className="flex flex-col justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 sm:flex-row sm:items-center">
+                        <div>
+                            <p className="font-bold text-emerald-900">
+                                PE finalized and clinically locked
+                            </p>
+                            <p className="text-sm text-emerald-800">
+                                {medicalExamination.released_at
+                                    ? 'The final report has been released to the patient.'
+                                    : 'Review the finalized record, then release it separately to the patient.'}
+                            </p>
+                        </div>
+                        {!medicalExamination.released_at && (
+                            <button
+                                type="button"
+                                disabled={releaseForm.processing}
+                                onClick={() =>
+                                    releaseForm.post(
+                                        `/doctor/final-evaluation/${appointment.id}/release`,
+                                    )
+                                }
+                                className="rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                            >
+                                Release final report
+                            </button>
+                        )}
+                    </section>
+                )}
+
                 <section className="rounded-2xl border border-moss-100 bg-white p-5 shadow-sm">
                     <div className="flex items-center gap-2">
                         <ClipboardCheck className="h-5 w-5 text-moss-700" />
@@ -213,6 +253,102 @@ export default function FinalEvaluation({
                         </div>
                     </div>
                 )}
+
+                {has('Drug Test') &&
+                    drugWorkflow &&
+                    drugWorkflow.status !== 'verified' && (
+                        <form
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                drugForm.post(
+                                    `/doctor/final-evaluation/${appointment.id}/drug-test`,
+                                    { forceFormData: true },
+                                );
+                            }}
+                            className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm"
+                        >
+                            <h2 className="font-bold text-slate-900">
+                                Verify official Drug Test result
+                            </h2>
+                            <p className="mt-1 text-sm text-slate-500">
+                                Encode this summary only after reviewing the
+                                official result. Current status:{' '}
+                                <strong>{drugWorkflow.status}</strong>
+                            </p>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                <label className="text-sm font-semibold text-slate-700">
+                                    Summarized result
+                                    <select
+                                        value={drugForm.data.result}
+                                        onChange={(event) =>
+                                            drugForm.setData(
+                                                'result',
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="mt-1 block w-full rounded-xl border-slate-300"
+                                    >
+                                        <option value="negative">Negative</option>
+                                        <option value="positive_confirmed">
+                                            Positive — Confirmed
+                                        </option>
+                                        <option value="inconclusive_repeat">
+                                            Inconclusive / For Repeat
+                                        </option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </label>
+                                <label className="text-sm font-semibold text-slate-700">
+                                    Official result date
+                                    <input
+                                        type="date"
+                                        value={drugForm.data.official_result_date}
+                                        onChange={(event) =>
+                                            drugForm.setData(
+                                                'official_result_date',
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="mt-1 block w-full rounded-xl border-slate-300"
+                                    />
+                                </label>
+                                <label className="text-sm font-semibold text-slate-700">
+                                    Reference number
+                                    <input
+                                        value={drugForm.data.official_reference_number}
+                                        onChange={(event) =>
+                                            drugForm.setData(
+                                                'official_reference_number',
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="mt-1 block w-full rounded-xl border-slate-300"
+                                    />
+                                </label>
+                                <label className="text-sm font-semibold text-slate-700">
+                                    Supporting document
+                                    <input
+                                        type="file"
+                                        accept=".pdf,.jpg,.jpeg,.png"
+                                        onChange={(event) =>
+                                            drugForm.setData(
+                                                'supporting_document',
+                                                event.target.files?.[0] ?? null,
+                                            )
+                                        }
+                                        className="mt-1 block w-full text-sm"
+                                    />
+                                </label>
+                            </div>
+                            <InputError message={drugForm.errors.result} />
+                            <button
+                                disabled={drugForm.processing}
+                                className="mt-4 rounded-xl bg-moss-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                            >
+                                Verify Drug Test result
+                            </button>
+                        </form>
+                    )}
 
                 <div className="grid gap-5 lg:grid-cols-2">
                     {has('PE') && (
@@ -408,7 +544,7 @@ export default function FinalEvaluation({
                     )}
                 </div>
 
-                <form
+                {!medicalExamination.finalized_at && <form
                     onSubmit={submit}
                     className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                 >
@@ -512,7 +648,7 @@ export default function FinalEvaluation({
                             Issue final evaluation
                         </button>
                     </div>
-                </form>
+                </form>}
             </main>
         </>
     );

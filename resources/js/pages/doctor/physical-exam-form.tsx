@@ -49,7 +49,7 @@ interface Props {
     childSummaries: Array<{
         key: string;
         label: string;
-        status: 'completed' | 'draft' | 'pending';
+        status: 'completed' | 'draft' | 'pending' | 'awaiting_result';
         summary: string;
     }>;
     submitUrl: string;
@@ -225,8 +225,62 @@ export default function PhysicalExamForm({
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
                 <div className="space-y-5">
                     <ClinicalSection
+                        icon={History}
+                        title="I. Medical history"
+                        description="Record the history fields in the same order as the official LMIC PE form."
+                    >
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {historyFields.map(([label, field]) => (
+                                <div key={field}>
+                                    <Label htmlFor={field}>{label}</Label>
+                                    <Textarea
+                                        id={field}
+                                        className="mt-1.5 min-h-24"
+                                        value={data[field]}
+                                        onChange={(event) =>
+                                            setData(field, event.target.value)
+                                        }
+                                    />
+                                </div>
+                            ))}
+                            <div>
+                                <Label htmlFor="personal_social_history">
+                                    Personal and social history
+                                </Label>
+                                <Textarea
+                                    id="personal_social_history"
+                                    className="mt-1.5 min-h-24"
+                                    value={data.personal_social_history}
+                                    onChange={(event) =>
+                                        setData(
+                                            'personal_social_history',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="ob_menstrual_history">
+                                    OB / menstrual history
+                                </Label>
+                                <Textarea
+                                    id="ob_menstrual_history"
+                                    className="mt-1.5 min-h-24"
+                                    value={data.ob_menstrual_history}
+                                    onChange={(event) =>
+                                        setData(
+                                            'ob_menstrual_history',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            </div>
+                        </div>
+                    </ClinicalSection>
+
+                    <ClinicalSection
                         icon={Activity}
-                        title="Vital signs and measurements"
+                        title="II. Physical examination — vital signs"
                         description="Record the patient's current measurements. BMI is calculated automatically."
                     >
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -375,7 +429,7 @@ export default function PhysicalExamForm({
 
                     <ClinicalSection
                         icon={Stethoscope}
-                        title="Physical examination"
+                        title="II. Physical examination — findings"
                         description="Mark each system as normal or document the relevant finding."
                     >
                         <div className="grid gap-3 lg:grid-cols-2">
@@ -433,7 +487,7 @@ export default function PhysicalExamForm({
                 <aside className="space-y-5">
                     <ClinicalSection
                         icon={ClipboardList}
-                        title={`PE master #${medicalExamination.id}`}
+                        title={`III–VI. Diagnostic results · PE #${medicalExamination.id}`}
                         description="Child results are summarized dynamically from their source records."
                     >
                         <div className="space-y-2">
@@ -461,62 +515,8 @@ export default function PhysicalExamForm({
                     </ClinicalSection>
 
                     <ClinicalSection
-                        icon={History}
-                        title="Medical history"
-                        description="Relevant history for this evaluation."
-                    >
-                        <div className="space-y-4">
-                            {historyFields.map(([label, field]) => (
-                                <div key={field}>
-                                    <Label htmlFor={field}>{label}</Label>
-                                    <Textarea
-                                        id={field}
-                                        className="mt-1.5 min-h-24"
-                                        value={data[field]}
-                                        onChange={(event) =>
-                                            setData(field, event.target.value)
-                                        }
-                                    />
-                                </div>
-                            ))}
-                            <div>
-                                <Label htmlFor="personal_social_history">
-                                    Personal and social history
-                                </Label>
-                                <Textarea
-                                    id="personal_social_history"
-                                    className="mt-1.5"
-                                    value={data.personal_social_history}
-                                    onChange={(event) =>
-                                        setData(
-                                            'personal_social_history',
-                                            event.target.value,
-                                        )
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="ob_menstrual_history">
-                                    OB / menstrual history
-                                </Label>
-                                <Textarea
-                                    id="ob_menstrual_history"
-                                    className="mt-1.5"
-                                    value={data.ob_menstrual_history}
-                                    onChange={(event) =>
-                                        setData(
-                                            'ob_menstrual_history',
-                                            event.target.value,
-                                        )
-                                    }
-                                />
-                            </div>
-                        </div>
-                    </ClinicalSection>
-
-                    <ClinicalSection
                         icon={ClipboardList}
-                        title="Clinical assessment"
+                        title="Examining physician notes"
                         description="Overall notes and recommendations for the next stage."
                     >
                         <Label htmlFor="remarks">Assessment and remarks</Label>

@@ -28,6 +28,10 @@ interface Appointment {
         company_name: string;
     } | null;
     physical_exam?: any; // Changed to match common Laravel snake_case relationship naming
+    medical_examination?: {
+        finalized_at?: string | null;
+        released_at?: string | null;
+    };
 }
 
 interface Props {
@@ -151,6 +155,9 @@ export default function DoctorAppointmentsIndex(props: Props) {
                             <option value="for_final_evaluation">
                                 Final Evaluation
                             </option>
+                            <option value="completed">
+                                Finalized — Awaiting Release
+                            </option>
                         </select>
                     </div>
                 </div>
@@ -271,6 +278,26 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                         <Stethoscope className="h-4 w-4" />
                                                     </button>
                                                 )}
+                                                {appointment.status.toLowerCase() ===
+                                                    'completed' &&
+                                                    appointment
+                                                        .medical_examination
+                                                        ?.finalized_at &&
+                                                    !appointment
+                                                        .medical_examination
+                                                        ?.released_at && (
+                                                        <button
+                                                            onClick={() =>
+                                                                router.visit(
+                                                                    `/doctor/final-evaluation/${appointment.id}`,
+                                                                )
+                                                            }
+                                                            className="inline-flex items-center rounded-2xl bg-emerald-50 p-2 text-emerald-700 hover:bg-emerald-100"
+                                                            title="Review and release finalized report"
+                                                        >
+                                                            <Stethoscope className="h-4 w-4" />
+                                                        </button>
+                                                    )}
                                             </td>
                                         </tr>
                                     ))

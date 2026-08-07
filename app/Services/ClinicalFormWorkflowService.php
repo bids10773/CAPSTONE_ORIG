@@ -39,8 +39,34 @@ class ClinicalFormWorkflowService
             ];
 
             $result = LabResult::updateOrCreate(['appointment_id' => $appointment->id], $attributes);
+            foreach (app(LaboratoryFormDefinition::class)->sectionsFor($appointment) as $key => $definition) {
+                if (! array_key_exists($key, $data['results'] ?? [])) {
+                    continue;
+                }
+
+                $isDrugTest = $key === 'drug_test';
+                $medicalExamination->diagnosticResults()->updateOrCreate(['service_key' => $key], [
+                    'appointment_id' => $appointment->id,
+                    'patient_id' => $appointment->user_id,
+                    'company_id' => $appointment->company_id,
+                    'batch_id' => $appointment->batch_id,
+                    'status' => $finalize
+                        ? ($isDrugTest ? 'awaiting_official_result' : 'verified')
+                        : 'in_progress',
+                    'result_data' => $data['results'][$key],
+                    'performed_by' => $actor->id,
+                    'performed_at' => now(),
+                    'encoded_by' => $isDrugTest ? null : $actor->id,
+                    'encoded_at' => $isDrugTest ? null : now(),
+                    'verified_by' => $finalize && ! $isDrugTest ? $actor->id : null,
+                    'verified_at' => $finalize && ! $isDrugTest ? now() : null,
+                ]);
+            }
             if ($finalize) {
                 $appointment->update(['status' => $this->nextStatus($appointment)]);
+                $medicalExamination->update(['status' => $medicalExamination->isReadyForFinalEvaluation()
+                    ? 'ready_for_final_evaluation'
+                    : 'awaiting_finalized_results']);
             }
 
             ClinicalFormAudit::create([

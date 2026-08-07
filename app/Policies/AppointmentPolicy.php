@@ -50,7 +50,20 @@ class AppointmentPolicy
     {
         return $user->role === 'admin'
             || ($user->role === 'doctor'
-                && $appointment->status !== 'completed'
                 && ($appointment->doctor_id === null || $appointment->doctor_id === $user->id));
+    }
+
+    public function verifyDiagnosticResults(User $user, Appointment $appointment): bool
+    {
+        return in_array($user->role, ['doctor', 'admin'], true)
+            && ($user->role === 'admin' || $appointment->doctor_id === null || $appointment->doctor_id === $user->id);
+    }
+
+    public function releaseMedicalReport(User $user, Appointment $appointment): bool
+    {
+        return in_array($user->role, ['doctor', 'admin'], true)
+            && $appointment->medicalExamination?->finalized_at !== null
+            && $appointment->medicalExamination?->released_at === null
+            && ($user->role === 'admin' || $appointment->doctor_id === null || $appointment->doctor_id === $user->id);
     }
 }

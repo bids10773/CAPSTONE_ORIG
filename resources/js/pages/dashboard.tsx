@@ -26,6 +26,11 @@ type Appointment = {
     physical_exam?: unknown;
     lab_result?: unknown;
     xray_report?: unknown;
+    medical_workflow?: {
+        status: string;
+        finalized: boolean;
+        report_available: boolean;
+    };
 };
 type PageProps = {
     auth: { user: Patient };
@@ -90,6 +95,16 @@ function dateDetails(value: string) {
 function nextAction(appointment?: Appointment) {
     if (!appointment)
         return 'Book an appointment whenever you need clinic services.';
+    if (
+        appointment.service_types?.includes('PE') &&
+        appointment.status === 'completed' &&
+        !appointment.medical_workflow?.report_available
+    ) {
+        return appointment.medical_workflow?.finalized
+            ? 'Your examination is finalized and is awaiting release by the doctor.'
+            : 'Your clinic visit is complete, but the final medical report is still being prepared.';
+    }
+
     return (
         {
             pending: 'Your request is being reviewed by the clinic.',
@@ -160,10 +175,16 @@ export default function PatientDashboard() {
         auth.user.first_name || auth.user.name?.split(' ')[0] || 'there';
     const nextAppointment = upcomingAppointments[0];
     const records = appointments.filter(
-        (appointment) =>
-            appointment.physical_exam ||
-            appointment.lab_result ||
-            appointment.xray_report,
+        (appointment) => {
+            const hasRecord =
+                appointment.physical_exam ||
+                appointment.lab_result ||
+                appointment.xray_report;
+            const isPe = appointment.service_types?.includes('PE');
+
+            return hasRecord &&
+                (!isPe || appointment.medical_workflow?.report_available);
+        },
     );
 
     return (

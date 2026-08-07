@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\DiagnosticResult;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -48,6 +49,15 @@ class MedTechDashboardController extends Controller
             'pendingAppointments' => $pendingAppointments,
             'labCapacity' => $labCapacity,
             'todayCount' => $todayCount,
+            'workflowCounts' => DiagnosticResult::query()
+                ->where('service_key', '!=', 'drug_test')
+                ->selectRaw('status, COUNT(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status'),
+            'drugTestProcessing' => DiagnosticResult::query()
+                ->where('service_key', 'drug_test')
+                ->whereIn('status', ['in_progress', 'awaiting_official_result', 'official_result_received'])
+                ->count(),
         ]);
     }
 }

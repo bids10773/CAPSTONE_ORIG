@@ -8,6 +8,7 @@ use App\Models\Appointment;
 use App\Models\ClinicalFormAudit;
 use App\Models\MedicalHistory;
 use App\Models\PhysicalExam;
+use App\Notifications\MedicalReportReleased;
 use App\Services\LaboratoryFormDefinition;
 use App\Services\MedicalExaminationService;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +26,7 @@ class PhysicalExamController extends Controller
         Gate::authorize('updatePhysicalExam', $appointment);
         $medicalExamination = $examinations->forAppointment($appointment);
         $appointment->load(['user', 'company', 'medicalExamination', 'physicalExam', 'medicalHistory', 'patientProfile']);
-        $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'xrayReport']);
+        $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'diagnosticResults', 'xrayReport']);
 
         return Inertia::render('doctor/physical-exam-form', [
             'appointment' => $appointment,
@@ -92,7 +93,7 @@ class PhysicalExamController extends Controller
         Gate::authorize('finalizeMedicalEvaluation', $appointment);
         $medicalExamination = $examinations->forAppointment($appointment);
         $appointment->load(['user', 'company', 'patientProfile', 'physicalExam', 'labResult.encodedBy', 'xrayReport', 'medicalHistory']);
-        $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'xrayReport']);
+        $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'diagnosticResults', 'xrayReport']);
 
         return Inertia::render('doctor/final-evaluation', [
             'appointment' => $appointment,
@@ -108,7 +109,7 @@ class PhysicalExamController extends Controller
         DB::transaction(function () use ($request, $appointment, $examinations): void {
             $requested = collect($appointment->service_types ?? []);
             $medicalExamination = $examinations->forAppointment($appointment);
-            $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'xrayReport']);
+            $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'diagnosticResults', 'xrayReport']);
             if (! $medicalExamination->isReadyForFinalEvaluation()) {
                 throw ValidationException::withMessages(['medical_class' => 'Complete every selected examination before final evaluation.']);
             }
@@ -145,6 +146,32 @@ class PhysicalExamController extends Controller
         });
 
         return redirect()->route('doctor.dashboard')->with('success', 'Final medical evaluation completed. All clinical forms are now locked.');
+    }
+
+    public function release(Request $request, Appointment $appointment): RedirectResponse
+    {
+        Gate::authorize('releaseMedicalReport', $appointment);
+
+        DB::transaction(function () use ($request, $appointment): void {
+            $examination = $appointment->medicalExamination()->lockForUpdate()->firstOrFail();
+            if ($examination->released_at !== null) {
+                throw ValidationException::withMessages(['report' => 'This report has already been released.']);
+            }
+
+            $examination->update([
+                'status' => 'report_released',
+                'released_by' => $request->user()->id,
+                'released_at' => now(),
+            ]);
+            $this->audit($request, $appointment, 'medical_examination', 'report_released', [
+                'released_by' => $request->user()->id,
+                'released_at' => $examination->released_at?->toIso8601String(),
+            ]);
+
+            DB::afterCommit(fn () => $appointment->user?->notify(new MedicalReportReleased));
+        });
+
+        return back()->with('success', 'Final PE report released to the patient.');
     }
 
     private function audit(Request $request, Appointment $appointment, string $form, string $action, array $changes): void

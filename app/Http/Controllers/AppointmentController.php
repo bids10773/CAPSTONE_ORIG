@@ -809,7 +809,7 @@ class AppointmentController extends Controller
         $search = $request->get('search', '');
         $status = $request->get('status', '');
 
-        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport']);
+        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport', 'medicalExamination']);
 
         if ($role === 'doctor') {
             $query->where(function ($q) {
@@ -817,7 +817,13 @@ class AppointmentController extends Controller
                     $sub->whereIn('status', ['accepted', 'arrived'])
                         ->whereDoesntHave('physicalExam');
                 })
-                    ->orWhere('status', 'for_final_evaluation');
+                    ->orWhere('status', 'for_final_evaluation')
+                    ->orWhere(function ($sub) {
+                        $sub->where('status', 'completed')
+                            ->whereHas('medicalExamination', fn ($examination) => $examination
+                                ->whereNotNull('finalized_at')
+                                ->whereNull('released_at'));
+                    });
             });
 
         } elseif ($role === 'medtech') {

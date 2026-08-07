@@ -112,20 +112,31 @@ export default function CompanyAccountForm({
                         <InputError message={form.errors.email} />
                     </div>
                     <div>
-                        {field('contact_number', 'Contact number')}
+                        {field('contact_number', 'Phone or telephone number')}
                         <input
                             id="contact_number"
                             type="tel"
+                            inputMode="tel"
                             autoComplete="tel"
+                            maxLength={30}
+                            placeholder="e.g. +63 912 345 6789 or (049) 833-3127"
                             className={input}
                             value={form.data.contact_number}
-                            onChange={(e) =>
-                                form.setData('contact_number', e.target.value)
-                            }
-                            placeholder="+63 912 345 6789"
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                const digitCount =
+                                    value.match(/\d/g)?.length ?? 0;
+                                if (digitCount <= 15) {
+                                    form.setData('contact_number', value);
+                                }
+                            }}
                             aria-invalid={!!form.errors.contact_number}
                         />
                         <InputError message={form.errors.contact_number} />
+                        <p className="mt-1 text-xs text-slate-500">
+                            Enter the company mobile number or landline,
+                            including the area code when applicable.
+                        </p>
                     </div>
                     <div>
                         {field('industry_type', 'Industry type')}

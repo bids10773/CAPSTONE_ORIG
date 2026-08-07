@@ -18,11 +18,18 @@ class StoreCompanyRequest extends FormRequest
         return [
             'company_name' => ['required', 'string', 'max:255', Rule::unique('companies', 'company_name')],
             'email' => ['required', 'string', 'email:rfc', 'max:255', Rule::unique('companies'), Rule::unique('users')],
-            'contact_number' => ['required', 'string', 'regex:/^\+?[0-9][0-9\s().-]{7,19}$/'],
+            'contact_number' => ['required', 'string', 'max:30', 'regex:/^(?=(?:\D*\d){7,15}\D*$)\+?[\d\s().-]+$/'],
             'address' => ['required', 'string', 'max:500'],
             'industry_type' => ['required', 'string', Rule::in(array_keys(Company::getIndustryTypes()))],
             'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'status' => ['required', Rule::in(['active', 'inactive'])],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'contact_number.regex' => 'Enter a valid mobile or telephone number with 7 to 15 digits.',
         ];
     }
 }

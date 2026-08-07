@@ -46,6 +46,7 @@ class LaboratoryController extends Controller
     public function pdf(Request $request, Appointment $appointment, LaboratoryFormDefinition $definitions, ClinicalFormWorkflowService $workflow): HttpResponse
     {
         Gate::authorize('viewClinicalForms', $appointment);
+        $this->ensurePatientResultIsReleased($request, $appointment);
         $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'labResult.verifiedBy']);
         abort_unless($appointment->labResult, 404, 'No laboratory report exists for this appointment.');
         $workflow->auditDocumentAccess($appointment, $request->user(), 'laboratory', $request);
@@ -70,6 +71,7 @@ class LaboratoryController extends Controller
         ClinicalFormWorkflowService $workflow,
     ): HttpResponse {
         Gate::authorize('viewClinicalForms', $appointment);
+        $this->ensurePatientResultIsReleased($request, $appointment);
         $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'labResult.verifiedBy']);
 
         $availableSections = $definitions->sectionsFor($appointment);
@@ -109,5 +111,13 @@ class LaboratoryController extends Controller
             'date' => $appointment->appointment_date?->toDateString(),
             'doctor' => $appointment->doctor?->name,
         ];
+    }
+
+    private function ensurePatientResultIsReleased(Request $request, Appointment $appointment): void
+    {
+        if ($request->user()->role === 'patient' && $appointment->isPePackage()) {
+            $appointment->loadMissing('medicalExamination');
+            abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final PE report has not been released yet.');
+        }
     }
 }

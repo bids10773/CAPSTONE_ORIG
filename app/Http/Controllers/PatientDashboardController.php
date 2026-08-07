@@ -41,11 +41,37 @@ class PatientDashboardController extends Controller
         |--------------------------------------------------------------------------
         | Optimized queries scoped to authenticated patient only
         */
-        $appointments = Appointment::with(['company', 'physicalExam:id,appointment_id', 'labResult:id,appointment_id', 'xrayReport:id,appointment_id'])
+        $appointments = Appointment::with([
+            'company',
+            'physicalExam:id,appointment_id,is_completed',
+            'labResult:id,appointment_id',
+            'xrayReport:id,appointment_id,status,performed_at,verified_at',
+            'medicalExamination:id,appointment_id,status,finalized_at,released_at',
+            'medicalExamination.diagnosticResults:id,medical_examination_id,service_key,status,verified_at',
+        ])
             ->where('user_id', $user->id)
             ->latest('appointment_date')
             ->limit(10)
-            ->get();
+            ->get()
+            ->each(function (Appointment $appointment): void {
+                $examination = $appointment->medicalExamination;
+                if ($examination === null || ! $appointment->isPePackage()) {
+                    return;
+                }
+
+                $examination->setRelation('appointment', $appointment);
+                $examination->setRelation('physicalExam', $appointment->physicalExam);
+                $examination->setRelation('laboratoryResult', $appointment->labResult);
+                $examination->setRelation('xrayReport', $appointment->xrayReport);
+
+                $appointment->setAttribute('medical_workflow', [
+                    'status' => $examination->status,
+                    'finalized' => $examination->finalized_at !== null,
+                    'report_available' => $examination->released_at !== null,
+                    'stages' => $examination->childSummaries(),
+                ]);
+                $examination->unsetRelation('diagnosticResults');
+            });
 
         $upcomingAppointments = Appointment::with('company')
             ->where('user_id', $user->id)
