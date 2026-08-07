@@ -8,6 +8,15 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Appointment extends Model
 {
+    protected static function booted(): void
+    {
+        static::created(function (Appointment $appointment): void {
+            if ($appointment->isPePackage()) {
+                app(\App\Services\MedicalExaminationService::class)->forAppointment($appointment);
+            }
+        });
+    }
+
     /**
      * The attributes that are mass assignable.
      *
@@ -27,6 +36,12 @@ class Appointment extends Model
         'referral_code',
         'notes',
         'batch_id',
+        'arrived_at',
+        'checked_in_by',
+        'auto_cancelled_at',
+        'cancellation_reason',
+        'released_from_appointment_id',
+        'released_slot_assigned_at',
     ];
 
     /**
@@ -41,6 +56,9 @@ class Appointment extends Model
             'start_time' => 'datetime:H:i',
             'end_time' => 'datetime:H:i',
             'service_types' => 'array',
+            'arrived_at' => 'datetime',
+            'auto_cancelled_at' => 'datetime',
+            'released_slot_assigned_at' => 'datetime',
         ];
     }
 
@@ -71,6 +89,26 @@ class Appointment extends Model
     public function doctor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'doctor_id');
+    }
+
+    public function medicalExamination(): HasOne
+    {
+        return $this->hasOne(MedicalExamination::class);
+    }
+
+    public function checkedInBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'checked_in_by');
+    }
+
+    public function releasedFromAppointment(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'released_from_appointment_id');
+    }
+
+    public function replacementWalkIn(): HasOne
+    {
+        return $this->hasOne(self::class, 'released_from_appointment_id');
     }
 
     /**
@@ -162,5 +200,16 @@ class Appointment extends Model
     public function getServiceTypesListAttribute(): string
     {
         return implode(', ', $this->service_types ?? []);
+    }
+
+    public function isPePackage(): bool
+    {
+        return in_array('PE', $this->service_types ?? [], true);
+    }
+
+    public function requiresXray(): bool
+    {
+        return in_array('X-Ray', $this->service_types ?? [], true)
+            || ($this->isPePackage() && config('medical.pe_package.requires_xray', true));
     }
 }

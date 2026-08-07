@@ -7,6 +7,7 @@ use App\Http\Requests\StoreWalkInRequest;
 use App\Http\Requests\UpdateWalkInStatusRequest;
 use App\Models\Appointment;
 use App\Models\User;
+use App\Services\AppointmentSchedulingService;
 use App\Services\WalkInService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -16,7 +17,10 @@ use Inertia\Response;
 
 class ReceptionistWalkInController extends Controller
 {
-    public function __construct(private readonly WalkInService $walkIns) {}
+    public function __construct(
+        private readonly WalkInService $walkIns,
+        private readonly AppointmentSchedulingService $scheduling,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -42,8 +46,8 @@ class ReceptionistWalkInController extends Controller
         $queuePositions = Appointment::query()
             ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
             ->whereDate('appointment_date', today())
-            ->orderByRaw("CASE WHEN type = 'walk_in' THEN 2 ELSE 1 END")
-            ->orderBy('start_time')
+            ->orderByRaw("CASE WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type <> 'walk_in' THEN 2 WHEN type = 'walk_in' THEN 3 ELSE 4 END")
+            ->orderByRaw('COALESCE(start_time, arrived_at, created_at)')
             ->orderBy('id')
             ->get(['id', 'type'])
             ->groupBy(fn (Appointment $appointment): string => $appointment->type === 'walk_in' ? 'walk_in' : 'online')
@@ -58,17 +62,18 @@ class ReceptionistWalkInController extends Controller
                 ->where('first_name', 'like', "%{$search}%")
                 ->orWhere('last_name', 'like', "%{$search}%")
                 ->orWhere('email', 'like', "%{$search}%")))
-            ->orderByRaw("CASE WHEN type = 'walk_in' THEN 2 ELSE 1 END")
-            ->orderByRaw("CASE status WHEN 'arrived' THEN 1 WHEN 'accepted' THEN 2 WHEN 'pending' THEN 3 WHEN 'completed' THEN 4 ELSE 5 END")
-            ->orderBy('start_time')
+            ->orderByRaw("CASE WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type <> 'walk_in' AND status IN ('pending', 'accepted') THEN 2 WHEN type = 'walk_in' THEN 3 ELSE 4 END")
+            ->orderByRaw('COALESCE(start_time, arrived_at, created_at)')
             ->orderBy('id')
-            ->get()
-            ->values()
-            ->map(function (Appointment $appointment) use ($queuePositions): Appointment {
+            ->paginate($this->perPage($request))
+            ->withQueryString()
+            ->through(function (Appointment $appointment) use ($queuePositions): Appointment {
                 $group = $appointment->type === 'walk_in' ? 'walk_in' : 'online';
                 $position = ((int) $queuePositions->get($group, collect())->get($appointment->id)) + 1;
                 $prefix = $group === 'walk_in' ? 'W' : 'O';
                 $appointment->setAttribute('queue_number', $prefix.'-'.str_pad((string) $position, 3, '0', STR_PAD_LEFT));
+                $appointment->setAttribute('arrival_status', $this->scheduling->arrivalStatus($appointment));
+                $appointment->setAttribute('grace_ends_at', $this->scheduling->graceEndsAt($appointment)?->toIso8601String());
 
                 return $appointment;
             });
@@ -83,7 +88,7 @@ class ReceptionistWalkInController extends Controller
 
     public function store(StoreWalkInRequest $request): RedirectResponse
     {
-        $appointment = $this->walkIns->create($request->validated());
+        $appointment = $this->walkIns->create($request->validated(), $request->user());
         $position = Appointment::query()
             ->where('type', 'walk_in')
             ->whereDate('appointment_date', today())
@@ -95,7 +100,11 @@ class ReceptionistWalkInController extends Controller
 
     public function updateStatus(UpdateWalkInStatusRequest $request, Appointment $appointment): RedirectResponse
     {
-        $appointment->update($request->validated());
+        if ($request->validated('status') === 'arrived') {
+            $this->scheduling->checkIn($appointment, $request->user());
+        } else {
+            $appointment->update($request->validated());
+        }
 
         return back()->with('success', 'Walk-in status updated.');
     }

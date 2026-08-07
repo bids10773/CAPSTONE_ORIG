@@ -28,7 +28,7 @@ class CompanyController extends Controller
                 ->orWhere('email', 'like', "%{$search}%")))
             ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('status', $status))
             ->orderBy('company_name')
-            ->paginate(15)
+            ->paginate($this->perPage($request))
             ->withQueryString();
 
         return Inertia::render('admin/companies/index', [

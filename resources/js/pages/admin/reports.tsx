@@ -13,7 +13,9 @@ import {
     Scan,
     Eye,
 } from 'lucide-react';
+import { Pagination } from '@/components/pagination';
 import AppLayout from '@/layouts/app-layout';
+import type { PaginatedResponse } from '@/types/pagination';
 
 interface Props {
     totalAppointments: number;
@@ -22,7 +24,7 @@ interface Props {
     statusBreakdown: Record<string, number>;
     typeBreakdown: Record<string, number>;
     topCompanies: { company_name: string; count: number }[];
-    recentAppointments: any[];
+    recentAppointments: PaginatedResponse<any>;
     medicalRecords: {
         physicalExams: number;
         labResults: number;
@@ -31,7 +33,7 @@ interface Props {
 }
 
 export default function AdminReports() {
-    const props = usePage().props as any;
+    const props = usePage().props as unknown as Props;
     const {
         totalAppointments,
         monthlyAppointments,
@@ -384,9 +386,8 @@ export default function AdminReports() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {(recentAppointments || [])
-                                    .slice(0, 10)
-                                    .map((appointment: any) => (
+                                {recentAppointments.data.map(
+                                    (appointment: any) => (
                                         <tr
                                             key={appointment.id}
                                             className="hover:bg-gray-50"
@@ -442,10 +443,15 @@ export default function AdminReports() {
                                                 </Link>
                                             </td>
                                         </tr>
-                                    ))}
+                                    ),
+                                )}
                             </tbody>
                         </table>
                     </div>
+                    <Pagination
+                        pagination={recentAppointments}
+                        label="appointments"
+                    />
                 </div>
             </div>
         </>

@@ -25,7 +25,10 @@ class SavePhysicalExamRequest extends FormRequest
             'weight' => ['required', 'numeric', 'between:1,500'],
             'blood_pressure' => ['required', 'regex:/^\d{2,3}\/\d{2,3}$/'],
             'pulse_rate' => ['required', 'integer', 'between:20,250'],
+            'respiration_rate' => ['required', 'integer', 'between:5,80'],
             'temperature' => ['required', 'numeric', 'between:30,45'],
+            'visual_acuity' => ['required', 'string', 'max:100'],
+            'hearing' => ['required', 'string', 'max:100'],
             'remarks' => ['nullable', 'string', 'max:3000'],
         ];
 

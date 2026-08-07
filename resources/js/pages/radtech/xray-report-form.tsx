@@ -62,16 +62,22 @@ export default function XrayReportForm({
     xrayReport,
     submitUrl,
 }: Props) {
-    const { data, setData, post, processing } = useForm({
+    const form = useForm({
+        workflow_action: 'complete',
         chest_status: xrayReport?.findings ? 'findings' : 'normal',
         chest_findings: xrayReport?.findings || '',
         impression: xrayReport?.impression || '',
+        recommendation: xrayReport?.recommendation || '',
         remarks: xrayReport?.remarks || '',
     });
+    const { data, setData, processing } = form;
 
-    const onSubmit = (event: React.FormEvent) => {
-        event.preventDefault();
-        post(submitUrl);
+    const submit = (action: 'performed' | 'complete') => {
+        form.transform((values) => ({
+            ...values,
+            workflow_action: action,
+        }));
+        form.post(submitUrl, { preserveScroll: true });
     };
     const patientName = `${appointment.user.first_name} ${appointment.user.last_name}`;
 
@@ -79,7 +85,7 @@ export default function XrayReportForm({
         <>
             <Head title="X-Ray Report" />
             <form
-                onSubmit={onSubmit}
+                onSubmit={(event) => event.preventDefault()}
                 className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 sm:px-6 lg:px-8"
             >
                 <PatientSummaryCard
@@ -294,6 +300,25 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                                 }
                                 placeholder="Document positioning, image quality, or relevant notes"
                             />
+
+                            <Label
+                                htmlFor="recommendation"
+                                className="mt-5 block"
+                            >
+                                Recommendation
+                            </Label>
+                            <Textarea
+                                id="recommendation"
+                                className="mt-1.5 min-h-28"
+                                value={data.recommendation}
+                                onChange={(event) =>
+                                    setData(
+                                        'recommendation',
+                                        event.target.value,
+                                    )
+                                }
+                                placeholder="Optional follow-up recommendation"
+                            />
                         </ClinicalSection>
                     </aside>
                 </div>
@@ -307,11 +332,24 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                         <ArrowLeft className="size-4" />
                         Back to queue
                     </Button>
-                    <Button type="submit" disabled={processing}>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        disabled={processing || !!xrayReport?.performed_at}
+                        onClick={() => submit('performed')}
+                    >
+                        <ScanLine className="size-4" />
+                        Mark procedure performed
+                    </Button>
+                    <Button
+                        type="button"
+                        disabled={processing}
+                        onClick={() => submit('complete')}
+                    >
                         <Save className="size-4" />
                         {processing
                             ? 'Completing imaging…'
-                            : 'Complete imaging'}
+                            : 'Verify official result'}
                     </Button>
                 </StickyActionFooter>
             </form>

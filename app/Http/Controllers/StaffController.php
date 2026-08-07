@@ -41,7 +41,7 @@ class StaffController extends Controller
 
         $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'])
             ->orderBy('created_at', 'desc')
-            ->paginate(10)
+            ->paginate($this->perPage($request))
             ->withQueryString();
 
         return Inertia::render('admin/staff/index', [

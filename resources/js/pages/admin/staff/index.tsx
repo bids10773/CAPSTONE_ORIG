@@ -11,6 +11,7 @@ import {
     RefreshCw,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
@@ -56,12 +57,13 @@ export default function StaffIndex() {
                 {
                     search: search || undefined,
                     role: selectedRole || undefined,
+                    per_page: staff.per_page,
                 },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         }, 300);
         return () => clearTimeout(delayDebounceFn);
-    }, [search, selectedRole]);
+    }, [search, selectedRole, staff.per_page]);
 
     const getRoleBadgeColor = (role: string) => {
         const colors: Record<string, string> = {
@@ -135,6 +137,7 @@ export default function StaffIndex() {
                             </Button>
                         </Link>
                     </div>
+                    <Pagination pagination={staff} label="staff members" />
                 </motion.div>
 
                 {/* 2. Symmetrical Table Section */}

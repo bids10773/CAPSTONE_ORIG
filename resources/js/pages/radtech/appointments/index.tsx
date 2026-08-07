@@ -1,19 +1,10 @@
-import { Head, Link, usePage, router } from '@inertiajs/react';
-import {
-    Calendar,
-    Search,
-    Filter,
-    Eye,
-    Image,
-    AlertCircle,
-    ChevronLeft,
-    ChevronRight,
-    Play,
-} from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
-import { StatusBadge } from '@/components/status-badge';
-import type { BreadcrumbItem } from '@/types';
+import { Head, Link, router } from '@inertiajs/react';
+import { Calendar, Search, Eye, Image, Play } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { Pagination } from '@/components/pagination';
+import { StatusBadge } from '@/components/status-badge';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'RadTech Queue', href: '/admin/companies' },
@@ -57,20 +48,6 @@ export default function RadTechAppointmentsIndex(props: Props) {
     const { appointments, filters, pageTitle } = props;
     const [search, setSearch] = useState(filters.search || '');
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'for_xray':
-                return 'bg-yellow-100 text-yellow-800';
-        }
-    };
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'for_xray':
-                return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-        }
-    };
-
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString('en-US', {
             weekday: 'short',
@@ -105,24 +82,11 @@ export default function RadTechAppointmentsIndex(props: Props) {
         }
     };
 
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'for_diagnostics':
-                return 'Laboratory';
-            case 'for_xray':
-                return 'X-Ray';
-            case 'for_final_evaluation':
-                return 'Final Evaluation';
-            default:
-                return status.replace('_', ' ');
-        }
-    };
-
     useEffect(() => {
         const delayDebounce = setTimeout(() => {
             router.get(
                 '/radtech/appointments',
-                { search },
+                { search, per_page: appointments.per_page },
                 {
                     preserveState: true,
                     replace: true,
@@ -131,7 +95,7 @@ export default function RadTechAppointmentsIndex(props: Props) {
         }, 500); // ⏱ delay (ms)
 
         return () => clearTimeout(delayDebounce);
-    }, [search]);
+    }, [search, appointments.per_page]);
 
     const startXray = (appointmentId: number) => {
         router.visit(`/radtech/xrays/${appointmentId}`);
@@ -158,6 +122,11 @@ export default function RadTechAppointmentsIndex(props: Props) {
                 {/* Filters */}
                 <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                     <form method="GET" className="flex flex-wrap gap-4">
+                        <input
+                            type="hidden"
+                            name="per_page"
+                            value={appointments.per_page}
+                        />
                         <div className="min-w-[200px] flex-1">
                             <div className="relative">
                                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -294,86 +263,10 @@ export default function RadTechAppointmentsIndex(props: Props) {
                             </tbody>
                         </table>
                     </div>
-                    {/* Pagination */}
-                    {appointments.links && appointments.links.length > 3 && (
-                        <div className="border-t border-gray-200 bg-gray-50 px-6 py-4">
-                            <nav className="flex items-center justify-between">
-                                <div className="flex flex-1 justify-between sm:hidden">
-                                    <Link
-                                        href={appointments.links[0]?.url || ''}
-                                        className="relative inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                                    >
-                                        Previous
-                                    </Link>
-                                </div>
-                                <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                                    <div>
-                                        <p className="text-sm text-gray-700">
-                                            Showing{' '}
-                                            <span className="font-medium">
-                                                {(appointments.current_page -
-                                                    1) *
-                                                    appointments.per_page +
-                                                    1}
-                                            </span>{' '}
-                                            to{' '}
-                                            <span className="font-medium">
-                                                {Math.min(
-                                                    appointments.current_page *
-                                                        appointments.per_page,
-                                                    appointments.total,
-                                                )}
-                                            </span>{' '}
-                                            of{' '}
-                                            <span className="font-medium">
-                                                {appointments.total}
-                                            </span>{' '}
-                                            results
-                                        </p>
-                                    </div>
-                                    <div>
-                                        {appointments.links.map(
-                                            (link, index) => (
-                                                <Link
-                                                    key={index}
-                                                    href={link.url || ''}
-                                                    className={`relative inline-flex items-center rounded-xl border px-4 py-2 text-sm font-medium focus:z-20 focus:outline-none ${
-                                                        link.active
-                                                            ? 'z-10 border-moss-500 bg-moss-50 text-moss-600'
-                                                            : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
-                                                    } ${!link.url && 'pointer-events-none text-gray-400'}`}
-                                                >
-                                                    {link.label ===
-                                                        'Previous' && (
-                                                        <ChevronLeft className="h-5 w-5" />
-                                                    )}
-                                                    {link.label === 'Next' && (
-                                                        <ChevronRight className="h-5 w-5" />
-                                                    )}
-                                                    {link.label.replace(
-                                                        /\\w/g,
-                                                        '',
-                                                    )}
-                                                </Link>
-                                            ),
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex flex-1 justify-end sm:hidden">
-                                    <Link
-                                        href={
-                                            appointments.links[
-                                                appointments.links.length - 1
-                                            ]?.url || ''
-                                        }
-                                        className="relative inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                                    >
-                                        Next
-                                    </Link>
-                                </div>
-                            </nav>
-                        </div>
-                    )}
+                    <Pagination
+                        pagination={appointments}
+                        label="appointments"
+                    />
                 </div>
             </div>
         </>

@@ -7,9 +7,8 @@ import {
     Eye,
     ToggleLeft,
     ToggleRight,
-    ChevronLeft,
-    ChevronRight,
 } from 'lucide-react';
+import { Pagination } from '@/components/pagination';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -40,6 +39,11 @@ export default function AdminCompaniesIndex() {
                 {/* Filters */}
                 <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                     <form method="GET" className="flex flex-wrap gap-4">
+                        <input
+                            type="hidden"
+                            name="per_page"
+                            value={companies.per_page}
+                        />
                         <div className="min-w-[200px] flex-1">
                             <div className="relative">
                                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -195,49 +199,7 @@ export default function AdminCompaniesIndex() {
                         </table>
                     </div>
 
-                    {/* Pagination */}
-                    {companies.last_page > 1 && (
-                        <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4">
-                            <p className="text-sm text-gray-500">
-                                Showing{' '}
-                                {(companies.current_page - 1) *
-                                    companies.per_page +
-                                    1}{' '}
-                                to{' '}
-                                {Math.min(
-                                    companies.current_page * companies.per_page,
-                                    companies.total,
-                                )}{' '}
-                                of {companies.total} results
-                            </p>
-                            <div className="flex gap-1">
-                                {companies.links.map(
-                                    (link: any, index: number) => (
-                                        <Link
-                                            key={index}
-                                            href={link.url || '#'}
-                                            className={`rounded px-3 py-1 text-sm ${
-                                                link.active
-                                                    ? 'bg-moss-600 text-white'
-                                                    : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                                            } ${!link.url ? 'cursor-not-allowed opacity-50' : ''}`}
-                                            preserveScroll
-                                        >
-                                            {link.label ===
-                                            '&laquo; Previous' ? (
-                                                <ChevronLeft className="h-4 w-4" />
-                                            ) : link.label ===
-                                              'Next &raquo;' ? (
-                                                <ChevronRight className="h-4 w-4" />
-                                            ) : (
-                                                link.label
-                                            )}
-                                        </Link>
-                                    ),
-                                )}
-                            </div>
-                        </div>
-                    )}
+                    <Pagination pagination={companies} label="companies" />
                 </div>
             </div>
         </>

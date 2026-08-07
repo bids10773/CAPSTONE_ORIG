@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class PhysicalExam extends Model
 {
+    protected $appends = ['bmi'];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -15,6 +17,7 @@ class PhysicalExam extends Model
      */
     protected $fillable = [
         'appointment_id',
+        'medical_examination_id',
         'doctor_id',
 
         // Vital Signs
@@ -22,7 +25,10 @@ class PhysicalExam extends Model
         'weight',
         'blood_pressure',
         'pulse_rate',
+        'respiration_rate',
         'temperature',
+        'visual_acuity',
+        'hearing',
         'remarks',
 
         // ✅ PHYSICAL FINDINGS (ADD THESE)
@@ -67,12 +73,26 @@ class PhysicalExam extends Model
         ];
     }
 
+    public function getBmiAttribute(): ?float
+    {
+        if (! $this->height || ! $this->weight) {
+            return null;
+        }
+
+        return round((float) $this->weight / (((float) $this->height / 100) ** 2), 1);
+    }
+
     /**
      * Get the appointment that owns the physical exam.
      */
     public function appointment(): BelongsTo
     {
         return $this->belongsTo(Appointment::class);
+    }
+
+    public function medicalExamination(): BelongsTo
+    {
+        return $this->belongsTo(MedicalExamination::class);
     }
 
     /**

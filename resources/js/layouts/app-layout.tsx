@@ -1,14 +1,15 @@
-import ClinicDashboardLayout from '@/layouts/custom-layout';
-import type { AppLayoutProps } from '@/types';
 import { usePage } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import ClinicDashboardLayout from '@/layouts/custom-layout';
+import PatientPortalLayout from '@/layouts/patient-portal-layout';
+import type { AppLayoutProps } from '@/types';
 
 export default function AppLayout({
     children,
     breadcrumbs = [],
 }: AppLayoutProps) {
-    const { flash, errors } = usePage().props as any; // ✅ ADD errors
+    const { auth, flash, errors } = usePage().props as any;
     const lastMessage = useRef<string | null>(null);
 
     useEffect(() => {
@@ -38,6 +39,10 @@ export default function AppLayout({
             lastMessage.current = errors.email;
         }
     }, [flash, errors]);
+
+    if (auth?.user?.role === 'patient') {
+        return <PatientPortalLayout>{children}</PatientPortalLayout>;
+    }
 
     return (
         <ClinicDashboardLayout breadcrumbs={breadcrumbs}>

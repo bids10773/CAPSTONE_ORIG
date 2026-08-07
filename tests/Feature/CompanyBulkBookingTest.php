@@ -3,6 +3,7 @@
 use App\Models\Appointment;
 use App\Models\Company;
 use App\Models\User;
+use App\Services\LaboratoryFormDefinition;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('company accounts always create company bulk appointments', function () {
@@ -34,6 +35,33 @@ test('company accounts always create company bulk appointments', function () {
         'doctor_id' => null,
         'start_time' => null,
     ]);
+});
+
+test('drug and pregnancy tests are optional PE add-ons for company bulk appointments', function () {
+    $company = Company::create([
+        'company_name' => 'Optional Services Company',
+        'status' => 'active',
+        'is_partnered' => true,
+    ]);
+    $account = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
+
+    $this->actingAs($account)->post(route('appointments.store'), [
+        'appointment_date' => today()->addDay()->toDateString(),
+        'service_types' => ['PE'],
+    ])->assertSessionDoesntHaveErrors();
+
+    $standard = Appointment::query()->latest('id')->firstOrFail();
+    expect(array_keys(app(LaboratoryFormDefinition::class)->sectionsFor($standard)))
+        ->toBe(['cbc', 'urinalysis', 'fecalysis', 'serology']);
+
+    $this->actingAs($account)->post(route('appointments.store'), [
+        'appointment_date' => today()->addDays(2)->toDateString(),
+        'service_types' => ['PE', 'Drug Test', 'Pregnancy Test'],
+    ])->assertSessionDoesntHaveErrors();
+
+    $withAddOns = Appointment::query()->latest('id')->firstOrFail();
+    expect(array_keys(app(LaboratoryFormDefinition::class)->sectionsFor($withAddOns)))
+        ->toBe(['cbc', 'urinalysis', 'fecalysis', 'drug_test', 'serology', 'pregnancy']);
 });
 
 test('bulk requests have a separate admin approval queue and do not require patient demographics', function () {

@@ -1,8 +1,9 @@
 import { usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { Bell, CalendarDays, ChevronDown, Search } from 'lucide-react';
+import { Bell, CalendarDays, ChevronDown } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Breadcrumbs } from '@/components/breadcrumbs';
+import { GlobalSearch } from '@/components/global-search';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
@@ -49,20 +50,7 @@ export default function ClinicDashboardLayout({
                             <Breadcrumbs breadcrumbs={breadcrumbs} />
                         </div>
 
-                        <div className="mx-auto hidden w-full max-w-md lg:block">
-                            <label className="relative block">
-                                <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" />
-                                <input
-                                    type="search"
-                                    placeholder="Search patients, appointments, records…"
-                                    aria-label="Search"
-                                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pr-16 pl-10 text-sm text-slate-800 transition outline-none focus:border-moss-400 focus:bg-white focus:ring-4 focus:ring-moss-500/10"
-                                />
-                                <kbd className="absolute top-1/2 right-3 -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-400">
-                                    Ctrl K
-                                </kbd>
-                            </label>
-                        </div>
+                        <GlobalSearch />
 
                         <div className="ml-auto flex items-center gap-1.5">
                             <div className="mr-1 hidden items-center gap-2 rounded-xl bg-moss-50 px-3 py-2 text-xs font-medium text-moss-700 xl:flex">

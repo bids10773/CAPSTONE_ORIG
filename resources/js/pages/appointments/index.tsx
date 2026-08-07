@@ -1,6 +1,4 @@
-import { useState, useEffect } from 'react';
 import { Head, Link, usePage, router } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
 import {
     Calendar,
     Plus,
@@ -12,8 +10,11 @@ import {
     Filter,
     Building2,
 } from 'lucide-react';
-import type { BreadcrumbItem } from '@/types';
+import { useState, useEffect } from 'react';
+import { Pagination } from '@/components/pagination';
+import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
+import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Appointments', href: '' }];
 
@@ -38,14 +39,15 @@ export default function AppointmentsIndex() {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        setLoading(true);
         const delayDebounce = setTimeout(() => {
+            setLoading(true);
             router.get(
                 '/appointments',
                 {
                     search,
                     status: statusFilter,
                     type: typeFilter,
+                    per_page: appointments.per_page,
                 },
                 {
                     preserveState: true,
@@ -55,7 +57,7 @@ export default function AppointmentsIndex() {
             );
         }, 500);
         return () => clearTimeout(delayDebounce);
-    }, [search, statusFilter, typeFilter]);
+    }, [search, statusFilter, typeFilter, appointments.per_page]);
 
     const getStatusStyles = (status: string) => {
         switch (status) {
@@ -346,6 +348,10 @@ export default function AppointmentsIndex() {
                             </tbody>
                         </table>
                     </div>
+                    <Pagination
+                        pagination={appointments}
+                        label="appointments"
+                    />
                 </div>
             </div>
         </>

@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Services\AppointmentSchedulingService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ReceptionistDashboardController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, AppointmentSchedulingService $scheduling): Response
     {
         abort_unless($request->user()->can('walkin.view'), 403);
 
@@ -34,14 +35,17 @@ class ReceptionistDashboardController extends Controller
             $currentQueueNumber = 'W-'.str_pad((string) $position, 3, '0', STR_PAD_LEFT);
         }
 
-        $onlineQueue = Appointment::query()
+        $onlineQuery = Appointment::query()
             ->with('user:id,first_name,middle_name,last_name')
             ->whereIn('type', ['individual', 'company_referral'])
             ->whereDate('appointment_date', today())
             ->whereNotIn('status', ['cancelled', 'completed'])
             ->orderByRaw("CASE status WHEN 'arrived' THEN 1 WHEN 'accepted' THEN 2 WHEN 'pending' THEN 3 ELSE 4 END")
             ->orderBy('start_time')
-            ->orderBy('id')
+            ->orderBy('id');
+        $onlineTotal = (clone $onlineQuery)->count();
+        $onlineQueue = $onlineQuery
+            ->limit(10)
             ->get()
             ->values()
             ->map(fn (Appointment $appointment, int $index): array => [
@@ -52,6 +56,8 @@ class ReceptionistDashboardController extends Controller
                 'services' => $appointment->service_types ?? [],
                 'status' => $appointment->status,
                 'type' => $appointment->type,
+                'arrival_status' => $scheduling->arrivalStatus($appointment),
+                'grace_ends_at' => $scheduling->graceEndsAt($appointment)?->toIso8601String(),
             ]);
 
         return Inertia::render('receptionist/dashboard', [
@@ -62,7 +68,7 @@ class ReceptionistDashboardController extends Controller
                 'completed' => $counts->get('completed', 0),
                 'cancelled' => $counts->get('cancelled', 0),
                 'currentQueueNumber' => $currentQueueNumber,
-                'online' => $onlineQueue->count(),
+                'online' => $onlineTotal,
             ],
             'onlineQueue' => $onlineQueue,
         ]);

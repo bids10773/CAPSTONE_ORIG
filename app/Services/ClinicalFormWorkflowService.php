@@ -12,9 +12,15 @@ use Illuminate\Validation\ValidationException;
 
 class ClinicalFormWorkflowService
 {
+    public function __construct(private MedicalExaminationService $examinations) {}
+
     public function saveLaboratory(Appointment $appointment, User $actor, array $data, Request $request): LabResult
     {
         return DB::transaction(function () use ($appointment, $actor, $data, $request): LabResult {
+            $medicalExamination = $this->examinations->forAppointment($appointment);
+            if ($medicalExamination->finalized_at && $actor->role !== 'admin') {
+                throw ValidationException::withMessages(['form' => 'This medical examination has been finalized and is locked.']);
+            }
             $existing = $appointment->labResult()->lockForUpdate()->first();
             if ($existing?->isFinalized() && $actor->role !== 'admin') {
                 throw ValidationException::withMessages(['form' => 'This laboratory report has been finalized and is locked.']);
@@ -23,6 +29,7 @@ class ClinicalFormWorkflowService
             $attributes = $this->laboratoryAttributes($data['results'] ?? []);
             $finalize = (bool) $data['finalize'];
             $attributes += [
+                'medical_examination_id' => $medicalExamination->id,
                 'encoded_by' => $actor->id,
                 'remarks' => $data['remarks'] ?? null,
                 'status' => $finalize ? 'finalized' : 'draft',
@@ -77,7 +84,7 @@ class ClinicalFormWorkflowService
 
     private function nextStatus(Appointment $appointment): string
     {
-        return in_array('X-Ray', $appointment->service_types ?? [], true)
+        return $appointment->requiresXray()
             ? 'for_xray'
             : 'for_final_evaluation';
     }

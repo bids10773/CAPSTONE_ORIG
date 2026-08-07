@@ -35,13 +35,34 @@ const laboratoryMapping: Record<string, { label: string; column: string }> = {
     'Blood Typing': { label: 'Blood Typing', column: 'blood_type' },
 };
 
-type Props = { appointment: any; selectedServices: string[] };
+type ChildSummary = {
+    key: string;
+    label: string;
+    status: 'completed' | 'draft' | 'pending';
+    summary: string;
+};
+
+type Props = {
+    appointment: any;
+    selectedServices: string[];
+    medicalExamination: any;
+    childSummaries: ChildSummary[];
+    readyForFinalEvaluation: boolean;
+};
 
 export default function FinalEvaluation({
     appointment,
     selectedServices = [],
+    medicalExamination,
+    childSummaries = [],
+    readyForFinalEvaluation,
 }: Props) {
-    const form = useForm({ medical_class: '', final_remarks: '' });
+    const form = useForm({
+        medical_class: '',
+        final_diagnosis: '',
+        final_remarks: '',
+        recommendations: '',
+    });
     const patient = appointment.user;
     const profile = appointment.patient_profile;
     const physical = appointment.physical_exam;
@@ -57,13 +78,9 @@ export default function FinalEvaluation({
                 items.findIndex((other) => other.column === item.column) ===
                 index,
         );
-    const incomplete = [
-        ...(has('PE') && !physical ? ['Physical Examination'] : []),
-        ...(selectedLabs.length > 0 && !lab?.is_completed
-            ? ['Laboratory Results']
-            : []),
-        ...(has('X-Ray') && !xray?.is_completed ? ['X-Ray Report'] : []),
-    ];
+    const incomplete = childSummaries
+        .filter((child) => child.status !== 'completed')
+        .map((child) => child.label);
     const birthday = profile?.birthdate ? new Date(profile.birthdate) : null;
     const age = birthday
         ? Math.max(
@@ -148,6 +165,10 @@ export default function FinalEvaluation({
                             <Meta
                                 label="Appointment"
                                 value={`#${appointment.id}`}
+                            />
+                            <Meta
+                                label="PE master"
+                                value={`#${medicalExamination.id}`}
                             />
                         </div>
                     </div>
@@ -425,6 +446,22 @@ export default function FinalEvaluation({
                     </div>
                     <InputError message={form.errors.medical_class} />
                     <label
+                        htmlFor="final_diagnosis"
+                        className="mt-5 block text-sm font-bold text-slate-800"
+                    >
+                        Final diagnosis <span className="text-red-600">*</span>
+                    </label>
+                    <textarea
+                        id="final_diagnosis"
+                        rows={3}
+                        className="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15"
+                        value={form.data.final_diagnosis}
+                        onChange={(event) =>
+                            form.setData('final_diagnosis', event.target.value)
+                        }
+                    />
+                    <InputError message={form.errors.final_diagnosis} />
+                    <label
                         htmlFor="final_remarks"
                         className="mt-5 block text-sm font-bold text-slate-800"
                     >
@@ -440,12 +477,29 @@ export default function FinalEvaluation({
                         }
                     />
                     <InputError message={form.errors.final_remarks} />
+                    <label
+                        htmlFor="recommendations"
+                        className="mt-5 block text-sm font-bold text-slate-800"
+                    >
+                        Recommendations
+                    </label>
+                    <textarea
+                        id="recommendations"
+                        rows={3}
+                        className="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15"
+                        value={form.data.recommendations}
+                        onChange={(event) =>
+                            form.setData('recommendations', event.target.value)
+                        }
+                    />
+                    <InputError message={form.errors.recommendations} />
                     <div className="mt-5 flex justify-end">
                         <button
                             disabled={
                                 form.processing ||
                                 !form.data.medical_class ||
-                                incomplete.length > 0 ||
+                                !form.data.final_diagnosis ||
+                                !readyForFinalEvaluation ||
                                 selectedServices.length === 0
                             }
                             className="inline-flex items-center gap-2 rounded-xl bg-moss-600 px-5 py-2.5 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -476,8 +530,11 @@ function ReviewSection({
     children: React.ReactNode;
 }) {
     return (
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <header className="flex items-center justify-between gap-3 border-b border-slate-100 p-4">
+        <details
+            open
+            className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+        >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 border-b border-slate-100 p-4 marker:hidden">
                 <div className="flex items-center gap-2 text-moss-700">
                     <span className="[&>svg]:h-5 [&>svg]:w-5">{icon}</span>
                     <h2 className="font-bold text-slate-900">{heading}</h2>
@@ -487,9 +544,9 @@ function ReviewSection({
                 >
                     {complete ? 'Complete' : 'Pending'}
                 </span>
-            </header>
+            </summary>
             <div className="p-4">{children}</div>
-        </section>
+        </details>
     );
 }
 function Meta({ label, value }: { label: string; value: string }) {

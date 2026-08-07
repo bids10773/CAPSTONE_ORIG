@@ -1,7 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Search, Filter, Eye, TestTube, Play } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
+import { Pagination } from '@/components/pagination';
 import { StatusBadge } from '@/components/status-badge';
+import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -51,30 +52,6 @@ export default function MedTechAppointmentsIndex({
     filters,
     pageTitle,
 }: Props) {
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'for_diagnostics':
-                return 'bg-purple-100 text-purple-800';
-        }
-    };
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'pending_diagnostics':
-                return <TestTube className="h-4 w-4 text-purple-600" />;
-        }
-    };
-
-    const formatService = (service: any) => {
-        try {
-            const parsed =
-                typeof service === 'string' ? JSON.parse(service) : service;
-            return Array.isArray(parsed) ? parsed.join(', ') : parsed;
-        } catch {
-            return service;
-        }
-    };
-
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString('en-US', {
             month: 'short',
@@ -83,19 +60,6 @@ export default function MedTechAppointmentsIndex({
             hour: '2-digit',
             minute: '2-digit',
         });
-    };
-
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'for_diagnostics':
-                return 'Laboratory';
-            case 'for_xray':
-                return 'X-Ray';
-            case 'for_final_evaluation':
-                return 'Final Evaluation';
-            default:
-                return status.replace('_', ' ');
-        }
     };
 
     const startLabTest = (appointmentId: number) => {
@@ -122,6 +86,11 @@ export default function MedTechAppointmentsIndex({
                 {/* Filters */}
                 <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                     <form method="GET" className="flex flex-wrap gap-4">
+                        <input
+                            type="hidden"
+                            name="per_page"
+                            value={appointments.per_page}
+                        />
                         <div className="relative min-w-[200px] flex-1">
                             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
                             <input
@@ -248,28 +217,10 @@ export default function MedTechAppointmentsIndex({
                             </tbody>
                         </table>
                     </div>
-                    {/* Pagination - Simplified version of your code to fix errors */}
-                    <div className="flex items-center justify-between border-t border-gray-200 bg-gray-50 px-6 py-4">
-                        <p className="text-sm text-gray-700">
-                            Total:{' '}
-                            <span className="font-medium">
-                                {appointments.total}
-                            </span>{' '}
-                            records
-                        </p>
-                        <div className="flex gap-2">
-                            {appointments.links.map((link, i) => (
-                                <Link
-                                    key={i}
-                                    href={link.url || '#'}
-                                    className={`rounded px-3 py-1 text-sm ${link.active ? 'bg-moss-600 text-white' : 'border bg-white'} ${!link.url && 'pointer-events-none opacity-50'}`}
-                                    dangerouslySetInnerHTML={{
-                                        __html: link.label,
-                                    }}
-                                />
-                            ))}
-                        </div>
-                    </div>
+                    <Pagination
+                        pagination={appointments}
+                        label="appointments"
+                    />
                 </div>
             </div>
         </>

@@ -9,6 +9,7 @@ use App\Models\ClinicalFormAudit;
 use App\Models\MedicalHistory;
 use App\Models\PhysicalExam;
 use App\Services\LaboratoryFormDefinition;
+use App\Services\MedicalExaminationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,49 +20,66 @@ use Inertia\Response;
 
 class PhysicalExamController extends Controller
 {
-    public function create(Appointment $appointment): Response
+    public function create(Appointment $appointment, MedicalExaminationService $examinations): Response
     {
         Gate::authorize('updatePhysicalExam', $appointment);
-        $appointment->load(['user', 'company', 'physicalExam', 'medicalHistory', 'patientProfile']);
+        $medicalExamination = $examinations->forAppointment($appointment);
+        $appointment->load(['user', 'company', 'medicalExamination', 'physicalExam', 'medicalHistory', 'patientProfile']);
+        $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'xrayReport']);
 
         return Inertia::render('doctor/physical-exam-form', [
             'appointment' => $appointment,
             'physicalExam' => $appointment->physicalExam,
-            'locked' => $appointment->physicalExam?->finalized_at !== null && request()->user()->role !== 'admin',
+            'medicalExamination' => $medicalExamination,
+            'childSummaries' => $medicalExamination->childSummaries(),
+            'locked' => $appointment->medicalExamination?->finalized_at !== null && request()->user()->role !== 'admin',
             'submitUrl' => request()->user()->role === 'admin'
                 ? route('admin.physical-exams.update', $appointment)
                 : route('doctor.physical-exams.store', $appointment),
         ]);
     }
 
-    public function store(SavePhysicalExamRequest $request, Appointment $appointment, LaboratoryFormDefinition $definitions): RedirectResponse
+    public function store(SavePhysicalExamRequest $request, Appointment $appointment, LaboratoryFormDefinition $definitions, MedicalExaminationService $examinations): RedirectResponse
     {
         $existing = $appointment->physicalExam;
-        if ($existing?->finalized_at && $request->user()->role !== 'admin') {
+        if (($appointment->medicalExamination?->finalized_at || $existing?->finalized_at) && $request->user()->role !== 'admin') {
             throw ValidationException::withMessages(['form' => 'The physical examination is finalized and locked.']);
         }
 
-        DB::transaction(function () use ($request, $appointment, $definitions): void {
+        DB::transaction(function () use ($request, $appointment, $definitions, $examinations): void {
             $data = $request->validated();
+            $medicalExamination = $examinations->forAppointment($appointment);
+            if ($medicalExamination->finalized_at) {
+                throw ValidationException::withMessages(['medical_class' => 'This medical examination has already been finalized.']);
+            }
             $findings = [];
             foreach ($request->bodyParts() as $field) {
                 $findings[$field] = $data["{$field}_status"] === 'normal' ? null : $data[$field];
             }
 
             $exam = PhysicalExam::updateOrCreate(['appointment_id' => $appointment->id], [
+                'medical_examination_id' => $medicalExamination->id,
                 'doctor_id' => $request->user()->id,
-                ...$request->safe()->only(['height', 'weight', 'blood_pressure', 'pulse_rate', 'temperature', 'remarks']),
+                ...$request->safe()->only([
+                    'height', 'weight', 'blood_pressure', 'pulse_rate', 'respiration_rate',
+                    'temperature', 'visual_acuity', 'hearing', 'remarks',
+                ]),
                 ...$findings,
                 'classification' => 'Pending',
+                'is_completed' => true,
             ]);
-            MedicalHistory::updateOrCreate(['appointment_id' => $appointment->id], $request->safe()->only([
-                'present_illness', 'past_medical_history', 'operations_accidents', 'family_history',
-                'allergies', 'personal_social_history', 'ob_menstrual_history',
-            ]));
+            MedicalHistory::updateOrCreate(['appointment_id' => $appointment->id], [
+                'medical_examination_id' => $medicalExamination->id,
+                ...$request->safe()->only([
+                    'present_illness', 'past_medical_history', 'operations_accidents', 'family_history',
+                    'allergies', 'personal_social_history', 'ob_menstrual_history',
+                ]),
+            ]);
+            $medicalExamination->update(['examining_doctor_id' => $request->user()->id]);
 
             $next = $definitions->sectionsFor($appointment) !== []
                 ? 'for_diagnostics'
-                : (in_array('X-Ray', $appointment->service_types ?? [], true) ? 'for_xray' : 'for_final_evaluation');
+                : ($appointment->requiresXray() ? 'for_xray' : 'for_final_evaluation');
             $appointment->update(['status' => $next]);
             $this->audit($request, $appointment, 'physical_exam', $exam->wasRecentlyCreated ? 'created' : 'updated', $exam->getChanges());
         });
@@ -69,21 +87,31 @@ class PhysicalExamController extends Controller
         return redirect()->route('doctor.dashboard')->with('success', 'Physical examination saved and forwarded to the next required stage.');
     }
 
-    public function final(Appointment $appointment): Response
+    public function final(Appointment $appointment, MedicalExaminationService $examinations): Response
     {
         Gate::authorize('finalizeMedicalEvaluation', $appointment);
+        $medicalExamination = $examinations->forAppointment($appointment);
         $appointment->load(['user', 'company', 'patientProfile', 'physicalExam', 'labResult.encodedBy', 'xrayReport', 'medicalHistory']);
+        $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'xrayReport']);
 
         return Inertia::render('doctor/final-evaluation', [
             'appointment' => $appointment,
             'selectedServices' => $appointment->service_types ?? [],
+            'medicalExamination' => $medicalExamination,
+            'childSummaries' => $medicalExamination->childSummaries(),
+            'readyForFinalEvaluation' => $medicalExamination->isReadyForFinalEvaluation(),
         ]);
     }
 
-    public function finalStore(FinalizeMedicalEvaluationRequest $request, Appointment $appointment): RedirectResponse
+    public function finalStore(FinalizeMedicalEvaluationRequest $request, Appointment $appointment, MedicalExaminationService $examinations): RedirectResponse
     {
-        DB::transaction(function () use ($request, $appointment): void {
+        DB::transaction(function () use ($request, $appointment, $examinations): void {
             $requested = collect($appointment->service_types ?? []);
+            $medicalExamination = $examinations->forAppointment($appointment);
+            $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'xrayReport']);
+            if (! $medicalExamination->isReadyForFinalEvaluation()) {
+                throw ValidationException::withMessages(['medical_class' => 'Complete every selected examination before final evaluation.']);
+            }
             $exam = $appointment->physicalExam()->lockForUpdate()->first();
             if ($requested->contains('PE') && ! $exam) {
                 throw ValidationException::withMessages(['medical_class' => 'Complete the physical examination before final evaluation.']);
@@ -93,7 +121,7 @@ class PhysicalExamController extends Controller
                 && ! $appointment->labResult?->isFinalized()) {
                 throw ValidationException::withMessages(['medical_class' => 'Finalize all requested laboratory results first.']);
             }
-            if ($requested->contains('X-Ray') && ! $appointment->xrayReport?->is_completed) {
+            if ($appointment->requiresXray() && ! $appointment->xrayReport?->isVerified()) {
                 throw ValidationException::withMessages(['medical_class' => 'Complete the requested X-ray report first.']);
             }
 
@@ -101,16 +129,17 @@ class PhysicalExamController extends Controller
                 'A' => 'Class A', 'B' => 'Class B', 'C' => 'Class C',
                 'unfit' => 'Unfit', default => 'Pending',
             };
-            $exam ??= new PhysicalExam;
-            $exam->fill([
-                'appointment_id' => $appointment->id,
-                'doctor_id' => $request->user()->id,
-                'classification' => $classification, 'doctor_remarks' => $request->validated('final_remarks'),
-                'is_completed' => true, 'finalized_by' => $request->user()->id, 'finalized_at' => now(),
+            $medicalExamination->update([
+                'examining_doctor_id' => $request->user()->id,
+                'medical_classification' => $classification,
+                'fit_to_work' => in_array($classification, ['Class A', 'Class B'], true),
+                'final_diagnosis' => $request->validated('final_diagnosis'),
+                'final_remarks' => $request->validated('final_remarks'),
+                'recommendations' => $request->validated('recommendations'),
+                'status' => 'finalized',
+                'finalized_by' => $request->user()->id,
+                'finalized_at' => now(),
             ]);
-            $exam->save();
-            $appointment->labResult?->update(['status' => 'finalized', 'is_completed' => true]);
-            $appointment->xrayReport?->update(['finalized_by' => $request->user()->id, 'finalized_at' => now()]);
             $appointment->update(['status' => 'completed']);
             $this->audit($request, $appointment, 'final_evaluation', 'finalized', ['classification' => $classification]);
         });

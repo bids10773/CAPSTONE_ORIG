@@ -11,7 +11,9 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { Pagination } from '@/components/pagination';
 import AppLayout from '@/layouts/app-layout';
+import type { PaginatedResponse } from '@/types/pagination';
 
 type Patient = {
     id: number;
@@ -28,6 +30,19 @@ type WalkIn = {
     type: 'walk_in' | 'individual' | 'company_referral';
     service_types: string[];
     appointment_date: string;
+    start_time?: string;
+    arrived_at?: string;
+    auto_cancelled_at?: string;
+    cancellation_reason?: string;
+    released_from_appointment_id?: number;
+    arrival_status:
+        | 'arrived'
+        | 'within_grace'
+        | 'late'
+        | 'waiting'
+        | 'auto_cancelled'
+        | 'assigned_released_slot';
+    grace_ends_at?: string;
     notes?: string;
     user: Patient;
 };
@@ -47,13 +62,22 @@ const statusStyles = {
     cancelled: 'bg-rose-50 text-rose-700',
 } as const;
 
+const arrivalLabels = {
+    arrived: 'Checked in',
+    within_grace: 'Online — reserved',
+    late: 'Grace period ended',
+    waiting: 'Walk-in — waiting',
+    auto_cancelled: 'Auto-cancelled',
+    assigned_released_slot: 'Assigned released slot',
+} as const;
+
 export default function WalkIns({
     walkIns,
     serviceTypes,
     filters,
     mode,
 }: {
-    walkIns: WalkIn[];
+    walkIns: PaginatedResponse<WalkIn>;
     serviceTypes: Record<string, string>;
     filters: { status: string; search: string };
     mode: 'queue' | 'patients';
@@ -116,16 +140,16 @@ export default function WalkIns({
     function filter(status = '', search = filters.search) {
         router.get(
             '/receptionist/queue',
-            { status, search },
+            { status, search, per_page: walkIns.per_page },
             { preserveState: true, replace: true },
         );
     }
 
-    const activeQueue = walkIns.filter(
+    const activeQueue = walkIns.data.filter(
         (appointment) =>
             !['completed', 'cancelled'].includes(appointment.status),
     );
-    const queueHistory = walkIns.filter((appointment) =>
+    const queueHistory = walkIns.data.filter((appointment) =>
         ['completed', 'cancelled'].includes(appointment.status),
     );
 
@@ -455,6 +479,9 @@ export default function WalkIns({
                                                 walkIn.user.contact ||
                                                 'Walk-in patient'}
                                         </p>
+                                        <span className="mt-1 inline-flex rounded-full bg-moss-50 px-2 py-1 text-[11px] font-bold text-moss-700">
+                                            {arrivalLabels[walkIn.arrival_status]}
+                                        </span>
                                     </div>
                                     <div className="flex flex-wrap gap-1">
                                         {walkIn.service_types?.map(
@@ -514,6 +541,7 @@ export default function WalkIns({
                             ))}
                         </div>
                     )}
+                    <Pagination pagination={walkIns} label="appointments" />
                 </section>
 
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -540,7 +568,8 @@ export default function WalkIns({
                                         {appointment.user.last_name}
                                     </span>
                                     <span className="text-sm text-slate-500">
-                                        {appointment.service_types.join(', ')}
+                                        {appointment.cancellation_reason ??
+                                            appointment.service_types.join(', ')}
                                     </span>
                                     <span
                                         className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${statusStyles[appointment.status]}`}

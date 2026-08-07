@@ -31,20 +31,22 @@ export default function Login({
 }: Props) {
     const { auth, errors: pageErrors } = usePage().props as any;
     const [showPassword, setShowPassword] = useState(false);
-    const [showVerified, setShowVerified] = useState(false);
+    const [showVerified, setShowVerified] = useState(
+        () =>
+            typeof window !== 'undefined' &&
+            new URLSearchParams(window.location.search).get('verified') === '1',
+    );
 
     useEffect(() => {
         if (auth?.user) router.visit('/dashboard');
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('verified') === '1') {
-            setShowVerified(true);
+        if (showVerified) {
             window.history.replaceState(
                 {},
                 document.title,
                 window.location.pathname,
             );
         }
-    }, [auth?.user]);
+    }, [auth?.user, showVerified]);
 
     return (
         <>
@@ -169,14 +171,24 @@ export default function Login({
                                 <Checkbox
                                     id="remember"
                                     name="remember"
+                                    value="1"
+                                    aria-describedby="remember-description"
                                     className="size-5 rounded border-slate-300 data-[state=checked]:border-moss-600 data-[state=checked]:bg-moss-600"
                                 />
-                                <label
-                                    htmlFor="remember"
-                                    className="cursor-pointer text-sm text-slate-600"
-                                >
-                                    Keep me signed in
-                                </label>
+                                <div>
+                                    <label
+                                        htmlFor="remember"
+                                        className="cursor-pointer text-sm font-medium text-slate-700"
+                                    >
+                                        Keep me signed in
+                                    </label>
+                                    <p
+                                        id="remember-description"
+                                        className="mt-0.5 text-xs text-slate-500"
+                                    >
+                                        Use only on a private, trusted device.
+                                    </p>
+                                </div>
                             </div>
                             <button
                                 type="submit"

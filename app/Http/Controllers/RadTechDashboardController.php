@@ -14,12 +14,12 @@ class RadTechDashboardController extends Controller
         $user = $request->user();
 
         // ✅ Today's scans
-        $todayScans = Appointment::where('status', 'for_xray')
+        $todayScans = Appointment::whereIn('status', ['for_xray', 'awaiting_xray_result'])
             ->whereDate('appointment_date', today())
             ->count();
 
         // ✅ Pending scans (waiting for X-ray)
-        $pendingScans = Appointment::where('status', 'for_xray')->count();
+        $pendingScans = Appointment::whereIn('status', ['for_xray', 'awaiting_xray_result'])->count();
 
         // ✅ Completed scans (today)
         $completedScans = Appointment::where('status', 'completed')
@@ -30,7 +30,7 @@ class RadTechDashboardController extends Controller
         $totalToday = Appointment::whereDate('appointment_date', today())->count();
 
         $pendingAppointments = Appointment::with('user')
-            ->where('status', 'for_xray')
+            ->whereIn('status', ['for_xray', 'awaiting_xray_result'])
             ->orderBy('appointment_date')
             ->take(5)
             ->get();

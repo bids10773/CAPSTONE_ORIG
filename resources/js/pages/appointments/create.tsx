@@ -63,6 +63,11 @@ interface AppointmentPageProps {
     companies?: Company[];
     serviceTypes?: Record<string, string>;
     appointmentTypes?: Record<string, string>;
+    pePackage?: {
+        includedLaboratoryServices: string[];
+        optionalBulkServices: string[];
+        requiresXray: boolean;
+    };
     auth: { user: AppointmentUser };
     [key: string]: unknown;
 }
@@ -221,6 +226,11 @@ export default function CreateAppointment() {
         companies = [],
         serviceTypes = {},
         appointmentTypes = {},
+        pePackage = {
+            includedLaboratoryServices: [],
+            optionalBulkServices: [],
+            requiresXray: true,
+        },
         auth,
     } = usePage<AppointmentPageProps>().props;
     const storageKey = `appointment-draft-${auth.user.id}`;
@@ -594,6 +604,9 @@ export default function CreateAppointment() {
                                                     serviceTypes={
                                                         serviceEntries
                                                     }
+                                                    optionalBulkServices={
+                                                        pePackage.optionalBulkServices
+                                                    }
                                                     doctors={doctors}
                                                     formData={formData}
                                                     loadingDoctors={
@@ -839,6 +852,7 @@ function Progress({ currentStep }: { currentStep: number }) {
 interface VisitStepProps {
     appointmentTypes: OptionEntry[];
     serviceTypes: OptionEntry[];
+    optionalBulkServices: string[];
     doctors: Doctor[];
     formData: BookingData;
     loadingDoctors: boolean;
@@ -859,6 +873,7 @@ interface VisitStepProps {
 function VisitStep({
     appointmentTypes,
     serviceTypes,
+    optionalBulkServices,
     doctors,
     formData,
     loadingDoctors,
@@ -1001,6 +1016,14 @@ function VisitStep({
                                 </span>
                                 <span className="flex-1 text-sm font-medium text-slate-800">
                                     {label}
+                                    {formData.type === 'company_bulk' &&
+                                        optionalBulkServices.includes(
+                                            value,
+                                        ) && (
+                                            <small className="mt-0.5 block text-xs font-semibold text-amber-700">
+                                                Optional add-on
+                                            </small>
+                                        )}
                                 </span>
                                 <span
                                     className={`flex size-5 items-center justify-center rounded-md border ${selected ? 'border-moss-600 bg-moss-600 text-white' : 'border-slate-300'}`}
@@ -1655,7 +1678,9 @@ function BookingSummary({
             <div className="mt-5 rounded-xl bg-slate-50 p-3.5 text-[11px] leading-5 text-slate-500">
                 <strong className="text-slate-700">Arrival guidance:</strong>{' '}
                 Please arrive 15 minutes before your scheduled time for
-                check-in.
+                check-in. Your online slot is reserved until 10 minutes after
+                the scheduled time. If you have not checked in by then, it may
+                be cancelled and assigned to a waiting walk-in patient.
             </div>
         </aside>
     );

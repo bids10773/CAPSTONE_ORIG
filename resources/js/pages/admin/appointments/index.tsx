@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import { useState, useEffect } from 'react';
+import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -66,6 +67,8 @@ interface Props extends PageProps {
         data: Appointment[];
         current_page: number;
         last_page: number;
+        per_page: number;
+        total: number;
         links: any[];
     };
     filters: {
@@ -105,7 +108,7 @@ export default function AdminAppointmentsIndex() {
         const timeout = setTimeout(() => {
             router.get(
                 endpoint,
-                { ...filters, search },
+                { ...filters, search, per_page: appointments.per_page },
                 {
                     preserveState: true,
                     preserveScroll: true,
@@ -114,7 +117,7 @@ export default function AdminAppointmentsIndex() {
             );
         }, 400);
         return () => clearTimeout(timeout);
-    }, [search, endpoint, filters]);
+    }, [search, endpoint, filters, appointments.per_page]);
 
     const acceptAppointment = (id: number) => {
         router.patch(
@@ -225,6 +228,7 @@ export default function AdminAppointmentsIndex() {
                             router.get(endpoint, {
                                 ...filters,
                                 status: e.target.value,
+                                per_page: appointments.per_page,
                             })
                         }
                         className="rounded-lg border px-4 py-2"
@@ -415,6 +419,10 @@ export default function AdminAppointmentsIndex() {
                             ))}
                         </tbody>
                     </table>
+                    <Pagination
+                        pagination={appointments}
+                        label="appointments"
+                    />
                 </div>
 
                 {/* Vetting Modal */}

@@ -24,6 +24,7 @@ class MedicalHistory extends Model
      */
     protected $fillable = [
         'appointment_id',
+        'medical_examination_id',
         'present_illness',
         'past_medical_history',
         'operations_accidents',
@@ -39,5 +40,10 @@ class MedicalHistory extends Model
     public function appointment(): BelongsTo
     {
         return $this->belongsTo(Appointment::class);
+    }
+
+    public function medicalExamination(): BelongsTo
+    {
+        return $this->belongsTo(MedicalExamination::class);
     }
 }

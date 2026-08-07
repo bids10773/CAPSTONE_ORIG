@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
 
@@ -20,6 +21,31 @@ test('users can authenticate using the login screen', function () {
 
     $this->assertAuthenticated();
     $response->assertRedirect(route('dashboard', absolute: false));
+});
+
+test('users can choose to stay signed in on a trusted device', function () {
+    $user = User::factory()->create();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+        'remember' => true,
+    ]);
+
+    $this->assertAuthenticatedAs($user);
+    $response->assertCookie(Auth::guard('web')->getRecallerName());
+});
+
+test('ordinary sign in does not create a persistent login cookie', function () {
+    $user = User::factory()->create();
+
+    $response = $this->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertAuthenticatedAs($user);
+    $response->assertCookieMissing(Auth::guard('web')->getRecallerName());
 });
 
 test('administrator-created staff can authenticate without email verification', function () {

@@ -45,6 +45,13 @@ interface Props {
         medical_history?: Record<string, string | null>;
     };
     physicalExam: any;
+    medicalExamination: { id: number; status: string };
+    childSummaries: Array<{
+        key: string;
+        label: string;
+        status: 'completed' | 'draft' | 'pending';
+        summary: string;
+    }>;
     submitUrl: string;
 }
 
@@ -92,6 +99,8 @@ function getAge(birthdate?: string) {
 export default function PhysicalExamForm({
     appointment,
     physicalExam,
+    medicalExamination,
+    childSummaries,
     submitUrl,
 }: Props) {
     const { data, setData, post, processing, errors } = useForm<any>({
@@ -99,7 +108,10 @@ export default function PhysicalExamForm({
         weight: physicalExam?.weight || '',
         blood_pressure: physicalExam?.blood_pressure || '',
         pulse_rate: physicalExam?.pulse_rate || '',
+        respiration_rate: physicalExam?.respiration_rate || '',
         temperature: physicalExam?.temperature || '',
+        visual_acuity: physicalExam?.visual_acuity || '',
+        hearing: physicalExam?.hearing || '',
         remarks: physicalExam?.remarks || '',
         present_illness: appointment.medical_history?.present_illness || '',
         past_medical_history:
@@ -299,6 +311,50 @@ export default function PhysicalExamForm({
                                 />
                                 <FieldError message={errors.temperature} />
                             </MedicalMetricCard>
+                            <MedicalMetricCard
+                                icon={Activity}
+                                label="Respiration rate"
+                                unit="breaths/min"
+                            >
+                                <Input
+                                    value={data.respiration_rate}
+                                    inputMode="numeric"
+                                    onChange={(event) =>
+                                        setData(
+                                            'respiration_rate',
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder="e.g. 16"
+                                />
+                                <FieldError message={errors.respiration_rate} />
+                            </MedicalMetricCard>
+                            <MedicalMetricCard
+                                icon={UserRound}
+                                label="Visual acuity"
+                            >
+                                <Input
+                                    value={data.visual_acuity}
+                                    onChange={(event) =>
+                                        setData(
+                                            'visual_acuity',
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder="e.g. 20/20 OU"
+                                />
+                                <FieldError message={errors.visual_acuity} />
+                            </MedicalMetricCard>
+                            <MedicalMetricCard icon={UserRound} label="Hearing">
+                                <Input
+                                    value={data.hearing}
+                                    onChange={(event) =>
+                                        setData('hearing', event.target.value)
+                                    }
+                                    placeholder="e.g. Normal bilateral"
+                                />
+                                <FieldError message={errors.hearing} />
+                            </MedicalMetricCard>
                             <div className="flex flex-col justify-center rounded-2xl border border-moss-200 bg-moss-50 p-4">
                                 <p className="text-xs font-semibold text-moss-700">
                                     Body mass index
@@ -375,6 +431,35 @@ export default function PhysicalExamForm({
                 </div>
 
                 <aside className="space-y-5">
+                    <ClinicalSection
+                        icon={ClipboardList}
+                        title={`PE master #${medicalExamination.id}`}
+                        description="Child results are summarized dynamically from their source records."
+                    >
+                        <div className="space-y-2">
+                            {childSummaries.map((child) => (
+                                <details
+                                    key={child.key}
+                                    className="rounded-xl border border-slate-200 bg-white"
+                                >
+                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-3">
+                                        <span className="text-sm font-bold text-slate-800">
+                                            {child.label}
+                                        </span>
+                                        <span
+                                            className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${child.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : child.status === 'draft' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}
+                                        >
+                                            {child.status}
+                                        </span>
+                                    </summary>
+                                    <p className="border-t border-slate-100 p-3 text-sm text-slate-600">
+                                        {child.summary}
+                                    </p>
+                                </details>
+                            ))}
+                        </div>
+                    </ClinicalSection>
+
                     <ClinicalSection
                         icon={History}
                         title="Medical history"

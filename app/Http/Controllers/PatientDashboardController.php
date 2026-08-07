@@ -41,7 +41,7 @@ class PatientDashboardController extends Controller
         |--------------------------------------------------------------------------
         | Optimized queries scoped to authenticated patient only
         */
-        $appointments = Appointment::with('company')
+        $appointments = Appointment::with(['company', 'physicalExam:id,appointment_id', 'labResult:id,appointment_id', 'xrayReport:id,appointment_id'])
             ->where('user_id', $user->id)
             ->latest('appointment_date')
             ->limit(10)
@@ -56,6 +56,7 @@ class PatientDashboardController extends Controller
                 'arrived',
                 'for_diagnostics',
                 'for_xray',
+                'awaiting_xray_result',
                 'for_final_evaluation',
             ])
             ->orderBy('appointment_date', 'asc')

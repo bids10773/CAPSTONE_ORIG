@@ -9,6 +9,9 @@ class LaboratoryFormDefinition
     public function sectionsFor(Appointment $appointment): array
     {
         $requested = collect($appointment->service_types ?? []);
+        if ($appointment->isPePackage()) {
+            $requested = $requested->merge(config('medical.pe_package.laboratory_services', []))->unique();
+        }
         $sections = $this->sections();
 
         return collect($sections)->filter(function (array $section, string $key) use ($requested): bool {

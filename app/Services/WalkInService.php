@@ -12,9 +12,9 @@ use Illuminate\Support\Str;
 class WalkInService
 {
     /** @param array<string, mixed> $data */
-    public function create(array $data): Appointment
+    public function create(array $data, User $staff): Appointment
     {
-        return DB::transaction(function () use ($data): Appointment {
+        return DB::transaction(function () use ($data, $staff): Appointment {
             $patient = $data['patient_type'] === 'existing'
                 ? User::query()->where('role', 'patient')->where('is_active', true)->findOrFail($data['user_id'])
                 : $this->registerPatient($data);
@@ -24,6 +24,8 @@ class WalkInService
                 'appointment_date' => now(),
                 'type' => 'walk_in',
                 'status' => 'pending',
+                'arrived_at' => now(),
+                'checked_in_by' => $staff->id,
                 'service_types' => $data['service_types'],
                 'notes' => $data['notes'] ?? null,
             ]);

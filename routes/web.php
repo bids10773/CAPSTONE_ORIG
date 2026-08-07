@@ -9,6 +9,7 @@ use App\Http\Controllers\CompanyEmployeeImportController;
 use App\Http\Controllers\DoctorAvailabilityController;
 use App\Http\Controllers\DoctorDashboardController;
 use App\Http\Controllers\ForecastController;
+use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\LaboratoryController;
 use App\Http\Controllers\MedTechDashboardController;
 use App\Http\Controllers\PatientDashboardController;
@@ -49,6 +50,10 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'staff.verified'])->group(function () {
+    Route::get('/api/global-search', GlobalSearchController::class)
+        ->middleware('throttle:30,1')
+        ->name('api.global-search');
+
     Route::get('/dashboard', PatientDashboardController::class)
         ->middleware('patient.only')
         ->name('dashboard');

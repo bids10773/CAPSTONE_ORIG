@@ -70,10 +70,10 @@ test('online appointments have priority and skipped appointments remain in cance
     $this->actingAs($staff)
         ->get(route('receptionist.queue.index'))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('walkIns.0.id', $online->id)
-            ->where('walkIns.0.queue_number', 'O-001')
-            ->where('walkIns.1.id', $walkIn->id)
-            ->where('walkIns.1.queue_number', 'W-001'));
+            ->where('walkIns.data.0.id', $online->id)
+            ->where('walkIns.data.0.queue_number', 'O-001')
+            ->where('walkIns.data.1.id', $walkIn->id)
+            ->where('walkIns.data.1.queue_number', 'W-001'));
 
     $this->actingAs($staff)
         ->patch(route('receptionist.walk-ins.status', $online), ['status' => 'cancelled'])
@@ -83,9 +83,9 @@ test('online appointments have priority and skipped appointments remain in cance
     $this->actingAs($staff)
         ->get(route('receptionist.queue.index', ['status' => 'cancelled']))
         ->assertInertia(fn (Assert $page) => $page
-            ->has('walkIns', 1)
-            ->where('walkIns.0.id', $online->id)
-            ->where('walkIns.0.status', 'cancelled'));
+            ->has('walkIns.data', 1)
+            ->where('walkIns.data.0.id', $online->id)
+            ->where('walkIns.data.0.status', 'cancelled'));
 });
 
 test('receptionist can register a new patient and create a walk-in appointment', function () {

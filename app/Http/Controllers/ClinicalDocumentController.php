@@ -14,11 +14,19 @@ class ClinicalDocumentController extends Controller
     public function physicalExam(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow): Response
     {
         Gate::authorize('viewClinicalForms', $appointment);
-        $appointment->load(['user.patientProfile', 'company', 'physicalExam.doctor', 'medicalHistory']);
+        $appointment->load(['user.patientProfile', 'company', 'medicalExamination.examiningDoctor', 'physicalExam.doctor', 'medicalHistory']);
         abort_unless($appointment->physicalExam, 404, 'No physical examination exists.');
         $workflow->auditDocumentAccess($appointment, $request->user(), 'physical_exam', $request);
 
-        return $this->render($request, $appointment, 'Physical Examination', $appointment->physicalExam->toArray(), 'physical-exam');
+        return $this->render($request, $appointment, 'Physical Examination', [
+            ...$appointment->physicalExam->toArray(),
+            'medical_classification' => $appointment->medicalExamination?->medical_classification,
+            'fit_to_work' => $appointment->medicalExamination?->fit_to_work,
+            'final_diagnosis' => $appointment->medicalExamination?->final_diagnosis,
+            'final_remarks' => $appointment->medicalExamination?->final_remarks,
+            'recommendations' => $appointment->medicalExamination?->recommendations,
+            'finalized_at' => $appointment->medicalExamination?->finalized_at,
+        ], 'physical-exam');
     }
 
     public function xray(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow): Response

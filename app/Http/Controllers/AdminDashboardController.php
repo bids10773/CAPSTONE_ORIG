@@ -53,6 +53,7 @@ class AdminDashboardController extends Controller
         $todayAppointments = Appointment::with(['user', 'company'])
             ->whereDate('appointment_date', $today)
             ->orderBy('appointment_date', 'asc')
+            ->limit(10)
             ->get();
 
         $appointmentsByStatus = Appointment::selectRaw('status, COUNT(*) as count')
@@ -123,12 +124,15 @@ class AdminDashboardController extends Controller
             ->countBy()
             ->all();
 
-        $companyAppointments = Appointment::with('company:id,company_name')
-            ->whereNotNull('company_id')->get()->groupBy('company_id')
-            ->map(fn ($items) => [
-                'company_name' => $items->first()->company?->company_name ?? 'Unknown',
-                'count' => $items->count(),
-            ])->values()->toArray();
+        $companyAppointments = Company::query()
+            ->has('appointments')
+            ->withCount('appointments')
+            ->orderByDesc('appointments_count')
+            ->get(['id', 'company_name'])
+            ->map(fn (Company $company): array => [
+                'company_name' => $company->company_name,
+                'count' => $company->appointments_count,
+            ])->all();
 
         $statusTrends = [
             'completed' => Appointment::where('status', 'completed')->count(),
@@ -142,7 +146,7 @@ class AdminDashboardController extends Controller
             'serviceTypeBreakdown' => $serviceTypeBreakdown,
             'companyAppointments' => $companyAppointments,
             'statusTrends' => $statusTrends,
-            'todayAppointments' => Appointment::with(['user', 'company'])->whereDate('appointment_date', Carbon::today())->get(),
+            'todayAppointments' => Appointment::whereDate('appointment_date', Carbon::today())->count(),
             'staffByRole' => [
                 'doctors' => User::where('role', 'doctor')->count(),
                 'medtechs' => User::where('role', 'medtech')->count(),
@@ -160,12 +164,16 @@ class AdminDashboardController extends Controller
         $startOfMonth = Carbon::now()->startOfMonth();
         $startOfYear = Carbon::now()->startOfYear();
 
-        $companyAppointments = Appointment::with('company:id,company_name')
-            ->whereNotNull('company_id')->get()->groupBy('company_id')
-            ->map(fn ($items) => [
-                'company_name' => $items->first()->company?->company_name ?? 'Unknown',
-                'count' => $items->count(),
-            ])->values()->sortByDesc('count')->take(10)->toArray();
+        $companyAppointments = Company::query()
+            ->has('appointments')
+            ->withCount('appointments')
+            ->orderByDesc('appointments_count')
+            ->limit(10)
+            ->get(['id', 'company_name'])
+            ->map(fn (Company $company): array => [
+                'company_name' => $company->company_name,
+                'count' => $company->appointments_count,
+            ])->all();
 
         return Inertia::render('admin/reports', [
             'totalAppointments' => Appointment::count(),
@@ -174,7 +182,10 @@ class AdminDashboardController extends Controller
             'statusBreakdown' => Appointment::selectRaw('status, COUNT(*) as count')->groupBy('status')->get()->pluck('count', 'status')->toArray(),
             'typeBreakdown' => Appointment::selectRaw('type, COUNT(*) as count')->groupBy('type')->get()->pluck('count', 'type')->toArray(),
             'topCompanies' => array_values($companyAppointments),
-            'recentAppointments' => Appointment::with(['user', 'company'])->orderBy('appointment_date', 'desc')->limit(20)->get(),
+            'recentAppointments' => Appointment::with(['user', 'company'])
+                ->orderBy('appointment_date', 'desc')
+                ->paginate($this->perPage($request))
+                ->withQueryString(),
             'medicalRecords' => [
                 'physicalExams' => PhysicalExam::count(),
                 'labResults' => LabResult::count(),

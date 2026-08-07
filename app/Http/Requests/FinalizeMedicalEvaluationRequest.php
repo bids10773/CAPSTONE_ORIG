@@ -15,7 +15,9 @@ class FinalizeMedicalEvaluationRequest extends FormRequest
     {
         return [
             'medical_class' => ['required', 'in:A,B,C,pending,unfit'],
+            'final_diagnosis' => ['required', 'string', 'max:3000'],
             'final_remarks' => ['nullable', 'string', 'max:3000'],
+            'recommendations' => ['nullable', 'string', 'max:3000'],
         ];
     }
 }

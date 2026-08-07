@@ -1,33 +1,30 @@
 <?php
 
-require __DIR__ . '/vendor/autoload.php';
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Artisan;
 
-$app = require_once __DIR__ . '/bootstrap/app.php';
-$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+require __DIR__.'/vendor/autoload.php';
 
-// Delete existing admin user if exists
-$existingAdmin = \App\Models\User::where('email', 'admin@lmic.com')->first();
-if ($existingAdmin) {
-    $existingAdmin->delete();
-    echo "Existing admin user deleted.\n";
+$app = require_once __DIR__.'/bootstrap/app.php';
+$app->make(Kernel::class)->bootstrap();
+
+if (! $app->environment('local')) {
+    fwrite(STDERR, "This compatibility script is available only when APP_ENV=local.\n");
+    exit(1);
 }
 
-// Create admin user - do NOT hash manually, Laravel's 'hashed' cast will handle it
-$admin = \App\Models\User::create([
-    'first_name' => 'Admin',
-    'middle_name' => '',
-    'last_name' => 'User',
-    'email' => 'admin@lmic.com',
-    'contact' => '1234567890',
-    'password' => 'admin123', // Laravel will hash this automatically due to 'hashed' cast
-    'role' => 'admin',
-    'is_active' => true,
-    'email_verified_at' => now(),
-]);
+$email = strtolower(trim((string) ($argv[1] ?? '')));
+if ($email === '') {
+    fwrite(STDOUT, 'Administrator email: ');
+    $email = strtolower(trim((string) fgets(STDIN)));
+}
 
-// ✅ PUT IT HERE
-$admin->markEmailAsVerified();
+if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    fwrite(STDERR, "Enter a valid administrator email address.\n");
+    exit(2);
+}
 
-echo "Admin user created successfully!\n";
-echo "Email: admin@lmic.com\n";
-echo "Password: admin123\n";
+$exitCode = Artisan::call('app:create-admin', ['email' => $email]);
+fwrite($exitCode === 0 ? STDOUT : STDERR, Artisan::output());
+
+exit($exitCode);

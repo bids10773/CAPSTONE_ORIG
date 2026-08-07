@@ -31,6 +31,33 @@ function cbcPayload(bool $finalize = true): array
     ]]];
 }
 
+function peLaboratoryPayload(): array
+{
+    $appointment = new Appointment(['service_types' => ['PE']]);
+    $sections = app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment);
+
+    return [
+        'finalize' => true,
+        'remarks' => 'PE package laboratory examinations completed.',
+        'results' => collect($sections)->mapWithKeys(fn (array $section, string $key): array => [
+            $key => collect($section['fields'])->mapWithKeys(fn (array $field): array => [
+                $field['key'] => $field['type'] === 'number'
+                    ? '1'
+                    : ($field['type'] === 'select' ? ($field['options'][0] ?? 'Normal') : 'Normal'),
+            ])->all(),
+        ])->all(),
+    ];
+}
+
+test('selecting PE creates its master and expands configured child requirements', function () {
+    $appointment = clinicalAppointment(['PE']);
+
+    expect($appointment->medicalExamination)->not->toBeNull()
+        ->and(array_keys(app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment)))
+        ->toBe(['cbc', 'urinalysis', 'fecalysis', 'serology'])
+        ->and($appointment->requiresXray())->toBeTrue();
+});
+
 test('medtech saves structured laboratory results and finalization advances workflow', function () {
     $appointment = clinicalAppointment();
     $medtech = User::factory()->create(['role' => 'medtech']);
@@ -120,7 +147,7 @@ test('patient can download every selected laboratory service form', function () 
     }
 });
 
-test('unsupported appointments cannot submit fabricated laboratory sections', function () {
+test('PE laboratory package cannot be finalized with only one required child result', function () {
     $appointment = clinicalAppointment(['PE']);
     $medtech = User::factory()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), [
@@ -135,7 +162,9 @@ test('doctor records structured physical findings and final approval locks the e
     $parts = ['head_scalp', 'eyes', 'ears', 'nose_sinuses', 'mouth_throat', 'neck_thyroid', 'chest_breast', 'lungs', 'heart', 'abdomen', 'back', 'anus', 'genitals', 'extremities', 'skin', 'dental'];
     $payload = [
         'height' => 170, 'weight' => 65, 'blood_pressure' => '120 / 80',
-        'pulse_rate' => 72, 'temperature' => 36.7, 'remarks' => 'No acute distress.',
+        'pulse_rate' => 72, 'respiration_rate' => 16, 'temperature' => 36.7,
+        'visual_acuity' => '20/20 OU', 'hearing' => 'Normal bilateral',
+        'remarks' => 'No acute distress.',
     ];
     foreach ($parts as $part) {
         $payload["{$part}_status"] = 'normal';
@@ -144,16 +173,29 @@ test('doctor records structured physical findings and final approval locks the e
 
     $this->actingAs($doctor)->post(route('doctor.physical-exams.store', $appointment), $payload)
         ->assertSessionHas('success');
-    expect($appointment->fresh()->status)->toBe('for_final_evaluation')
+    expect($appointment->fresh()->status)->toBe('for_diagnostics')
         ->and($appointment->physicalExam->head_scalp)->toBeNull()
         ->and($appointment->physicalExam->blood_pressure)->toBe('120/80');
 
+    $medtech = User::factory()->create(['role' => 'medtech']);
+    $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), peLaboratoryPayload())
+        ->assertSessionHas('success');
+    expect($appointment->fresh()->status)->toBe('for_xray');
+
+    $radtech = User::factory()->create(['role' => 'radtech']);
+    $this->actingAs($radtech)->post(route('radtech.xrays.store', $appointment), [
+        'workflow_action' => 'complete', 'chest_status' => 'normal',
+        'chest_findings' => 'Both lungs are clear.', 'impression' => 'Normal chest X-ray.',
+    ])->assertSessionHas('success');
+    expect($appointment->fresh()->status)->toBe('for_final_evaluation');
+
     $this->actingAs($doctor)->post(route('doctor.final-evaluation.store', $appointment), [
-        'medical_class' => 'A', 'final_remarks' => 'Fit to work.',
+        'medical_class' => 'A', 'final_diagnosis' => 'No significant findings.',
+        'final_remarks' => 'Fit to work.',
     ])->assertSessionHas('success');
     expect($appointment->fresh()->status)->toBe('completed')
-        ->and($appointment->physicalExam->fresh()->classification)->toBe('Class A')
-        ->and($appointment->physicalExam->fresh()->finalized_at)->not->toBeNull();
+        ->and($appointment->medicalExamination->fresh()->medical_classification)->toBe('Class A')
+        ->and($appointment->medicalExamination->fresh()->finalized_at)->not->toBeNull();
 });
 
 test('radtech completion stores one xray report and advances to final evaluation', function () {
@@ -171,6 +213,24 @@ test('radtech completion stores one xray report and advances to final evaluation
         ->and($appointment->xrayReport()->count())->toBe(1);
 });
 
+test('performed xray remains in the radtech queue until its official result is verified', function () {
+    $appointment = clinicalAppointment(['X-Ray']);
+    $appointment->update(['status' => 'for_xray']);
+    $radtech = User::factory()->create(['role' => 'radtech']);
+
+    $this->actingAs($radtech)->post(route('radtech.xrays.store', $appointment), [
+        'workflow_action' => 'performed',
+    ])->assertSessionHas('success');
+
+    expect($appointment->fresh()->status)->toBe('awaiting_xray_result')
+        ->and($appointment->xrayReport->performed_at)->not->toBeNull()
+        ->and($appointment->xrayReport->isVerified())->toBeFalse();
+
+    $this->actingAs($radtech)->get(route('radtech.appointments'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->has('appointments.data', 1));
+});
+
 test('individual final evaluation requires only the services selected for that appointment', function () {
     $appointment = clinicalAppointment(['CBC']);
     $medtech = User::factory()->create(['role' => 'medtech']);
@@ -184,11 +244,13 @@ test('individual final evaluation requires only the services selected for that a
             ->where('selectedServices', ['CBC']));
 
     $this->actingAs($doctor)->post(route('doctor.final-evaluation.store', $appointment), [
-        'medical_class' => 'A', 'final_remarks' => 'Fit based on selected CBC service.',
+        'medical_class' => 'A', 'final_diagnosis' => 'CBC within acceptable limits.',
+        'final_remarks' => 'Fit based on selected CBC service.',
     ])->assertSessionHas('success');
 
     expect($appointment->fresh()->status)->toBe('completed')
-        ->and($appointment->physicalExam->classification)->toBe('Class A');
+        ->and($appointment->medicalExamination->medical_classification)->toBe('Class A')
+        ->and($appointment->physicalExam)->toBeNull();
 });
 
 test('unselected diagnostics do not block final evaluation while selected xray does', function () {
@@ -196,7 +258,8 @@ test('unselected diagnostics do not block final evaluation while selected xray d
     $doctor = User::factory()->create(['role' => 'doctor']);
 
     $this->actingAs($doctor)->post(route('doctor.final-evaluation.store', $appointment), [
-        'medical_class' => 'pending', 'final_remarks' => 'Awaiting X-ray.',
+        'medical_class' => 'pending', 'final_diagnosis' => 'Pending official X-ray result.',
+        'final_remarks' => 'Awaiting X-ray.',
     ])->assertSessionHasErrors('medical_class');
 
     $this->assertDatabaseMissing('physical_exams', ['appointment_id' => $appointment->id]);

@@ -41,6 +41,11 @@ const statusConfig = {
         className: 'border-cyan-200 bg-cyan-50 text-cyan-800',
         icon: ScanLine,
     },
+    awaiting_xray_result: {
+        label: 'X-ray Performed — Awaiting Result',
+        className: 'border-amber-200 bg-amber-50 text-amber-800',
+        icon: Clock3,
+    },
     pending_xray: {
         label: 'For X-ray',
         className: 'border-cyan-200 bg-cyan-50 text-cyan-800',

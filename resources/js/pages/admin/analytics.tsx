@@ -16,12 +16,12 @@ interface Props {
     serviceTypeBreakdown: Record<string, number>;
     companyAppointments: { company_name: string; count: number }[];
     statusTrends: Record<string, number>;
-    todayAppointments: any[];
+    todayAppointments: number;
     staffByRole: Record<string, number>;
 }
 
 export default function AdminAnalytics() {
-    const props = usePage().props as any;
+    const props = usePage().props as unknown as Props;
     const {
         monthlyTrends,
         serviceTypeBreakdown,
@@ -80,7 +80,7 @@ export default function AdminAnalytics() {
                                     Today's Appointments
                                 </p>
                                 <p className="mt-1 text-3xl font-bold text-gray-900">
-                                    {todayAppointments?.length || 0}
+                                    {todayAppointments || 0}
                                 </p>
                             </div>
                             <TrendingUp className="h-8 w-8 text-green-500" />

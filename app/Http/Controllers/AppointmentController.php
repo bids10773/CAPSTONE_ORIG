@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -61,7 +62,7 @@ class AppointmentController extends Controller
         }
 
         $appointments = $query->orderBy('appointment_date', 'desc')
-            ->paginate(10)
+            ->paginate($this->perPage($request))
             ->withQueryString();
 
         return Inertia::render('appointments/index', [
@@ -100,6 +101,11 @@ class AppointmentController extends Controller
         return Inertia::render('appointments/create', [
             'companies' => $companies,
             'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'pePackage' => [
+                'includedLaboratoryServices' => config('medical.pe_package.laboratory_services', []),
+                'optionalBulkServices' => config('medical.pe_package.optional_bulk_services', []),
+                'requiresXray' => config('medical.pe_package.requires_xray', true),
+            ],
             'appointmentTypes' => Appointment::getTypeOptions(),
             'auth' => [
                 'user' => $user, // ✅ SEND USER WITH PROFILE
@@ -137,6 +143,7 @@ class AppointmentController extends Controller
             'company_name' => ['nullable', 'string', 'max:255'],
             'appointment_date' => ['required', 'date', 'after_or_equal:today'],
             'service_types' => ['required', 'array'],
+            'service_types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(Appointment::getServiceTypeOptions()))],
             'notes' => ['nullable', 'string', 'max:500'],
             'present_illness' => ['nullable', 'string', 'max:1000'],
             'past_medical_history' => ['nullable', 'string', 'max:1000'],
@@ -251,6 +258,7 @@ class AppointmentController extends Controller
         $appointment->load([
             'user.patientProfile',
             'company',
+            'medicalExamination',
             'physicalExam',
             'labResult',
             'xrayReport',
@@ -518,7 +526,7 @@ class AppointmentController extends Controller
         END
     ")
             ->orderBy('appointment_date', 'asc') // optional: earliest first
-            ->paginate(15)
+            ->paginate($this->perPage($request))
             ->withQueryString();
 
         return Inertia::render('admin/appointments/index', [
@@ -625,7 +633,7 @@ class AppointmentController extends Controller
             WHEN status = 'cancelled' THEN 5
             ELSE 6 END")
             ->orderBy('appointment_date', 'asc')
-            ->paginate(15)
+            ->paginate($this->perPage($request))
             ->withQueryString();
 
         return Inertia::render('staff/appointments/index', [
@@ -814,11 +822,17 @@ class AppointmentController extends Controller
 
         } elseif ($role === 'medtech') {
             $query->where('status', 'for_diagnostics')
-                ->whereDoesntHave('labResult');
+                ->where(function ($query) {
+                    $query->whereDoesntHave('labResult')
+                        ->orWhereHas('labResult', fn ($result) => $result->where('status', '!=', 'finalized'));
+                });
 
         } elseif ($role === 'radtech') {
-            $query->where('status', 'for_xray')
-                ->whereDoesntHave('xrayReport');
+            $query->whereIn('status', ['for_xray', 'awaiting_xray_result'])
+                ->where(function ($query) {
+                    $query->whereDoesntHave('xrayReport')
+                        ->orWhereHas('xrayReport', fn ($result) => $result->where('is_completed', false));
+                });
         }
 
         if ($status) {
@@ -833,7 +847,7 @@ class AppointmentController extends Controller
             });
         }
 
-        $appointments = $query->orderBy('updated_at', 'desc')->paginate(15)->withQueryString();
+        $appointments = $query->orderBy('updated_at', 'desc')->paginate($this->perPage($request))->withQueryString();
 
         // Map the role to the correct Inertia page path based on your routes
         $pagePath = match ($role) {
