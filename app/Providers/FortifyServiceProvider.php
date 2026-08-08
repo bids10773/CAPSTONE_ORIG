@@ -28,7 +28,7 @@ class FortifyServiceProvider extends ServiceProvider
         {
             public function toResponse($request)
             {
-                return redirect('/dashboard?verified=1')->with('status', 'email-verified');
+                return redirect()->intended('/dashboard?verified=1')->with('status', 'email-verified');
             }
         });
     }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Appointment extends Model
@@ -11,8 +12,23 @@ class Appointment extends Model
     protected static function booted(): void
     {
         static::created(function (Appointment $appointment): void {
-            if ($appointment->isPePackage()) {
+            if ($appointment->isPePackage() && $appointment->user?->role === 'patient') {
                 app(\App\Services\MedicalExaminationService::class)->forAppointment($appointment);
+            }
+        });
+
+        static::updated(function (Appointment $appointment): void {
+            if ($appointment->wasChanged('status') && $appointment->bulk_appointment_id !== null) {
+                app(\App\Services\BulkAppointmentEnrollmentService::class)
+                    ->recalculateParentStatus($appointment);
+            }
+            if ($appointment->wasChanged('status') && $appointment->company_referral_id !== null) {
+                $referral = $appointment->companyReferral;
+                if ($appointment->status === 'completed') {
+                    $referral?->update(['status' => 'completed', 'completed_at' => now()]);
+                } elseif ($appointment->status === 'cancelled') {
+                    $referral?->update(['status' => 'cancelled', 'cancelled_at' => now()]);
+                }
             }
         });
     }
@@ -36,6 +52,8 @@ class Appointment extends Model
         'referral_code',
         'notes',
         'batch_id',
+        'bulk_appointment_id',
+        'company_referral_id',
         'arrived_at',
         'checked_in_by',
         'auto_cancelled_at',
@@ -99,6 +117,28 @@ class Appointment extends Model
     public function checkedInBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'checked_in_by');
+    }
+
+    public function bulkAppointment(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'bulk_appointment_id');
+    }
+
+    public function companyReferral(): BelongsTo
+    {
+        return $this->belongsTo(CompanyReferral::class);
+    }
+
+    public function bulkEmployees(): HasMany
+    {
+        return $this->hasMany(self::class, 'bulk_appointment_id');
+    }
+
+    public function isBulkParent(): bool
+    {
+        return $this->type === 'company_bulk'
+            && $this->bulk_appointment_id === null
+            && $this->user?->role === 'company';
     }
 
     public function releasedFromAppointment(): BelongsTo

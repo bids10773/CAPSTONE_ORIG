@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\Company;
+use App\Models\CompanyReferral;
 use App\Models\MedicalHistory;
 use App\Models\User;
 use App\Services\LaboratoryFormDefinition;
@@ -83,6 +84,16 @@ class AppointmentController extends Controller
      */
     public function create(Request $request): Response
     {
+        $referral = null;
+        if ($request->filled('referral')) {
+            abort_unless($request->user()->role === 'patient', 403);
+            $referral = CompanyReferral::query()
+                ->whereKey($request->integer('referral'))
+                ->where('patient_id', $request->user()->id)
+                ->with('company:id,company_name')
+                ->firstOrFail();
+            abort_unless($referral->isSchedulable(), 422, 'This referral is no longer available for scheduling.');
+        }
         $companies = Company::query()
             ->where('status', 'active')
             ->when(
@@ -106,10 +117,20 @@ class AppointmentController extends Controller
                 'optionalBulkServices' => config('medical.pe_package.optional_bulk_services', []),
                 'requiresXray' => config('medical.pe_package.requires_xray', true),
             ],
-            'appointmentTypes' => Appointment::getTypeOptions(),
+            'appointmentTypes' => collect(Appointment::getTypeOptions())
+                ->when(! $referral, fn ($types) => $types->except('company_referral'))
+                ->all(),
             'auth' => [
                 'user' => $user, // ✅ SEND USER WITH PROFILE
             ],
+            'referral' => $referral ? [
+                'id' => $referral->id,
+                'referral_number' => $referral->referral_number,
+                'company_id' => $referral->company_id,
+                'company_name' => $referral->company->company_name,
+                'required_services' => $referral->required_services,
+                'valid_until' => $referral->valid_until->toDateString(),
+            ] : null,
         ]);
     }
 
@@ -119,6 +140,27 @@ class AppointmentController extends Controller
     public function store(Request $request)
     {
         $user = $request->user();
+        $referral = null;
+
+        if ($request->filled('company_referral_id')) {
+            abort_unless($user->role === 'patient', 403);
+            $referral = CompanyReferral::query()
+                ->whereKey($request->integer('company_referral_id'))
+                ->where('patient_id', $user->id)
+                ->firstOrFail();
+            abort_unless($referral->isSchedulable(), 422, 'This referral is no longer available for scheduling.');
+            $user->loadMissing('patientProfile');
+            if (! $user->patientProfile?->birthdate || ! $user->patientProfile?->sex || ! $user->contact) {
+                return back()->withErrors([
+                    'profile' => 'Complete your birthdate, sex, and contact number before scheduling this company referral.',
+                ]);
+            }
+            $request->merge([
+                'type' => 'company_referral',
+                'company_id' => $referral->company_id,
+                'service_types' => $referral->required_services,
+            ]);
+        }
 
         if ($user->role === 'company') {
             $company = Company::query()
@@ -136,8 +178,8 @@ class AppointmentController extends Controller
         }
 
         $rules = [
-            'doctor_id' => ['nullable', 'required_if:type,individual', 'exists:users,id'],
-            'start_time' => ['nullable', 'required_if:type,individual', 'date_format:H:i'],
+            'doctor_id' => ['nullable', Rule::requiredIf(fn () => in_array($request->type, ['individual', 'company_referral'], true)), 'exists:users,id'],
+            'start_time' => ['nullable', Rule::requiredIf(fn () => in_array($request->type, ['individual', 'company_referral'], true)), 'date_format:H:i'],
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
             'company_id' => ['nullable', 'exists:companies,id'],
             'company_name' => ['nullable', 'string', 'max:255'],
@@ -145,6 +187,7 @@ class AppointmentController extends Controller
             'service_types' => ['required', 'array'],
             'service_types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(Appointment::getServiceTypeOptions()))],
             'notes' => ['nullable', 'string', 'max:500'],
+            'company_referral_id' => ['nullable', 'required_if:type,company_referral', 'exists:company_referrals,id'],
             'present_illness' => ['nullable', 'string', 'max:1000'],
             'past_medical_history' => ['nullable', 'string', 'max:1000'],
             'operations_accidents' => ['nullable', 'string', 'max:1000'],
@@ -153,6 +196,9 @@ class AppointmentController extends Controller
             'personal_social_history' => ['nullable', 'string', 'max:1000'],
             'ob_menstrual_history' => ['nullable', 'string', 'max:1000'],
         ];
+        if ($referral) {
+            $rules['appointment_date'][] = 'before_or_equal:'.$referral->valid_until->toDateString();
+        }
 
         $validator = Validator::make($request->all(), $rules);
 
@@ -170,7 +216,7 @@ class AppointmentController extends Controller
         $startTime = null;
         $endTime = null;
 
-        if ($data['type'] === 'individual') {
+        if (in_array($data['type'], ['individual', 'company_referral'], true)) {
             $doctor = User::findOrFail($data['doctor_id']);
             if ($doctor->role !== 'doctor' || ! $doctor->is_active) {
                 return back()->withErrors(['doctor_id' => 'Invalid doctor selected.'])->withInput();
@@ -204,10 +250,16 @@ class AppointmentController extends Controller
         }
 
         if ($data['type'] === 'company_referral') {
-            $data['referral_code'] = 'REF-'.now()->format('Ymd').'-'.strtoupper(Str::random(4));
+            $data['referral_code'] = $referral?->referral_number
+                ?? 'REF-'.now()->format('Ymd').'-'.strtoupper(Str::random(4));
         }
 
-        DB::transaction(function () use ($data, $user, $startTime, $endTime) {
+        DB::transaction(function () use ($data, $user, $startTime, $endTime, $referral) {
+            $lockedReferral = null;
+            if ($referral) {
+                $lockedReferral = CompanyReferral::query()->lockForUpdate()->findOrFail($referral->id);
+                abort_unless($lockedReferral->patient_id === $user->id && $lockedReferral->isSchedulable(), 422);
+            }
             $appointment = Appointment::create([
                 'user_id' => $user->id,
                 'company_id' => $data['company_id'] ?? null,
@@ -222,7 +274,10 @@ class AppointmentController extends Controller
                 'service_types' => $data['service_types'],
                 'referral_code' => $data['referral_code'] ?? null,
                 'notes' => $data['notes'] ?? null,
+                'company_referral_id' => $lockedReferral?->id,
             ]);
+
+            $lockedReferral?->update(['status' => 'scheduled', 'scheduled_at' => now()]);
 
             MedicalHistory::create([
                 'appointment_id' => $appointment->id,
@@ -250,8 +305,7 @@ class AppointmentController extends Controller
     {
         $user = request()->user();
         $canView = $user->role === 'admin'
-            || ($user->role === 'patient' && $appointment->user_id === $user->id)
-            || ($user->role === 'company' && $appointment->company_id === $user->company_id);
+            || ($user->role === 'patient' && $appointment->user_id === $user->id);
 
         abort_unless($canView, 403);
 
@@ -302,9 +356,14 @@ class AppointmentController extends Controller
             }
         }
 
-        $appointment->update([
-            'status' => $request->status,
-        ]);
+        if ($appointment->isBulkParent()) {
+            app(\App\Services\BulkAppointmentEnrollmentService::class)
+                ->synchronizeParentStatus($appointment, $request->status);
+        } else {
+            $appointment->update([
+                'status' => $request->status,
+            ]);
+        }
 
         return back()->with('success', match ($request->status) {
             'accepted' => $appointment->type === 'company_bulk'
@@ -322,29 +381,36 @@ class AppointmentController extends Controller
      */
     public function availableDoctors(Request $request)
     {
-        $date = $request->get('date', today()->format('Y-m-d'));
+        $validated = $request->validate([
+            'date' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:'.today()->addDays(30)->format('Y-m-d')],
+        ]);
+        $date = $validated['date'];
         $dayKey = strtolower(date('D', strtotime($date)));
 
         $doctors = User::where('role', 'doctor')
             ->where('is_active', true)
-            ->whereJsonContains('availability->*.day', $dayKey)
-            ->withCount(['doctorAppointments as booked_slots' => function ($q) use ($date) {
-                $q->whereDate('appointment_date', $date)
-                    ->whereIn('status', ['accepted', 'arrived']);
-            }])
-            ->get(['id', 'first_name', 'last_name', 'specialization', 'sex']);
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name', 'specialization', 'sex', 'availability']);
 
-        $doctors->each(function ($doctor) use ($dayKey) {
+        $doctors->each(function ($doctor) use ($dayKey, $date) {
             $avail = collect($doctor->availability)->firstWhere('day', $dayKey);
             if ($avail) {
                 $doctor->availability_slot = $avail;
-                // Simple free slots estimate:  (end - start hours * 2) - booked
-                $hours = (strtotime($avail['end']) - strtotime($avail['start'])) / 3600;
-                $doctor->free_slots = max(0, intval($hours * 2) - $doctor->booked_slots_count);
+                $doctor->free_slots = count($this->generateAvailableTimes(
+                    $avail['start'],
+                    $avail['end'],
+                    $doctor->id,
+                    $date,
+                ));
             }
         });
 
-        return response()->json($doctors->filter(fn ($d) => ($d->free_slots ?? 0) > 0));
+        return response()->json(
+            $doctors
+                ->filter(fn ($doctor) => ($doctor->free_slots ?? 0) > 0)
+                ->values()
+                ->makeHidden('availability')
+        );
     }
 
     /**
@@ -438,9 +504,9 @@ class AppointmentController extends Controller
             // Check overlap with booked appointments
             $overlap = Appointment::where('doctor_id', $doctorId)
                 ->whereDate('appointment_date', $date)
-                ->whereIn('status', ['accepted', 'arrived', 'pending'])  // include pending
+                ->where('status', '!=', 'cancelled')
                 ->where(function ($q) use ($startStr, $endStr) {
-                    $q->where('start_time', '<=', $endStr)
+                    $q->where('start_time', '<', $endStr)
                         ->where('end_time', '>', $startStr);
                 })
                 ->exists();
@@ -808,8 +874,12 @@ class AppointmentController extends Controller
     {
         $search = $request->get('search', '');
         $status = $request->get('status', '');
+        $companyId = $request->integer('company_id') ?: null;
+        $date = $request->get('date', '');
+        $batch = $request->get('batch', '');
 
-        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport', 'medicalExamination']);
+        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport', 'medicalExamination'])
+            ->whereHas('user', fn ($user) => $user->where('role', 'patient'));
 
         if ($role === 'doctor') {
             $query->where(function ($q) {
@@ -845,6 +915,10 @@ class AppointmentController extends Controller
             $query->where('status', $status);
         }
 
+        $query->when($companyId, fn ($query) => $query->where('company_id', $companyId))
+            ->when($date, fn ($query) => $query->whereDate('appointment_date', $date))
+            ->when($batch, fn ($query) => $query->where('batch_id', $batch));
+
         // Search logic
         if ($search) {
             $query->whereHas('user', function ($q) use ($search) {
@@ -865,7 +939,14 @@ class AppointmentController extends Controller
 
         return Inertia::render($pagePath, [
             'appointments' => $appointments,
-            'filters' => ['search' => $search, 'status' => $status, 'role' => $role],
+            'filters' => [
+                'search' => $search,
+                'status' => $status,
+                'role' => $role,
+                'company_id' => $companyId,
+                'date' => $date,
+                'batch' => $batch,
+            ],
             'pageTitle' => ucfirst($role).' Queue',
         ]);
 

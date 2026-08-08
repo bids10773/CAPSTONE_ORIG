@@ -6,6 +6,7 @@ use App\Http\Controllers\ClinicalDocumentController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
 use App\Http\Controllers\CompanyEmployeeImportController;
+use App\Http\Controllers\CompanyReferralController;
 use App\Http\Controllers\DoctorAvailabilityController;
 use App\Http\Controllers\DoctorDashboardController;
 use App\Http\Controllers\ForecastController;
@@ -24,6 +25,10 @@ use App\Http\Controllers\XrayController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+Route::get('/company-referrals/invitation/{token}', [CompanyReferralController::class, 'invitation'])
+    ->middleware(['signed', 'throttle:30,1'])
+    ->name('company-referrals.invitation');
 
 Route::middleware('auth')->group(function () {
     Route::get('/temporary-password', [TemporaryPasswordController::class, 'edit'])
@@ -50,6 +55,9 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'staff.verified'])->group(function () {
+    Route::get('/company-referrals/invitation/{token}/accept', [CompanyReferralController::class, 'accept'])
+        ->middleware(['signed', 'throttle:10,1'])
+        ->name('company-referrals.accept');
     Route::get('/api/global-search', GlobalSearchController::class)
         ->middleware('throttle:30,1')
         ->name('api.global-search');
@@ -77,6 +85,8 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::post('/company/employees/import/confirm', [CompanyEmployeeImportController::class, 'confirm'])->name('company.employees.import.confirm');
         Route::get('/company/employees/import/template', [CompanyEmployeeImportController::class, 'template'])->name('company.employees.import.template');
         Route::get('/company/employees/import/errors/{token}', [CompanyEmployeeImportController::class, 'errorReport'])->whereUuid('token')->name('company.employees.import.errors');
+        Route::post('/company/referrals', [CompanyReferralController::class, 'store'])->name('company.referrals.store');
+        Route::patch('/company/referrals/{companyReferral}/cancel', [CompanyReferralController::class, 'cancel'])->name('company.referrals.cancel');
     });
 
     Route::middleware('role:receptionist')->prefix('receptionist')->name('receptionist.')->group(function () {

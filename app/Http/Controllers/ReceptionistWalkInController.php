@@ -44,7 +44,8 @@ class ReceptionistWalkInController extends Controller
         $status = $request->string('status')->toString();
         $search = $request->string('search')->toString();
         $queuePositions = Appointment::query()
-            ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
+            ->whereIn('type', ['individual', 'company_referral', 'company_bulk', 'walk_in'])
+            ->whereHas('user', fn ($query) => $query->where('role', 'patient'))
             ->whereDate('appointment_date', today())
             ->orderByRaw("CASE WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type <> 'walk_in' THEN 2 WHEN type = 'walk_in' THEN 3 ELSE 4 END")
             ->orderByRaw('COALESCE(start_time, arrived_at, created_at)')
@@ -55,7 +56,8 @@ class ReceptionistWalkInController extends Controller
 
         $walkIns = Appointment::query()
             ->with('user.patientProfile')
-            ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
+            ->whereIn('type', ['individual', 'company_referral', 'company_bulk', 'walk_in'])
+            ->whereHas('user', fn ($query) => $query->where('role', 'patient'))
             ->whereDate('appointment_date', today())
             ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->when($search !== '', fn ($query) => $query->whereHas('user', fn ($patient) => $patient

@@ -3,6 +3,7 @@
 use App\Models\Appointment;
 use App\Models\Company;
 use App\Models\User;
+use App\Services\BulkAppointmentEnrollmentService;
 use App\Services\LaboratoryFormDefinition;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -134,4 +135,76 @@ test('individual appointments require complete patient details before admin appr
         ->assertSessionDoesntHaveErrors();
 
     expect($appointment->refresh()->status)->toBe('accepted');
+});
+
+test('bulk approval schedules every enrolled employee independently under the parent batch', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $company = Company::create(['company_name' => 'Independent Workflow Company']);
+    $representative = User::factory()->create([
+        'role' => 'company',
+        'company_id' => $company->id,
+    ]);
+    $employeeA = User::factory()->create(['role' => 'patient', 'company_id' => $company->id]);
+    $employeeB = User::factory()->create(['role' => 'patient', 'company_id' => $company->id]);
+    $parent = Appointment::create([
+        'user_id' => $representative->id,
+        'company_id' => $company->id,
+        'company_name' => $company->company_name,
+        'appointment_date' => today()->addDay(),
+        'type' => 'company_bulk',
+        'status' => 'pending',
+        'service_types' => ['PE', 'CBC', 'X-Ray'],
+    ]);
+    $enrollment = app(BulkAppointmentEnrollmentService::class);
+    $childA = $enrollment->enroll($parent, $employeeA);
+    $childB = $enrollment->enroll($parent, $employeeB);
+
+    expect($parent->medicalExamination)->toBeNull()
+        ->and($childA->status)->toBe('pending')
+        ->and($childA->bulk_appointment_id)->toBe($parent->id)
+        ->and($childB->batch_id)->toBe($childA->batch_id)
+        ->and($childA->medicalExamination)->not->toBeNull();
+
+    $this->actingAs($admin)
+        ->patch(route('admin.appointments.update-status', $parent), ['status' => 'accepted'])
+        ->assertSessionDoesntHaveErrors();
+
+    expect($childA->refresh()->status)->toBe('accepted')
+        ->and($childB->refresh()->status)->toBe('accepted');
+
+    $childA->update(['status' => 'completed']);
+    expect($childB->refresh()->status)->toBe('accepted')
+        ->and($parent->refresh()->status)->toBe('arrived');
+
+    $childB->update(['status' => 'completed']);
+    expect($parent->refresh()->status)->toBe('completed');
+});
+
+test('receptionist can check in bulk employees without exposing the parent request', function () {
+    $company = Company::create(['company_name' => 'Arrival Company']);
+    $representative = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
+    $employee = User::factory()->create(['role' => 'patient', 'company_id' => $company->id]);
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $parent = Appointment::create([
+        'user_id' => $representative->id,
+        'company_id' => $company->id,
+        'appointment_date' => today(),
+        'type' => 'company_bulk',
+        'status' => 'accepted',
+        'service_types' => ['PE'],
+    ]);
+    $child = app(BulkAppointmentEnrollmentService::class)->enroll($parent, $employee);
+
+    $this->actingAs($receptionist)
+        ->get(route('receptionist.queue.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('walkIns.data', 1)
+            ->where('walkIns.data.0.id', $child->id));
+
+    $this->patch(route('receptionist.walk-ins.status', $child), ['status' => 'arrived'])
+        ->assertSessionDoesntHaveErrors();
+
+    expect($child->refresh()->status)->toBe('arrived')
+        ->and($child->arrived_at)->not->toBeNull();
 });

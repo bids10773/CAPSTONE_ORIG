@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Appointment;
 use App\Models\MedicalExamination;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -17,28 +18,38 @@ class DoctorDashboardController extends Controller
     {
         $doctor = $request->user();
 
-        $pendingCount = $doctor->doctorAppointments()
+        $doctorQueue = fn () => Appointment::query()->where(function ($query) use ($doctor) {
+            $query->where('doctor_id', $doctor->id)
+                ->orWhere(function ($bulk) {
+                    $bulk->whereNull('doctor_id')->whereNotNull('bulk_appointment_id');
+                });
+        });
+
+        $pendingCount = $doctorQueue()
             ->whereIn('status', ['accepted', 'for_final_evaluation'])
             ->count();
         $workflowCounts = MedicalExamination::query()
-            ->whereHas('appointment', fn ($query) => $query->where('doctor_id', $doctor->id))
+            ->whereHas('appointment', fn ($query) => $query->where(function ($appointments) use ($doctor) {
+                $appointments->where('doctor_id', $doctor->id)
+                    ->orWhere(fn ($bulk) => $bulk->whereNull('doctor_id')->whereNotNull('bulk_appointment_id'));
+            }))
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
-        $todayCount = $doctor->doctorAppointments()
+        $todayCount = $doctorQueue()
             ->whereIn('status', ['accepted', 'arrived', 'for_final_evaluation'])
             ->whereDate('appointment_date', today())
             ->count();
-        $totalPatients = $doctor->doctorAppointments()->with('user')->distinct('user_id')->count('user_id');
+        $totalPatients = $doctorQueue()->distinct('user_id')->count('user_id');
         $availabilityDays = count(array_filter($doctor->availability ?? []));
 
         // ✅ NEW: Completed Physical Exams
-        $completedPhysicalCount = $doctor->doctorAppointments()
+        $completedPhysicalCount = $doctorQueue()
             ->where('status', 'completed')
             ->whereDate('updated_at', today()) // remove this if you want ALL completed
             ->count();
 
-        $upcomingAppointments = $doctor->doctorAppointments()
+        $upcomingAppointments = $doctorQueue()
             ->with(['user', 'medicalExamination:id,appointment_id,status'])
             ->where(function ($query): void {
                 $query->whereIn('status', ['accepted', 'arrived', 'for_final_evaluation'])

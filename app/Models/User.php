@@ -116,6 +116,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Appointment::class);
     }
 
+    public function companyReferrals(): HasMany
+    {
+        return $this->hasMany(CompanyReferral::class, 'patient_id');
+    }
+
     /**
      * Get the patient profile for this user.
      */

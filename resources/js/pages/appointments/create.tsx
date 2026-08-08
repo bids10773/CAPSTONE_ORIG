@@ -34,6 +34,7 @@ interface Company {
 }
 
 interface BookingData {
+    company_referral_id: string;
     doctor_id: string;
     start_time: string;
     type: string;
@@ -69,6 +70,14 @@ interface AppointmentPageProps {
         requiresXray: boolean;
     };
     auth: { user: AppointmentUser };
+    referral?: {
+        id: number;
+        referral_number: string;
+        company_id: number;
+        company_name: string;
+        required_services: string[];
+        valid_until: string;
+    } | null;
     [key: string]: unknown;
 }
 
@@ -115,6 +124,7 @@ const TYPE_DETAILS: Record<
 const SERVICE_ICONS = [HeartPulse, FileHeart, Stethoscope, ClipboardCheck];
 
 const INITIAL_DATA: BookingData = {
+    company_referral_id: '',
     doctor_id: '',
     start_time: '',
     type: 'individual',
@@ -138,6 +148,10 @@ const restoreDraft = (storageKey: string): BookingData => {
         const draft = parsed as Partial<Record<keyof BookingData, unknown>>;
 
         return {
+            company_referral_id:
+                typeof draft.company_referral_id === 'string'
+                    ? draft.company_referral_id
+                    : '',
             doctor_id:
                 typeof draft.doctor_id === 'string' ? draft.doctor_id : '',
             start_time:
@@ -232,6 +246,7 @@ export default function CreateAppointment() {
             requiresXray: true,
         },
         auth,
+        referral = null,
     } = usePage<AppointmentPageProps>().props;
     const storageKey = `appointment-draft-${auth.user.id}`;
     const isCompanyAccount = auth.user.role === 'company';
@@ -239,6 +254,16 @@ export default function CreateAppointment() {
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState<BookingData>(() => {
         const draft = restoreDraft(storageKey);
+
+        if (referral) {
+            return {
+                ...draft,
+                company_referral_id: String(referral.id),
+                type: 'company_referral',
+                company_id: String(referral.company_id),
+                service_types: referral.required_services,
+            };
+        }
 
         return isCompanyAccount
             ? {
@@ -251,11 +276,12 @@ export default function CreateAppointment() {
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [availability, setAvailability] =
         useState<AvailabilityResponse | null>(null);
-    const [loadingDoctors, setLoadingDoctors] = useState(true);
+    const [loadingDoctors, setLoadingDoctors] = useState(false);
     const [loadingAvailability, setLoadingAvailability] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState<BookingErrors>({});
     const [companySearch, setCompanySearch] = useState(() => {
+        if (referral) return referral.company_name;
         const restoredCompanyId = restoreDraft(storageKey).company_id;
         return (
             companies.find(
@@ -301,11 +327,6 @@ export default function CreateAppointment() {
         [companies, companySearch],
     );
 
-    const availableDates = (availability?.availableDates ?? []).filter(
-        (date) =>
-            new Date(`${date}T00:00:00`) >= new Date(new Date().toDateString()),
-    );
-
     const availableTimes = (availability?.availableTimes ?? []).filter(
         (time) => {
             if (!formData.appointment_date) return true;
@@ -342,14 +363,34 @@ export default function CreateAppointment() {
     }, [formData.doctor_id, formData.service_types.length]);
 
     useEffect(() => {
+        if (
+            !formData.appointment_date ||
+            !['individual', 'company_referral'].includes(formData.type)
+        ) {
+            return;
+        }
+
         const controller = new AbortController();
-        fetch('/api/doctors', {
-            signal: controller.signal,
-            headers: { Accept: 'application/json' },
-        })
-            .then((response) => {
-                if (!response.ok) throw new Error('Unable to load doctors.');
-                return response.json() as Promise<unknown>;
+        fetch(
+            `/api/available-doctors?date=${encodeURIComponent(formData.appointment_date)}`,
+            {
+                signal: controller.signal,
+                headers: { Accept: 'application/json' },
+            },
+        )
+            .then(async (response) => {
+                const data = (await response.json()) as unknown;
+                if (!response.ok) {
+                    const message =
+                        data !== null &&
+                        typeof data === 'object' &&
+                        'message' in data &&
+                        typeof data.message === 'string'
+                            ? data.message
+                            : 'Unable to load doctors.';
+                    throw new Error(message);
+                }
+                return data;
             })
             .then((data) => {
                 if (!isDoctorArray(data))
@@ -373,16 +414,14 @@ export default function CreateAppointment() {
                 if (!controller.signal.aborted) setLoadingDoctors(false);
             });
         return () => controller.abort();
-    }, []);
+    }, [formData.appointment_date, formData.type]);
 
     useEffect(() => {
-        if (!formData.doctor_id) {
+        if (!formData.doctor_id || !formData.appointment_date) {
             return;
         }
         const controller = new AbortController();
-        const query = formData.appointment_date
-            ? `?date=${formData.appointment_date}`
-            : '';
+        const query = `?date=${encodeURIComponent(formData.appointment_date)}`;
         fetch(`/api/doctors/${formData.doctor_id}/availability${query}`, {
             signal: controller.signal,
             headers: { Accept: 'application/json' },
@@ -453,15 +492,21 @@ export default function CreateAppointment() {
             if (!formData.service_types.length)
                 nextErrors.service_types =
                     'Choose at least one medical service.';
-            if (formData.type === 'individual' && !formData.doctor_id)
-                nextErrors.doctor_id = 'Choose a doctor to continue.';
             if (!isCompanyAccount && needsCompany && !formData.company_id)
                 nextErrors.company_id = 'Select the referring company.';
         }
         if (currentStep === 2) {
             if (!formData.appointment_date)
-                nextErrors.appointment_date = 'Choose an available date.';
-            if (formData.type === 'individual' && !formData.start_time)
+                nextErrors.appointment_date = 'Choose a date.';
+            if (
+                ['individual', 'company_referral'].includes(formData.type) &&
+                !formData.doctor_id
+            )
+                nextErrors.doctor_id = 'Choose an available doctor.';
+            if (
+                ['individual', 'company_referral'].includes(formData.type) &&
+                !formData.start_time
+            )
                 nextErrors.start_time = 'Choose an available time.';
         }
         setErrors((current) => ({ ...current, ...nextErrors }));
@@ -498,14 +543,17 @@ export default function CreateAppointment() {
                                 'company_id',
                                 'company_name',
                                 'service_types',
-                                'doctor_id',
                             ].includes(key),
                         )
                     ) {
                         setCurrentStep(1);
                     } else if (
                         errorFields.some((key) =>
-                            ['appointment_date', 'start_time'].includes(key),
+                            [
+                                'appointment_date',
+                                'doctor_id',
+                                'start_time',
+                            ].includes(key),
                         )
                     ) {
                         setCurrentStep(2);
@@ -577,7 +625,7 @@ export default function CreateAppointment() {
                                     </h2>
                                     <p className="mt-1 text-sm text-slate-500">
                                         {currentStep === 1 &&
-                                            'Select a visit type, services, and your preferred doctor.'}
+                                            'Select a visit type and the services you need.'}
                                         {currentStep === 2 &&
                                             'Only currently available schedules are shown.'}
                                         {currentStep === 3 &&
@@ -607,16 +655,13 @@ export default function CreateAppointment() {
                                                     optionalBulkServices={
                                                         pePackage.optionalBulkServices
                                                     }
-                                                    doctors={doctors}
                                                     formData={formData}
-                                                    loadingDoctors={
-                                                        loadingDoctors
-                                                    }
                                                     errors={errors}
                                                     needsCompany={needsCompany}
                                                     isCompanyAccount={
                                                         isCompanyAccount
                                                     }
+                                                    referral={referral}
                                                     companySearch={
                                                         companySearch
                                                     }
@@ -627,31 +672,26 @@ export default function CreateAppointment() {
                                                         filteredCompanies
                                                     }
                                                     onType={(type) => {
+                                                        if (referral) return;
                                                         update('type', type);
                                                         update(
                                                             'company_id',
                                                             '',
                                                         );
-                                                        setCompanySearch('');
-                                                    }}
-                                                    onService={toggleService}
-                                                    onDoctor={(doctorId) => {
-                                                        setLoadingAvailability(
-                                                            true,
-                                                        );
-                                                        update(
-                                                            'doctor_id',
-                                                            doctorId,
-                                                        );
                                                         update(
                                                             'appointment_date',
                                                             '',
                                                         );
+                                                        update('doctor_id', '');
                                                         update(
                                                             'start_time',
                                                             '',
                                                         );
+                                                        setDoctors([]);
+                                                        setAvailability(null);
+                                                        setCompanySearch('');
                                                     }}
+                                                    onService={toggleService}
                                                     onCompanySearch={(
                                                         value,
                                                     ) => {
@@ -674,8 +714,8 @@ export default function CreateAppointment() {
                                             )}
                                             {currentStep === 2 && (
                                                 <ScheduleStep
+                                                    doctors={doctors}
                                                     doctor={selectedDoctor}
-                                                    dates={availableDates}
                                                     times={availableTimes}
                                                     selectedDate={
                                                         formData.appointment_date
@@ -686,18 +726,46 @@ export default function CreateAppointment() {
                                                     loading={
                                                         loadingAvailability
                                                     }
+                                                    loadingDoctors={
+                                                        loadingDoctors
+                                                    }
                                                     errors={errors}
                                                     requiresDoctor={
                                                         formData.type ===
-                                                        'individual'
+                                                            'individual' ||
+                                                        formData.type ===
+                                                            'company_referral'
+                                                    }
+                                                    maxAllowedDate={
+                                                        referral?.valid_until
                                                     }
                                                     onDate={(date) => {
+                                                        setDoctors([]);
+                                                        setAvailability(null);
+                                                        setLoadingDoctors(
+                                                            Boolean(date),
+                                                        );
                                                         setLoadingAvailability(
-                                                            true,
+                                                            false,
                                                         );
                                                         update(
                                                             'appointment_date',
                                                             date,
+                                                        );
+                                                        update('doctor_id', '');
+                                                        update(
+                                                            'start_time',
+                                                            '',
+                                                        );
+                                                    }}
+                                                    onDoctor={(doctorId) => {
+                                                        setAvailability(null);
+                                                        setLoadingAvailability(
+                                                            true,
+                                                        );
+                                                        update(
+                                                            'doctor_id',
+                                                            doctorId,
                                                         );
                                                         update(
                                                             'start_time',
@@ -853,18 +921,16 @@ interface VisitStepProps {
     appointmentTypes: OptionEntry[];
     serviceTypes: OptionEntry[];
     optionalBulkServices: string[];
-    doctors: Doctor[];
     formData: BookingData;
-    loadingDoctors: boolean;
     errors: BookingErrors;
     needsCompany: boolean;
     isCompanyAccount: boolean;
+    referral: AppointmentPageProps['referral'];
     companySearch: string;
     companyMenuOpen: boolean;
     filteredCompanies: Company[];
     onType: (type: string) => void;
     onService: (service: string) => void;
-    onDoctor: (doctorId: string) => void;
     onCompanySearch: (search: string) => void;
     onCompanySelect: (company: Company) => void;
     onCompanyFocus: () => void;
@@ -874,24 +940,37 @@ function VisitStep({
     appointmentTypes,
     serviceTypes,
     optionalBulkServices,
-    doctors,
     formData,
-    loadingDoctors,
     errors,
     needsCompany,
     isCompanyAccount,
+    referral,
     companySearch,
     companyMenuOpen,
     filteredCompanies,
     onType,
     onService,
-    onDoctor,
     onCompanySearch,
     onCompanySelect,
     onCompanyFocus,
 }: VisitStepProps) {
     return (
         <div className="space-y-8">
+            {referral && (
+                <div className="rounded-xl border border-moss-200 bg-moss-50 p-4">
+                    <p className="text-sm font-semibold text-moss-900">
+                        Verified company referral
+                    </p>
+                    <p className="mt-1 text-xs text-moss-700">
+                        {referral.company_name} · {referral.referral_number} ·
+                        valid through {formatDate(referral.valid_until)}
+                    </p>
+                    <p className="mt-2 text-xs text-moss-700">
+                        Required services are set by the referring company and
+                        cannot be removed.
+                    </p>
+                </div>
+            )}
             <FieldGroup
                 title="Visit type"
                 description="How will this appointment be arranged?"
@@ -918,6 +997,7 @@ function VisitStep({
                                     key={value}
                                     type="button"
                                     onClick={() => onType(value)}
+                                    disabled={!!referral}
                                     aria-pressed={selected}
                                     className={`relative min-h-36 rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50 shadow-sm' : 'border-slate-200 bg-white hover:border-moss-200'}`}
                                 >
@@ -960,6 +1040,7 @@ function VisitStep({
                             placeholder="Search for your company"
                             aria-label="Referring company"
                             aria-invalid={!!errors.company_id}
+                            disabled={!!referral}
                             className="h-12 w-full rounded-xl border border-slate-200 pr-4 pl-10 text-sm transition outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
                         />
                         {companyMenuOpen && companySearch && (
@@ -994,7 +1075,7 @@ function VisitStep({
 
             <FieldGroup
                 title="Medical services"
-                description="Select all services you need during this visit."
+                description="Select services based on your needed service during this visit."
             >
                 <div className="grid gap-3 sm:grid-cols-2">
                     {serviceTypes.map(([value, label], index) => {
@@ -1006,6 +1087,7 @@ function VisitStep({
                                 key={value}
                                 type="button"
                                 onClick={() => onService(value)}
+                                disabled={!!referral}
                                 aria-pressed={selected}
                                 className={`flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
                             >
@@ -1036,92 +1118,49 @@ function VisitStep({
                 </div>
                 <InlineError message={errors.service_types} />
             </FieldGroup>
-
-            {formData.type === 'individual' && (
-                <FieldGroup
-                    title="Preferred doctor"
-                    description="Choose the clinician who will handle your appointment."
-                >
-                    {loadingDoctors ? (
-                        <LoadingState label="Finding available doctors…" />
-                    ) : errors.doctors ? (
-                        <InlineError message={errors.doctors} />
-                    ) : (
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            {doctors.map((doctor: Doctor) => {
-                                const selected =
-                                    formData.doctor_id === String(doctor.id);
-                                const initials = `${doctor.first_name?.[0] ?? ''}${doctor.last_name?.[0] ?? ''}`;
-                                return (
-                                    <button
-                                        key={doctor.id}
-                                        type="button"
-                                        onClick={() =>
-                                            onDoctor(String(doctor.id))
-                                        }
-                                        aria-pressed={selected}
-                                        className={`flex min-h-20 items-center gap-3 rounded-xl border p-3.5 text-left transition hover:-translate-y-0.5 hover:shadow-sm focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
-                                    >
-                                        <span
-                                            className={`flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-bold ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-600'}`}
-                                        >
-                                            {initials}
-                                        </span>
-                                        <span className="min-w-0 flex-1">
-                                            <span className="block truncate text-sm font-semibold text-slate-900">
-                                                Dr. {doctor.first_name}{' '}
-                                                {doctor.last_name}
-                                            </span>
-                                            <span className="mt-0.5 block truncate text-xs text-slate-500">
-                                                {doctor.specialization ||
-                                                    'Clinic physician'}
-                                            </span>
-                                            <span className="mt-1 block text-[11px] font-medium text-slate-500">
-                                                Gender:{' '}
-                                                {formatDoctorSex(doctor.sex)}
-                                            </span>
-                                        </span>
-                                        {selected && (
-                                            <CheckCircle2 className="size-5 shrink-0 text-moss-600" />
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-                    <InlineError message={errors.doctor_id} />
-                </FieldGroup>
-            )}
         </div>
     );
 }
 
 interface ScheduleStepProps {
+    doctors: Doctor[];
     doctor?: Doctor;
-    dates: string[];
     times: string[];
     selectedDate: string;
     selectedTime: string;
     loading: boolean;
+    loadingDoctors: boolean;
+    maxAllowedDate?: string;
     errors: BookingErrors;
     requiresDoctor: boolean;
     onDate: (date: string) => void;
+    onDoctor: (doctorId: string) => void;
     onTime: (time: string) => void;
 }
 
 function ScheduleStep({
+    doctors,
     doctor,
-    dates,
     times,
     selectedDate,
     selectedTime,
     loading,
+    loadingDoctors,
+    maxAllowedDate,
     errors,
     requiresDoctor,
     onDate,
+    onDoctor,
     onTime,
 }: ScheduleStepProps) {
     const today = new Date().toISOString().slice(0, 10);
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + 29);
+    const schedulingLimit = maxDate.toISOString().slice(0, 10);
+    const latestDate =
+        maxAllowedDate && maxAllowedDate < schedulingLimit
+            ? maxAllowedDate
+            : schedulingLimit;
 
     if (!requiresDoctor) {
         return (
@@ -1143,122 +1182,121 @@ function ScheduleStep({
 
     return (
         <div className="space-y-8">
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-                <span className="flex size-10 items-center justify-center rounded-full bg-white text-moss-600 shadow-sm">
-                    <Stethoscope className="size-4" />
-                </span>
-                <div>
-                    <p className="text-xs text-slate-500">Scheduling with</p>
-                    <p className="text-sm font-semibold">
-                        Dr. {doctor?.first_name} {doctor?.last_name}
-                    </p>
-                </div>
-            </div>
+            <FieldGroup
+                title="Appointment date"
+                description="Choose a date first to see doctors with open appointments."
+            >
+                <input
+                    type="date"
+                    min={today}
+                    max={latestDate}
+                    value={selectedDate}
+                    onChange={(event) => onDate(event.target.value)}
+                    className="h-12 w-full max-w-sm rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
+                />
+                <InlineError message={errors.appointment_date} />
+            </FieldGroup>
 
-            {loading ? (
-                <LoadingState label="Checking the latest availability…" />
-            ) : errors.availability ? (
-                <InlineError message={errors.availability} />
-            ) : (
-                <>
-                    <FieldGroup
-                        title="Available dates"
-                        description="Unavailable clinic days are automatically hidden."
-                    >
-                        {dates.length ? (
-                            <>
-                                {dates.includes(today) && (
+            {selectedDate && (
+                <FieldGroup
+                    title="Available doctors"
+                    description={`Doctors with open time slots on ${formatDate(selectedDate, { month: 'long', day: 'numeric' })}.`}
+                >
+                    {loadingDoctors ? (
+                        <LoadingState label="Finding available doctors…" />
+                    ) : errors.doctors ? (
+                        <InlineError message={errors.doctors} />
+                    ) : doctors.length ? (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            {doctors.map((availableDoctor) => {
+                                const selected =
+                                    doctor?.id === availableDoctor.id;
+                                const initials = `${availableDoctor.first_name[0] ?? ''}${availableDoctor.last_name[0] ?? ''}`;
+                                return (
                                     <button
+                                        key={availableDoctor.id}
                                         type="button"
-                                        onClick={() => onDate(today)}
-                                        className="mb-3 inline-flex h-9 items-center gap-2 rounded-lg bg-moss-50 px-3 text-xs font-semibold text-moss-700 hover:bg-moss-100"
+                                        onClick={() =>
+                                            onDoctor(String(availableDoctor.id))
+                                        }
+                                        aria-pressed={selected}
+                                        className={`flex min-h-20 items-center gap-3 rounded-xl border p-3.5 text-left transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
                                     >
-                                        <CalendarDays className="size-4" />{' '}
-                                        Choose today
-                                    </button>
-                                )}
-                                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                                    {dates.map((date) => {
-                                        const selected = selectedDate === date;
-                                        return (
-                                            <button
-                                                key={date}
-                                                type="button"
-                                                onClick={() => onDate(date)}
-                                                aria-pressed={selected}
-                                                className={`min-h-20 rounded-xl border px-2 py-3 text-center transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-600 bg-moss-600 text-white shadow-md shadow-moss-600/15' : 'border-slate-200 bg-white'}`}
-                                            >
-                                                <span
-                                                    className={`block text-[10px] font-bold tracking-wide uppercase ${selected ? 'text-moss-100' : 'text-slate-400'}`}
-                                                >
-                                                    {formatDate(date, {
-                                                        weekday: 'short',
-                                                    })}
-                                                </span>
-                                                <span className="mt-1 block text-sm font-semibold">
-                                                    {formatDate(date, {
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                    })}
-                                                </span>
-                                                {date === today && (
-                                                    <span
-                                                        className={`mt-1 block text-[9px] ${selected ? 'text-moss-100' : 'text-moss-600'}`}
-                                                    >
-                                                        Today
-                                                    </span>
+                                        <span
+                                            className={`flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-bold ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+                                        >
+                                            {initials}
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm font-semibold">
+                                                Dr. {availableDoctor.first_name}{' '}
+                                                {availableDoctor.last_name}
+                                            </span>
+                                            <span className="mt-0.5 block truncate text-xs text-slate-500">
+                                                {availableDoctor.specialization ||
+                                                    'Clinic physician'}
+                                            </span>
+                                            <span className="mt-1 block text-[11px] text-slate-500">
+                                                {formatDoctorSex(
+                                                    availableDoctor.sex,
                                                 )}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </>
-                        ) : (
-                            <EmptyAvailability message="No upcoming dates are available for this doctor. Return to the previous step to choose another doctor." />
-                        )}
-                        <InlineError message={errors.appointment_date} />
-                    </FieldGroup>
-
-                    {selectedDate && (
-                        <FieldGroup
-                            title="Available times"
-                            description={`${times.length} slot${times.length === 1 ? '' : 's'} remaining on ${formatDate(selectedDate, { month: 'long', day: 'numeric' })}.`}
-                        >
-                            {times.length ? (
-                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                                    {times.map((time) => {
-                                        const selected = selectedTime === time;
-                                        return (
-                                            <button
-                                                key={time}
-                                                type="button"
-                                                onClick={() => onTime(time)}
-                                                aria-pressed={selected}
-                                                className={`min-h-16 rounded-xl border px-3 py-2 text-center transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-600 bg-moss-600 text-white' : 'border-slate-200'}`}
-                                            >
-                                                <span className="block text-sm font-semibold">
-                                                    {formatTime(time)}
-                                                </span>
-                                                <span
-                                                    className={`mt-0.5 block text-[10px] ${selected ? 'text-moss-100' : 'text-slate-400'}`}
-                                                >
-                                                    until{' '}
-                                                    {formatTime(
-                                                        add30Minutes(time),
-                                                    )}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <EmptyAvailability message="No time slots remain for this date. Please choose another date." />
-                            )}
-                            <InlineError message={errors.start_time} />
-                        </FieldGroup>
+                                            </span>
+                                        </span>
+                                        {selected && (
+                                            <CheckCircle2 className="size-5 shrink-0 text-moss-600" />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <EmptyAvailability message="No doctors have open slots on this date. Please choose another date." />
                     )}
-                </>
+                    <InlineError message={errors.doctor_id} />
+                </FieldGroup>
             )}
+
+            {doctor &&
+                (loading ? (
+                    <LoadingState label="Checking the latest availability…" />
+                ) : errors.availability ? (
+                    <InlineError message={errors.availability} />
+                ) : (
+                    <FieldGroup
+                        title="Available times"
+                        description={`${times.length} slot${times.length === 1 ? '' : 's'} remaining on ${formatDate(selectedDate, { month: 'long', day: 'numeric' })}.`}
+                    >
+                        {times.length ? (
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                                {times.map((time) => {
+                                    const selected = selectedTime === time;
+                                    return (
+                                        <button
+                                            key={time}
+                                            type="button"
+                                            onClick={() => onTime(time)}
+                                            aria-pressed={selected}
+                                            className={`min-h-16 rounded-xl border px-3 py-2 text-center transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-600 bg-moss-600 text-white' : 'border-slate-200'}`}
+                                        >
+                                            <span className="block text-sm font-semibold">
+                                                {formatTime(time)}
+                                            </span>
+                                            <span
+                                                className={`mt-0.5 block text-[10px] ${selected ? 'text-moss-100' : 'text-slate-400'}`}
+                                            >
+                                                until{' '}
+                                                {formatTime(add30Minutes(time))}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <EmptyAvailability message="No time slots remain for this date. Please choose another date." />
+                        )}
+                        <InlineError message={errors.start_time} />
+                    </FieldGroup>
+                ))}
         </div>
     );
 }

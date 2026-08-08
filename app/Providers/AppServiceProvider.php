@@ -74,7 +74,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define(
             'walkin.update',
             fn ($user, Appointment $appointment): bool => $user->role === 'receptionist'
-                && in_array($appointment->type, ['walk_in', 'individual', 'company_referral'], true)
+                && in_array($appointment->type, ['walk_in', 'individual', 'company_referral', 'company_bulk'], true)
+                && $appointment->user?->role === 'patient'
                 && $appointment->appointment_date->isToday(),
         );
     }

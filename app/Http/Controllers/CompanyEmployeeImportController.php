@@ -10,8 +10,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
-use Inertia\Inertia;
-use Inertia\Response;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -22,16 +20,19 @@ class CompanyEmployeeImportController extends Controller
     public function preview(
         PreviewCompanyEmployeeImportRequest $request,
         CompanyEmployeeImportService $service
-    ): Response|RedirectResponse {
+    ): RedirectResponse {
         try {
-            $preview = $service->preview($request->file('file'), (int) $request->user()->company_id);
+            $preview = $service->preview(
+                $request->file('file'),
+                (int) $request->user()->company_id,
+                $request->filled('bulk_appointment_id')
+                    ? (int) $request->validated('bulk_appointment_id')
+                    : null
+            );
             $token = (string) Str::uuid();
             Cache::put($this->cacheKey($request->user()->id, $token), $preview, now()->addMinutes(30));
 
-            return Inertia::render('company/dashboard', [
-                ...app(CompanyDashboardController::class)->data($request),
-                'importPreview' => [...$preview, 'token' => $token],
-            ]);
+            return redirect()->route('company.dashboard', ['preview_token' => $token]);
         } catch (\RuntimeException $exception) {
             return back()->withErrors(['file' => $exception->getMessage()]);
         } catch (\Throwable) {
@@ -79,11 +80,12 @@ class CompanyEmployeeImportController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Employees');
         $sheet->fromArray([
-            ['First Name', 'Last Name', 'Sex', 'Birthdate'],
-            ['Juan', 'Dela Cruz', 'Male', '2000-05-15'],
+            CompanyEmployeeImportService::TEMPLATE_HEADERS,
+            ['Juan', 'Santos', 'Dela Cruz', 'Male', '2000-05-15', 'Single', 'EMP-0001'],
         ]);
-        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
-        foreach (range('A', 'D') as $column) {
+        $lastColumn = $sheet->getHighestColumn();
+        $sheet->getStyle("A1:{$lastColumn}1")->getFont()->setBold(true);
+        foreach (range('A', $lastColumn) as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 

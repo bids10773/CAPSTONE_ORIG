@@ -11,6 +11,7 @@ import {
     FileSpreadsheet,
     History,
     LoaderCircle,
+    Plus,
     RefreshCw,
     ShieldCheck,
     UploadCloud,
@@ -33,6 +34,13 @@ interface Appointment {
     appointment_type: string;
 }
 
+interface BulkAppointment {
+    id: number;
+    appointment_date: string;
+    status: string;
+    service_types: string[];
+}
+
 interface ImportError {
     field: string;
     message: string;
@@ -41,12 +49,16 @@ interface ImportError {
 interface PreviewRow {
     row: number;
     first_name: string;
+    middle_name: string | null;
     last_name: string;
     sex: 'Male' | 'Female' | null;
     birthdate: string | null;
+    civil_status: string | null;
+    employee_number: string | null;
     age: number | null;
     status: 'valid' | 'invalid' | 'duplicate';
     errors: ImportError[];
+    warnings: ImportError[];
 }
 
 interface ImportSummary {
@@ -80,7 +92,18 @@ interface ImportResult {
     duplicates: number;
     failed: number;
     updated: number;
+    attached: number;
     report_token: string;
+}
+
+interface CompanyReferral {
+    id: number;
+    referral_number: string;
+    employee_name: string;
+    status: string;
+    valid_until: string;
+    appointment_date?: string | null;
+    can_cancel: boolean;
 }
 
 interface DashboardProps {
@@ -92,6 +115,7 @@ interface DashboardProps {
         representative_email?: string | null;
     };
     appointments: Appointment[];
+    bulkAppointments: BulkAppointment[];
     stats: { total: number; upcoming: number; completed: number };
     employeeStats: {
         total: number;
@@ -102,6 +126,14 @@ interface DashboardProps {
     uploads: UploadHistory[];
     importPreview?: ImportPreview;
     flash?: { import_result?: ImportResult | null };
+    referrals: CompanyReferral[];
+    referralStats: {
+        pending: number;
+        scheduled: number;
+        completed: number;
+        expired: number;
+    };
+    serviceTypes: Record<string, string>;
     [key: string]: unknown;
 }
 
@@ -127,18 +159,46 @@ export default function CompanyDashboard() {
     const {
         company,
         appointments,
+        bulkAppointments,
         stats,
         employeeStats,
         uploads,
         importPreview,
         flash,
+        referrals,
+        referralStats,
+        serviceTypes,
     } = usePage<DashboardProps>().props;
     const [isUploadOpen, setIsUploadOpen] = useState(!!importPreview);
     const [dragging, setDragging] = useState(false);
     const [confirming, setConfirming] = useState(false);
+    const [isReferralOpen, setIsReferralOpen] = useState(false);
     const fileInput = useRef<HTMLInputElement>(null);
-    const previewForm = useForm<{ file: File | null }>({ file: null });
+    const previewForm = useForm<{
+        file: File | null;
+        bulk_appointment_id: string;
+    }>({ file: null, bulk_appointment_id: '' });
     const importResult = flash?.import_result;
+    const referralForm = useForm({
+        first_name: '',
+        last_name: '',
+        email: '',
+        service_types: [] as string[],
+    });
+
+    const submitReferral = () => {
+        referralForm.post('/company/referrals', {
+            preserveScroll: true,
+            onSuccess: () => {
+                referralForm.reset();
+                setIsReferralOpen(false);
+                toast.success('Employee referral created.');
+            },
+            onError: () => {
+                toast.error('Please correct the highlighted referral details.');
+            },
+        });
+    };
 
     const chooseFile = (file?: File) => {
         if (!file) return;
@@ -223,6 +283,15 @@ export default function CompanyDashboard() {
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsReferralOpen(true)}
+                                className="h-11 rounded-xl px-4"
+                            >
+                                <Plus className="mr-2 size-4" /> Create employee
+                                referral
+                            </Button>
                             <a
                                 href="/company/employees/import/template"
                                 className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -268,6 +337,218 @@ export default function CompanyDashboard() {
                     </div>
                 </section>
 
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 className="font-semibold text-slate-950">
+                                Individual referrals
+                            </h2>
+                            <p className="mt-1 text-xs text-slate-500">
+                                Administrative status only. Medical findings are
+                                not shared here.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-xs">
+                            <span className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-amber-700">
+                                Pending: {referralStats.pending}
+                            </span>
+                            <span className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-blue-700">
+                                Scheduled: {referralStats.scheduled}
+                            </span>
+                            <span className="rounded-lg bg-emerald-50 px-2.5 py-1.5 text-emerald-700">
+                                Completed: {referralStats.completed}
+                            </span>
+                            <span className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-slate-600">
+                                Expired: {referralStats.expired}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="mt-5 overflow-x-auto">
+                        <table className="w-full min-w-[680px] text-left text-sm">
+                            <thead className="border-b border-slate-100 text-[10px] tracking-wider text-slate-400 uppercase">
+                                <tr>
+                                    <th className="py-3">Employee</th>
+                                    <th>Referral</th>
+                                    <th>Valid until</th>
+                                    <th>Schedule</th>
+                                    <th>Status</th>
+                                    <th className="text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {referrals.map((item) => (
+                                    <tr key={item.id}>
+                                        <td className="py-3 font-medium">
+                                            {item.employee_name}
+                                        </td>
+                                        <td className="text-xs text-slate-500">
+                                            {item.referral_number}
+                                        </td>
+                                        <td className="text-xs">
+                                            {formatDate(item.valid_until)}
+                                        </td>
+                                        <td className="text-xs">
+                                            {item.appointment_date
+                                                ? formatDate(
+                                                      item.appointment_date,
+                                                  )
+                                                : 'Not scheduled'}
+                                        </td>
+                                        <td className="text-xs capitalize">
+                                            {item.status.replaceAll('_', ' ')}
+                                        </td>
+                                        <td className="text-right">
+                                            {item.can_cancel && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const reason =
+                                                            window.prompt(
+                                                                'Cancellation reason',
+                                                            );
+                                                        if (reason)
+                                                            router.patch(
+                                                                `/company/referrals/${item.id}/cancel`,
+                                                                { reason },
+                                                                {
+                                                                    preserveScroll: true,
+                                                                },
+                                                            );
+                                                    }}
+                                                    className="text-xs font-semibold text-red-600"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {!referrals.length && (
+                            <p className="py-8 text-center text-sm text-slate-500">
+                                No individual referrals yet.
+                            </p>
+                        )}
+                    </div>
+                </section>
+
+                {isReferralOpen && (
+                    <section className="rounded-2xl border border-moss-200 bg-white p-5 shadow-sm sm:p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="font-semibold">
+                                    Create employee referral
+                                </h2>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    The employee chooses their own date, doctor,
+                                    and time.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsReferralOpen(false)}
+                                aria-label="Close referral form"
+                                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                            >
+                                <X className="size-4" />
+                            </button>
+                        </div>
+                        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {(
+                                [
+                                    ['first_name', 'First name'],
+                                    ['last_name', 'Last name'],
+                                    ['email', 'Gmail address'],
+                                ] as const
+                            ).map(([field, label]) => (
+                                <label
+                                    key={field}
+                                    className="text-xs font-semibold text-slate-700"
+                                >
+                                    {label}
+                                    <input
+                                        type={field === 'email' ? 'email' : 'text'}
+                                        value={referralForm.data[field]}
+                                        onChange={(e) =>
+                                            referralForm.setData(
+                                                field,
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-normal outline-none focus:border-moss-500"
+                                    />
+                                    <InputError
+                                        message={referralForm.errors[field]}
+                                        className="mt-1"
+                                    />
+                                </label>
+                            ))}
+                        </div>
+                        <div className="mt-5">
+                            <p className="text-xs font-semibold text-slate-700">
+                                Required medical services
+                            </p>
+                            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                {Object.entries(serviceTypes).map(
+                                    ([value, label]) => (
+                                        <label
+                                            key={value}
+                                            className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-xs"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={referralForm.data.service_types.includes(
+                                                    value,
+                                                )}
+                                                onChange={(e) =>
+                                                    referralForm.setData(
+                                                        'service_types',
+                                                        e.target.checked
+                                                            ? [
+                                                                  ...referralForm
+                                                                      .data
+                                                                      .service_types,
+                                                                  value,
+                                                              ]
+                                                            : referralForm.data.service_types.filter(
+                                                                  (item) =>
+                                                                      item !==
+                                                                      value,
+                                                              ),
+                                                    )
+                                                }
+                                            />
+                                            {label}
+                                        </label>
+                                    ),
+                                )}
+                            </div>
+                            <InputError
+                                message={referralForm.errors.service_types}
+                                className="mt-1"
+                            />
+                        </div>
+                        <div className="mt-5 flex justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsReferralOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={submitReferral}
+                                disabled={referralForm.processing}
+                                className="bg-moss-600 hover:bg-moss-700"
+                            >
+                                Create referral
+                            </Button>
+                        </div>
+                    </section>
+                )}
+
                 {importResult && <ImportResultBanner result={importResult} />}
 
                 {isUploadOpen && (
@@ -301,6 +582,47 @@ export default function CompanyDashboard() {
                         {!importPreview ? (
                             <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_300px]">
                                 <div>
+                                    <label
+                                        htmlFor="bulk-appointment"
+                                        className="mb-2 block text-xs font-semibold text-slate-700"
+                                    >
+                                        Bulk appointment (optional)
+                                    </label>
+                                    <select
+                                        id="bulk-appointment"
+                                        value={
+                                            previewForm.data.bulk_appointment_id
+                                        }
+                                        onChange={(event) =>
+                                            previewForm.setData(
+                                                'bulk_appointment_id',
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="mb-4 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
+                                    >
+                                        <option value="">
+                                            Import employees only
+                                        </option>
+                                        {bulkAppointments.map((appointment) => (
+                                            <option
+                                                key={appointment.id}
+                                                value={appointment.id}
+                                            >
+                                                {formatDate(
+                                                    appointment.appointment_date,
+                                                )}{' '}
+                                                - {appointment.status}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError
+                                        message={
+                                            previewForm.errors
+                                                .bulk_appointment_id
+                                        }
+                                        className="mb-3"
+                                    />
                                     <button
                                         type="button"
                                         onClick={() =>
@@ -602,7 +924,11 @@ function ImportInstructions() {
             <ul className="mt-4 space-y-3 text-xs leading-5 text-slate-600">
                 <li>
                     <strong className="text-slate-800">Required:</strong> First
-                    Name, Last Name, Sex, Birthdate
+                    first_name, last_name, sex, birthdate, civil_status
+                </li>
+                <li>
+                    <strong className="text-slate-800">Optional:</strong>{' '}
+                    middle_name and employee_number
                 </li>
                 <li>
                     <strong className="text-slate-800">Date format:</strong>{' '}
@@ -674,12 +1000,15 @@ function PreviewTable({
                 </div>
             </div>
             <div className="max-h-[480px] overflow-auto rounded-xl border border-slate-200">
-                <table className="w-full min-w-[820px] text-left">
+                <table className="w-full min-w-[1080px] text-left">
                     <thead className="sticky top-0 z-10 bg-slate-50">
                         <tr className="text-[10px] tracking-wider text-slate-400 uppercase">
                             <th className="px-3 py-3 font-semibold">Row</th>
                             <th className="px-3 py-3 font-semibold">
                                 First name
+                            </th>
+                            <th className="px-3 py-3 font-semibold">
+                                Middle name
                             </th>
                             <th className="px-3 py-3 font-semibold">
                                 Last name
@@ -689,6 +1018,12 @@ function PreviewTable({
                                 Birthdate
                             </th>
                             <th className="px-3 py-3 font-semibold">Age</th>
+                            <th className="px-3 py-3 font-semibold">
+                                Civil status
+                            </th>
+                            <th className="px-3 py-3 font-semibold">
+                                Employee no.
+                            </th>
                             <th className="px-3 py-3 font-semibold">Status</th>
                             <th className="px-3 py-3 font-semibold">Message</th>
                         </tr>
@@ -705,6 +1040,9 @@ function PreviewTable({
                                 <td className="px-3 py-3 font-medium">
                                     {row.first_name || '—'}
                                 </td>
+                                <td className="px-3 py-3">
+                                    {row.middle_name || '—'}
+                                </td>
                                 <td className="px-3 py-3 font-medium">
                                     {row.last_name || '—'}
                                 </td>
@@ -713,6 +1051,12 @@ function PreviewTable({
                                     {row.birthdate || '—'}
                                 </td>
                                 <td className="px-3 py-3">{row.age ?? '—'}</td>
+                                <td className="px-3 py-3">
+                                    {row.civil_status || '—'}
+                                </td>
+                                <td className="px-3 py-3">
+                                    {row.employee_number || '—'}
+                                </td>
                                 <td className="px-3 py-3">
                                     <span
                                         className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold capitalize ring-1 ring-inset ${statusStyle[row.status]}`}
@@ -726,6 +1070,9 @@ function PreviewTable({
                                     {row.errors
                                         .map((error) => error.message)
                                         .join(' ') ||
+                                        row.warnings
+                                            .map((warning) => warning.message)
+                                            .join(' ') ||
                                         (row.status === 'duplicate'
                                             ? 'Existing employee; will be skipped.'
                                             : 'Validated successfully.')}
@@ -803,9 +1150,10 @@ function ImportResultBanner({ result }: { result: ImportResult }) {
                         Employee import completed
                     </h2>
                     <p className="mt-1 text-xs leading-5 text-emerald-700">
-                        {result.imported} imported, {result.duplicates}{' '}
-                        duplicates skipped, and {result.failed} invalid rows
-                        rejected.
+                        {result.total} rows processed: {result.imported}{' '}
+                        imported, {result.attached} attached to the bulk batch,{' '}
+                        {result.duplicates} duplicates skipped, and{' '}
+                        {result.failed} invalid rows rejected.
                     </p>
                 </div>
             </div>

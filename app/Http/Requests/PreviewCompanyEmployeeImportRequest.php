@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class PreviewCompanyEmployeeImportRequest extends FormRequest
 {
@@ -15,6 +16,14 @@ class PreviewCompanyEmployeeImportRequest extends FormRequest
     {
         return [
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+            'bulk_appointment_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('appointments', 'id')->where(fn ($query) => $query
+                    ->where('company_id', $this->user()->company_id)
+                    ->where('type', 'company_bulk')
+                    ->whereNull('bulk_appointment_id')),
+            ],
         ];
     }
 
@@ -24,6 +33,7 @@ class PreviewCompanyEmployeeImportRequest extends FormRequest
             'file.required' => 'Select an employee spreadsheet to continue.',
             'file.mimes' => 'Upload an XLSX, XLS, or CSV spreadsheet.',
             'file.max' => 'The spreadsheet must not exceed 10 MB.',
+            'bulk_appointment_id.exists' => 'Select a valid bulk appointment belonging to your company.',
         ];
     }
 }

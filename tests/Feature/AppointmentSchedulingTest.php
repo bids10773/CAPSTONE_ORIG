@@ -122,3 +122,64 @@ test('scheduler safely releases a late slot when no walk in is waiting', functio
         ->expireLateAppointments(Carbon::parse('2026-08-07 09:11:00')))->toBe(1)
         ->and($online->refresh()->replacementWalkIn)->toBeNull();
 });
+
+test('patient sees only doctors with open slots after selecting a date', function () {
+    $patient = User::factory()->create(['role' => 'patient']);
+    $availableDoctor = User::factory()->create([
+        'role' => 'doctor',
+        'is_active' => true,
+        'availability' => [['day' => 'sat', 'start' => '09:00', 'end' => '10:00']],
+    ]);
+    $fullDoctor = User::factory()->create([
+        'role' => 'doctor',
+        'is_active' => true,
+        'availability' => [['day' => 'sat', 'start' => '09:00', 'end' => '10:00']],
+    ]);
+
+    scheduledPatient([
+        'doctor_id' => $fullDoctor->id,
+        'appointment_date' => '2026-08-08',
+        'status' => 'pending',
+    ]);
+    scheduledPatient([
+        'doctor_id' => $fullDoctor->id,
+        'appointment_date' => '2026-08-08',
+        'start_time' => '09:30',
+        'end_time' => '10:00',
+        'status' => 'accepted',
+    ]);
+
+    $this->actingAs($patient)
+        ->getJson('/api/available-doctors?date=2026-08-08')
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.id', $availableDoctor->id)
+        ->assertJsonPath('0.free_slots', 2);
+});
+
+test('booked times are hidden while cancelled times remain available', function () {
+    $patient = User::factory()->create(['role' => 'patient']);
+    $doctor = User::factory()->create([
+        'role' => 'doctor',
+        'is_active' => true,
+        'availability' => [['day' => 'sat', 'start' => '09:00', 'end' => '10:00']],
+    ]);
+
+    scheduledPatient([
+        'doctor_id' => $doctor->id,
+        'appointment_date' => '2026-08-08',
+        'status' => 'for_diagnostics',
+    ]);
+    scheduledPatient([
+        'doctor_id' => $doctor->id,
+        'appointment_date' => '2026-08-08',
+        'start_time' => '09:30',
+        'end_time' => '10:00',
+        'status' => 'cancelled',
+    ]);
+
+    $this->actingAs($patient)
+        ->getJson("/api/doctors/{$doctor->id}/availability?date=2026-08-08")
+        ->assertOk()
+        ->assertJsonPath('availableTimes', ['09:30']);
+});
