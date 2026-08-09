@@ -7,6 +7,12 @@ use App\Models\User;
 
 class AppointmentPolicy
 {
+    public function view(User $user, Appointment $appointment): bool
+    {
+        return $user->role === 'admin'
+            || ($user->role === 'patient' && $appointment->user_id === $user->id);
+    }
+
     public function viewClinicalForms(User $user, Appointment $appointment): bool
     {
         if ($user->role === 'admin' || $appointment->user_id === $user->id) {

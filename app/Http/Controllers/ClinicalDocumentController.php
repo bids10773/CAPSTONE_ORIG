@@ -60,9 +60,20 @@ class ClinicalDocumentController extends Controller
 
     private function ensurePatientResultIsReleased(Request $request, Appointment $appointment): void
     {
-        if ($request->user()->role === 'patient' && $appointment->isPePackage()) {
+        if ($request->user()->role !== 'patient') {
+            return;
+        }
+
+        if ($appointment->isPePackage()) {
             $appointment->loadMissing('medicalExamination');
             abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final PE report has not been released yet.');
+
+            return;
+        }
+
+        if ($appointment->requiresXray()) {
+            $appointment->loadMissing('xrayReport');
+            abort_unless($appointment->xrayReport?->isVerified(), 403, 'The official X-ray result has not been verified yet.');
         }
     }
 }

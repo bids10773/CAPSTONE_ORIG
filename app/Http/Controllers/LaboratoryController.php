@@ -115,9 +115,22 @@ class LaboratoryController extends Controller
 
     private function ensurePatientResultIsReleased(Request $request, Appointment $appointment): void
     {
-        if ($request->user()->role === 'patient' && $appointment->isPePackage()) {
+        if ($request->user()->role !== 'patient') {
+            return;
+        }
+
+        if ($appointment->isPePackage()) {
             $appointment->loadMissing('medicalExamination');
             abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final PE report has not been released yet.');
+
+            return;
+        }
+
+        if (in_array('Drug Test', $appointment->service_types ?? [], true)) {
+            $appointment->loadMissing('medicalExamination.diagnosticResults');
+            $drugTest = $appointment->medicalExamination?->diagnosticResults
+                ->firstWhere('service_key', 'drug_test');
+            abort_unless($drugTest?->isVerified(), 403, 'The official Drug Test result has not been verified yet.');
         }
     }
 }

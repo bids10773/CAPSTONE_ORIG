@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\LaboratoryFormDefinition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -303,11 +304,7 @@ class AppointmentController extends Controller
      */
     public function show(Appointment $appointment, LaboratoryFormDefinition $definitions): Response
     {
-        $user = request()->user();
-        $canView = $user->role === 'admin'
-            || ($user->role === 'patient' && $appointment->user_id === $user->id);
-
-        abort_unless($canView, 403);
+        Gate::authorize('view', $appointment);
 
         $appointment->load([
             'user.patientProfile',

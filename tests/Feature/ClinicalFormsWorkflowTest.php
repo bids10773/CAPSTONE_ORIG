@@ -138,6 +138,12 @@ test('patient can download every selected laboratory service form', function () 
         'status' => 'finalized',
         'is_completed' => true,
     ]);
+    $medicalExamination = app(\App\Services\MedicalExaminationService::class)->forAppointment($appointment);
+    $medicalExamination->diagnosticResults()->where('service_key', 'drug_test')->update([
+        'status' => 'verified',
+        'verified_by' => $medtech->id,
+        'verified_at' => now(),
+    ]);
 
     foreach (array_keys($sections) as $section) {
         $this->actingAs($appointment->user)
@@ -145,6 +151,66 @@ test('patient can download every selected laboratory service form', function () 
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
     }
+});
+
+test('patient cannot download an unverified official drug test result', function () {
+    $appointment = clinicalAppointment(['Drug Test']);
+    $medtech = User::factory()->create(['role' => 'medtech']);
+
+    $payload = [
+        'finalize' => true,
+        'results' => ['drug_test' => [
+            'methamphetamine' => 'Negative',
+            'tetrahydrocannabinol' => 'Negative',
+        ]],
+    ];
+    $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), $payload)
+        ->assertSessionHas('success');
+
+    $this->actingAs($appointment->user)
+        ->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'drug_test']))
+        ->assertForbidden();
+    $this->actingAs($appointment->user)
+        ->get(route('clinical-forms.laboratory.pdf', $appointment))
+        ->assertForbidden();
+});
+
+test('patient cannot download an xray report before doctor verification', function () {
+    $appointment = clinicalAppointment(['X-Ray']);
+    $radtech = User::factory()->create(['role' => 'radtech']);
+    $appointment->xrayReport()->create([
+        'radiologist_id' => $radtech->id,
+        'findings' => 'Preliminary findings.',
+        'impression' => 'Awaiting verification.',
+        'status' => 'result_available',
+        'performed_at' => now(),
+        'result_available_at' => now(),
+        'is_completed' => false,
+    ]);
+
+    $this->actingAs($appointment->user)
+        ->get(route('clinical-forms.xray.pdf', $appointment))
+        ->assertForbidden();
+});
+
+test('patient cannot access another patients appointment or clinical document by changing the id', function () {
+    $owned = clinicalAppointment(['CBC']);
+    $otherPatient = User::factory()->create(['role' => 'patient']);
+    $other = Appointment::create([
+        'user_id' => $otherPatient->id,
+        'company_id' => $owned->company_id,
+        'appointment_date' => now(),
+        'type' => 'company_referral',
+        'status' => 'for_diagnostics',
+        'service_types' => ['CBC'],
+    ]);
+
+    $this->actingAs($owned->user)
+        ->get(route('appointments.show', $other))
+        ->assertForbidden();
+    $this->actingAs($owned->user)
+        ->get(route('clinical-forms.laboratory.pdf', $other))
+        ->assertForbidden();
 });
 
 test('PE laboratory package cannot be finalized with only one required child result', function () {
