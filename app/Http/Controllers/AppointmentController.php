@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AdminAppointmentIndexRequest;
 use App\Models\Appointment;
 use App\Models\Company;
 use App\Models\CompanyReferral;
@@ -225,16 +226,17 @@ class AppointmentController extends Controller
 
             $appointmentDate = new \DateTime($data['appointment_date']);
             $dayKey = strtolower($appointmentDate->format('D'));
-            $availSlot = collect($doctor->availability ?? [])->firstWhere('day', $dayKey);
+            $dayPeriods = collect($doctor->availability ?? [])->where('day', $dayKey);
 
-            if (! $availSlot) {
+            if ($dayPeriods->isEmpty()) {
                 return back()->withErrors(['doctor_id' => "Doctor not available on {$appointmentDate->format('l')}."])->withInput();
             }
 
             $startTime = new \DateTime($data['appointment_date'].' '.$data['start_time']);
             $endTime = (clone $startTime)->add(new \DateInterval('PT30M'));
 
-            if ($startTime->format('H:i') < $availSlot['start'] || $endTime->format('H:i') > $availSlot['end']) {
+            $withinAvailability = $dayPeriods->contains(fn ($period) => $startTime->format('H:i') >= $period['start'] && $endTime->format('H:i') <= $period['end']);
+            if (! $withinAvailability) {
                 return back()->withErrors(['start_time' => 'Selected time outside doctor\'s availability.'])->withInput();
             }
 
@@ -390,15 +392,10 @@ class AppointmentController extends Controller
             ->get(['id', 'first_name', 'last_name', 'specialization', 'sex', 'availability']);
 
         $doctors->each(function ($doctor) use ($dayKey, $date) {
-            $avail = collect($doctor->availability)->firstWhere('day', $dayKey);
-            if ($avail) {
-                $doctor->availability_slot = $avail;
-                $doctor->free_slots = count($this->generateAvailableTimes(
-                    $avail['start'],
-                    $avail['end'],
-                    $doctor->id,
-                    $date,
-                ));
+            $periods = collect($doctor->availability ?? [])->where('day', $dayKey);
+            if ($periods->isNotEmpty()) {
+                $doctor->availability_slot = $periods->first();
+                $doctor->free_slots = $periods->sum(fn ($period) => count($this->generateAvailableTimes($period['start'], $period['end'], $doctor->id, $date)));
             }
         });
 
@@ -449,7 +446,8 @@ class AppointmentController extends Controller
         $doctor = User::where('role', 'doctor')->where('is_active', true)->findOrFail($doctorId);
 
         $availability = $doctor->availability ?? [];
-        $slots = collect($availability)->keyBy('day');
+        $periods = collect($availability);
+        $slots = $periods->groupBy('day');
 
         $date = $request->get('date');
         $availableDates = [];
@@ -459,7 +457,7 @@ class AppointmentController extends Controller
         for ($i = 0; $i < 30; $i++) {
             $checkDate = $startDate->copy()->addDays($i);
             $dayKey = strtolower($checkDate->format('D'));
-            if (isset($slots[$dayKey])) {
+            if ($slots->has($dayKey)) {
                 $availableDates[] = $checkDate->format('Y-m-d');
             }
         }
@@ -467,10 +465,7 @@ class AppointmentController extends Controller
         $availableTimes = [];
         if ($date) {
             $dayKey = strtolower(date('D', strtotime($date)));
-            $slot = $slots->get($dayKey);
-            if ($slot) {
-                $availableTimes = $this->generateAvailableTimes($slot['start'], $slot['end'], $doctorId, $date);
-            }
+            $availableTimes = $slots->get($dayKey, collect())->flatMap(fn ($period) => $this->generateAvailableTimes($period['start'], $period['end'], $doctorId, $date))->unique()->sort()->values()->all();
         }
 
         return response()->json([
@@ -479,7 +474,7 @@ class AppointmentController extends Controller
                 'name' => $doctor->first_name.' '.$doctor->last_name,
                 'specialization' => $doctor->specialization,
             ],
-            'slots' => $slots->toArray(),
+            'slots' => $slots->map(fn ($items) => $items->values())->toArray(),
             'availableDates' => $availableDates,
             'availableTimes' => $availableTimes,
         ]);
@@ -521,14 +516,20 @@ class AppointmentController extends Controller
     /**
      * Admin: Display all appointments with advanced filtering.
      */
-    public function adminIndex(Request $request): Response
+    public function adminIndex(AdminAppointmentIndexRequest $request): Response
     {
         $bulkOnly = $request->routeIs('admin.bulk-appointments.index');
-        $search = $request->get('search', '');
-        $status = $request->get('status', '');
-        $type = $request->get('type', '');
-        $dateFrom = $request->get('date_from', '');
-        $dateTo = $request->get('date_to', '');
+        $filters = $request->validated();
+        $search = trim((string) ($filters['search'] ?? ''));
+        $status = (string) ($filters['status'] ?? '');
+        $type = (string) ($filters['type'] ?? '');
+        $dateFilter = (string) ($filters['date_filter'] ?? '');
+        $dateFrom = (string) ($filters['date_from'] ?? '');
+        $dateTo = (string) ($filters['date_to'] ?? '');
+        $doctorId = $filters['doctor_id'] ?? null;
+        $companyId = $filters['company_id'] ?? null;
+        $sort = (string) ($filters['sort'] ?? '');
+        $direction = (string) ($filters['direction'] ?? 'asc');
 
         $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
 
@@ -544,6 +545,7 @@ class AppointmentController extends Controller
                 // 🔍 Search by patient name/email
                 $query->whereHas('user', function ($q) use ($search) {
                     $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('middle_name', 'like', "%{$search}%")
                         ->orWhere('last_name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 })
@@ -551,11 +553,14 @@ class AppointmentController extends Controller
                 // 🔍 Search by doctor name
                     ->orWhereHas('doctor', function ($q) use ($search) {
                         $q->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('middle_name', 'like', "%{$search}%")
                             ->orWhere('last_name', 'like', "%{$search}%");
                     })
 
                 // 🔍 Search by appointment date
-                    ->orWhere('appointment_date', 'like', "%{$search}%");
+                    ->orWhereHas('company', fn ($q) => $q->where('company_name', 'like', "%{$search}%"))
+                    ->orWhere('company_name', 'like', "%{$search}%")
+                    ->orWhere('referral_code', 'like', "%{$search}%");
             });
         }
 
@@ -575,22 +580,40 @@ class AppointmentController extends Controller
             $query->whereDate('appointment_date', '<=', $dateTo);
         }
 
-        $appointments = $query
-            ->orderByRaw("
+        if ($dateFilter === 'today') {
+            $query->whereDate('appointment_date', today());
+        } elseif ($dateFilter === 'upcoming') {
+            $query->whereDate('appointment_date', '>=', today());
+        }
+
+        if ($doctorId) {
+            $query->where('doctor_id', $doctorId);
+        }
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        if ($sort !== '') {
+            $query->orderBy($sort, $direction);
+        } else {
+            $query->orderByRaw("
         CASE 
             WHEN status = 'pending' THEN 1
             WHEN status = 'accepted' THEN 2
             WHEN status = 'arrived' THEN 3
-            WHEN status = 'pending_diagnostics' THEN 4
-            WHEN status = 'pending_xray' THEN 5
-            WHEN status = 'completed' THEN 6
-            WHEN status = 'cancelled' THEN 7
-            ELSE 8
+            WHEN status = 'for_diagnostics' THEN 4
+            WHEN status = 'for_xray' THEN 5
+            WHEN status = 'for_final_evaluation' THEN 6
+            WHEN status = 'completed' THEN 7
+            WHEN status = 'cancelled' THEN 8
+            ELSE 9
         END
     ")
-            ->orderBy('appointment_date', 'asc') // optional: earliest first
-            ->paginate($this->perPage($request))
-            ->withQueryString();
+                ->orderBy('appointment_date');
+        }
+
+        $appointments = $query->paginate($this->perPage($request))->withQueryString();
 
         return Inertia::render('admin/appointments/index', [
             'appointments' => $appointments,
@@ -598,9 +621,33 @@ class AppointmentController extends Controller
                 'search' => $search,
                 'status' => $status,
                 'type' => $type,
+                'date_filter' => $dateFilter,
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
+                'doctor_id' => (string) ($doctorId ?? ''),
+                'company_id' => (string) ($companyId ?? ''),
+                'sort' => $sort,
+                'direction' => $direction,
             ],
+            'doctors' => User::query()
+                ->where('role', 'doctor')
+                ->where('is_active', true)
+                ->orderBy('first_name')
+                ->get(['id', 'first_name', 'last_name']),
+            'companies' => Company::query()
+                ->orderBy('company_name')
+                ->get(['id', 'company_name']),
+            'statusOptions' => [
+                'pending',
+                'accepted',
+                'arrived',
+                'for_diagnostics',
+                'for_xray',
+                'for_final_evaluation',
+                'completed',
+                'cancelled',
+            ],
+            'typeOptions' => Appointment::getTypeOptions(),
             'bulkOnly' => $bulkOnly,
         ]);
     }

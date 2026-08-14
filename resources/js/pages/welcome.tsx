@@ -166,7 +166,7 @@ function Navbar() {
                             href="/login"
                             className="px-3 py-2 text-sm font-bold text-slate-700 transition hover:text-moss-700"
                         >
-                            Client Login
+                            Login
                         </Link>
                         <a
                             href="#contact"
@@ -700,7 +700,7 @@ export default function Welcome() {
                                     />
                                     <span>
                                         <strong className="block text-white">
-                                            care@livingmythclinic.com
+                                            livingmythindustrialclinic@gmail.com
                                         </strong>
                                         <span className="text-slate-400">
                                             Corporate care inquiries

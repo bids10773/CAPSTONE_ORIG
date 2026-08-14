@@ -41,7 +41,7 @@ class DoctorDashboardController extends Controller
             ->whereDate('appointment_date', today())
             ->count();
         $totalPatients = $doctorQueue()->distinct('user_id')->count('user_id');
-        $availabilityDays = count(array_filter($doctor->availability ?? []));
+        $availabilityDays = collect($doctor->availability ?? [])->pluck('day')->unique()->count();
 
         // ✅ NEW: Completed Physical Exams
         $completedPhysicalCount = $doctorQueue()

@@ -23,9 +23,12 @@ class CompanyController extends Controller
 
         $companies = Company::query()
             ->with(['account:id,company_id,must_change_password'])
+            ->withCount('appointments')
             ->when($search, fn ($query) => $query->where(fn ($q) => $q
                 ->where('company_name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")))
+                ->orWhere('email', 'like', "%{$search}%")
+                ->orWhere('contact_number', 'like', "%{$search}%")
+                ->orWhere('address', 'like', "%{$search}%")))
             ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('status', $status))
             ->orderBy('company_name')
             ->paginate($this->perPage($request))

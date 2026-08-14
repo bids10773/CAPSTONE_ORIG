@@ -4,7 +4,6 @@ import {
     Users,
     Plus,
     Search,
-    Trash2,
     ToggleLeft,
     Clock,
     Filter,
@@ -49,6 +48,7 @@ export default function StaffIndex() {
     const { staff, filters, roles, auth } = props;
     const [search, setSearch] = useState(filters?.search || '');
     const [selectedRole, setSelectedRole] = useState(filters?.role || '');
+    const [selectedStatus, setSelectedStatus] = useState(filters?.status || '');
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
@@ -57,13 +57,14 @@ export default function StaffIndex() {
                 {
                     search: search || undefined,
                     role: selectedRole || undefined,
+                    status: selectedStatus || undefined,
                     per_page: staff.per_page,
                 },
                 { preserveState: true, preserveScroll: true, replace: true },
             );
         }, 300);
         return () => clearTimeout(delayDebounceFn);
-    }, [search, selectedRole, staff.per_page]);
+    }, [search, selectedRole, selectedStatus, staff.per_page]);
 
     const getRoleBadgeColor = (role: string) => {
         const colors: Record<string, string> = {
@@ -126,6 +127,15 @@ export default function StaffIndex() {
                                 )}
                             </select>
                         </div>
+                        <select
+                            value={selectedStatus}
+                            onChange={(e) => setSelectedStatus(e.target.value)}
+                            className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium"
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
 
                         <Link
                             href="/admin/staff/create"
@@ -306,35 +316,6 @@ export default function StaffIndex() {
                                                                 >
                                                                     <ToggleLeft className="h-4 w-4" />
                                                                 </Link>
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8 text-red-500 hover:bg-red-100/50"
-                                                                onClick={() => {
-                                                                    if (
-                                                                        confirm(
-                                                                            'Permanently delete this staff member?',
-                                                                        )
-                                                                    ) {
-                                                                        router.delete(
-                                                                            `/admin/staff/${member.id}`,
-                                                                            {
-                                                                                onSuccess:
-                                                                                    () =>
-                                                                                        router.reload(
-                                                                                            {
-                                                                                                only: [
-                                                                                                    'staff',
-                                                                                                ],
-                                                                                            },
-                                                                                        ),
-                                                                            },
-                                                                        );
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
                                                         </div>
                                                     </td>

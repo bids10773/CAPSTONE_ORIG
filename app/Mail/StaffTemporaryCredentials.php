@@ -33,6 +33,7 @@ class StaffTemporaryCredentials extends Mailable
                 'staffName' => $this->staff->name,
                 'loginEmail' => $this->staff->email,
                 'temporaryPassword' => $this->temporaryPassword,
+                'role' => $this->staff->role_label,
                 'expiresAt' => $this->staff->temporary_password_expires_at,
                 'loginUrl' => route('login'),
                 'systemName' => config('app.name'),

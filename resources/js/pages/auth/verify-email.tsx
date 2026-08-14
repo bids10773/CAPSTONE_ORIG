@@ -10,6 +10,7 @@ import {
     ShieldCheck,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { logout } from '@/routes';
@@ -166,6 +167,7 @@ export default function VerifyEmail() {
                             'A new verification link has been sent.',
                         );
                         setSecondsRemaining(RESEND_DELAY_SECONDS);
+                        toast.success('Email has been sent successfully.');
                     }}
                 >
                     {({ processing }) => {

@@ -5,6 +5,7 @@ import {
     ChartSpline,
     Building2,
     CalendarDays,
+    ChevronDown,
     ClipboardList,
     FlaskConical,
     LayoutDashboard,
@@ -17,6 +18,11 @@ import {
     ListOrdered,
 } from 'lucide-react';
 import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
     Sidebar,
     SidebarContent,
     SidebarGroup,
@@ -25,6 +31,9 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarMenuSub,
+    SidebarMenuSubButton,
+    SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
 import logo from '/public/images/full_logo2.png';
 
@@ -32,41 +41,89 @@ type Item = {
     title: string;
     href: string;
     icon: React.ComponentType<{ className?: string }>;
+    children?: Array<{
+        title: string;
+        href: string;
+        icon: React.ComponentType<{ className?: string }>;
+    }>;
 };
 
 const navigation: Record<string, Item[]> = {
     admin: [
-        { title: 'Overview', href: '/admin/dashboard', icon: LayoutDashboard },
+        { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
         {
             title: 'Appointments',
             href: '/admin/appointments',
             icon: CalendarDays,
+            children: [
+                {
+                    title: 'Appointments',
+                    href: '/admin/appointments',
+                    icon: CalendarDays,
+                },
+                {
+                    title: 'Bulk requests',
+                    href: '/admin/bulk-appointments',
+                    icon: UsersRound,
+                },
+            ],
         },
         {
-            title: 'Bulk Requests',
-            href: '/admin/bulk-appointments',
-            icon: UsersRound,
+            title: 'Management',
+            href: '/admin/staff',
+            icon: UserCog,
+            children: [
+                {
+                    title: 'Staff',
+                    href: '/admin/staff',
+                    icon: UserCog,
+                },
+                {
+                    title: 'Companies',
+                    href: '/admin/companies',
+                    icon: Building2,
+                },
+                {
+                    title: 'Doctor availability',
+                    href: '/admin/doctor-availability',
+                    icon: Stethoscope,
+                },
+            ],
         },
-        { title: 'Staff', href: '/admin/staff', icon: UserCog },
-        { title: 'Companies', href: '/admin/companies', icon: Building2 },
         {
-            title: 'Doctor availability',
-            href: '/admin/doctor-availability',
-            icon: Stethoscope,
+            title: 'Analytics',
+            href: '/admin/analytics',
+            icon: BarChart3,
+            children: [
+                {
+                    title: 'Analytics overview',
+                    href: '/admin/analytics',
+                    icon: BarChart3,
+                },
+                {
+                    title: 'Disease analytics',
+                    href: '/admin/forecast',
+                    icon: ChartSpline,
+                },
+                {
+                    title: 'Patient visit forecast',
+                    href: '/admin/patient-visits',
+                    icon: UserRoundSearch,
+                },
+            ],
         },
-        { title: 'Trend analytics', href: '/admin/analytics', icon: BarChart3 },
         {
-            title: 'Disease forecast',
-            href: '/admin/forecast',
-            icon: ChartSpline,
+            title: 'Reports',
+            href: '/admin/reports',
+            icon: ClipboardList,
+            children: [
+                {
+                    title: 'Reports',
+                    href: '/admin/reports',
+                    icon: ClipboardList,
+                },
+            ],
         },
-        {
-            title: 'Patient visit forecast',
-            href: '/admin/patient-visits',
-            icon: UserRoundSearch,
-        },
-        { title: 'Reports', href: '/admin/reports', icon: ClipboardList },
-        { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
     doctor: [
         { title: 'Overview', href: '/doctor/dashboard', icon: LayoutDashboard },
@@ -202,11 +259,96 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                     </SidebarGroupLabel>
                     <SidebarMenu className="gap-1">
                         {items.map((item) => {
+                            const childIsActive = item.children?.some(
+                                (child) =>
+                                    url === child.href ||
+                                    url.startsWith(`${child.href}/`),
+                            );
                             const active =
                                 url === item.href ||
                                 (item.href !== '/dashboard' &&
-                                    url.startsWith(`${item.href}/`));
+                                    url.startsWith(`${item.href}/`)) ||
+                                childIsActive;
                             const Icon = item.icon;
+
+                            if (item.children) {
+                                return (
+                                    <Collapsible
+                                        key={item.href}
+                                        asChild
+                                        defaultOpen={childIsActive}
+                                        className="group/collapsible"
+                                    >
+                                        <SidebarMenuItem>
+                                            <CollapsibleTrigger asChild>
+                                                <SidebarMenuButton
+                                                    tooltip={item.title}
+                                                    isActive={active}
+                                                    className="relative h-11 rounded-xl px-3 text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-950 data-[active=true]:bg-moss-50 data-[active=true]:font-semibold data-[active=true]:text-moss-700"
+                                                >
+                                                    {active && (
+                                                        <motion.span
+                                                            layoutId="navigation-marker"
+                                                            className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-moss-600"
+                                                        />
+                                                    )}
+                                                    <Icon className="size-[18px] shrink-0" />
+                                                    <span className="group-data-[collapsible=icon]:hidden">
+                                                        {item.title}
+                                                    </span>
+                                                    <ChevronDown className="ml-auto size-4 transition-transform group-data-[collapsible=icon]:hidden group-data-[state=open]/collapsible:rotate-180" />
+                                                </SidebarMenuButton>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent>
+                                                <SidebarMenuSub>
+                                                    {item.children.map(
+                                                        (child) => {
+                                                            const ChildIcon =
+                                                                child.icon;
+                                                            const isChildActive =
+                                                                url ===
+                                                                    child.href ||
+                                                                url.startsWith(
+                                                                    `${child.href}/`,
+                                                                );
+
+                                                            return (
+                                                                <SidebarMenuSubItem
+                                                                    key={
+                                                                        child.href
+                                                                    }
+                                                                >
+                                                                    <SidebarMenuSubButton
+                                                                        asChild
+                                                                        isActive={
+                                                                            isChildActive
+                                                                        }
+                                                                        className="h-9 rounded-lg px-2.5 text-xs text-slate-500 data-[active=true]:bg-moss-50 data-[active=true]:font-semibold data-[active=true]:text-moss-700"
+                                                                    >
+                                                                        <Link
+                                                                            href={
+                                                                                child.href
+                                                                            }
+                                                                        >
+                                                                            <ChildIcon className="size-3.5" />
+                                                                            <span>
+                                                                                {
+                                                                                    child.title
+                                                                                }
+                                                                            </span>
+                                                                        </Link>
+                                                                    </SidebarMenuSubButton>
+                                                                </SidebarMenuSubItem>
+                                                            );
+                                                        },
+                                                    )}
+                                                </SidebarMenuSub>
+                                            </CollapsibleContent>
+                                        </SidebarMenuItem>
+                                    </Collapsible>
+                                );
+                            }
+
                             return (
                                 <SidebarMenuItem key={item.href}>
                                     <SidebarMenuButton

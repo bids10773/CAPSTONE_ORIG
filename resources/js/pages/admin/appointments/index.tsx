@@ -1,20 +1,22 @@
-import type { PageProps } from '@inertiajs/core'; // Import this at the top
-import { Head, usePage, router } from '@inertiajs/react';
+import type { PageProps } from '@inertiajs/core';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
-    Eye,
-    CheckCircle,
+    ArrowDownUp,
+    Building2,
+    CalendarDays,
     CheckCircle2,
-    XCircle,
+    ChevronDown,
+    CircleAlert,
+    Ellipsis,
+    Eye,
+    Filter,
     Search,
-    UserCheck,
-    FileWarning,
-    Phone,
-    Mail,
-    User,
-    ArrowRight,
+    Stethoscope,
+    UserRound,
+    X,
+    XCircle,
 } from 'lucide-react';
-
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,7 +26,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -33,33 +41,60 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 interface PatientProfile {
-    birthdate?: string;
-    sex?: string;
-    civil_status?: string;
+    birthdate?: string | null;
+    sex?: string | null;
+    civil_status?: string | null;
+}
+
+interface Person {
+    id?: number;
+    first_name: string;
+    middle_name?: string | null;
+    last_name: string;
+    email?: string;
+    contact?: string | null;
+    patient_profile?: PatientProfile | null;
 }
 
 interface Appointment {
     id: number;
     appointment_date: string;
-    start_time: string; // 👈 ADD THIS
-    end_time: string;
+    start_time: string | null;
+    end_time: string | null;
     status: string;
     type: string;
-    service_types: string;
-    user: {
-        first_name: string;
-        last_name: string;
-        email: string;
-        contact: string;
-        patient_profile?: PatientProfile;
-    };
-    company: {
-        company_name: string;
-    } | null;
-    doctor?: {
-        first_name: string;
-        last_name: string;
-    };
+    service_types: string[] | string | null;
+    referral_code?: string | null;
+    notes?: string | null;
+    batch_id?: string | null;
+    user: Person;
+    company: { id: number; company_name: string } | null;
+    doctor: Person | null;
+}
+
+interface Filters {
+    search: string;
+    status: string;
+    type: string;
+    date_filter: string;
+    date_from: string;
+    date_to: string;
+    doctor_id: string | number;
+    company_id: string | number;
+    sort: string;
+    direction: string;
+}
+
+interface OptionRecord {
+    id: number;
+    first_name: string;
+    last_name: string;
+}
+
+interface PaginationLink {
+    url: string | null;
+    label: string;
+    active: boolean;
 }
 
 interface Props extends PageProps {
@@ -69,579 +104,890 @@ interface Props extends PageProps {
         last_page: number;
         per_page: number;
         total: number;
-        links: any[];
+        from?: number | null;
+        to?: number | null;
+        first_page_url?: string;
+        last_page_url?: string;
+        next_page_url?: string | null;
+        prev_page_url?: string | null;
+        links: PaginationLink[];
     };
-    filters: {
-        search: string;
-        status: string;
-    };
+    filters: Filters;
+    doctors: OptionRecord[];
+    companies: Array<{ id: number; company_name: string }>;
+    statusOptions: string[];
+    typeOptions: Record<string, string>;
     bulkOnly: boolean;
 }
 
+const statusLabels: Record<string, string> = {
+    pending: 'Pending',
+    accepted: 'Accepted',
+    arrived: 'Arrived',
+    for_diagnostics: 'For Diagnostics',
+    for_xray: 'For X-Ray',
+    for_final_evaluation: 'For Final Evaluation',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+};
+
+const statusStyles: Record<string, string> = {
+    pending: 'border-amber-200 bg-amber-50 text-amber-700',
+    accepted: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+    arrived: 'border-blue-200 bg-blue-50 text-blue-700',
+    for_diagnostics: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+    for_xray: 'border-violet-200 bg-violet-50 text-violet-700',
+    for_final_evaluation: 'border-purple-200 bg-purple-50 text-purple-700',
+    completed: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    cancelled: 'border-red-200 bg-red-50 text-red-700',
+};
+
+const typeLabels: Record<string, string> = {
+    individual: 'Individual',
+    walk_in: 'Walk-in',
+    company_referral: 'Company Referral',
+    company_bulk: 'Company Bulk',
+};
+
+function fullName(person: Person): string {
+    return [person.first_name, person.middle_name, person.last_name]
+        .filter(Boolean)
+        .join(' ');
+}
+
+function servicesFor(appointment: Appointment): string[] {
+    if (Array.isArray(appointment.service_types)) {
+        return appointment.service_types;
+    }
+    if (typeof appointment.service_types === 'string') {
+        try {
+            const decoded: unknown = JSON.parse(appointment.service_types);
+            return Array.isArray(decoded)
+                ? decoded.filter(
+                      (item): item is string => typeof item === 'string',
+                  )
+                : [appointment.service_types];
+        } catch {
+            return [appointment.service_types];
+        }
+    }
+    return [];
+}
+
+function formatDate(value: string): string {
+    return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    }).format(new Date(value));
+}
+
+function formatTime(value: string | null): string | null {
+    if (!value) return null;
+    const match = value.match(/(\d{2}):(\d{2})/);
+    if (!match) return value;
+    const date = new Date();
+    date.setHours(Number(match[1]), Number(match[2]), 0, 0);
+    return new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+    }).format(date);
+}
+
+function appointmentTime(appointment: Appointment): string {
+    const start = formatTime(appointment.start_time);
+    const end = formatTime(appointment.end_time);
+    if (start && end) return `${start} – ${end}`;
+    return start ?? 'Time not assigned';
+}
+
+function StatusBadge({ status }: { status: string }) {
+    return (
+        <span
+            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap ${statusStyles[status] ?? 'border-slate-200 bg-slate-50 text-slate-600'}`}
+        >
+            {statusLabels[status] ?? status.replaceAll('_', ' ')}
+        </span>
+    );
+}
+
+function TypeBadge({ type }: { type: string }) {
+    return (
+        <span className="inline-flex rounded-full border border-moss-200 bg-moss-50 px-2.5 py-1 text-[11px] font-semibold text-moss-700">
+            {typeLabels[type] ?? type.replaceAll('_', ' ')}
+        </span>
+    );
+}
+
 export default function AdminAppointmentsIndex() {
-    const { appointments, filters, bulkOnly } = usePage<Props>().props;
+    const {
+        appointments,
+        filters,
+        doctors,
+        companies,
+        statusOptions,
+        typeOptions,
+        bulkOnly,
+    } = usePage<Props>().props;
     const endpoint = bulkOnly
         ? '/admin/bulk-appointments'
         : '/admin/appointments';
     const [selectedAppointment, setSelectedAppointment] =
         useState<Appointment | null>(null);
     const [search, setSearch] = useState(filters.search ?? '');
+    const [loading, setLoading] = useState(false);
+    const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-    // 1. Validation Logic: Checks if the profile is ready for the Doctor
-    const getMissingFields = (apt: Appointment) => {
-        if (apt.type === 'company_bulk') return [];
-
-        const fields = [];
-        const p = apt.user.patient_profile;
-        if (!p?.birthdate) fields.push('Birthdate');
-        if (!p?.sex) fields.push('Sex');
-        if (!apt.user.contact) fields.push('Contact Number');
-
-        return fields;
+    const visit = (next: Partial<Filters>) => {
+        setLoading(true);
+        router.get(
+            endpoint,
+            { ...filters, ...next, per_page: appointments.per_page, page: 1 },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                onFinish: () => setLoading(false),
+            },
+        );
     };
 
-    //for service_types arraay format
-    const isComplete = (apt: Appointment) => getMissingFields(apt).length === 0;
-
-    // 2. Debounced Search
     useEffect(() => {
-        const timeout = setTimeout(() => {
-            router.get(
-                endpoint,
-                { ...filters, search, per_page: appointments.per_page },
-                {
-                    preserveState: true,
-                    preserveScroll: true,
-                    replace: true,
-                },
-            );
-        }, 400);
-        return () => clearTimeout(timeout);
-    }, [search, endpoint, filters, appointments.per_page]);
+        if (search === filters.search) return;
+        const timeout = window.setTimeout(() => visit({ search }), 400);
+        return () => window.clearTimeout(timeout);
+        // `visit` intentionally uses the latest server filters after each visit.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [search, filters.search]);
 
-    const acceptAppointment = (id: number) => {
-        router.patch(
-            `/admin/appointments/${id}/status`,
-            { status: 'accepted' },
+    const clearFilters = () => {
+        setSearch('');
+        setLoading(true);
+        router.get(
+            endpoint,
+            { per_page: appointments.per_page },
             {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                onFinish: () => setLoading(false),
+            },
+        );
+    };
+
+    const updateStatus = (appointment: Appointment, status: string) => {
+        setUpdatingId(appointment.id);
+        router.patch(
+            `/admin/appointments/${appointment.id}/status`,
+            { status },
+            {
+                preserveScroll: true,
                 onSuccess: () => setSelectedAppointment(null),
+                onFinish: () => setUpdatingId(null),
             },
         );
     };
 
-    const cancelAppointment = (id: number) => {
-        router.patch(
-            `/admin/appointments/${id}/status`,
-            {
-                status: 'cancelled',
-            },
-            {
-                onSuccess: () => {
-                    setSelectedAppointment(null);
-                },
-            },
-        );
+    const missingFields = (appointment: Appointment): string[] => {
+        if (appointment.type !== 'individual') return [];
+        const missing: string[] = [];
+        if (!appointment.user.patient_profile?.birthdate)
+            missing.push('Birthdate');
+        if (!appointment.user.patient_profile?.sex) missing.push('Sex');
+        if (!appointment.user.contact) missing.push('Contact number');
+        return missing;
     };
 
-    const getStatusStyle = (status: string) => {
-        switch (status) {
-            case 'pending':
-                return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-            case 'accepted':
-                return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-            case 'arrived':
-                return 'bg-moss-100 text-moss-800 border-moss-200';
+    const hasFilters = Object.entries(filters).some(
+        ([key, value]) => key !== 'direction' && value !== '' && value !== null,
+    );
+    const sortValue = filters.sort
+        ? `${filters.sort}:${filters.direction || 'asc'}`
+        : '';
 
-            case 'for_diagnostics':
-                return 'bg-purple-100 text-purple-800 border-purple-200';
-            case 'for_xray':
-                return 'bg-pink-100 text-pink-800 border-pink-200';
-            case 'for_final_evaluation':
-                return 'bg-orange-100 text-orange-800 border-orange-200';
-
-            case 'completed':
-                return 'bg-green-100 text-green-800 border-green-200';
-            case 'cancelled':
-                return 'bg-red-100 text-red-800 border-red-200';
-
-            default:
-                return 'bg-gray-100 text-gray-800 border-gray-200';
-        }
-    };
-
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'for_diagnostics':
-                return 'Laboratory';
-            case 'for_xray':
-                return 'X-Ray';
-            case 'for_final_evaluation':
-                return 'Final Evaluation';
-            default:
-                return status.replace('_', ' ');
-        }
-    };
-
-    const getAge = (birthdate?: string) => {
-        if (!birthdate) return 'N/A';
-        return Math.floor(
-            (new Date().getTime() - new Date(birthdate).getTime()) /
-                31557600000,
-        );
-    };
+    const appointmentActions = (appointment: Appointment) => (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <button
+                    type="button"
+                    aria-label={`Actions for ${fullName(appointment.user)}`}
+                    className="flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                >
+                    <Ellipsis className="size-4" />
+                </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                    onSelect={() => setSelectedAppointment(appointment)}
+                >
+                    <Eye className="size-4" /> View details
+                </DropdownMenuItem>
+                {appointment.status === 'pending' && (
+                    <DropdownMenuItem
+                        disabled={missingFields(appointment).length > 0}
+                        onSelect={() => updateStatus(appointment, 'accepted')}
+                    >
+                        <CheckCircle2 className="size-4" /> Accept appointment
+                    </DropdownMenuItem>
+                )}
+                {!['completed', 'cancelled'].includes(appointment.status) && (
+                    <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            className="text-red-600 focus:text-red-700"
+                            onSelect={() =>
+                                updateStatus(appointment, 'cancelled')
+                            }
+                        >
+                            <XCircle className="size-4" /> Cancel appointment
+                        </DropdownMenuItem>
+                    </>
+                )}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
 
     return (
         <>
-            <Head
-                title={
-                    bulkOnly ? 'Admin - Bulk Requests' : 'Admin - Appointments'
-                }
-            />
-            <div className="p-6">
-                <div className="mb-5">
-                    <h1 className="text-2xl font-bold text-slate-950">
-                        {bulkOnly
-                            ? 'Company Bulk Requests'
-                            : 'Individual Appointments'}
-                    </h1>
-                    <p className="mt-1 text-sm text-slate-500">
-                        {bulkOnly
-                            ? 'Approve company requests without individual patient-profile requirements.'
-                            : 'Review patient readiness before approving individual appointments.'}
-                    </p>
-                </div>
-                {/* Search and Filters */}
-                <div className="mb-6 flex flex-col gap-4 rounded-xl border bg-white p-4 md:flex-row">
-                    <div className="relative flex-1">
-                        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search patients..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full rounded-lg border py-2 pr-4 pl-10"
+            <Head title={bulkOnly ? 'Company Bulk Requests' : 'Appointments'} />
+            <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+                <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p className="text-xs font-semibold tracking-[.14em] text-moss-600 uppercase">
+                            Appointment management
+                        </p>
+                        <h1 className="mt-1 text-2xl font-semibold tracking-[-.03em] text-slate-950 sm:text-3xl">
+                            {bulkOnly
+                                ? 'Company Bulk Requests'
+                                : 'Appointments'}
+                        </h1>
+                        <p className="mt-2 text-sm leading-6 text-slate-500">
+                            {bulkOnly
+                                ? 'Review and coordinate company bulk appointment requests.'
+                                : 'Search, filter, and manage real patient appointments and workflow status.'}
+                        </p>
+                    </div>
+                    <div className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-600 shadow-sm">
+                        <CalendarDays className="size-4 text-moss-600" />
+                        {appointments.total.toLocaleString()} total
+                    </div>
+                </header>
+
+                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                        <div className="relative min-w-0 flex-1">
+                            <Search className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="search"
+                                value={search}
+                                maxLength={100}
+                                onChange={(event) =>
+                                    setSearch(event.target.value)
+                                }
+                                placeholder="Search patient, company, doctor, or referral code..."
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-4 pl-10 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <Filter className="size-4" />
+                            Server-side filters
+                            {loading && (
+                                <span className="size-3.5 animate-spin rounded-full border-2 border-moss-200 border-t-moss-700" />
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+                        <FilterSelect
+                            label="Date"
+                            value={filters.date_filter}
+                            onChange={(value) => visit({ date_filter: value })}
+                            options={[
+                                ['', 'All dates'],
+                                ['today', 'Today'],
+                                ['upcoming', 'Upcoming'],
+                            ]}
+                        />
+                        <FilterSelect
+                            label="Status"
+                            value={filters.status}
+                            onChange={(value) => visit({ status: value })}
+                            options={[
+                                ['', 'All statuses'],
+                                ...statusOptions.map(
+                                    (status) =>
+                                        [status, statusLabels[status]] as [
+                                            string,
+                                            string,
+                                        ],
+                                ),
+                            ]}
+                        />
+                        {!bulkOnly && (
+                            <FilterSelect
+                                label="Type"
+                                value={filters.type}
+                                onChange={(value) => visit({ type: value })}
+                                options={[
+                                    ['', 'All types'],
+                                    ...Object.entries(typeOptions),
+                                ]}
+                            />
+                        )}
+                        <FilterSelect
+                            label="Doctor"
+                            value={String(filters.doctor_id)}
+                            onChange={(value) => visit({ doctor_id: value })}
+                            options={[
+                                ['', 'All doctors'],
+                                ...doctors.map(
+                                    (doctor) =>
+                                        [
+                                            String(doctor.id),
+                                            `Dr. ${doctor.first_name} ${doctor.last_name}`,
+                                        ] as [string, string],
+                                ),
+                            ]}
+                        />
+                        <FilterSelect
+                            label="Company"
+                            value={String(filters.company_id)}
+                            onChange={(value) => visit({ company_id: value })}
+                            options={[
+                                ['', 'All companies'],
+                                ...companies.map(
+                                    (company) =>
+                                        [
+                                            String(company.id),
+                                            company.company_name,
+                                        ] as [string, string],
+                                ),
+                            ]}
+                        />
+                        <FilterSelect
+                            label="Sort"
+                            value={sortValue}
+                            onChange={(value) => {
+                                const [sort = '', direction = 'asc'] =
+                                    value.split(':');
+                                visit({ sort, direction });
+                            }}
+                            icon={<ArrowDownUp className="size-3.5" />}
+                            options={[
+                                ['', 'Workflow priority'],
+                                ['appointment_date:asc', 'Date: earliest'],
+                                ['appointment_date:desc', 'Date: latest'],
+                                ['created_at:desc', 'Recently created'],
+                                ['status:asc', 'Status A–Z'],
+                            ]}
                         />
                     </div>
-                    <select
-                        value={filters.status}
-                        onChange={(e) =>
-                            router.get(endpoint, {
-                                ...filters,
-                                status: e.target.value,
-                                per_page: appointments.per_page,
-                            })
-                        }
-                        className="rounded-lg border px-4 py-2"
-                    >
-                        <option value="">All Status</option>
-                        <option value="pending">Pending Review</option>
-                        <option value="accepted">Accepted (To Doctor)</option>
-                        <option value="pending_diagnostics">
-                            At Laboratory
-                        </option>
-                        <option value="completed">Completed</option>
-                        <option value="pending_xray">Pending Xray</option>
-                    </select>
-                </div>
 
-                {/* Main Table */}
-                <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-                    <table className="w-full text-left">
-                        <thead className="border-b bg-gray-50 text-xs font-bold text-gray-500 uppercase">
-                            <tr>
-                                <th className="px-6 py-4">
-                                    {bulkOnly
-                                        ? 'Company Contact'
-                                        : 'Patient Profile'}
-                                </th>
-                                <th className="px-6 py-4">Readiness</th>
-                                <th className="px-6 py-4">Schedule</th>
-                                <th className="px-6 py-4">Appointment type</th>
-                                <th className="px-6 py-4">Service type</th>
-                                <th className="px-6 py-4">Doctor</th>
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                            {appointments.data.map((apt) => (
-                                <tr
-                                    key={apt.id}
-                                    className="transition-colors hover:bg-gray-50"
-                                >
-                                    <td className="px-6 py-4">
-                                        {apt.type === 'company_bulk' ? (
-                                            <div className="space-y-1">
-                                                <p className="flex items-center gap-1.5 text-sm text-gray-700">
-                                                    <Mail className="h-3.5 w-3.5 text-gray-400" />
-                                                    {apt.user.email}
-                                                </p>
-                                                <p className="flex items-center gap-1.5 text-xs text-gray-500">
-                                                    <Phone className="h-3.5 w-3.5 text-gray-400" />
-                                                    {apt.user.contact ||
-                                                        'Not provided'}
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <p className="font-bold text-gray-900">
-                                                    {apt.user.first_name}{' '}
-                                                    {apt.user.last_name}
-                                                </p>
-                                                <p className="text-xs text-gray-500">
-                                                    {apt.user.email}
-                                                </p>
-                                            </>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:max-w-xl">
+                        <label className="text-xs font-medium text-slate-500">
+                            From date
+                            <input
+                                type="date"
+                                value={filters.date_from}
+                                onChange={(event) =>
+                                    visit({ date_from: event.target.value })
+                                }
+                                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700"
+                            />
+                        </label>
+                        <label className="text-xs font-medium text-slate-500">
+                            To date
+                            <input
+                                type="date"
+                                min={filters.date_from || undefined}
+                                value={filters.date_to}
+                                onChange={(event) =>
+                                    visit({ date_to: event.target.value })
+                                }
+                                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700"
+                            />
+                        </label>
+                    </div>
+
+                    {hasFilters && (
+                        <button
+                            type="button"
+                            onClick={clearFilters}
+                            className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-moss-700"
+                        >
+                            <X className="size-3.5" /> Clear all filters
+                        </button>
+                    )}
+                </section>
+
+                <section
+                    className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity ${loading ? 'opacity-60' : 'opacity-100'}`}
+                    aria-busy={loading}
+                >
+                    {appointments.data.length > 0 ? (
+                        <>
+                            <div className="hidden overflow-x-auto lg:block">
+                                <table className="w-full min-w-[1100px] text-left">
+                                    <thead className="bg-slate-50/90 text-[11px] font-semibold tracking-[.08em] text-slate-500 uppercase">
+                                        <tr>
+                                            <th className="px-5 py-3.5">
+                                                Patient
+                                            </th>
+                                            <th className="px-5 py-3.5">
+                                                Appointment
+                                            </th>
+                                            <th className="px-5 py-3.5">
+                                                Type
+                                            </th>
+                                            <th className="px-5 py-3.5">
+                                                Services
+                                            </th>
+                                            <th className="px-5 py-3.5">
+                                                Doctor
+                                            </th>
+                                            <th className="px-5 py-3.5">
+                                                Status
+                                            </th>
+                                            <th className="px-5 py-3.5 text-right">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {appointments.data.map(
+                                            (appointment) => (
+                                                <tr
+                                                    key={appointment.id}
+                                                    className="hover:bg-moss-50/40"
+                                                >
+                                                    <td className="px-5 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-moss-50 text-xs font-semibold text-moss-700">
+                                                                {appointment.user.first_name.charAt(
+                                                                    0,
+                                                                )}
+                                                                {appointment.user.last_name.charAt(
+                                                                    0,
+                                                                )}
+                                                            </span>
+                                                            <div className="min-w-0">
+                                                                <p className="max-w-48 truncate text-sm font-semibold text-slate-900">
+                                                                    {fullName(
+                                                                        appointment.user,
+                                                                    )}
+                                                                </p>
+                                                                <p className="mt-0.5 max-w-48 truncate text-[11px] text-slate-500">
+                                                                    {appointment.company
+                                                                        ? `Company · ${appointment.company.company_name}`
+                                                                        : typeLabels[
+                                                                                appointment
+                                                                                    .type
+                                                                            ] ===
+                                                                            'Walk-in'
+                                                                          ? 'Walk-in patient'
+                                                                          : 'Individual patient'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <p className="text-sm font-medium text-slate-800">
+                                                            {formatDate(
+                                                                appointment.appointment_date,
+                                                            )}
+                                                        </p>
+                                                        <p className="mt-0.5 text-[11px] text-slate-500">
+                                                            {appointmentTime(
+                                                                appointment,
+                                                            )}
+                                                        </p>
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <TypeBadge
+                                                            type={
+                                                                appointment.type
+                                                            }
+                                                        />
+                                                    </td>
+                                                    <td className="max-w-64 px-5 py-4">
+                                                        <ServiceBadges
+                                                            services={servicesFor(
+                                                                appointment,
+                                                            )}
+                                                        />
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        {appointment.doctor ? (
+                                                            <div className="flex items-center gap-2 text-sm text-slate-700">
+                                                                <Stethoscope className="size-3.5 text-moss-600" />{' '}
+                                                                Dr.{' '}
+                                                                {fullName(
+                                                                    appointment.doctor,
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400">
+                                                                Not assigned
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <StatusBadge
+                                                            status={
+                                                                appointment.status
+                                                            }
+                                                        />
+                                                    </td>
+                                                    <td className="px-5 py-4 text-right">
+                                                        {appointmentActions(
+                                                            appointment,
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ),
                                         )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {apt.type === 'company_bulk' ? (
-                                            <span className="flex items-center gap-1 text-[10px] font-bold text-orange-600 uppercase">
-                                                <UserCheck className="h-3.5 w-3.5" />{' '}
-                                                Bulk Request
-                                            </span>
-                                        ) : isComplete(apt) ? (
-                                            <span className="flex items-center gap-1 text-[10px] font-bold text-green-600 uppercase">
-                                                <UserCheck className="h-3.5 w-3.5" />{' '}
-                                                Profile Complete
-                                            </span>
-                                        ) : (
-                                            <span className="flex items-center gap-1 text-[10px] font-bold text-red-500 uppercase">
-                                                <FileWarning className="h-3.5 w-3.5" />{' '}
-                                                Missing Info
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">
-                                        <div className="flex flex-col">
-                                            <span>
-                                                {new Date(
-                                                    apt.appointment_date,
-                                                ).toLocaleDateString()}
-                                            </span>
-                                            <span className="text-xs text-gray-400">
-                                                {apt.start_time} -{' '}
-                                                {apt.end_time}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span
-                                            className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                                                apt.type === 'individual'
-                                                    ? 'bg-moss-100 text-moss-800'
-                                                    : apt.type ===
-                                                        'company_referral'
-                                                      ? 'bg-purple-100 text-purple-800'
-                                                      : apt.type ===
-                                                          'company_bulk'
-                                                        ? 'bg-orange-100 text-orange-800'
-                                                        : 'bg-gray-100 text-gray-800'
-                                            } `}
-                                        >
-                                            {apt.type.replace('_', ' ')}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-wrap gap-1">
-                                            {(() => {
-                                                try {
-                                                    const parsed =
-                                                        typeof apt.service_types ===
-                                                        'string'
-                                                            ? JSON.parse(
-                                                                  apt.service_types,
-                                                              )
-                                                            : apt.service_types;
+                                    </tbody>
+                                </table>
+                            </div>
 
-                                                    return Array.isArray(
-                                                        parsed,
-                                                    ) ? (
-                                                        parsed.map(
-                                                            (
-                                                                s: string,
-                                                                i: number,
-                                                            ) => (
-                                                                <span
-                                                                    key={i}
-                                                                    className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-800"
-                                                                >
-                                                                    {s}
-                                                                </span>
-                                                            ),
-                                                        )
-                                                    ) : (
-                                                        <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-800">
-                                                            {parsed}
-                                                        </span>
-                                                    );
-                                                } catch {
-                                                    return (
-                                                        <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-800">
-                                                            {apt.service_types}
-                                                        </span>
-                                                    );
-                                                }
-                                            })()}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-700">
-                                        {apt.doctor ? (
-                                            <span className="font-medium">
-                                                Dr. {apt.doctor.first_name}{' '}
-                                                {apt.doctor.last_name}
-                                            </span>
-                                        ) : (
-                                            <span className="text-gray-400 italic">
-                                                Not Assigned
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span
-                                            className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase ${getStatusStyle(apt.status)}`}
-                                        >
-                                            {getStatusLabel(apt.status)}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <Button
-                                            size="sm"
-                                            onClick={() =>
-                                                setSelectedAppointment(apt)
-                                            }
-                                            className="gap-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
-                                        >
-                                            <Eye className="h-4 w-4" /> View
-                                        </Button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    <Pagination
-                        pagination={appointments}
-                        label="appointments"
-                    />
-                </div>
-
-                {/* Vetting Modal */}
-                {selectedAppointment && (
-                    <Dialog
-                        open={true}
-                        onOpenChange={() => setSelectedAppointment(null)}
-                    >
-                        <DialogContent className="max-h-[90vh] w-full max-w-5xl overflow-y-auto">
-                            <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2 text-xl">
-                                    <User className="h-5 w-5 text-moss-600" />
-                                    {selectedAppointment.type === 'company_bulk'
-                                        ? 'Review Company Bulk Request'
-                                        : 'Review Patient Information'}
-                                </DialogTitle>
-                                <DialogDescription>
-                                    {selectedAppointment.type === 'company_bulk'
-                                        ? 'Verify the company contact details before approving this request.'
-                                        : 'Verify all fields before sending to the medical queue.'}
-                                </DialogDescription>
-                            </DialogHeader>
-
-                            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                                {/* Details Card */}
-                                <div className="min-w-0 space-y-3 rounded-xl border bg-gray-50 p-4">
-                                    <h4 className="text-sm font-bold tracking-widest text-gray-400 uppercase">
-                                        Personal Data
-                                    </h4>
-                                    {selectedAppointment.type ===
-                                    'company_bulk' ? (
-                                        <div className="space-y-3">
-                                            <div>
-                                                <p className="flex items-center gap-1 text-[10px] text-gray-500">
-                                                    <Mail className="h-3 w-3" />{' '}
-                                                    Email
+                            <div className="divide-y divide-slate-100 lg:hidden">
+                                {appointments.data.map((appointment) => (
+                                    <article
+                                        key={appointment.id}
+                                        className="p-4 sm:p-5"
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-semibold text-slate-900">
+                                                    {fullName(appointment.user)}
                                                 </p>
-                                                <p className="font-semibold">
-                                                    {
-                                                        selectedAppointment.user
-                                                            .email
-                                                    }
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <p className="flex items-center gap-1 text-[10px] text-gray-500">
-                                                    <Phone className="h-3 w-3" />{' '}
-                                                    Contact number
-                                                </p>
-                                                <p className="font-semibold">
-                                                    {selectedAppointment.user
-                                                        .contact ||
-                                                        'Not provided'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div>
-                                                    <p className="text-[10px] text-gray-500">
-                                                        Age / Sex
-                                                    </p>
-                                                    <p className="font-semibold">
-                                                        {getAge(
-                                                            selectedAppointment
-                                                                .user
-                                                                .patient_profile
-                                                                ?.birthdate,
-                                                        )}{' '}
-                                                        /{' '}
-                                                        {selectedAppointment
-                                                            .user
-                                                            .patient_profile
-                                                            ?.sex || '?'}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] text-gray-500">
-                                                        Civil Status
-                                                    </p>
-                                                    <p className="font-semibold">
-                                                        {selectedAppointment
-                                                            .user
-                                                            .patient_profile
-                                                            ?.civil_status ||
-                                                            'N/A'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <p className="flex items-center gap-1 text-[10px] text-gray-500">
-                                                    <Phone className="h-3 w-3" />{' '}
-                                                    Contact
-                                                </p>
-                                                <p className="font-semibold">
-                                                    {selectedAppointment.user
-                                                        .contact || (
-                                                        <span className="text-red-500">
-                                                            Missing
-                                                        </span>
+                                                <p className="mt-1 text-xs text-slate-500">
+                                                    {formatDate(
+                                                        appointment.appointment_date,
+                                                    )}{' '}
+                                                    ·{' '}
+                                                    {appointmentTime(
+                                                        appointment,
                                                     )}
                                                 </p>
                                             </div>
-                                        </>
-                                    )}
-                                </div>
-
-                                {/* Checklist Card */}
-                                <div className="flex min-w-0 flex-col justify-center rounded-xl border bg-white p-4">
-                                    <h4 className="mb-4 text-center text-sm font-bold tracking-widest text-gray-400 uppercase">
-                                        Readiness Checklist
-                                    </h4>
-                                    {selectedAppointment.type ===
-                                    'company_bulk' ? (
-                                        <div className="space-y-2 text-center">
-                                            <div className="inline-flex rounded-full bg-orange-100 p-3 text-orange-600">
-                                                <CheckCircle className="h-8 w-8" />
-                                            </div>
-                                            <p className="text-sm font-bold text-orange-700">
-                                                Ready for Admin Approval
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                Patient birthdate and sex are
-                                                not required for a bulk request.
-                                            </p>
+                                            {appointmentActions(appointment)}
                                         </div>
-                                    ) : isComplete(selectedAppointment) ? (
-                                        <div className="space-y-2 text-center">
-                                            <div className="inline-flex rounded-full bg-green-100 p-3 text-green-600">
-                                                <CheckCircle className="h-8 w-8" />
-                                            </div>
-                                            <p className="text-sm font-bold text-green-700">
-                                                Ready for Doctor
-                                            </p>
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            <TypeBadge
+                                                type={appointment.type}
+                                            />
+                                            <StatusBadge
+                                                status={appointment.status}
+                                            />
                                         </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            <p className="mb-2 text-xs font-bold text-red-500">
-                                                Required Fields Missing:
-                                            </p>
-                                            {getMissingFields(
-                                                selectedAppointment,
-                                            ).map((field) => (
-                                                <div
-                                                    key={field}
-                                                    className="flex items-center gap-2 text-sm text-gray-600 italic"
-                                                >
-                                                    <XCircle className="h-4 w-4 text-red-400" />{' '}
-                                                    {field}
-                                                </div>
-                                            ))}
+                                        <div className="mt-3">
+                                            <ServiceBadges
+                                                services={servicesFor(
+                                                    appointment,
+                                                )}
+                                            />
                                         </div>
-                                    )}
-                                </div>
+                                        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
+                                            <span>
+                                                {appointment.company
+                                                    ?.company_name ??
+                                                    'Individual patient'}
+                                            </span>
+                                            <span>
+                                                {appointment.doctor
+                                                    ? `Dr. ${fullName(appointment.doctor)}`
+                                                    : 'Doctor not assigned'}
+                                            </span>
+                                        </div>
+                                    </article>
+                                ))}
                             </div>
 
-                            <div className="mt-8 flex flex-wrap justify-end gap-3">
-                                {/* CLOSE MODAL */}
+                            <Pagination
+                                pagination={appointments}
+                                label="appointments"
+                            />
+                        </>
+                    ) : (
+                        <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
+                            <CalendarDays className="size-10 text-slate-300" />
+                            <h2 className="mt-4 text-base font-semibold text-slate-800">
+                                No appointments found
+                            </h2>
+                            <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
+                                No appointments match your current search or
+                                filters.
+                            </p>
+                            {hasFilters && (
                                 <Button
                                     variant="outline"
-                                    onClick={() => setSelectedAppointment(null)}
-                                    className="flex-1"
+                                    className="mt-5"
+                                    onClick={clearFilters}
                                 >
-                                    Close
+                                    Clear Filters
                                 </Button>
+                            )}
+                        </div>
+                    )}
+                </section>
+            </div>
 
-                                {/* ❌ CANCEL APPOINTMENT */}
-                                {!['completed', 'cancelled'].includes(
-                                    selectedAppointment.status,
-                                ) && (
-                                    <Button
-                                        variant="destructive"
-                                        onClick={() =>
-                                            cancelAppointment(
-                                                selectedAppointment.id,
-                                            )
-                                        }
-                                        className="flex-1 gap-2"
-                                    >
-                                        <XCircle className="h-4 w-4" />
-                                        Cancel Appointment
-                                    </Button>
+            <Dialog
+                open={selectedAppointment !== null}
+                onOpenChange={(open) => !open && setSelectedAppointment(null)}
+            >
+                {selectedAppointment && (
+                    <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-2xl">
+                        <DialogHeader>
+                            <DialogTitle>Appointment Details</DialogTitle>
+                            <DialogDescription>
+                                Appointment #{selectedAppointment.id} · Current
+                                scheduling and coordination information
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <DetailCard
+                                icon={UserRound}
+                                label="Patient"
+                                value={fullName(selectedAppointment.user)}
+                                detail={selectedAppointment.user.email}
+                            />
+                            <DetailCard
+                                icon={CalendarDays}
+                                label="Schedule"
+                                value={formatDate(
+                                    selectedAppointment.appointment_date,
                                 )}
+                                detail={appointmentTime(selectedAppointment)}
+                            />
+                            <DetailCard
+                                icon={Building2}
+                                label="Company"
+                                value={
+                                    selectedAppointment.company?.company_name ??
+                                    'Not company-linked'
+                                }
+                                detail={
+                                    selectedAppointment.referral_code
+                                        ? `Referral: ${selectedAppointment.referral_code}`
+                                        : undefined
+                                }
+                            />
+                            <DetailCard
+                                icon={Stethoscope}
+                                label="Assigned doctor"
+                                value={
+                                    selectedAppointment.doctor
+                                        ? `Dr. ${fullName(selectedAppointment.doctor)}`
+                                        : 'Not assigned'
+                                }
+                            />
+                        </div>
 
-                                {/* ✅ APPROVE */}
-                                {selectedAppointment.status === 'pending' && (
-                                    <Button
-                                        onClick={() =>
-                                            acceptAppointment(
-                                                selectedAppointment.id,
-                                            )
-                                        }
-                                        disabled={
-                                            !isComplete(selectedAppointment)
-                                        }
-                                        className={`flex-1 gap-2 ${
-                                            isComplete(selectedAppointment)
-                                                ? 'bg-green-600 hover:bg-green-700'
-                                                : ''
-                                        }`}
-                                    >
-                                        <CheckCircle2 className="h-4 w-4" />
-                                        {selectedAppointment.type ===
-                                        'company_bulk'
-                                            ? 'Approve Bulk Request'
-                                            : 'Approve & Forward'}
-                                        <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
+                        <div className="rounded-xl border border-slate-200 p-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <TypeBadge type={selectedAppointment.type} />
+                                <StatusBadge
+                                    status={selectedAppointment.status}
+                                />
+                                {selectedAppointment.batch_id && (
+                                    <span className="text-xs text-slate-500">
+                                        Batch {selectedAppointment.batch_id}
+                                    </span>
                                 )}
                             </div>
-                        </DialogContent>
-                    </Dialog>
+                            <p className="mt-4 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                                Requested services
+                            </p>
+                            <div className="mt-2">
+                                <ServiceBadges
+                                    services={servicesFor(selectedAppointment)}
+                                />
+                            </div>
+                            {selectedAppointment.notes && (
+                                <>
+                                    <p className="mt-4 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                                        Administrative notes
+                                    </p>
+                                    <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-slate-600">
+                                        {selectedAppointment.notes}
+                                    </p>
+                                </>
+                            )}
+                        </div>
+
+                        {missingFields(selectedAppointment).length > 0 && (
+                            <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                                <CircleAlert className="mt-0.5 size-4 shrink-0" />
+                                <div>
+                                    <p className="font-semibold">
+                                        Patient profile incomplete
+                                    </p>
+                                    <p className="mt-1 text-xs leading-5">
+                                        Complete{' '}
+                                        {missingFields(
+                                            selectedAppointment,
+                                        ).join(', ')}{' '}
+                                        before accepting this individual
+                                        appointment.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+                            <Button
+                                variant="outline"
+                                onClick={() => setSelectedAppointment(null)}
+                            >
+                                Close
+                            </Button>
+                            {!['completed', 'cancelled'].includes(
+                                selectedAppointment.status,
+                            ) && (
+                                <Button
+                                    variant="destructive"
+                                    disabled={
+                                        updatingId === selectedAppointment.id
+                                    }
+                                    onClick={() =>
+                                        updateStatus(
+                                            selectedAppointment,
+                                            'cancelled',
+                                        )
+                                    }
+                                >
+                                    Cancel Appointment
+                                </Button>
+                            )}
+                            {selectedAppointment.status === 'pending' && (
+                                <Button
+                                    disabled={
+                                        missingFields(selectedAppointment)
+                                            .length > 0 ||
+                                        updatingId === selectedAppointment.id
+                                    }
+                                    onClick={() =>
+                                        updateStatus(
+                                            selectedAppointment,
+                                            'accepted',
+                                        )
+                                    }
+                                    className="bg-moss-700 text-white hover:bg-moss-800"
+                                >
+                                    Accept Appointment
+                                </Button>
+                            )}
+                        </div>
+                    </DialogContent>
                 )}
-            </div>
+            </Dialog>
         </>
     );
 }
 
-AdminAppointmentsIndex.layout = (page: any) => (
+function FilterSelect({
+    label,
+    value,
+    options,
+    onChange,
+    icon,
+}: {
+    label: string;
+    value: string;
+    options: Array<[string, string]>;
+    onChange: (value: string) => void;
+    icon?: React.ReactNode;
+}) {
+    return (
+        <label className="relative text-xs font-medium text-slate-500">
+            {label}
+            <div className="relative mt-1.5">
+                {icon && (
+                    <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400">
+                        {icon}
+                    </span>
+                )}
+                <select
+                    value={value}
+                    onChange={(event) => onChange(event.target.value)}
+                    className={`h-10 w-full appearance-none rounded-lg border border-slate-200 bg-white pr-8 text-sm text-slate-700 outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10 ${icon ? 'pl-9' : 'pl-3'}`}
+                >
+                    {options.map(([optionValue, optionLabel]) => (
+                        <option
+                            key={`${label}-${optionValue}`}
+                            value={optionValue}
+                        >
+                            {optionLabel}
+                        </option>
+                    ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
+            </div>
+        </label>
+    );
+}
+
+function ServiceBadges({ services }: { services: string[] }) {
+    if (services.length === 0) {
+        return (
+            <span className="text-xs text-slate-400">No services listed</span>
+        );
+    }
+    return (
+        <div className="flex flex-wrap gap-1.5">
+            {services.slice(0, 3).map((service) => (
+                <span
+                    key={service}
+                    className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600"
+                >
+                    {service}
+                </span>
+            ))}
+            {services.length > 3 && (
+                <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500">
+                    +{services.length - 3}
+                </span>
+            )}
+        </div>
+    );
+}
+
+function DetailCard({
+    icon: Icon,
+    label,
+    value,
+    detail,
+}: {
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+    value: string;
+    detail?: string;
+}) {
+    return (
+        <div className="flex gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-moss-700 shadow-sm">
+                <Icon className="size-4" />
+            </span>
+            <div className="min-w-0">
+                <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
+                    {label}
+                </p>
+                <p className="mt-1 truncate text-sm font-semibold text-slate-800">
+                    {value}
+                </p>
+                {detail && (
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                        {detail}
+                    </p>
+                )}
+            </div>
+        </div>
+    );
+}
+
+AdminAppointmentsIndex.layout = (page: React.ReactNode) => (
     <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>
 );

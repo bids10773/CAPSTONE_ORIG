@@ -7,6 +7,7 @@ import {
     Eye,
     ToggleLeft,
     ToggleRight,
+    CalendarDays,
 } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
 import AppLayout from '@/layouts/app-layout';
@@ -25,6 +26,7 @@ interface Company {
     status: string;
     industry_type: string;
     created_at: string;
+    appointments_count: number;
 }
 
 export default function AdminCompaniesIndex() {
@@ -99,7 +101,7 @@ export default function AdminCompaniesIndex() {
                                         Status
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                        Industry
+                                        Industry / Activity
                                     </th>
                                     <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
                                         Actions
@@ -145,6 +147,10 @@ export default function AdminCompaniesIndex() {
                                                 <span className="text-sm text-gray-700">
                                                     {company.industry_type}
                                                 </span>
+                                                <span className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+                                                    <CalendarDays className="h-3.5 w-3.5" />
+                                                    {company.appointments_count} appointment{company.appointments_count === 1 ? '' : 's'}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
@@ -173,6 +179,9 @@ export default function AdminCompaniesIndex() {
                                                                 : 'Activate'
                                                         }
                                                         as="button"
+                                                        onClick={(event) => {
+                                                            if (!confirm(`${company.status === 'active' ? 'Deactivate' : 'Activate'} ${company.company_name}? ${company.status === 'active' ? 'Its linked login will no longer be able to sign in.' : 'Its linked login will regain access.'}`)) event.preventDefault();
+                                                        }}
                                                     >
                                                         {company.status ===
                                                         'active' ? (

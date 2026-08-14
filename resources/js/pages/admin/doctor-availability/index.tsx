@@ -1,371 +1,84 @@
-import AppLayout from '@/layouts/app-layout';
-import { Head, useForm, router, usePage, Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import {
-    Clock,
-    ArrowLeft,
-    RotateCcw,
-    Save,
-    CircleSlash,
-    Trash2,
-} from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+import { Head, router, useForm } from '@inertiajs/react';
+import { CalendarClock, CircleSlash, Plus, Save, Search, Trash2, UserRound } from 'lucide-react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Doctors Availability', href: '/admin/staff' },
-];
+type Period = { day: string; start: string; end: string };
+type Doctor = { id: number; first_name: string; last_name: string; specialization: string | null; is_active: boolean; availability: Period[] | null };
+type Props = { doctors: Doctor[]; days: Record<string, string>; selectedDoctorId?: number; filters: { search?: string; status?: string }; clinicHours: { opens_at: string; closes_at: string }; isAdmin: boolean };
+const breadcrumbs: BreadcrumbItem[] = [{ title: 'Doctor Availability', href: '/admin/doctor-availability' }];
 
-interface Doctor {
-    id: number;
-    first_name: string;
-    last_name: string;
-    specialization: string | null;
-    availability: Array<{
-        day: string;
-        start: string;
-        end: string;
-    }>;
-}
-
-interface Props {
-    doctors: Doctor[];
-    days: Record<string, string>;
-    selectedDoctorId?: number;
-}
-
-export default function AdminDoctorAvailability({ doctors, days }: Props) {
-    const props = usePage().props as any;
-    const queryDoctorId = props.selectedDoctorId || 0;
-    const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
-    const dayOrder = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-    const [hasChanges, setHasChanges] = useState(false);
-
-    const { data, setData, patch, processing, errors } = useForm({
-        doctor_id: 0,
-        availability: [] as any[],
-    });
-
-    const formatTime = (time: string) => {
-        if (!time) return '';
-
-        const [hour, minute] = time.split(':').map(Number);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        const formattedHour = hour % 12 || 12;
-
-        return `${formattedHour}:${minute.toString().padStart(2, '0')} ${ampm}`;
-    };
+export default function DoctorAvailability({ doctors, days, selectedDoctorId, filters, clinicHours, isAdmin }: Props) {
+    const [search, setSearch] = useState(filters.search ?? '');
+    const [status, setStatus] = useState(filters.status ?? '');
+    const selected = doctors.find((doctor) => doctor.id === selectedDoctorId) ?? doctors[0];
+    const { data, setData, patch, processing, errors, clearErrors } = useForm<{ doctor_id: number; availability: Period[]; action: string }>({ doctor_id: selected?.id ?? 0, availability: selected?.availability ?? [], action: 'save' });
 
     useEffect(() => {
-        if (doctors.length > 0 && queryDoctorId) {
-            const doctor = doctors.find((d) => d.id === queryDoctorId);
-            if (doctor) {
-                setSelectedDoctor(doctor);
-                setData({
-                    doctor_id: doctor.id,
-                    availability: Array.isArray(doctor.availability)
-                        ? doctor.availability
-                        : [],
-                });
-            } else {
-                router.visit('/admin/staff');
-            }
-        }
-    }, [doctors, queryDoctorId]);
+        setData({ doctor_id: selected?.id ?? 0, availability: selected?.availability ?? [], action: 'save' });
+        clearErrors();
+    }, [selected?.id]);
 
-    if (!selectedDoctor)
-        return (
-            <div className="flex h-screen animate-pulse items-center justify-center text-muted-foreground">
-                Initializing schedule...
+    useEffect(() => {
+        if (!isAdmin) return;
+        const timer = window.setTimeout(() => router.get('/admin/doctor-availability', { search: search || undefined, status: status || undefined }, { preserveState: true, preserveScroll: true, replace: true }), 300);
+        return () => window.clearTimeout(timer);
+    }, [search, status]);
+
+    const grouped = useMemo(() => Object.keys(days).reduce<Record<string, Period[]>>((result, day) => ({ ...result, [day]: data.availability.filter((period) => period.day === day) }), {}), [data.availability, days]);
+    const addPeriod = (day: string) => setData('availability', [...data.availability, { day, start: clinicHours.opens_at, end: clinicHours.closes_at }]);
+    const updatePeriod = (day: string, index: number, field: 'start' | 'end', value: string) => {
+        let seen = -1;
+        setData('availability', data.availability.map((period) => period.day === day && ++seen === index ? { ...period, [field]: value } : period));
+    };
+    const removePeriod = (day: string, index: number) => {
+        let seen = -1;
+        setData('availability', data.availability.filter((period) => !(period.day === day && ++seen === index)));
+    };
+    const submit = (event: FormEvent) => { event.preventDefault(); setData('action', 'save'); patch('/admin/doctor-availability', { preserveScroll: true }); };
+    const clearSchedule = () => {
+        if (!selected || !window.confirm(`Clear all recurring availability for Dr. ${selected.last_name}? Existing future appointments will prevent this change.`)) return;
+        router.patch('/admin/doctor-availability', { doctor_id: selected.id, availability: [], action: 'clear' }, { preserveScroll: true });
+    };
+
+    return <>
+        <Head title="Doctor Availability" />
+        <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+                <div><p className="text-sm font-semibold text-moss-600">Management</p><h1 className="text-2xl font-bold text-slate-950">Doctor availability</h1><p className="mt-1 text-sm text-slate-500">Set recurring clinic periods. Hours are limited to {clinicHours.opens_at}–{clinicHours.closes_at}.</p></div>
+                {selected && <Button form="availability-form" disabled={processing}><Save className="h-4 w-4" />{processing ? 'Saving…' : 'Save schedule'}</Button>}
             </div>
-        );
 
-    const updateSlot = (day: string, field: 'start' | 'end', value: string) => {
-        setData(
-            'availability',
-            data.availability.map((slot) =>
-                slot.day === day ? { ...slot, [field]: value } : slot,
-            ),
-        );
+            {isAdmin && <div className="grid gap-3 rounded-2xl border bg-white p-3 shadow-sm sm:grid-cols-[1fr_180px]">
+                <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400"/><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search doctor or specialization" className="pl-9" /></div>
+                <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-10 rounded-md border bg-white px-3 text-sm"><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
+            </div>}
 
-        setHasChanges(true); // ✅ user edited
-    };
+            <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+                {isAdmin && <aside className="space-y-2 rounded-2xl border bg-white p-3 shadow-sm">
+                    <p className="px-2 py-1 text-xs font-bold uppercase tracking-wider text-slate-500">Doctors ({doctors.length})</p>
+                    {doctors.map((doctor) => <button key={doctor.id} onClick={() => router.get('/admin/doctor-availability', { doctor_id: doctor.id, search: search || undefined, status: status || undefined }, { preserveState: true })} className={`flex w-full items-center gap-3 rounded-xl p-3 text-left ${doctor.id === selected?.id ? 'bg-moss-50 ring-1 ring-moss-200' : 'hover:bg-slate-50'}`}>
+                        <span className="grid h-9 w-9 place-items-center rounded-full bg-moss-100 text-moss-700"><UserRound className="h-4 w-4"/></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">Dr. {doctor.first_name} {doctor.last_name}</span><span className="block truncate text-xs text-slate-500">{doctor.specialization || 'General practice'}</span></span><span className={`h-2 w-2 rounded-full ${doctor.is_active ? 'bg-emerald-500' : 'bg-slate-300'}`}/>
+                    </button>)}
+                    {!doctors.length && <p className="p-6 text-center text-sm text-slate-500">No doctors match these filters.</p>}
+                </aside>}
 
-    const toggleDay = (day: string) => {
-        const exists = data.availability.some((slot) => slot.day === day);
-
-        if (exists) {
-            setData(
-                'availability',
-                data.availability.filter((slot) => slot.day !== day),
-            );
-        } else {
-            setData('availability', [
-                ...data.availability,
-                { day, start: '08:00', end: '17:00' },
-            ]);
-        }
-
-        setHasChanges(true); // ✅ user changed something
-    };
-
-    // Your original Reset logic: Clears availability in the DB
-    const resetAvailability = () => {
-        if (!selectedDoctor) return;
-        if (
-            !confirm(
-                'Are you sure you want to clear all availability for this doctor? This cannot be undone.',
-            )
-        )
-            return;
-
-        router.patch(
-            '/admin/doctor-availability',
-            {
-                doctor_id: selectedDoctor.id,
-                availability: [],
-                action: 'clear',
-            },
-            {
-                preserveState: true,
-                onSuccess: () => {
-                    setData('availability', []);
-                    router.reload({ only: ['doctors'] });
-                },
-            },
-        );
-    };
-
-    // Revert UI to the last saved state without hitting the DB
-    const discardChanges = () => {
-        setData(
-            'availability',
-            Array.isArray(selectedDoctor.availability)
-                ? selectedDoctor.availability
-                : [],
-        );
-        toast.info('Changes discarded');
-    };
-
-    const submit = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        patch('/admin/doctor-availability', {
-            preserveState: true,
-            onSuccess: () => {
-                setHasChanges(false); // 🔒 lock after saving
-            },
-        });
-    };
-
-    return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`Schedule: ${selectedDoctor.first_name}`} />
-
-            <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
-                {/* Header Section */}
-                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/admin/staff"
-                            className="group flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background transition-all hover:border-primary/30 hover:bg-primary/5"
-                        >
-                            <ArrowLeft className="h-5 w-5" />
-                        </Link>
-                        <div>
-                            <h1 className="text-3xl font-bold tracking-tight">
-                                {selectedDoctor.first_name}{' '}
-                                {selectedDoctor.last_name}
-                            </h1>
-                            <p className="text-muted-foreground italic">
-                                Clinical Availability & Hours
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={discardChanges}
-                        >
-                            Discard
-                        </Button>
-
-                        <Button
-                            form="availability-form"
-                            disabled={processing || !hasChanges}
-                        >
-                            {processing
-                                ? 'Saving...'
-                                : hasChanges
-                                  ? 'Save Schedule'
-                                  : 'Saved'}
-                        </Button>
-                    </div>
-                </div>
-
-                <form
-                    id="availability-form"
-                    onSubmit={submit}
-                    className="grid grid-cols-1 gap-8 lg:grid-cols-12"
-                >
-                    {/* Main List */}
-                    <div className="space-y-4 lg:col-span-8">
-                        {dayOrder.map((dayKey) => {
-                            const slot = data.availability.find(
-                                (s) => s.day === dayKey,
-                            );
-                            const isActive = !!slot;
-
-                            return (
-                                <div
-                                    key={dayKey}
-                                    className={cn(
-                                        'group relative rounded-xl border-2 p-5 transition-all duration-200',
-                                        isActive
-                                            ? 'border-primary/40 bg-card shadow-sm'
-                                            : 'border-transparent bg-muted/30 opacity-70',
-                                    )}
-                                >
-                                    <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
-                                        <div className="flex min-w-[140px] items-center gap-4">
-                                            <div
-                                                onClick={() =>
-                                                    toggleDay(dayKey)
-                                                }
-                                                className={cn(
-                                                    'relative h-6 w-12 cursor-pointer rounded-full transition-colors',
-                                                    isActive
-                                                        ? 'bg-primary'
-                                                        : 'bg-gray-300',
-                                                )}
-                                            >
-                                                <div
-                                                    className={cn(
-                                                        'absolute top-1 left-1 h-4 w-4 rounded-full bg-white transition-transform',
-                                                        isActive
-                                                            ? 'translate-x-6'
-                                                            : '',
-                                                    )}
-                                                />
-                                            </div>
-                                            <Label className="cursor-pointer text-lg font-semibold capitalize">
-                                                {days[dayKey]}
-                                            </Label>
-                                        </div>
-
-                                        {isActive ? (
-                                            <div className="flex max-w-xs flex-1 items-center gap-3">
-                                                <Input
-                                                    type="time"
-                                                    value={
-                                                        slot?.start || '08:00'
-                                                    }
-                                                    onChange={(e) =>
-                                                        updateSlot(
-                                                            dayKey,
-                                                            'start',
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    className="h-10 bg-background"
-                                                />
-                                                <span className="font-medium text-muted-foreground">
-                                                    to
-                                                </span>
-                                                <Input
-                                                    type="time"
-                                                    value={slot?.end || '17:00'}
-                                                    onChange={(e) =>
-                                                        updateSlot(
-                                                            dayKey,
-                                                            'end',
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    className="h-10 bg-background"
-                                                />
-                                            </div>
-                                        ) : (
-                                            <span className="text-sm text-muted-foreground italic">
-                                                Clinic Closed
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* Sidebar Summary */}
-                    <div className="lg:col-span-4">
-                        <Card className="sticky top-8 border-none bg-moss-50/50 ring-1 ring-moss-100">
-                            <CardHeader>
-                                <CardTitle className="text-xs font-bold tracking-widest text-moss-600 uppercase">
-                                    Weekly Summary
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {data.availability.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center gap-2 py-8 text-muted-foreground">
-                                        <CircleSlash className="h-8 w-8 opacity-20" />
-                                        <p className="text-sm">
-                                            No days active
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {data.availability.map((s: any) => (
-                                            <div
-                                                key={s.day}
-                                                className="flex justify-between border-b border-moss-100 pb-2 text-sm"
-                                            >
-                                                <span className="font-bold capitalize">
-                                                    {days[s.day]}
-                                                </span>
-                                                <span className="font-mono text-moss-700">
-                                                    {formatTime(s.start)} -{' '}
-                                                    {formatTime(s.end)}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {/* Reset Button (Database Clear) */}
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={resetAvailability}
-                                    className="border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600"
-                                >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Clear All
-                                </Button>
-
-                                {Object.keys(errors).length > 0 && (
-                                    <div className="mt-4 rounded-lg bg-red-100 p-3 text-xs text-red-600">
-                                        {Object.values(errors).map((msg, i) => (
-                                            <p key={i}>• {msg as string}</p>
-                                        ))}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-                </form>
+                <section className="min-w-0">
+                    {!selected ? <div className="rounded-2xl border border-dashed bg-white p-16 text-center text-slate-500"><CircleSlash className="mx-auto mb-3 h-8 w-8"/>No doctor is available to schedule.</div> : <form id="availability-form" onSubmit={submit} className="space-y-4">
+                        <div className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center gap-3"><CalendarClock className="h-5 w-5 text-moss-600"/><div><h2 className="font-bold">Dr. {selected.first_name} {selected.last_name}</h2><p className="text-sm text-slate-500">{selected.specialization || 'General practice'} · {selected.is_active ? 'Active' : 'Inactive account'}</p></div></div></div>
+                        {Object.entries(days).map(([day, label]) => <div key={day} className="rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><div className="mb-3 flex items-center justify-between"><div><h3 className="font-semibold">{label}</h3><p className="text-xs text-slate-500">{grouped[day].length ? `${grouped[day].length} period${grouped[day].length > 1 ? 's' : ''}` : 'Unavailable'}</p></div><Button type="button" variant="outline" size="sm" onClick={() => addPeriod(day)}><Plus className="h-4 w-4"/>Add period</Button></div>
+                            <div className="space-y-2">{grouped[day].map((period, index) => <div key={`${day}-${index}`} className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2 rounded-xl bg-slate-50 p-3"><Input type="time" min={clinicHours.opens_at} max={clinicHours.closes_at} value={period.start} onChange={(e) => updatePeriod(day, index, 'start', e.target.value)}/><span className="text-sm text-slate-400">to</span><Input type="time" min={clinicHours.opens_at} max={clinicHours.closes_at} value={period.end} onChange={(e) => updatePeriod(day, index, 'end', e.target.value)}/><Button type="button" variant="ghost" size="icon" onClick={() => removePeriod(day, index)} aria-label={`Remove ${label} period`}><Trash2 className="h-4 w-4 text-red-500"/></Button></div>)}{!grouped[day].length && <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-500">No clinic hours set.</p>}</div>
+                        </div>)}
+                        {Object.values(errors).length > 0 && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{Object.values(errors).map((error, index) => <p key={index}>{error}</p>)}</div>}
+                        <div className="flex flex-col-reverse justify-between gap-3 sm:flex-row"><Button type="button" variant="outline" onClick={clearSchedule} className="text-red-600"><Trash2 className="h-4 w-4"/>Clear schedule</Button><Button disabled={processing}><Save className="h-4 w-4"/>Save schedule</Button></div>
+                    </form>}
+                </section>
             </div>
-        </AppLayout>
-    );
+        </div>
+    </>;
 }
+
+DoctorAvailability.layout = (page: React.ReactNode) => <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;

@@ -24,6 +24,7 @@ class StaffController extends Controller
     {
         $search = $request->get('search', '');
         $role = $request->get('role', '');
+        $status = $request->get('status', '');
 
         $query = User::query();
 
@@ -31,12 +32,19 @@ class StaffController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('middle_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('contact_number', 'like', "%{$search}%")
+                    ->orWhere('license_no', 'like', "%{$search}%");
             });
         }
 
         if ($role) {
             $query->where('role', $role);
+        }
+
+        if (in_array($status, ['active', 'inactive'], true)) {
+            $query->where('is_active', $status === 'active');
         }
 
         $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'])
@@ -49,6 +57,7 @@ class StaffController extends Controller
             'filters' => [
                 'search' => $search,
                 'role' => $role,
+                'status' => $status,
             ],
             'roles' => User::getStaffRoles(),
         ]);
@@ -251,10 +260,7 @@ class StaffController extends Controller
             return back()->with('error', 'You cannot delete your own account.');
         }
 
-        $staff->delete();
-
-        return redirect()->route('admin.staff.index')
-            ->with('success', 'Staff member has been deleted successfully.');
+        return back()->with('error', 'Staff records cannot be permanently deleted because they may be linked to clinical history. Deactivate the account instead.');
     }
 
     /**

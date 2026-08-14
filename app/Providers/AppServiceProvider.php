@@ -33,34 +33,28 @@ class AppServiceProvider extends ServiceProvider
 
         // 1. CUSTOM EMAIL VERIFICATION LOGIC
         VerifyEmail::toMailUsing(function (object $notifiable, string $url) {
-            $logoPath = public_path('images/full_logo.png');
-            $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : '';
-
             return (new MailMessage)
-                ->subject('Welcome to LMC Clinic - Verify Your Account')
+                ->subject('Verify Your Email Address | Living Myth Industrial Clinic')
                 ->view('email.custom-verify', [
                     'url' => $url,
                     'name' => $notifiable->name,
-                    'logo' => $logoData,
-                    'expire_message' => 'For your security, this link is only valid for 60 minutes.',
+                    'expiresIn' => config('auth.verification.expire', 60),
                 ]);
         });
 
         // 2. CUSTOM PASSWORD RESET LOGIC
         ResetPassword::toMailUsing(function (object $notifiable, string $token) {
-            // Build the URL manually to ensure it includes the email
             $url = url(route('password.reset', [
                 'token' => $token,
                 'email' => $notifiable->getEmailForPasswordReset(),
             ], false));
 
             return (new MailMessage)
-                ->subject('LMIC Company - Reset Your Password')
-                // You can reuse a similar layout for the reset email
+                ->subject('Reset Your Password | Living Myth Industrial Clinic')
                 ->view('email.custom-reset', [
                     'url' => $url,
                     'name' => $notifiable->name,
-                    'expire_message' => 'This password reset link will expire in 60 minutes.',
+                    'expiresIn' => config('auth.passwords.'.config('auth.defaults.passwords').'.expire'),
                 ]);
         });
     }

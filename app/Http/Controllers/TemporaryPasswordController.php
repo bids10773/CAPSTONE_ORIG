@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Concerns\PasswordValidationRules;
 use App\Models\SecurityAudit;
+use App\Notifications\PasswordChanged;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -58,6 +59,8 @@ class TemporaryPasswordController extends Controller
             'action' => 'temporary_password_changed',
             'status' => 'success',
         ]);
+
+        $user->notify(new PasswordChanged);
 
         return redirect($this->dashboardFor($user->role))
             ->with('success', 'Your password has been changed successfully.');
