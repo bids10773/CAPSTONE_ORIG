@@ -97,6 +97,14 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureRateLimiting(): void
     {
+        RateLimiter::for('appointment-booking', function (Request $request) {
+            return Limit::perMinute((int) config('medical.booking_security.booking_attempts_per_minute', 5))
+                ->by(($request->user()?->id ?? 'guest').'|'.$request->ip())
+                ->response(fn () => back()->withErrors([
+                    'appointment_limit' => 'Too many booking attempts. Please try again shortly.',
+                ]));
+        });
+
         RateLimiter::for('two-factor', function (Request $request) {
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });

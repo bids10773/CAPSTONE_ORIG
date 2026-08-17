@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Company;
 use App\Models\LabResult;
 use App\Models\PhysicalExam;
+use App\Models\SecurityAudit;
 use App\Models\User;
 use App\Models\XrayReport;
 use Carbon\Carbon;
@@ -33,14 +34,15 @@ class AdminDashboardController extends Controller
             'monthAppointments' => Appointment::where('appointment_date', '>=', $thisMonth)->count(),
             'completedAppointments' => Appointment::where('status', 'completed')->count(),
             'pendingAppointments' => Appointment::where('status', 'pending')->count(),
+            'pendingAppointmentRequests' => Appointment::where('type', 'individual')->where('status', 'pending')->count(),
             'totalLabResults' => LabResult::count(),
             'totalPhysicalExams' => PhysicalExam::count(),
             'totalXrayReports' => XrayReport::count(),
         ];
 
         $recentAppointments = Appointment::with(['user', 'company'])
-            ->whereNotIn('status', ['completed', 'cancelled'])
-            ->orderBy('appointment_date', 'desc')
+            ->whereNotIn('status', ['completed', 'cancelled', 'rejected'])
+            ->latest('created_at')
             ->limit(10)
             ->get();
 
@@ -61,6 +63,12 @@ class AdminDashboardController extends Controller
 
         $appointmentsByType = Appointment::selectRaw('type, COUNT(*) as count')
             ->groupBy('type')->get()->pluck('count', 'type')->toArray();
+
+        $securityAlerts = [
+            'possibleDuplicateAccounts' => SecurityAudit::where('action', 'possible_duplicate_account')->where('status', 'review')->count(),
+            'repeatedBookingAttempts' => SecurityAudit::where('action', 'rapid_booking_attempts')->where('status', 'review')->count(),
+            'highCancellationActivity' => SecurityAudit::where('action', 'repeated_cancellation')->where('status', 'review')->count(),
+        ];
 
         // --- LEVEL 3 MACHINE LEARNING TRENDS ---
         $historicalTrends = [];
@@ -94,6 +102,7 @@ class AdminDashboardController extends Controller
             'appointmentsByStatus' => $appointmentsByStatus,
             'appointmentsByType' => $appointmentsByType,
             'monthlyTrends' => $monthlyTrends,
+            'securityAlerts' => $securityAlerts,
         ]);
     }
 

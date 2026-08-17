@@ -90,14 +90,32 @@ class ReceptionistWalkInController extends Controller
 
     public function store(StoreWalkInRequest $request): RedirectResponse
     {
-        $appointment = $this->walkIns->create($request->validated(), $request->user());
+        $data = $request->validated();
+        $existing = null;
+        if ($data['patient_type'] === 'existing') {
+            $existing = Appointment::query()
+                ->where('user_id', $data['user_id'])
+                ->whereIn('type', ['individual', 'company_referral'])
+                ->whereDate('appointment_date', today())
+                ->open()
+                ->orderBy('start_time')
+                ->first();
+        }
+
+        $appointment = $this->walkIns->create($data, $request->user());
         $position = Appointment::query()
             ->where('type', 'walk_in')
             ->whereDate('appointment_date', today())
             ->where('id', '<=', $appointment->id)
             ->count();
 
-        return back()->with('success', 'Walk-in registered. Queue number: W-'.str_pad((string) $position, 3, '0', STR_PAD_LEFT).'.');
+        $response = back()->with('success', 'Walk-in registered. Queue number: W-'.str_pad((string) $position, 3, '0', STR_PAD_LEFT).'.');
+        if ($existing !== null) {
+            $time = $existing->start_time?->format('g:i A') ?? 'a scheduled time';
+            $response->with('warning', "Existing Appointment Found: This patient already has an online appointment today at {$time}. The walk-in was recorded under the current clinic policy.");
+        }
+
+        return $response;
     }
 
     public function updateStatus(UpdateWalkInStatusRequest $request, Appointment $appointment): RedirectResponse

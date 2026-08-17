@@ -3,6 +3,7 @@
 namespace App\Concerns;
 
 use App\Models\User;
+use App\Support\PhilippineContactNumber;
 use Illuminate\Validation\Rule;
 
 trait ProfileValidationRules
@@ -19,7 +20,12 @@ trait ProfileValidationRules
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'email' => $this->emailRules($userId),
-            'birthdate' => ['nullable', 'date', 'before_or_equal:today'],
+            'contact' => ['nullable', 'string', 'max:20', function (string $attribute, mixed $value, \Closure $fail): void {
+                if (filled($value) && PhilippineContactNumber::normalize((string) $value) === null) {
+                    $fail('Enter a valid Philippine mobile number.');
+                }
+            }],
+            'birthdate' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
             'sex' => ['nullable', Rule::in(['Male', 'Female'])],
             'civil_status' => ['nullable', Rule::in(['Single', 'Married', 'Divorced', 'Widowed'])],
         ];

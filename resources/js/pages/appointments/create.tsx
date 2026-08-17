@@ -70,6 +70,17 @@ interface AppointmentPageProps {
         requiresXray: boolean;
     };
     auth: { user: AppointmentUser };
+    bookingPolicy?: {
+        maximumUpcoming: number;
+        bookedDates: string[];
+        upcomingAppointments: Array<{
+            id: number;
+            appointment_date: string;
+            start_time: string;
+            end_time: string;
+            status: string;
+        }>;
+    };
     referral?: {
         id: number;
         referral_number: string;
@@ -247,6 +258,11 @@ export default function CreateAppointment() {
         },
         auth,
         referral = null,
+        bookingPolicy = {
+            maximumUpcoming: 2,
+            bookedDates: [],
+            upcomingAppointments: [],
+        },
     } = usePage<AppointmentPageProps>().props;
     const storageKey = `appointment-draft-${auth.user.id}`;
     const isCompanyAccount = auth.user.role === 'company';
@@ -499,6 +515,19 @@ export default function CreateAppointment() {
             if (!formData.appointment_date)
                 nextErrors.appointment_date = 'Choose a date.';
             if (
+                formData.type === 'individual' &&
+                bookingPolicy.bookedDates.includes(formData.appointment_date)
+            )
+                nextErrors.appointment_date =
+                    'You already have an appointment on this date.';
+            if (
+                formData.type === 'individual' &&
+                bookingPolicy.upcomingAppointments.length >=
+                    bookingPolicy.maximumUpcoming
+            )
+                nextErrors.appointment_limit =
+                    'You already have the maximum number of upcoming appointments. Please complete or cancel an existing appointment before scheduling another one.';
+            if (
                 ['individual', 'company_referral'].includes(formData.type) &&
                 !formData.doctor_id
             )
@@ -604,6 +633,75 @@ export default function CreateAppointment() {
                                 >
                                     Dismiss
                                 </button>
+                            </div>
+                        )}
+
+                        {!isCompanyAccount && (
+                            <div className="mb-5 grid gap-4 lg:grid-cols-2">
+                                <section className="rounded-xl border border-moss-100 bg-moss-50 p-4 text-sm text-moss-800">
+                                    <p className="font-semibold">
+                                        Appointment Policy
+                                    </p>
+                                    <p className="mt-1 text-xs leading-5">
+                                        You may schedule only one appointment
+                                        per date and maintain up to two active
+                                        upcoming appointments at a time.
+                                    </p>
+                                </section>
+                                <section className="rounded-xl border border-slate-200 bg-white p-4">
+                                    <p className="text-sm font-semibold text-slate-800">
+                                        Your Upcoming Appointments
+                                    </p>
+                                    {bookingPolicy.upcomingAppointments
+                                        .length ? (
+                                        <div className="mt-2 space-y-2">
+                                            {bookingPolicy.upcomingAppointments.map(
+                                                (appointment) => (
+                                                    <div
+                                                        key={appointment.id}
+                                                        className="flex items-center justify-between gap-3 text-xs text-slate-600"
+                                                    >
+                                                        <span>
+                                                            {formatDate(
+                                                                appointment.appointment_date.slice(
+                                                                    0,
+                                                                    10,
+                                                                ),
+                                                                {
+                                                                    month: 'short',
+                                                                    day: 'numeric',
+                                                                    year: 'numeric',
+                                                                },
+                                                            )}{' '}
+                                                            ·{' '}
+                                                            {formatTime(
+                                                                appointment.start_time,
+                                                            )}
+                                                        </span>
+                                                        <span className="capitalize">
+                                                            {appointment.status}
+                                                        </span>
+                                                    </div>
+                                                ),
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            No active upcoming appointments.
+                                        </p>
+                                    )}
+                                </section>
+                            </div>
+                        )}
+
+                        {errors.appointment_limit && (
+                            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                                <p className="font-semibold">
+                                    Appointment Limit Reached
+                                </p>
+                                <p className="mt-1 text-xs leading-5">
+                                    {errors.appointment_limit}
+                                </p>
                             </div>
                         )}
 

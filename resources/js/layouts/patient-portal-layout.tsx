@@ -9,6 +9,7 @@ import {
     X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { NotificationBell } from '@/components/notification-bell';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
@@ -105,6 +106,8 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                         )}
                     </button>
 
+                    <NotificationBell />
+
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <button
@@ -132,7 +135,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                             sideOffset={8}
                             className="w-64 rounded-xl"
                         >
-                            <UserMenuContent user={user} />
+                            <UserMenuContent user={user} showProfileSettings />
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>

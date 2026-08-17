@@ -4,11 +4,10 @@ namespace App\Notifications;
 
 use App\Models\Appointment;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class AppointmentAutoCancelled extends Notification implements ShouldQueue
+class AppointmentAutoCancelled extends Notification
 {
     use Queueable;
 
@@ -17,7 +16,18 @@ class AppointmentAutoCancelled extends Notification implements ShouldQueue
     /** @return list<string> */
     public function via(object $notifiable): array
     {
-        return $notifiable->email ? ['mail'] : [];
+        return $notifiable->email ? ['database', 'mail'] : ['database'];
+    }
+
+    public function toDatabase(object $notifiable): array
+    {
+        return [
+            'type' => 'appointment_cancelled',
+            'title' => 'Appointment Cancelled',
+            'message' => 'Your appointment for '.$this->appointment->appointment_date->format('M j, Y').' was cancelled because the check-in grace period elapsed.',
+            'appointment_id' => $this->appointment->id,
+            'url' => route('appointments.index', absolute: false),
+        ];
     }
 
     public function toMail(object $notifiable): MailMessage

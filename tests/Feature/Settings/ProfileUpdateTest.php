@@ -54,6 +54,50 @@ test('email verification status is unchanged when the email address is unchanged
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
+test('patient can update account and personal profile fields through the existing endpoint', function () {
+    $user = User::factory()->create(['role' => 'patient', 'contact' => '09170000000']);
+    $user->patientProfile()->create([
+        'birthdate' => '1990-01-01',
+        'sex' => 'Male',
+        'civil_status' => 'Single',
+    ]);
+
+    $this->actingAs($user)->patch(route('profile.update'), [
+        'first_name' => $user->first_name,
+        'middle_name' => $user->middle_name,
+        'last_name' => $user->last_name,
+        'email' => $user->email,
+        'contact' => '+63 917 123 4567',
+        'birthdate' => '2003-08-18',
+        'sex' => 'Female',
+        'civil_status' => 'Widowed',
+        'role' => 'admin',
+        'is_active' => false,
+    ])->assertSessionDoesntHaveErrors()->assertRedirect(route('profile.edit'));
+
+    expect($user->refresh())
+        ->contact->toBe('639171234567')
+        ->role->toBe('patient')
+        ->is_active->toBeTrue()
+        ->and($user->patientProfile->birthdate->toDateString())->toBe('2003-08-18')
+        ->and($user->patientProfile->sex)->toBe('Female')
+        ->and($user->patientProfile->civil_status)->toBe('Widowed');
+});
+
+test('profile update rejects invalid patient personal details', function () {
+    $user = User::factory()->create(['role' => 'patient']);
+
+    $this->actingAs($user)->patch(route('profile.update'), [
+        'first_name' => $user->first_name,
+        'last_name' => $user->last_name,
+        'email' => $user->email,
+        'contact' => 'not-a-phone',
+        'birthdate' => today()->addDay()->toDateString(),
+        'sex' => 'Unknown',
+        'civil_status' => 'Unsupported',
+    ])->assertSessionHasErrors(['contact', 'birthdate', 'sex', 'civil_status']);
+});
+
 test('user can delete their account', function () {
     $user = User::factory()->create();
 

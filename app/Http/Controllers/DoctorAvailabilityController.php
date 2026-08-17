@@ -80,7 +80,7 @@ class DoctorAvailabilityController extends Controller
 
     private function validateFutureAppointments(User $doctor, Collection $periods): void
     {
-        $appointments = Appointment::where('doctor_id', $doctor->id)->whereDate('appointment_date', '>=', today())->whereNotIn('status', ['cancelled', 'completed'])->get(['appointment_date', 'start_time', 'end_time']);
+        $appointments = Appointment::where('doctor_id', $doctor->id)->whereDate('appointment_date', '>=', today())->whereNotIn('status', ['cancelled', 'rejected', 'completed'])->get(['appointment_date', 'start_time', 'end_time']);
         foreach ($appointments as $appointment) {
             $day = strtolower($appointment->appointment_date->format('D'));
             $start = substr((string) $appointment->start_time, 0, 5);

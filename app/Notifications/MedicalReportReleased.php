@@ -3,17 +3,26 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class MedicalReportReleased extends Notification implements ShouldQueue
+class MedicalReportReleased extends Notification
 {
     use Queueable;
 
     public function via(object $notifiable): array
     {
-        return $notifiable->email ? ['mail'] : [];
+        return $notifiable->email ? ['database', 'mail'] : ['database'];
+    }
+
+    public function toDatabase(object $notifiable): array
+    {
+        return [
+            'type' => 'medical_service_update',
+            'title' => 'Medical Service Update',
+            'message' => 'An update is available for your medical record.',
+            'url' => route('appointments.index', ['status' => 'completed'], false),
+        ];
     }
 
     public function toMail(object $notifiable): MailMessage

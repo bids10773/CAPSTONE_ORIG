@@ -1,4 +1,5 @@
-import { LogOut } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { LogOut, Settings } from 'lucide-react';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -11,9 +12,10 @@ import type { User } from '@/types';
 
 type Props = {
     user: User;
+    showProfileSettings?: boolean;
 };
 
-export function UserMenuContent({ user }: Props) {
+export function UserMenuContent({ user, showProfileSettings = false }: Props) {
     const { openModal } = useLogoutModal();
 
     return (
@@ -25,9 +27,19 @@ export function UserMenuContent({ user }: Props) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-                <DropdownMenuItem asChild></DropdownMenuItem>
+                {showProfileSettings && (
+                    <DropdownMenuItem asChild>
+                        <Link
+                            href="/settings/profile"
+                            className="cursor-pointer"
+                        >
+                            <Settings className="mr-2" />
+                            Profile Settings
+                        </Link>
+                    </DropdownMenuItem>
+                )}
             </DropdownMenuGroup>
-            <DropdownMenuSeparator />
+            {showProfileSettings && <DropdownMenuSeparator />}
             <DropdownMenuItem
                 className="cursor-pointer"
                 onSelect={() => openModal()}

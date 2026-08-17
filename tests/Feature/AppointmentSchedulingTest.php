@@ -74,6 +74,22 @@ test('scheduler cancels only after grace and reassigns the slot to the earliest 
     expect($later->refresh()->released_from_appointment_id)->toBeNull();
 });
 
+test('scheduler automatically rejects an individual request after its pending time passes', function () {
+    $pending = scheduledPatient(['status' => 'pending']);
+    $service = app(AppointmentSchedulingService::class);
+
+    expect($service->expireLateAppointments(Carbon::parse('2026-08-07 09:00:00')))->toBe(0)
+        ->and($service->expireLateAppointments(Carbon::parse('2026-08-07 09:00:01')))->toBe(1)
+        ->and($pending->refresh()->status)->toBe('rejected')
+        ->and($pending->rejection_reason)->toBe('schedule_expired')
+        ->and($pending->processed_at)->not->toBeNull();
+
+    $this->assertDatabaseHas('security_audits', [
+        'action' => 'appointment_auto_rejected',
+        'target_user_id' => $pending->user_id,
+    ]);
+});
+
 test('expiry is idempotent and does not duplicate a released slot assignment', function () {
     $walkIn = waitingWalkIn('2026-08-07 08:30:00');
     $online = scheduledPatient();

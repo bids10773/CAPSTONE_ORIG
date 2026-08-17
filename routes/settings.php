@@ -25,4 +25,7 @@ Route::middleware(['auth', 'verified', 'role:admin,doctor,medtech,radtech,compan
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');
+    Route::get('settings/profile/two-factor', [ProfileController::class, 'confirmTwoFactor'])
+        ->middleware('password.confirm')
+        ->name('profile.two-factor.confirm');
 });

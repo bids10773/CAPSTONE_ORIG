@@ -109,9 +109,22 @@ test('bulk requests have a separate admin approval queue and do not require pati
 test('individual appointments require complete patient details before admin approval', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $patient = User::factory()->create(['contact' => null]);
+    $appointmentDate = today()->addDay();
+    $doctor = User::factory()->create([
+        'role' => 'doctor',
+        'is_active' => true,
+        'availability' => [[
+            'day' => strtolower($appointmentDate->format('D')),
+            'start' => '08:00',
+            'end' => '12:00',
+        ]],
+    ]);
     $appointment = Appointment::create([
         'user_id' => $patient->id,
-        'appointment_date' => today()->addDay(),
+        'doctor_id' => $doctor->id,
+        'appointment_date' => $appointmentDate,
+        'start_time' => '09:00',
+        'end_time' => '09:30',
         'type' => 'individual',
         'status' => 'pending',
         'service_types' => ['PE'],

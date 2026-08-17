@@ -1,9 +1,10 @@
 import { usePage } from '@inertiajs/react';
 import { motion } from 'framer-motion';
-import { Bell, CalendarDays, ChevronDown } from 'lucide-react';
+import { CalendarDays, ChevronDown } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { GlobalSearch } from '@/components/global-search';
+import { NotificationBell } from '@/components/notification-bell';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
@@ -57,13 +58,7 @@ export default function ClinicDashboardLayout({
                                 <CalendarDays className="size-4" />
                                 <time>{currentDate}</time>
                             </div>
-                            <button
-                                className="topbar-icon relative"
-                                aria-label="Notifications"
-                            >
-                                <Bell className="size-[18px]" />
-                                <span className="absolute top-2 right-2.5 size-2 rounded-full border-2 border-white bg-red-500" />
-                            </button>
+                            <NotificationBell />
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <button

@@ -30,6 +30,6 @@ class PasswordController extends Controller
 
         $request->user()->notify(new PasswordChanged);
 
-        return back();
+        return back()->with('success', 'Password updated successfully.');
     }
 }

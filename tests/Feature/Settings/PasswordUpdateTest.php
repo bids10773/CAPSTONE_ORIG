@@ -48,3 +48,20 @@ test('correct password must be provided to update password', function () {
         ->assertSessionHasErrors('current_password')
         ->assertRedirect(route('user-password.edit'));
 });
+
+test('password can be updated inline from the unified profile page', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->from(route('profile.edit'))
+        ->put(route('user-password.update'), [
+            'current_password' => 'password',
+            'password' => 'Stronger-password1!',
+            'password_confirmation' => 'Stronger-password1!',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('profile.edit'))
+        ->assertSessionHas('success', 'Password updated successfully.');
+
+    expect(Hash::check('Stronger-password1!', $user->refresh()->password))->toBeTrue();
+});

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Appointment;
 use App\Models\PatientProfile;
 use App\Models\User;
+use App\Support\PhilippineContactNumber;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -40,7 +41,7 @@ class WalkInService
             'middle_name' => $data['middle_name'] ?? null,
             'last_name' => $data['last_name'],
             'email' => $data['email'] ?? null,
-            'contact' => $data['contact'] ?? null,
+            'contact' => PhilippineContactNumber::normalize($data['contact'] ?? null) ?? ($data['contact'] ?? null),
             'password' => Hash::make(Str::random(40)),
             'role' => 'patient',
             'is_active' => true,

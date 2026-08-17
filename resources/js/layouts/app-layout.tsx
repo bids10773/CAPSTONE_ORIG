@@ -31,6 +31,14 @@ export default function AppLayout({
             lastMessage.current = flash.error;
         }
 
+        if (flash?.warning && lastMessage.current !== flash.warning) {
+            toast.warning(flash.warning, {
+                id: `flash-warning-${flash.warning}`,
+                duration: 8000,
+            });
+            lastMessage.current = flash.warning;
+        }
+
         // 🔥 LOGIN ERROR (IMPORTANT FIX)
         if (errors?.email && lastMessage.current !== errors.email) {
             toast.error(errors.email, {

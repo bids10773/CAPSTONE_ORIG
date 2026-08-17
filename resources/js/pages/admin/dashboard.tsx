@@ -11,6 +11,7 @@ import {
     FileBarChart,
     FlaskConical,
     Stethoscope,
+    ShieldAlert,
     UserCog,
     Users,
 } from 'lucide-react';
@@ -56,6 +57,7 @@ interface DashboardStats {
     monthAppointments: number;
     completedAppointments: number;
     pendingAppointments: number;
+    pendingAppointmentRequests: number;
     totalLabResults: number;
     totalPhysicalExams: number;
     totalXrayReports: number;
@@ -67,6 +69,11 @@ interface DashboardProps {
     todayAppointments?: AppointmentData[];
     appointmentsByStatus?: Record<string, number>;
     appointmentsByType?: Record<string, number>;
+    securityAlerts?: {
+        possibleDuplicateAccounts: number;
+        repeatedBookingAttempts: number;
+        highCancellationActivity: number;
+    };
     [key: string]: unknown;
 }
 
@@ -162,6 +169,11 @@ export default function AdminDashboard() {
         todayAppointments = [],
         appointmentsByStatus = {},
         appointmentsByType = {},
+        securityAlerts = {
+            possibleDuplicateAccounts: 0,
+            repeatedBookingAttempts: 0,
+            highCancellationActivity: 0,
+        },
     } = usePage<DashboardProps>().props;
 
     const count = (value: number | undefined) => Number(value ?? 0);
@@ -225,9 +237,9 @@ export default function AdminDashboard() {
             icon: CalendarDays,
         },
         {
-            label: 'Pending appointments',
-            value: count(stats.pendingAppointments),
-            detail: 'Awaiting confirmation or action',
+            label: 'Pending approval requests',
+            value: count(stats.pendingAppointmentRequests),
+            detail: 'Individual requests awaiting admin review',
             icon: Clock3,
         },
         {
@@ -308,6 +320,44 @@ export default function AdminDashboard() {
                             </p>
                         </article>
                     ))}
+                </section>
+
+                <section className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
+                    <SectionHeader
+                        title="Booking & Security Alerts"
+                        description="Informational signals for administrator review; accounts are not automatically suspended."
+                    />
+                    <div className="grid gap-3 p-4 sm:grid-cols-3">
+                        {[
+                            [
+                                'Possible Duplicate Accounts',
+                                securityAlerts.possibleDuplicateAccounts,
+                            ],
+                            [
+                                'Repeated Booking Attempts',
+                                securityAlerts.repeatedBookingAttempts,
+                            ],
+                            [
+                                'High Cancellation Activity',
+                                securityAlerts.highCancellationActivity,
+                            ],
+                        ].map(([label, value]) => (
+                            <div
+                                key={String(label)}
+                                className="flex items-center gap-3 rounded-xl bg-amber-50 p-4"
+                            >
+                                <ShieldAlert className="size-5 text-amber-700" />
+                                <div>
+                                    <p className="text-xs text-amber-800">
+                                        {label}
+                                    </p>
+                                    <p className="text-xl font-semibold text-amber-950">
+                                        {Number(value)}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </section>
 
                 <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,.75fr)]">

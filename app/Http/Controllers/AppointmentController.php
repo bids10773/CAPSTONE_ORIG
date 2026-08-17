@@ -8,6 +8,8 @@ use App\Models\Company;
 use App\Models\CompanyReferral;
 use App\Models\MedicalHistory;
 use App\Models\User;
+use App\Services\IndividualAppointmentBookingService;
+use App\Services\AppointmentApprovalService;
 use App\Services\LaboratoryFormDefinition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -110,6 +112,17 @@ class AppointmentController extends Controller
             ]);
 
         $user = $request->user()->load('patientProfile'); // ✅ LOAD RELATION
+        $upcomingAppointments = collect();
+        if ($user->role === 'patient') {
+            $upcomingAppointments = Appointment::query()
+                ->where('user_id', $user->id)
+                ->where('type', 'individual')
+                ->whereDate('appointment_date', '>=', today())
+                ->activeReservation()
+                ->orderBy('appointment_date')
+                ->orderBy('start_time')
+                ->get(['id', 'appointment_date', 'start_time', 'end_time', 'status']);
+        }
 
         return Inertia::render('appointments/create', [
             'companies' => $companies,
@@ -124,6 +137,11 @@ class AppointmentController extends Controller
                 ->all(),
             'auth' => [
                 'user' => $user, // ✅ SEND USER WITH PROFILE
+            ],
+            'bookingPolicy' => [
+                'maximumUpcoming' => (int) config('medical.booking_security.max_active_future_appointments', 2),
+                'upcomingAppointments' => $upcomingAppointments,
+                'bookedDates' => $upcomingAppointments->pluck('appointment_date')->map->toDateString()->unique()->values(),
             ],
             'referral' => $referral ? [
                 'id' => $referral->id,
@@ -215,6 +233,13 @@ class AppointmentController extends Controller
 
         $data = $validator->validated();
 
+        if ($data['type'] === 'individual') {
+            app(IndividualAppointmentBookingService::class)->create($user, $data, $request);
+
+            return redirect()->route('appointments.index')
+                ->with('success', 'Your appointment request has been submitted and is waiting for clinic confirmation.');
+        }
+
         $startTime = null;
         $endTime = null;
 
@@ -242,7 +267,7 @@ class AppointmentController extends Controller
 
             $overlap = Appointment::where('doctor_id', $doctor->id)
                 ->whereDate('appointment_date', $data['appointment_date'])
-                ->where('status', '!=', 'cancelled')
+                ->whereNotIn('status', ['cancelled', 'rejected'])
                 ->where('start_time', '<', $endTime->format('H:i'))
                 ->where('end_time', '>', $startTime->format('H:i'))
                 ->exists();
@@ -340,19 +365,10 @@ class AppointmentController extends Controller
             return back()->withErrors($validator);
         }
 
-        if ($request->status === 'accepted' && $appointment->type === 'individual') {
-            $appointment->loadMissing('user.patientProfile');
-            $missing = collect([
-                'birthdate' => $appointment->user->patientProfile?->birthdate,
-                'sex' => $appointment->user->patientProfile?->sex,
-                'contact' => $appointment->user->contact,
-            ])->filter(fn ($value) => blank($value))->keys();
+        if ($appointment->type === 'individual' && $request->status === 'accepted') {
+            app(AppointmentApprovalService::class)->accept($appointment, $request->user());
 
-            if ($missing->isNotEmpty()) {
-                return back()->withErrors([
-                    'profile' => 'Complete the patient birthdate, sex, and contact number before accepting an individual appointment.',
-                ]);
-            }
+            return back()->with('success', 'Appointment confirmed successfully.');
         }
 
         if ($appointment->isBulkParent()) {
@@ -373,6 +389,32 @@ class AppointmentController extends Controller
             'cancelled' => 'Appointment has been cancelled.',
             default => 'Appointment status updated.',
         });
+    }
+
+    public function approve(Request $request, Appointment $appointment)
+    {
+        app(AppointmentApprovalService::class)->accept($appointment, $request->user());
+
+        return back()->with('success', 'Appointment confirmed successfully.');
+    }
+
+    public function reject(Request $request, Appointment $appointment)
+    {
+        $validated = $request->validate([
+            'reason' => ['required', Rule::in(AppointmentApprovalService::REJECTION_REASONS)],
+            'details' => ['nullable', 'string', 'max:500', 'required_if:reason,other'],
+        ], [
+            'details.required_if' => 'Please provide a short explanation when selecting Other.',
+        ]);
+
+        app(AppointmentApprovalService::class)->reject(
+            $appointment,
+            $request->user(),
+            $validated['reason'],
+            $validated['details'] ?? null,
+        );
+
+        return back()->with('success', 'Appointment request rejected.');
     }
 
     /**
@@ -496,7 +538,7 @@ class AppointmentController extends Controller
             // Check overlap with booked appointments
             $overlap = Appointment::where('doctor_id', $doctorId)
                 ->whereDate('appointment_date', $date)
-                ->where('status', '!=', 'cancelled')
+                ->whereNotIn('status', ['cancelled', 'rejected'])
                 ->where(function ($q) use ($startStr, $endStr) {
                     $q->where('start_time', '<', $endStr)
                         ->where('end_time', '>', $startStr);
@@ -540,27 +582,36 @@ class AppointmentController extends Controller
         );
 
         if ($search) {
-            $query->where(function ($query) use ($search) {
-
-                // 🔍 Search by patient name/email
-                $query->whereHas('user', function ($q) use ($search) {
-                    $q->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('middle_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
+            $nameTokens = preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [$search];
+            $query->where(function ($query) use ($search, $nameTokens) {
+                $query->whereHas('user', function ($user) use ($search, $nameTokens) {
+                    $user->where(function ($identity) use ($search, $nameTokens) {
+                        $identity->where('email', 'like', "%{$search}%")
+                            ->orWhere('contact', 'like', "%{$search}%")
+                            ->orWhere(function ($name) use ($nameTokens) {
+                                foreach ($nameTokens as $token) {
+                                    $name->where(function ($part) use ($token) {
+                                        $part->where('first_name', 'like', "%{$token}%")
+                                            ->orWhere('middle_name', 'like', "%{$token}%")
+                                            ->orWhere('last_name', 'like', "%{$token}%");
+                                    });
+                                }
+                            });
+                    });
                 })
-
-                // 🔍 Search by doctor name
-                    ->orWhereHas('doctor', function ($q) use ($search) {
-                        $q->where('first_name', 'like', "%{$search}%")
-                            ->orWhere('middle_name', 'like', "%{$search}%")
-                            ->orWhere('last_name', 'like', "%{$search}%");
+                    ->orWhereHas('doctor', function ($doctor) use ($nameTokens) {
+                        foreach ($nameTokens as $token) {
+                            $doctor->where(function ($part) use ($token) {
+                                $part->where('first_name', 'like', "%{$token}%")
+                                    ->orWhere('middle_name', 'like', "%{$token}%")
+                                    ->orWhere('last_name', 'like', "%{$token}%");
+                            });
+                        }
                     })
-
-                // 🔍 Search by appointment date
-                    ->orWhereHas('company', fn ($q) => $q->where('company_name', 'like', "%{$search}%"))
+                    ->orWhereHas('company', fn ($company) => $company->where('company_name', 'like', "%{$search}%"))
                     ->orWhere('company_name', 'like', "%{$search}%")
-                    ->orWhere('referral_code', 'like', "%{$search}%");
+                    ->orWhere('referral_code', 'like', "%{$search}%")
+                    ->when(ctype_digit($search), fn ($appointment) => $appointment->orWhere('appointments.id', (int) $search));
             });
         }
 
@@ -583,7 +634,9 @@ class AppointmentController extends Controller
         if ($dateFilter === 'today') {
             $query->whereDate('appointment_date', today());
         } elseif ($dateFilter === 'upcoming') {
-            $query->whereDate('appointment_date', '>=', today());
+            $query->whereDate('appointment_date', '>', today());
+        } elseif ($dateFilter === 'past') {
+            $query->whereDate('appointment_date', '<', today());
         }
 
         if ($doctorId) {
@@ -597,20 +650,7 @@ class AppointmentController extends Controller
         if ($sort !== '') {
             $query->orderBy($sort, $direction);
         } else {
-            $query->orderByRaw("
-        CASE 
-            WHEN status = 'pending' THEN 1
-            WHEN status = 'accepted' THEN 2
-            WHEN status = 'arrived' THEN 3
-            WHEN status = 'for_diagnostics' THEN 4
-            WHEN status = 'for_xray' THEN 5
-            WHEN status = 'for_final_evaluation' THEN 6
-            WHEN status = 'completed' THEN 7
-            WHEN status = 'cancelled' THEN 8
-            ELSE 9
-        END
-    ")
-                ->orderBy('appointment_date');
+            $query->orderByDesc('created_at')->orderByDesc('id');
         }
 
         $appointments = $query->paginate($this->perPage($request))->withQueryString();
@@ -645,10 +685,15 @@ class AppointmentController extends Controller
                 'for_xray',
                 'for_final_evaluation',
                 'completed',
+                'rejected',
                 'cancelled',
             ],
             'typeOptions' => Appointment::getTypeOptions(),
             'bulkOnly' => $bulkOnly,
+            'pendingRequestsCount' => Appointment::query()
+                ->where('type', 'individual')
+                ->where('status', 'pending')
+                ->count(),
         ]);
     }
 

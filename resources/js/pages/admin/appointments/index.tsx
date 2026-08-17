@@ -1,22 +1,21 @@
 import type { PageProps } from '@inertiajs/core';
 import { Head, router, usePage } from '@inertiajs/react';
 import {
-    ArrowDownUp,
+    ArrowRight,
     Building2,
     CalendarDays,
     CheckCircle2,
-    ChevronDown,
     CircleAlert,
     Ellipsis,
     Eye,
-    Filter,
     Search,
     Stethoscope,
     UserRound,
     X,
     XCircle,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +33,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/app-layout';
+import { appointmentStatusLabels as statusLabels } from '@/lib/appointment-status';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -66,6 +66,9 @@ interface Appointment {
     service_types: string[] | string | null;
     referral_code?: string | null;
     notes?: string | null;
+    created_at: string;
+    rejection_reason?: string | null;
+    rejection_details?: string | null;
     batch_id?: string | null;
     user: Person;
     company: { id: number; company_name: string } | null;
@@ -118,18 +121,8 @@ interface Props extends PageProps {
     statusOptions: string[];
     typeOptions: Record<string, string>;
     bulkOnly: boolean;
+    pendingRequestsCount: number;
 }
-
-const statusLabels: Record<string, string> = {
-    pending: 'Pending',
-    accepted: 'Accepted',
-    arrived: 'Arrived',
-    for_diagnostics: 'For Diagnostics',
-    for_xray: 'For X-Ray',
-    for_final_evaluation: 'For Final Evaluation',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-};
 
 const statusStyles: Record<string, string> = {
     pending: 'border-amber-200 bg-amber-50 text-amber-700',
@@ -139,6 +132,7 @@ const statusStyles: Record<string, string> = {
     for_xray: 'border-violet-200 bg-violet-50 text-violet-700',
     for_final_evaluation: 'border-purple-200 bg-purple-50 text-purple-700',
     completed: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    rejected: 'border-rose-200 bg-rose-50 text-rose-700',
     cancelled: 'border-red-200 bg-red-50 text-red-700',
 };
 
@@ -201,6 +195,11 @@ function appointmentTime(appointment: Appointment): string {
     return start ?? 'Time not assigned';
 }
 
+function isPastAppointment(appointment: Appointment): boolean {
+    if (!appointment.start_time) return true;
+    return new Date(`${appointment.appointment_date.slice(0, 10)}T${appointment.start_time.slice(0, 5)}:00`).getTime() < Date.now();
+}
+
 function StatusBadge({ status }: { status: string }) {
     return (
         <span
@@ -223,11 +222,8 @@ export default function AdminAppointmentsIndex() {
     const {
         appointments,
         filters,
-        doctors,
-        companies,
-        statusOptions,
-        typeOptions,
         bulkOnly,
+        pendingRequestsCount,
     } = usePage<Props>().props;
     const endpoint = bulkOnly
         ? '/admin/bulk-appointments'
@@ -235,8 +231,14 @@ export default function AdminAppointmentsIndex() {
     const [selectedAppointment, setSelectedAppointment] =
         useState<Appointment | null>(null);
     const [search, setSearch] = useState(filters.search ?? '');
+    const lastServerSearch = useRef(filters.search ?? '');
+    const suppressSearchVisit = useRef(false);
     const [loading, setLoading] = useState(false);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
+    const [rejectingAppointment, setRejectingAppointment] = useState<Appointment | null>(null);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [rejectionDetails, setRejectionDetails] = useState('');
+    const [rejectionError, setRejectionError] = useState('');
 
     const visit = (next: Partial<Filters>) => {
         setLoading(true);
@@ -253,12 +255,42 @@ export default function AdminAppointmentsIndex() {
     };
 
     useEffect(() => {
+        if (suppressSearchVisit.current) {
+            suppressSearchVisit.current = false;
+            return;
+        }
         if (search === filters.search) return;
-        const timeout = window.setTimeout(() => visit({ search }), 400);
+        const timeout = window.setTimeout(() => {
+            setLoading(true);
+            router.get(endpoint, { search, per_page: appointments.per_page }, {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                onFinish: () => setLoading(false),
+            });
+        }, 400);
         return () => window.clearTimeout(timeout);
         // `visit` intentionally uses the latest server filters after each visit.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search, filters.search]);
+
+    useEffect(() => {
+        if (lastServerSearch.current === filters.search) return;
+        lastServerSearch.current = filters.search;
+        setSearch(filters.search ?? '');
+    }, [filters.search]);
+
+    const clearSearch = () => {
+        if (search !== '') suppressSearchVisit.current = true;
+        setSearch('');
+        setLoading(true);
+        router.get(endpoint, { per_page: appointments.per_page }, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            onFinish: () => setLoading(false),
+        });
+    };
 
     const clearFilters = () => {
         setSearch('');
@@ -288,6 +320,39 @@ export default function AdminAppointmentsIndex() {
         );
     };
 
+    const approve = (appointment: Appointment) => {
+        setUpdatingId(appointment.id);
+        router.patch(`/admin/appointments/${appointment.id}/approve`, {}, {
+            preserveScroll: true,
+            onSuccess: () => setSelectedAppointment(null),
+            onError: (errors) => toast.error(String(Object.values(errors)[0] ?? 'Unable to confirm this appointment.')),
+            onFinish: () => setUpdatingId(null),
+        });
+    };
+
+    const openReject = (appointment: Appointment) => {
+        setRejectionReason('');
+        setRejectionDetails('');
+        setRejectionError('');
+        setRejectingAppointment(appointment);
+    };
+
+    const reject = () => {
+        if (!rejectingAppointment || !rejectionReason || (rejectionReason === 'other' && !rejectionDetails.trim())) {
+            setRejectionError('Select a reason and provide details when required.');
+            return;
+        }
+        setUpdatingId(rejectingAppointment.id);
+        router.patch(`/admin/appointments/${rejectingAppointment.id}/reject`, {
+            reason: rejectionReason,
+            details: rejectionDetails,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => { setRejectingAppointment(null); setSelectedAppointment(null); },
+            onFinish: () => setUpdatingId(null),
+        });
+    };
+
     const missingFields = (appointment: Appointment): string[] => {
         if (appointment.type !== 'individual') return [];
         const missing: string[] = [];
@@ -301,9 +366,6 @@ export default function AdminAppointmentsIndex() {
     const hasFilters = Object.entries(filters).some(
         ([key, value]) => key !== 'direction' && value !== '' && value !== null,
     );
-    const sortValue = filters.sort
-        ? `${filters.sort}:${filters.direction || 'asc'}`
-        : '';
 
     const appointmentActions = (appointment: Appointment) => (
         <DropdownMenu>
@@ -324,13 +386,18 @@ export default function AdminAppointmentsIndex() {
                 </DropdownMenuItem>
                 {appointment.status === 'pending' && (
                     <DropdownMenuItem
-                        disabled={missingFields(appointment).length > 0}
-                        onSelect={() => updateStatus(appointment, 'accepted')}
+                        disabled={missingFields(appointment).length > 0 || isPastAppointment(appointment)}
+                        onSelect={() => appointment.type === 'individual' ? approve(appointment) : updateStatus(appointment, 'accepted')}
                     >
-                        <CheckCircle2 className="size-4" /> Accept appointment
+                        <CheckCircle2 className="size-4" /> Confirm request
                     </DropdownMenuItem>
                 )}
-                {!['completed', 'cancelled'].includes(appointment.status) && (
+                {appointment.status === 'pending' && appointment.type === 'individual' && (
+                    <DropdownMenuItem className="text-red-600" onSelect={() => openReject(appointment)}>
+                        <XCircle className="size-4" /> Reject request
+                    </DropdownMenuItem>
+                )}
+                {!['pending', 'completed', 'cancelled', 'rejected'].includes(appointment.status) && (
                     <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -369,9 +436,17 @@ export default function AdminAppointmentsIndex() {
                     </div>
                     <div className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-600 shadow-sm">
                         <CalendarDays className="size-4 text-moss-600" />
-                        {appointments.total.toLocaleString()} total
+                        {appointments.total.toLocaleString()}{' '}
+                        {filters.search ? 'matching' : 'total'}
                     </div>
                 </header>
+
+                {!bulkOnly && pendingRequestsCount > 0 && (
+                    <button type="button" onClick={() => visit({ status: 'pending', type: 'individual' })} className="flex w-full items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left text-amber-900 shadow-sm">
+                        <span><strong>{pendingRequestsCount} appointment {pendingRequestsCount === 1 ? 'request' : 'requests'}</strong><span className="mt-1 block text-sm text-amber-700">Waiting for administrator review</span></span>
+                        <ArrowRight className="size-5" />
+                    </button>
+                )}
 
                 <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -385,128 +460,20 @@ export default function AdminAppointmentsIndex() {
                                     setSearch(event.target.value)
                                 }
                                 placeholder="Search patient, company, doctor, or referral code..."
-                                className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-4 pl-10 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-11 pl-10 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
                             />
+                            {search && (
+                                <button type="button" onClick={clearSearch} aria-label="Clear search" className="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                                    <X className="size-4" />
+                                </button>
+                            )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <Filter className="size-4" />
-                            Server-side filters
+                            Search appointments
                             {loading && (
                                 <span className="size-3.5 animate-spin rounded-full border-2 border-moss-200 border-t-moss-700" />
                             )}
                         </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-                        <FilterSelect
-                            label="Date"
-                            value={filters.date_filter}
-                            onChange={(value) => visit({ date_filter: value })}
-                            options={[
-                                ['', 'All dates'],
-                                ['today', 'Today'],
-                                ['upcoming', 'Upcoming'],
-                            ]}
-                        />
-                        <FilterSelect
-                            label="Status"
-                            value={filters.status}
-                            onChange={(value) => visit({ status: value })}
-                            options={[
-                                ['', 'All statuses'],
-                                ...statusOptions.map(
-                                    (status) =>
-                                        [status, statusLabels[status]] as [
-                                            string,
-                                            string,
-                                        ],
-                                ),
-                            ]}
-                        />
-                        {!bulkOnly && (
-                            <FilterSelect
-                                label="Type"
-                                value={filters.type}
-                                onChange={(value) => visit({ type: value })}
-                                options={[
-                                    ['', 'All types'],
-                                    ...Object.entries(typeOptions),
-                                ]}
-                            />
-                        )}
-                        <FilterSelect
-                            label="Doctor"
-                            value={String(filters.doctor_id)}
-                            onChange={(value) => visit({ doctor_id: value })}
-                            options={[
-                                ['', 'All doctors'],
-                                ...doctors.map(
-                                    (doctor) =>
-                                        [
-                                            String(doctor.id),
-                                            `Dr. ${doctor.first_name} ${doctor.last_name}`,
-                                        ] as [string, string],
-                                ),
-                            ]}
-                        />
-                        <FilterSelect
-                            label="Company"
-                            value={String(filters.company_id)}
-                            onChange={(value) => visit({ company_id: value })}
-                            options={[
-                                ['', 'All companies'],
-                                ...companies.map(
-                                    (company) =>
-                                        [
-                                            String(company.id),
-                                            company.company_name,
-                                        ] as [string, string],
-                                ),
-                            ]}
-                        />
-                        <FilterSelect
-                            label="Sort"
-                            value={sortValue}
-                            onChange={(value) => {
-                                const [sort = '', direction = 'asc'] =
-                                    value.split(':');
-                                visit({ sort, direction });
-                            }}
-                            icon={<ArrowDownUp className="size-3.5" />}
-                            options={[
-                                ['', 'Workflow priority'],
-                                ['appointment_date:asc', 'Date: earliest'],
-                                ['appointment_date:desc', 'Date: latest'],
-                                ['created_at:desc', 'Recently created'],
-                                ['status:asc', 'Status A–Z'],
-                            ]}
-                        />
-                    </div>
-
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:max-w-xl">
-                        <label className="text-xs font-medium text-slate-500">
-                            From date
-                            <input
-                                type="date"
-                                value={filters.date_from}
-                                onChange={(event) =>
-                                    visit({ date_from: event.target.value })
-                                }
-                                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700"
-                            />
-                        </label>
-                        <label className="text-xs font-medium text-slate-500">
-                            To date
-                            <input
-                                type="date"
-                                min={filters.date_from || undefined}
-                                value={filters.date_to}
-                                onChange={(event) =>
-                                    visit({ date_to: event.target.value })
-                                }
-                                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-700"
-                            />
-                        </label>
                     </div>
 
                     {hasFilters && (
@@ -713,11 +680,18 @@ export default function AdminAppointmentsIndex() {
                         <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
                             <CalendarDays className="size-10 text-slate-300" />
                             <h2 className="mt-4 text-base font-semibold text-slate-800">
-                                No appointments found
+                                {filters.search
+                                    ? 'No appointments found'
+                                    : filters.date_filter === 'today'
+                                      ? 'No appointments today'
+                                      : 'No appointments found'}
                             </h2>
                             <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
-                                No appointments match your current search or
-                                filters.
+                                {filters.search
+                                    ? `No appointments match “${filters.search}”.`
+                                    : filters.date_filter === 'today'
+                                      ? 'There are no appointments scheduled for today that match the selected filters.'
+                                      : 'No appointments match your current filters.'}
                             </p>
                             {hasFilters && (
                                 <Button
@@ -837,6 +811,13 @@ export default function AdminAppointmentsIndex() {
                             </div>
                         )}
 
+                        {selectedAppointment.status === 'pending' && isPastAppointment(selectedAppointment) && (
+                            <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                                <CircleAlert className="mt-0.5 size-4 shrink-0" />
+                                <div><p className="font-semibold">Appointment time has passed</p><p className="mt-1 text-xs leading-5">Past requests cannot be confirmed. Reject this request and ask the patient to select a future schedule.</p></div>
+                            </div>
+                        )}
+
                         <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
                             <Button
                                 variant="outline"
@@ -844,7 +825,7 @@ export default function AdminAppointmentsIndex() {
                             >
                                 Close
                             </Button>
-                            {!['completed', 'cancelled'].includes(
+                            {!['pending', 'completed', 'cancelled', 'rejected'].includes(
                                 selectedAppointment.status,
                             ) && (
                                 <Button
@@ -863,70 +844,54 @@ export default function AdminAppointmentsIndex() {
                                 </Button>
                             )}
                             {selectedAppointment.status === 'pending' && (
-                                <Button
-                                    disabled={
-                                        missingFields(selectedAppointment)
-                                            .length > 0 ||
-                                        updatingId === selectedAppointment.id
-                                    }
-                                    onClick={() =>
-                                        updateStatus(
-                                            selectedAppointment,
-                                            'accepted',
-                                        )
-                                    }
-                                    className="bg-moss-700 text-white hover:bg-moss-800"
-                                >
-                                    Accept Appointment
-                                </Button>
+                                <>
+                                    {selectedAppointment.type === 'individual' && (
+                                        <Button variant="destructive" disabled={updatingId === selectedAppointment.id} onClick={() => openReject(selectedAppointment)}>
+                                            Reject Request
+                                        </Button>
+                                    )}
+                                    <Button
+                                        disabled={missingFields(selectedAppointment).length > 0 || isPastAppointment(selectedAppointment) || updatingId === selectedAppointment.id}
+                                        onClick={() => selectedAppointment.type === 'individual' ? approve(selectedAppointment) : updateStatus(selectedAppointment, 'accepted')}
+                                        className="bg-moss-700 text-white hover:bg-moss-800"
+                                    >
+                                        Confirm Appointment
+                                    </Button>
+                                </>
                             )}
                         </div>
                     </DialogContent>
                 )}
             </Dialog>
-        </>
-    );
-}
 
-function FilterSelect({
-    label,
-    value,
-    options,
-    onChange,
-    icon,
-}: {
-    label: string;
-    value: string;
-    options: Array<[string, string]>;
-    onChange: (value: string) => void;
-    icon?: React.ReactNode;
-}) {
-    return (
-        <label className="relative text-xs font-medium text-slate-500">
-            {label}
-            <div className="relative mt-1.5">
-                {icon && (
-                    <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400">
-                        {icon}
-                    </span>
-                )}
-                <select
-                    value={value}
-                    onChange={(event) => onChange(event.target.value)}
-                    className={`h-10 w-full appearance-none rounded-lg border border-slate-200 bg-white pr-8 text-sm text-slate-700 outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10 ${icon ? 'pl-9' : 'pl-3'}`}
-                >
-                    {options.map(([optionValue, optionLabel]) => (
-                        <option
-                            key={`${label}-${optionValue}`}
-                            value={optionValue}
-                        >
-                            {optionLabel}
-                        </option>
-                    ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-slate-400" />
-            </div>
-        </label>
+            <Dialog open={rejectingAppointment !== null} onOpenChange={(open) => !open && setRejectingAppointment(null)}>
+                <DialogContent className="max-w-lg rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Reject appointment request</DialogTitle>
+                        <DialogDescription>The reserved time will become available again. The patient will receive the reason.</DialogDescription>
+                    </DialogHeader>
+                    <label className="text-sm font-medium text-slate-700">Reason
+                        <select value={rejectionReason} onChange={(event) => { setRejectionReason(event.target.value); setRejectionError(''); }} className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm">
+                            <option value="">Select a reason</option>
+                            <option value="doctor_unavailable">Doctor unavailable</option>
+                            <option value="schedule_adjustment">Schedule adjustment needed</option>
+                            <option value="clinic_unavailable">Clinic unavailable</option>
+                            <option value="incomplete_requirements">Incomplete requirements</option>
+                            <option value="duplicate_appointment">Duplicate appointment</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </label>
+                    <label className="text-sm font-medium text-slate-700">Details {rejectionReason === 'other' ? '(required)' : '(optional)'}
+                        <textarea value={rejectionDetails} maxLength={500} onChange={(event) => { setRejectionDetails(event.target.value); setRejectionError(''); }} rows={4} className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm" />
+                    </label>
+                    {rejectionError && <p className="text-sm text-red-600">{rejectionError}</p>}
+                    <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setRejectingAppointment(null)}>Keep Request</Button>
+                        <Button variant="destructive" disabled={updatingId !== null} onClick={reject}>Reject Request</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
 

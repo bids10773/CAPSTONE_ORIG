@@ -19,4 +19,15 @@ class ProfileUpdateRequest extends FormRequest
     {
         return $this->profileRules($this->user()->id);
     }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'birthdate.date_format' => 'Please enter a valid birthdate.',
+            'birthdate.before_or_equal' => 'Birthdate cannot be in the future.',
+            'sex.in' => 'Please select a valid sex.',
+            'civil_status.in' => 'Please select a valid civil status.',
+        ];
+    }
 }

@@ -13,6 +13,7 @@ use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\LaboratoryController;
 use App\Http\Controllers\MedTechDashboardController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PatientDashboardController;
 use App\Http\Controllers\PatientVisitForecastController;
 use App\Http\Controllers\PhysicalExamController;
@@ -55,6 +56,10 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'staff.verified'])->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('notifications.read');
+    Route::post('/notifications/{notification}/visit', [NotificationController::class, 'readAndVisit'])->whereUuid('notification')->name('notifications.visit');
     Route::get('/company-referrals/invitation/{token}/accept', [CompanyReferralController::class, 'accept'])
         ->middleware(['signed', 'throttle:10,1'])
         ->name('company-referrals.accept');
@@ -70,7 +75,9 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::get('/appointment', [AppointmentController::class, 'create'])->name('appointment.create');
         Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments.index');
         Route::get('/appointments/create', [AppointmentController::class, 'create'])->name('appointments.create');
-        Route::post('/appointments', [AppointmentController::class, 'store'])->name('appointments.store');
+        Route::post('/appointments', [AppointmentController::class, 'store'])
+            ->middleware('throttle:appointment-booking')
+            ->name('appointments.store');
         Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
 
         Route::get('/api/companies', [AppointmentController::class, 'getCompanies'])->name('api.companies');
@@ -155,6 +162,8 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::post('/appointments', [AppointmentController::class, 'adminStore'])->name('appointments.store');
         Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
         Route::patch('/appointments/{appointment}/status', [AppointmentController::class, 'updateStatus'])->name('appointments.update-status');
+        Route::patch('/appointments/{appointment}/approve', [AppointmentController::class, 'approve'])->name('appointments.approve');
+        Route::patch('/appointments/{appointment}/reject', [AppointmentController::class, 'reject'])->name('appointments.reject');
         Route::get('/appointments/{appointment}/physical-exam', [PhysicalExamController::class, 'create'])->name('physical-exams.edit');
         Route::post('/appointments/{appointment}/physical-exam', [PhysicalExamController::class, 'store'])->name('physical-exams.update');
         Route::get('/appointments/{appointment}/laboratory', [LaboratoryController::class, 'create'])->name('lab-results.edit');

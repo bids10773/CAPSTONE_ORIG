@@ -9,6 +9,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Appointment extends Model
 {
+    public const ACTIVE_RESERVATION_STATUSES = ['pending', 'accepted'];
+
+    public const OPEN_STATUSES = [
+        'pending', 'accepted', 'arrived', 'for_diagnostics', 'for_xray', 'for_final_evaluation',
+    ];
+
+    public const TYPES = ['individual', 'company_referral', 'company_bulk', 'walk_in'];
+
     protected static function booted(): void
     {
         static::created(function (Appointment $appointment): void {
@@ -18,6 +26,9 @@ class Appointment extends Model
         });
 
         static::updated(function (Appointment $appointment): void {
+            if ($appointment->wasChanged('status') && $appointment->status === 'cancelled') {
+                app(\App\Services\AppointmentAbuseMonitor::class)->recordCancellationIfUnusual($appointment);
+            }
             if ($appointment->wasChanged('status') && $appointment->bulk_appointment_id !== null) {
                 app(\App\Services\BulkAppointmentEnrollmentService::class)
                     ->recalculateParentStatus($appointment);
@@ -58,6 +69,10 @@ class Appointment extends Model
         'checked_in_by',
         'auto_cancelled_at',
         'cancellation_reason',
+        'rejection_reason',
+        'rejection_details',
+        'processed_by',
+        'processed_at',
         'released_from_appointment_id',
         'released_slot_assigned_at',
     ];
@@ -77,6 +92,7 @@ class Appointment extends Model
             'arrived_at' => 'datetime',
             'auto_cancelled_at' => 'datetime',
             'released_slot_assigned_at' => 'datetime',
+            'processed_at' => 'datetime',
         ];
     }
 
@@ -117,6 +133,11 @@ class Appointment extends Model
     public function checkedInBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'checked_in_by');
+    }
+
+    public function processedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'processed_by');
     }
 
     public function bulkAppointment(): BelongsTo
@@ -209,6 +230,16 @@ class Appointment extends Model
             'company_bulk' => 'Company Bulk Booking',
             'walk_in' => 'Walk-in',
         ];
+    }
+
+    public function scopeActiveReservation($query)
+    {
+        return $query->whereIn('status', self::ACTIVE_RESERVATION_STATUSES);
+    }
+
+    public function scopeOpen($query)
+    {
+        return $query->whereIn('status', self::OPEN_STATUSES);
     }
 
     /**

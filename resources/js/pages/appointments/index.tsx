@@ -13,6 +13,7 @@ import {
 import { useState, useEffect } from 'react';
 import { Pagination } from '@/components/pagination';
 import AppLayout from '@/layouts/app-layout';
+import { appointmentStatusLabel } from '@/lib/appointment-status';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
@@ -70,6 +71,7 @@ export default function AppointmentsIndex() {
             case 'completed':
                 return 'bg-emerald-50 text-emerald-700 border-emerald-200';
             case 'cancelled':
+            case 'rejected':
                 return 'bg-rose-50 text-rose-700 border-rose-200';
             default:
                 return 'bg-slate-50 text-slate-700 border-slate-200';
@@ -155,6 +157,8 @@ export default function AppointmentsIndex() {
                                 >
                                     <option value="">All Statuses</option>
                                     <option value="pending">Pending</option>
+                                    <option value="accepted">Confirmed</option>
+                                    <option value="rejected">Rejected</option>
                                     <option value="completed">Completed</option>
                                     <option value="cancelled">Cancelled</option>
                                 </select>
@@ -324,11 +328,7 @@ export default function AppointmentsIndex() {
                                                                 'cancelled' && (
                                                                 <XCircle className="h-3 w-3" />
                                                             )}
-                                                            <span className="capitalize">
-                                                                {
-                                                                    appointment.status
-                                                                }
-                                                            </span>
+                                                            <span>{appointmentStatusLabel(appointment.status)}</span>
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">

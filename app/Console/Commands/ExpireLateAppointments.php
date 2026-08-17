@@ -9,7 +9,7 @@ class ExpireLateAppointments extends Command
 {
     protected $signature = 'appointments:expire-late';
 
-    protected $description = 'Cancel unattended online appointments after their grace period and release their slots';
+    protected $description = 'Reject expired pending requests and cancel unattended confirmed appointments';
 
     public function handle(AppointmentSchedulingService $scheduling): int
     {

@@ -1,7 +1,6 @@
 import { Form, Head } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    CalendarDays,
     Check,
     ChevronDown,
     Eye,
@@ -14,6 +13,7 @@ import {
     X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import BirthdateInput from '@/components/birthdate-input';
 import InputError from '@/components/input-error';
 import TextLink from '@/components/text-link';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -138,24 +138,11 @@ export default function Register() {
                             </div>
 
                             <div className="grid gap-4 sm:grid-cols-3">
-                                <Field
-                                    label="Birthdate"
-                                    error={errors.birthdate}
-                                >
-                                    <div className="auth-input-wrap">
-                                        <CalendarDays className="auth-input-icon" />
-                                        <input
-                                            name="birthdate"
-                                            type="date"
-                                            required
-                                            max={
-                                                new Date()
-                                                    .toISOString()
-                                                    .split('T')[0]
-                                            }
-                                            className="auth-input pl-10 text-sm"
-                                        />
-                                    </div>
+                                <Field label="Birthdate">
+                                    <BirthdateInput
+                                        required
+                                        error={errors.birthdate}
+                                    />
                                 </Field>
                                 <Field label="Sex" error={errors.sex}>
                                     <div className="auth-input-wrap">

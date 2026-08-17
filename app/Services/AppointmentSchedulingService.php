@@ -6,9 +6,11 @@ use App\Models\Appointment;
 use App\Models\SecurityAudit;
 use App\Models\User;
 use App\Notifications\AppointmentAutoCancelled;
+use App\Notifications\AppointmentRejected;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class AppointmentSchedulingService
@@ -89,6 +91,11 @@ class AppointmentSchedulingService
         foreach ($ids as $id) {
             $didExpire = DB::transaction(function () use ($id, $at): bool {
                 $appointment = Appointment::query()->lockForUpdate()->find($id);
+                if ($appointment !== null && $this->shouldRejectPendingRequest($appointment, $at)) {
+                    $this->rejectExpiredRequest($appointment);
+
+                    return true;
+                }
                 if ($appointment === null || ! $this->shouldExpire($appointment, $at)) {
                     return false;
                 }
@@ -101,6 +108,46 @@ class AppointmentSchedulingService
         }
 
         return $expired;
+    }
+
+    private function shouldRejectPendingRequest(Appointment $appointment, CarbonInterface $at): bool
+    {
+        $scheduledAt = $this->scheduledAt($appointment);
+
+        return $appointment->type === 'individual'
+            && $appointment->status === 'pending'
+            && $scheduledAt !== null
+            && $at->greaterThan($scheduledAt);
+    }
+
+    private function rejectExpiredRequest(Appointment $appointment): void
+    {
+        $appointment->update([
+            'status' => 'rejected',
+            'rejection_reason' => 'schedule_expired',
+            'rejection_details' => 'The requested appointment time passed before clinic confirmation.',
+            'processed_by' => null,
+            'processed_at' => now(),
+        ]);
+
+        SecurityAudit::create([
+            'actor_id' => null,
+            'target_user_id' => $appointment->user_id,
+            'action' => 'appointment_auto_rejected',
+            'status' => 'success',
+            'metadata' => ['appointment_id' => $appointment->id, 'reason' => 'schedule_expired'],
+        ]);
+
+        DB::afterCommit(function () use ($appointment): void {
+            try {
+                $appointment->user?->notify(new AppointmentRejected($appointment->fresh()));
+            } catch (\Throwable $exception) {
+                Log::warning('Expired appointment rejection notification failed.', [
+                    'appointment_id' => $appointment->id,
+                    'exception' => $exception->getMessage(),
+                ]);
+            }
+        });
     }
 
     public function arrivalStatus(Appointment $appointment, ?CarbonInterface $at = null): string
