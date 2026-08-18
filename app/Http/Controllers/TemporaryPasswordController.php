@@ -42,7 +42,7 @@ class TemporaryPasswordController extends Controller
         $validated = $request->validate([
             'current_password' => ['required', 'string', 'current_password:web'],
             'password' => [...$this->passwordRules(), 'different:current_password'],
-        ]);
+        ], $this->passwordValidationMessages());
 
         $user->update([
             'password' => Hash::make($validated['password']),

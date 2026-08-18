@@ -1,5 +1,12 @@
 import { Form, Head } from '@inertiajs/react';
+import { Eye, EyeOff } from 'lucide-react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
+import {
+    evaluatePassword,
+    PasswordMatch,
+    PasswordRequirements,
+} from '@/components/password-requirements';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +20,13 @@ type Props = {
 };
 
 export default function ResetPassword({ token, email }: Props) {
+    const [password, setPassword] = useState('');
+    const [confirmation, setConfirmation] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmation, setShowConfirmation] = useState(false);
+    const canSubmit =
+        evaluatePassword(password).isValid && password === confirmation;
+
     return (
         <AuthLayout
             title="Reset password"
@@ -46,40 +60,71 @@ export default function ResetPassword({ token, email }: Props) {
 
                         <div className="grid gap-2">
                             <Label htmlFor="password">Password</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                name="password"
-                                autoComplete="new-password"
-                                className="mt-1 block w-full"
-                                autoFocus
-                                placeholder="Password"
-                            />
+                            <div className="relative">
+                                <Input
+                                    id="password"
+                                    type={showPassword ? 'text' : 'password'}
+                                    name="password"
+                                    value={password}
+                                    onChange={(event) =>
+                                        setPassword(event.target.value)
+                                    }
+                                    autoComplete="new-password"
+                                    className="mt-1 block w-full pr-11"
+                                    autoFocus
+                                    placeholder="Password"
+                                />
+                                <PasswordToggle
+                                    shown={showPassword}
+                                    onClick={() =>
+                                        setShowPassword((value) => !value)
+                                    }
+                                />
+                            </div>
                             <InputError message={errors.password} />
+                            <PasswordRequirements password={password} />
                         </div>
 
                         <div className="grid gap-2">
                             <Label htmlFor="password_confirmation">
                                 Confirm password
                             </Label>
-                            <Input
-                                id="password_confirmation"
-                                type="password"
-                                name="password_confirmation"
-                                autoComplete="new-password"
-                                className="mt-1 block w-full"
-                                placeholder="Confirm password"
-                            />
+                            <div className="relative">
+                                <Input
+                                    id="password_confirmation"
+                                    type={
+                                        showConfirmation ? 'text' : 'password'
+                                    }
+                                    name="password_confirmation"
+                                    value={confirmation}
+                                    onChange={(event) =>
+                                        setConfirmation(event.target.value)
+                                    }
+                                    autoComplete="new-password"
+                                    className="mt-1 block w-full pr-11"
+                                    placeholder="Confirm password"
+                                />
+                                <PasswordToggle
+                                    shown={showConfirmation}
+                                    onClick={() =>
+                                        setShowConfirmation((value) => !value)
+                                    }
+                                />
+                            </div>
                             <InputError
                                 message={errors.password_confirmation}
                                 className="mt-2"
+                            />
+                            <PasswordMatch
+                                password={password}
+                                confirmation={confirmation}
                             />
                         </div>
 
                         <Button
                             type="submit"
                             className="mt-4 w-full"
-                            disabled={processing}
+                            disabled={processing || !canSubmit}
                             data-test="reset-password-button"
                         >
                             {processing && <Spinner />}
@@ -89,5 +134,25 @@ export default function ResetPassword({ token, email }: Props) {
                 )}
             </Form>
         </AuthLayout>
+    );
+}
+
+function PasswordToggle({
+    shown,
+    onClick,
+}: {
+    shown: boolean;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="absolute top-0 right-0 flex h-full w-11 items-center justify-center text-slate-500 hover:text-slate-800"
+            aria-label={shown ? 'Hide password' : 'Show password'}
+            aria-pressed={shown}
+        >
+            {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
     );
 }

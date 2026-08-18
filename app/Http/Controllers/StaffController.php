@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\PasswordValidationRules;
 use App\Models\SecurityAudit;
 use App\Models\User;
 use App\Services\StaffCredentialService;
@@ -10,13 +11,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
 
 class StaffController extends Controller
 {
+    use PasswordValidationRules;
+
     /**
      * Display a listing of staff users.
      */
@@ -213,9 +215,9 @@ class StaffController extends Controller
             'role' => ['required', 'string', 'in:doctor,medtech,radtech,receptionist'],
             'license_no' => ['nullable', 'string', 'max:255'],
             'specialization' => ['nullable', 'string', 'max:255'],
-            'password' => ['nullable', 'confirmed', Password::defaults()],
+            'password' => $this->passwordRules(required: false),
             'is_active' => ['boolean'],
-        ]);
+        ], $this->passwordValidationMessages());
 
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();

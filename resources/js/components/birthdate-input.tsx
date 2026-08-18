@@ -14,7 +14,10 @@ function digits(value: string, maximumLength: number): string {
     return value.replace(/\D/g, '').slice(0, maximumLength);
 }
 
-function validationMessage(parts: DateParts): string | undefined {
+function validationMessage(
+    parts: DateParts,
+    minimumAge?: number,
+): string | undefined {
     if (!parts.day || !parts.month || !parts.year) {
         return 'Please complete your birthdate.';
     }
@@ -47,6 +50,21 @@ function validationMessage(parts: DateParts): string | undefined {
     if (candidate.getTime() > today) {
         return 'Birthdate cannot be in the future.';
     }
+
+    if (minimumAge !== undefined) {
+        const eligibleYear = now.getFullYear() - minimumAge;
+        let oldestEligibleBirthdate = new Date(
+            Date.UTC(eligibleYear, now.getMonth(), now.getDate()),
+        );
+        if (oldestEligibleBirthdate.getUTCMonth() !== now.getMonth()) {
+            oldestEligibleBirthdate = new Date(
+                Date.UTC(eligibleYear, now.getMonth() + 1, 0),
+            );
+        }
+        if (candidate.getTime() > oldestEligibleBirthdate.getTime()) {
+            return `You must be at least ${minimumAge} years old to create an account.`;
+        }
+    }
 }
 
 export interface BirthdateInputProps {
@@ -54,6 +72,7 @@ export interface BirthdateInputProps {
     name?: string;
     error?: string;
     required?: boolean;
+    minimumAge?: number;
     onChange?: (value: string) => void;
 }
 
@@ -62,6 +81,7 @@ export default function BirthdateInput({
     name = 'birthdate',
     error,
     required = false,
+    minimumAge,
     onChange,
 }: BirthdateInputProps) {
     const [parts, setParts] = useState(() => partsFromValue(value));
@@ -79,7 +99,9 @@ export default function BirthdateInput({
     const combined = complete
         ? `${parts.year}-${parts.month}-${parts.day}`
         : '';
-    const currentValidation = complete ? validationMessage(parts) : undefined;
+    const currentValidation = complete
+        ? validationMessage(parts, minimumAge)
+        : undefined;
 
     useEffect(() => {
         const message = currentValidation ?? '';
@@ -109,7 +131,7 @@ export default function BirthdateInput({
 
     function validateVisibleValue() {
         if (parts.day || parts.month || parts.year) {
-            setLocalError(validationMessage(parts));
+            setLocalError(validationMessage(parts, minimumAge));
         }
     }
 
@@ -175,7 +197,9 @@ export default function BirthdateInput({
                             }
                             onBlur={validateVisibleValue}
                             onInvalid={() =>
-                                setLocalError(validationMessage(parts))
+                                setLocalError(
+                                    validationMessage(parts, minimumAge),
+                                )
                             }
                             onKeyDown={(event) => {
                                 if (
@@ -194,7 +218,9 @@ export default function BirthdateInput({
                 ))}
             </div>
             <p id={helpId} className="mt-1.5 text-[11px] text-slate-400">
-                Example: 18 / 08 / 2003
+                {minimumAge
+                    ? `You must be at least ${minimumAge} years old.`
+                    : 'Example: 18 / 08 / 2003'}
             </p>
             <div id={errorId} aria-live="polite">
                 <InputError message={error || localError} />

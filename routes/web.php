@@ -157,6 +157,7 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
             ->name('staff.resend-credentials');
 
         Route::get('/appointments', [AppointmentController::class, 'adminIndex'])->name('appointments.index');
+        Route::get('/todays-appointments', [AppointmentController::class, 'today'])->name('appointments.today');
         Route::get('/bulk-appointments', [AppointmentController::class, 'adminIndex'])->name('bulk-appointments.index');
         Route::get('/appointments/create', [AppointmentController::class, 'adminCreate'])->name('appointments.create');
         Route::post('/appointments', [AppointmentController::class, 'adminStore'])->name('appointments.store');

@@ -2,8 +2,8 @@
 
 namespace App\Concerns;
 
+use App\Rules\PasswordComplexity;
 use Illuminate\Contracts\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 
 trait PasswordValidationRules
 {
@@ -12,9 +12,28 @@ trait PasswordValidationRules
      *
      * @return array<int, Rule|array<mixed>|string>
      */
-    protected function passwordRules(): array
+    protected function passwordRules(bool $required = true): array
     {
-        return ['required', 'string', Password::default(), 'confirmed'];
+        return [
+            $required ? 'required' : 'nullable',
+            'string',
+            'min:8',
+            new PasswordComplexity,
+            'confirmed',
+        ];
+    }
+
+    /**
+     * Get the user-facing messages shared by password creation flows.
+     *
+     * @return array<string, string>
+     */
+    protected function passwordValidationMessages(): array
+    {
+        return [
+            'password.min' => 'Password must be at least 8 characters long.',
+            'password.confirmed' => 'Passwords do not match.',
+        ];
     }
 
     /**

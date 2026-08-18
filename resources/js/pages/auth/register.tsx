@@ -1,7 +1,6 @@
 import { Form, Head } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    Check,
     ChevronDown,
     Eye,
     EyeOff,
@@ -12,9 +11,14 @@ import {
     UserRound,
     X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import BirthdateInput from '@/components/birthdate-input';
 import InputError from '@/components/input-error';
+import {
+    evaluatePassword,
+    PasswordMatch,
+    PasswordRequirements,
+} from '@/components/password-requirements';
 import TextLink from '@/components/text-link';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
@@ -30,17 +34,8 @@ export default function Register() {
     const [password, setPassword] = useState('');
     const [confirmation, setConfirmation] = useState('');
 
-    const strength = useMemo(() => {
-        let score = 0;
-        if (password.length >= 8) score++;
-        if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
-        if (/\d/.test(password)) score++;
-        if (/[^A-Za-z0-9]/.test(password)) score++;
-        return score;
-    }, [password]);
-
-    const strengthLabel = ['', 'Weak', 'Fair', 'Good', 'Strong'][strength];
     const matches = confirmation.length > 0 && password === confirmation;
+    const passwordIsValid = evaluatePassword(password).isValid;
 
     return (
         <>
@@ -141,6 +136,7 @@ export default function Register() {
                                 <Field label="Birthdate">
                                     <BirthdateInput
                                         required
+                                        minimumAge={18}
                                         error={errors.birthdate}
                                     />
                                 </Field>
@@ -236,24 +232,7 @@ export default function Register() {
                                             }
                                         />
                                     </div>
-                                    {password && (
-                                        <div className="mt-2">
-                                            <div
-                                                className="flex gap-1"
-                                                aria-label={`Password strength: ${strengthLabel}`}
-                                            >
-                                                {[1, 2, 3, 4].map((level) => (
-                                                    <span
-                                                        key={level}
-                                                        className={`h-1 flex-1 rounded-full transition-colors ${level <= strength ? (strength < 3 ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200'}`}
-                                                    />
-                                                ))}
-                                            </div>
-                                            <p className="mt-1.5 text-[11px] text-slate-500">
-                                                {strengthLabel} password
-                                            </p>
-                                        </div>
-                                    )}
+                                    <PasswordRequirements password={password} />
                                 </Field>
                                 <Field
                                     label="Confirm password"
@@ -284,18 +263,10 @@ export default function Register() {
                                             }
                                         />
                                     </div>
-                                    {confirmation && (
-                                        <p
-                                            className={`mt-1.5 flex items-center gap-1 text-[11px] ${matches ? 'text-emerald-600' : 'text-red-600'}`}
-                                        >
-                                            {matches && (
-                                                <Check className="size-3" />
-                                            )}
-                                            {matches
-                                                ? 'Passwords match'
-                                                : 'Passwords do not match'}
-                                        </p>
-                                    )}
+                                    <PasswordMatch
+                                        password={password}
+                                        confirmation={confirmation}
+                                    />
                                 </Field>
                             </div>
 
@@ -331,7 +302,8 @@ export default function Register() {
                                 disabled={
                                     processing ||
                                     !acceptedTerms ||
-                                    (!!confirmation && !matches)
+                                    !passwordIsValid ||
+                                    !matches
                                 }
                                 className="auth-primary-button"
                             >

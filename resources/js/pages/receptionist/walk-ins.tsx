@@ -480,7 +480,11 @@ export default function WalkIns({
                                                 'Walk-in patient'}
                                         </p>
                                         <span className="mt-1 inline-flex rounded-full bg-moss-50 px-2 py-1 text-[11px] font-bold text-moss-700">
-                                            {arrivalLabels[walkIn.arrival_status]}
+                                            {
+                                                arrivalLabels[
+                                                    walkIn.arrival_status
+                                                ]
+                                            }
                                         </span>
                                     </div>
                                     <div className="flex flex-wrap gap-1">
@@ -496,6 +500,23 @@ export default function WalkIns({
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        {['pending', 'accepted'].includes(
+                                            walkIn.status,
+                                        ) && (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    updateStatus(
+                                                        walkIn,
+                                                        'arrived',
+                                                    )
+                                                }
+                                                className="inline-flex items-center gap-1 rounded-xl bg-moss-700 px-3 py-2 text-xs font-bold text-white hover:bg-moss-800"
+                                            >
+                                                <Check className="size-3.5" />
+                                                Mark Arrived
+                                            </button>
+                                        )}
                                         <select
                                             value={walkIn.status}
                                             onChange={(e) =>
@@ -569,7 +590,9 @@ export default function WalkIns({
                                     </span>
                                     <span className="text-sm text-slate-500">
                                         {appointment.cancellation_reason ??
-                                            appointment.service_types.join(', ')}
+                                            appointment.service_types.join(
+                                                ', ',
+                                            )}
                                     </span>
                                     <span
                                         className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${statusStyles[appointment.status]}`}

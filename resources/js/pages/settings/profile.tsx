@@ -1,6 +1,5 @@
 import { Form, Head, Link, useForm, usePage } from '@inertiajs/react';
 import {
-    Check,
     CheckCircle2,
     Eye,
     EyeOff,
@@ -15,6 +14,11 @@ import {
 import { useState } from 'react';
 import BirthdateInput from '@/components/birthdate-input';
 import InputError from '@/components/input-error';
+import {
+    evaluatePassword,
+    PasswordMatch,
+    PasswordRequirements,
+} from '@/components/password-requirements';
 import TwoFactorRecoveryCodes from '@/components/two-factor-recovery-codes';
 import TwoFactorSetupModal from '@/components/two-factor-setup-modal';
 import { Badge } from '@/components/ui/badge';
@@ -98,16 +102,9 @@ export default function Profile({
         password_confirmation: '',
     });
     const twoFactor = useTwoFactorAuth();
-    const passwordStrength = [
-        passwordForm.data.password.length >= 8,
-        /[A-Z]/.test(passwordForm.data.password) &&
-            /[a-z]/.test(passwordForm.data.password),
-        /\d/.test(passwordForm.data.password),
-        /[^A-Za-z0-9]/.test(passwordForm.data.password),
-    ].filter(Boolean).length;
-    const passwordStrengthLabel = ['', 'Weak', 'Fair', 'Good', 'Strong'][
-        passwordStrength
-    ];
+    const passwordIsValid = evaluatePassword(
+        passwordForm.data.password,
+    ).isValid;
     const passwordsMatch =
         passwordForm.data.password_confirmation.length > 0 &&
         passwordForm.data.password === passwordForm.data.password_confirmation;
@@ -472,24 +469,9 @@ export default function Profile({
                                         error={passwordForm.errors.password}
                                         autoComplete="new-password"
                                     />
-                                    {passwordForm.data.password && (
-                                        <div className="mt-2">
-                                            <div
-                                                className="flex gap-1"
-                                                aria-label={`Password strength: ${passwordStrengthLabel}`}
-                                            >
-                                                {[1, 2, 3, 4].map((level) => (
-                                                    <span
-                                                        key={level}
-                                                        className={`h-1 flex-1 rounded-full ${level <= passwordStrength ? (passwordStrength < 3 ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-slate-200'}`}
-                                                    />
-                                                ))}
-                                            </div>
-                                            <p className="mt-1.5 text-[11px] text-slate-500">
-                                                {passwordStrengthLabel} password
-                                            </p>
-                                        </div>
-                                    )}
+                                    <PasswordRequirements
+                                        password={passwordForm.data.password}
+                                    />
                                 </div>
                                 <div>
                                     <PasswordField
@@ -521,19 +503,13 @@ export default function Profile({
                                             !passwordsMatch,
                                         )}
                                     />
-                                    {passwordForm.data
-                                        .password_confirmation && (
-                                        <p
-                                            className={`mt-1.5 flex items-center gap-1 text-[11px] ${passwordsMatch ? 'text-emerald-600' : 'text-red-600'}`}
-                                        >
-                                            {passwordsMatch && (
-                                                <Check className="size-3" />
-                                            )}
-                                            {passwordsMatch
-                                                ? 'Passwords match'
-                                                : 'Passwords do not match'}
-                                        </p>
-                                    )}
+                                    <PasswordMatch
+                                        password={passwordForm.data.password}
+                                        confirmation={
+                                            passwordForm.data
+                                                .password_confirmation
+                                        }
+                                    />
                                 </div>
                             </div>
                             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -549,6 +525,7 @@ export default function Profile({
                                     type="submit"
                                     disabled={
                                         passwordForm.processing ||
+                                        !passwordIsValid ||
                                         !passwordsMatch
                                     }
                                 >

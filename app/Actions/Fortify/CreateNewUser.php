@@ -44,12 +44,24 @@ class CreateNewUser implements CreatesNewUsers
                 }
             }],
 
-            'birthdate' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'birthdate' => [
+                'bail',
+                'required',
+                'date_format:Y-m-d',
+                'before_or_equal:today',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $birthdate = \Carbon\CarbonImmutable::createFromFormat('Y-m-d', (string) $value)->startOfDay();
+                    if ($birthdate !== false && ! $birthdate->isFuture() && $birthdate->gt(today()->subYearsNoOverflow(18))) {
+                        $fail('You must be at least 18 years old to create an account.');
+                    }
+                },
+            ],
             'sex' => ['required', 'string'],
             'civil_status' => ['required', 'string'],
 
             'password' => $this->passwordRules(),
         ], [
+            ...$this->passwordValidationMessages(),
             'birthdate.required' => 'Please complete your birthdate.',
             'birthdate.date_format' => 'Please enter a valid birthdate.',
             'birthdate.before_or_equal' => 'Birthdate cannot be in the future.',

@@ -1,10 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { useState } from 'react';
-import heroImage from '/resources/images/bgpic.jpg';
-import doctorImage from '/resources/images/Doctor.png';
-import clinicImage from '/resources/images/smallpic.jpg';
-import logo from '/resources/images/full_logo2.png';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
     Activity,
     ArrowRight,
@@ -13,13 +8,14 @@ import {
     CalendarCheck,
     Check,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     Clock3,
     FileCheck2,
     HeartPulse,
     Mail,
     MapPin,
     Menu,
-    MonitorSmartphone,
     Phone,
     ShieldCheck,
     Stethoscope,
@@ -27,6 +23,9 @@ import {
     UsersRound,
     X,
 } from 'lucide-react';
+import { useState } from 'react';
+import { Reveal, StaggerGroup, StaggerItem } from '@/components/motion';
+import logo from '/resources/images/full_logo2.png';
 
 const services = [
     {
@@ -59,11 +58,24 @@ const services = [
         short: 'VAX',
         text: 'Workplace immunization plans that keep teams protected.',
     },
+];
+
+const clinicGallery = [
     {
-        icon: MonitorSmartphone,
-        title: 'Teleconsultation',
-        short: '24/7',
-        text: 'Convenient virtual care and follow-up for your employees.',
+        src: '/images/lmic3.png',
+        alt: 'Vision examination area inside Living Myth clinic',
+    },
+    {
+        src: '/images/lmic4.png',
+        alt: 'Patient waiting area inside Living Myth clinic',
+    },
+    {
+        src: '/images/lmic5.png',
+        alt: 'Patient completing clinic documents at the service counter',
+    },
+    {
+        src: '/images/lmic7.png',
+        alt: 'Patient care and waiting area at Living Myth clinic',
     },
 ];
 
@@ -117,6 +129,32 @@ function SectionTitle({
     );
 }
 
+function ContactDetail({
+    icon: Icon,
+    label,
+    value,
+}: {
+    icon: React.ComponentType<{ className?: string; size?: number }>;
+    label: string;
+    value: string;
+}) {
+    return (
+        <div className="flex gap-3.5">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-moss-200">
+                <Icon size={18} aria-hidden="true" />
+            </span>
+            <div>
+                <dt className="text-xs font-bold tracking-wide text-moss-200 uppercase">
+                    {label}
+                </dt>
+                <dd className="mt-1 text-sm leading-6 font-semibold text-white">
+                    {value}
+                </dd>
+            </div>
+        </div>
+    );
+}
+
 function Navbar() {
     const [open, setOpen] = useState(false);
     const links = [
@@ -155,7 +193,7 @@ function Navbar() {
                             <a
                                 key={name}
                                 href={href}
-                                className="text-sm font-semibold text-slate-600 transition hover:text-moss-700"
+                                className="relative py-2 text-sm font-semibold text-slate-600 transition-colors after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-moss-600 after:transition-transform after:duration-200 hover:text-moss-700 hover:after:scale-x-100"
                             >
                                 {name}
                             </a>
@@ -164,20 +202,20 @@ function Navbar() {
                     <div className="hidden items-center gap-3 sm:flex">
                         <Link
                             href="/login"
-                            className="px-3 py-2 text-sm font-bold text-slate-700 transition hover:text-moss-700"
+                            className="motion-press px-3 py-2 text-sm font-bold text-slate-700 transition hover:text-moss-700"
                         >
                             Login
                         </Link>
-                        <a
-                            href="#contact"
-                            className="rounded-xl bg-moss-800 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-moss-900/10 transition hover:-translate-y-0.5 hover:bg-moss-700"
+                        <Link
+                            href="/register"
+                            className="motion-press rounded-xl bg-moss-800 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-moss-900/10 transition hover:-translate-y-0.5 hover:bg-moss-700"
                         >
                             Book a consultation
-                        </a>
+                        </Link>
                     </div>
                     <button
                         onClick={() => setOpen(!open)}
-                        className="grid h-10 w-10 place-items-center rounded-xl text-slate-800 sm:hidden"
+                        className="motion-press grid h-10 w-10 place-items-center rounded-xl text-slate-800 sm:hidden"
                         aria-label="Toggle navigation"
                     >
                         {open ? <X size={21} /> : <Menu size={21} />}
@@ -217,6 +255,25 @@ function Navbar() {
 
 export default function Welcome() {
     const [faq, setFaq] = useState<number | null>(0);
+    const [galleryIndex, setGalleryIndex] = useState(0);
+    const reduceMotion = useReducedMotion();
+    const heroItem = {
+        hidden: reduceMotion ? {} : { opacity: 0, y: 12 },
+        visible: { opacity: 1, y: 0 },
+    };
+
+    const showPreviousPhoto = () => {
+        setGalleryIndex((current) =>
+            current === 0 ? clinicGallery.length - 1 : current - 1,
+        );
+    };
+
+    const showNextPhoto = () => {
+        setGalleryIndex((current) =>
+            current === clinicGallery.length - 1 ? 0 : current + 1,
+        );
+    };
+
     return (
         <>
             <Head title="Occupational Health & Corporate Care">
@@ -231,45 +288,78 @@ export default function Welcome() {
                     <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_82%_20%,rgba(168,195,160,.18),transparent_24rem),radial-gradient(circle_at_14%_85%,rgba(14,116,144,.12),transparent_26rem)]" />
                     <div className="mx-auto grid max-w-7xl gap-12 px-5 pb-14 sm:px-7 lg:grid-cols-[1.04fr_.96fr] lg:items-center lg:gap-10 lg:pb-20">
                         <motion.div
-                            initial={{ opacity: 0, y: 18 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.65 }}
+                            initial="hidden"
+                            animate="visible"
+                            transition={{
+                                staggerChildren: reduceMotion ? 0 : 0.08,
+                                delayChildren: reduceMotion ? 0 : 0.04,
+                            }}
                             className="pt-10 lg:pt-16"
                         >
-                            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-moss-200 bg-white px-3 py-1.5 text-xs font-bold text-moss-800 shadow-sm">
+                            <motion.div
+                                variants={heroItem}
+                                transition={{
+                                    duration: reduceMotion ? 0 : 0.36,
+                                }}
+                                className="mb-7 inline-flex items-center gap-2 rounded-full border border-moss-200 bg-white px-3 py-1.5 text-xs font-bold text-moss-800 shadow-sm"
+                            >
                                 <ShieldCheck size={14} /> Occupational health,
                                 done right
-                            </div>
-                            <h1 className="max-w-3xl text-4xl leading-[1.06] font-extrabold tracking-[-0.052em] text-slate-950 sm:text-5xl xl:text-[4.2rem]">
+                            </motion.div>
+                            <motion.h1
+                                variants={heroItem}
+                                transition={{
+                                    duration: reduceMotion ? 0 : 0.36,
+                                }}
+                                className="max-w-3xl text-4xl leading-[1.06] font-extrabold tracking-[-0.052em] text-slate-950 sm:text-5xl xl:text-[4.2rem]"
+                            >
                                 Healthier people.{' '}
                                 <span className="text-moss-700">
                                     Safer operations.
                                 </span>
-                            </h1>
-                            <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
+                            </motion.h1>
+                            <motion.p
+                                variants={heroItem}
+                                transition={{
+                                    duration: reduceMotion ? 0 : 0.36,
+                                }}
+                                className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg"
+                            >
                                 A trusted healthcare partner for companies that
                                 put their people, performance, and compliance
                                 first.
-                            </p>
-                            <div className="mt-8 flex flex-wrap gap-3">
-                                <a
-                                    href="#contact"
-                                    className="group inline-flex items-center gap-2 rounded-xl bg-moss-700 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-moss-800/20 transition hover:-translate-y-0.5 hover:bg-moss-800"
+                            </motion.p>
+                            <motion.div
+                                variants={heroItem}
+                                transition={{
+                                    duration: reduceMotion ? 0 : 0.36,
+                                }}
+                                className="mt-8 flex flex-wrap gap-3"
+                            >
+                                <Link
+                                    href="/register"
+                                    className="motion-press group inline-flex items-center gap-2 rounded-xl bg-moss-700 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-moss-800/20 transition hover:-translate-y-0.5 hover:bg-moss-800"
                                 >
                                     Book a Consultation{' '}
                                     <ArrowRight
                                         size={16}
                                         className="transition group-hover:translate-x-1"
                                     />
-                                </a>
+                                </Link>
                                 <a
                                     href="#services"
-                                    className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3.5 text-sm font-bold text-slate-800 transition hover:border-moss-600 hover:text-moss-700"
+                                    className="motion-press inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3.5 text-sm font-bold text-slate-800 transition hover:border-moss-600 hover:text-moss-700"
                                 >
                                     Explore services <ArrowRight size={16} />
                                 </a>
-                            </div>
-                            <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4 border-t border-slate-200 pt-6">
+                            </motion.div>
+                            <motion.div
+                                variants={heroItem}
+                                transition={{
+                                    duration: reduceMotion ? 0 : 0.36,
+                                }}
+                                className="mt-10 flex flex-wrap gap-x-8 gap-y-4 border-t border-slate-200 pt-6"
+                            >
                                 <span className="flex items-center gap-2 text-sm font-semibold text-slate-600">
                                     <Check
                                         size={17}
@@ -291,18 +381,25 @@ export default function Welcome() {
                                     />{' '}
                                     Digital records
                                 </span>
-                            </div>
+                            </motion.div>
                         </motion.div>
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.96 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.7, delay: 0.12 }}
+                            initial={
+                                reduceMotion
+                                    ? false
+                                    : { opacity: 0, y: 12, scale: 0.98 }
+                            }
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            transition={{
+                                duration: reduceMotion ? 0 : 0.42,
+                                delay: reduceMotion ? 0 : 0.22,
+                            }}
                             className="relative mx-auto w-full max-w-xl lg:max-w-none"
                         >
                             <div className="relative overflow-hidden rounded-[2rem] bg-slate-300 shadow-2xl shadow-moss-900/10">
                                 <img
-                                    src={heroImage}
-                                    alt="Professional healthcare team at work"
+                                    src="/images/lmic1.png"
+                                    alt="Living Myth clinician consulting with a patient"
                                     className="h-[390px] w-full object-cover sm:h-[500px]"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent" />
@@ -344,13 +441,16 @@ export default function Welcome() {
                 </section>
 
                 <section id="about" className="py-20 sm:py-28">
-                    <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-7 lg:grid-cols-[.82fr_1.18fr] lg:items-center">
-                        <div className="relative">
+                    <Reveal className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-7 lg:grid-cols-[.82fr_1.18fr] lg:items-center">
+                        <div className="group relative overflow-hidden rounded-[1.75rem] bg-moss-50 shadow-xl shadow-moss-900/10">
                             <img
-                                src={clinicImage}
-                                alt="Living Myth clinic care environment"
-                                className="h-80 w-full rounded-[1.75rem] object-cover sm:h-[400px]"
+                                src="/images/lmic6.png"
+                                alt="Living Myth clinic reception staff assisting a patient"
+                                loading="lazy"
+                                decoding="async"
+                                className="h-80 w-full object-cover object-center transition duration-700 group-hover:scale-[1.02] sm:h-[400px]"
                             />
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/20 via-transparent to-transparent" />
                             <div className="absolute right-5 bottom-5 rounded-2xl bg-moss-700 px-5 py-4 text-white shadow-xl">
                                 <strong className="block text-3xl tracking-tight">
                                     8+
@@ -406,11 +506,116 @@ export default function Welcome() {
                                 ))}
                             </div>
                         </div>
-                    </div>
+                    </Reveal>
+                </section>
+
+                <section
+                    aria-labelledby="clinic-gallery-title"
+                    className="border-y border-slate-200 bg-[#f4f7f3] py-20 sm:py-24"
+                >
+                    <Reveal className="mx-auto max-w-7xl px-5 sm:px-7">
+                        <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
+                            <div>
+                                <p className="mb-4 text-xs font-bold tracking-[.18em] text-moss-700 uppercase">
+                                    Inside our clinic
+                                </p>
+                                <h2
+                                    id="clinic-gallery-title"
+                                    className="max-w-xl text-3xl font-extrabold tracking-[-.035em] text-slate-950 sm:text-4xl"
+                                >
+                                    A closer look at where care happens.
+                                </h2>
+                            </div>
+                            <p className="max-w-md text-sm leading-6 text-slate-600">
+                                Real moments from our clinic—from reception and
+                                patient assistance to examinations and
+                                consultations.
+                            </p>
+                        </div>
+
+                        <div className="relative mt-10 overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-xl shadow-moss-900/10">
+                            <AnimatePresence mode="wait">
+                                <motion.figure
+                                    key={clinicGallery[galleryIndex].src}
+                                    initial={{ opacity: 0, x: 28 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -28 }}
+                                    transition={{ duration: 0.3 }}
+                                    drag="x"
+                                    dragConstraints={{ left: 0, right: 0 }}
+                                    dragElastic={0.15}
+                                    onDragEnd={(_, info) => {
+                                        if (info.offset.x < -60) {
+                                            showNextPhoto();
+                                        } else if (info.offset.x > 60) {
+                                            showPreviousPhoto();
+                                        }
+                                    }}
+                                    className="relative aspect-[4/3] cursor-grab overflow-hidden bg-moss-50 active:cursor-grabbing sm:aspect-[16/9]"
+                                    aria-live="polite"
+                                >
+                                    <img
+                                        src={clinicGallery[galleryIndex].src}
+                                        alt={clinicGallery[galleryIndex].alt}
+                                        loading="lazy"
+                                        decoding="async"
+                                        className="h-full w-full object-cover select-none"
+                                        draggable={false}
+                                    />
+                                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/45 via-transparent to-transparent" />
+                                    <figcaption className="absolute right-5 bottom-5 left-5 text-sm font-bold text-white sm:right-7 sm:bottom-7 sm:left-7">
+                                        Photo {galleryIndex + 1} of{' '}
+                                        {clinicGallery.length}
+                                    </figcaption>
+                                </motion.figure>
+                            </AnimatePresence>
+
+                            <button
+                                type="button"
+                                onClick={showPreviousPhoto}
+                                aria-label="Show previous clinic photo"
+                                className="absolute top-1/2 left-3 grid size-11 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-white/90 text-slate-900 shadow-lg backdrop-blur transition hover:bg-white focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 focus-visible:outline-none sm:left-5"
+                            >
+                                <ChevronLeft size={21} aria-hidden="true" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={showNextPhoto}
+                                aria-label="Show next clinic photo"
+                                className="absolute top-1/2 right-3 grid size-11 -translate-y-1/2 place-items-center rounded-full border border-white/70 bg-white/90 text-slate-900 shadow-lg backdrop-blur transition hover:bg-white focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 focus-visible:outline-none sm:right-5"
+                            >
+                                <ChevronRight size={21} aria-hidden="true" />
+                            </button>
+                        </div>
+
+                        <div
+                            className="mt-5 flex justify-center gap-2"
+                            aria-label="Choose a clinic photo"
+                        >
+                            {clinicGallery.map((photo, index) => (
+                                <button
+                                    key={photo.src}
+                                    type="button"
+                                    onClick={() => setGalleryIndex(index)}
+                                    aria-label={`Show clinic photo ${index + 1}`}
+                                    aria-current={
+                                        galleryIndex === index
+                                            ? 'true'
+                                            : undefined
+                                    }
+                                    className={`h-2.5 rounded-full transition-all focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                                        galleryIndex === index
+                                            ? 'w-8 bg-moss-700'
+                                            : 'w-2.5 bg-moss-300 hover:bg-moss-500'
+                                    }`}
+                                />
+                            ))}
+                        </div>
+                    </Reveal>
                 </section>
 
                 <section id="services" className="bg-moss-800 py-20 sm:py-28">
-                    <div className="mx-auto max-w-7xl px-5 sm:px-7">
+                    <Reveal className="mx-auto max-w-7xl px-5 sm:px-7">
                         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
                             <div>
                                 <p className="mb-4 text-xs font-bold tracking-[.18em] text-moss-300 uppercase">
@@ -427,40 +632,42 @@ export default function Welcome() {
                                 Talk to our team <ArrowRight size={16} />
                             </a>
                         </div>
-                        <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <StaggerGroup className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {services.map(
                                 ({ icon: Icon, title, short, text }) => (
-                                    <motion.article
-                                        whileHover={{ y: -4 }}
-                                        key={short}
-                                        className="group rounded-2xl border border-white/10 bg-white/[.045] p-6 transition hover:border-moss-400/40 hover:bg-white/[.08]"
-                                    >
-                                        <div className="flex items-start justify-between">
-                                            <span className="grid h-11 w-11 place-items-center rounded-xl bg-moss-400/10 text-moss-300">
-                                                <Icon size={21} />
+                                    <StaggerItem key={short}>
+                                        <motion.article
+                                            whileHover={{ y: -4 }}
+                                            className="group h-full rounded-2xl border border-white/10 bg-white/[.045] p-6 transition hover:border-moss-400/40 hover:bg-white/[.08]"
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <span className="grid h-11 w-11 place-items-center rounded-xl bg-moss-400/10 text-moss-300">
+                                                    <Icon size={21} />
+                                                </span>
+                                                <span className="text-xs font-extrabold tracking-wider text-slate-500">
+                                                    {short}
+                                                </span>
+                                            </div>
+                                            <h3 className="mt-7 text-lg font-bold text-white">
+                                                {title}
+                                            </h3>
+                                            <p className="mt-3 text-sm leading-6 text-slate-400">
+                                                {text}
+                                            </p>
+                                            <span className="mt-5 inline-flex items-center gap-1 text-xs font-bold text-moss-300 opacity-0 transition group-hover:opacity-100">
+                                                Learn more{' '}
+                                                <ArrowRight size={13} />
                                             </span>
-                                            <span className="text-xs font-extrabold tracking-wider text-slate-500">
-                                                {short}
-                                            </span>
-                                        </div>
-                                        <h3 className="mt-7 text-lg font-bold text-white">
-                                            {title}
-                                        </h3>
-                                        <p className="mt-3 text-sm leading-6 text-slate-400">
-                                            {text}
-                                        </p>
-                                        <span className="mt-5 inline-flex items-center gap-1 text-xs font-bold text-moss-300 opacity-0 transition group-hover:opacity-100">
-                                            Learn more <ArrowRight size={13} />
-                                        </span>
-                                    </motion.article>
+                                        </motion.article>
+                                    </StaggerItem>
                                 ),
                             )}
-                        </div>
-                    </div>
+                        </StaggerGroup>
+                    </Reveal>
                 </section>
 
                 <section id="corporate" className="py-20 sm:py-28">
-                    <div className="mx-auto max-w-7xl px-5 sm:px-7">
+                    <Reveal className="mx-auto max-w-7xl px-5 sm:px-7">
                         <SectionTitle
                             eyebrow="Corporate solutions"
                             title="One healthcare partner. A stronger workforce."
@@ -504,9 +711,11 @@ export default function Welcome() {
                             </div>
                             <div className="relative min-h-80">
                                 <img
-                                    src={doctorImage}
-                                    alt="Clinic doctor ready to support corporate employees"
-                                    className="absolute inset-0 h-full w-full object-cover object-top"
+                                    src="/images/lmic2.png"
+                                    alt="Living Myth clinic staff assisting a patient at the service window"
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="absolute inset-0 h-full w-full object-cover object-center"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/50 to-transparent" />
                                 <p className="absolute right-7 bottom-7 left-7 text-lg leading-snug font-bold text-white">
@@ -515,17 +724,17 @@ export default function Welcome() {
                                 </p>
                             </div>
                         </div>
-                    </div>
+                    </Reveal>
                 </section>
 
                 <section className="border-y border-slate-200 bg-slate-50 py-20 sm:py-24">
-                    <div className="mx-auto max-w-7xl px-5 sm:px-7">
+                    <Reveal className="mx-auto max-w-7xl px-5 sm:px-7">
                         <SectionTitle
                             centered
                             eyebrow="Simple by design"
                             title="From inquiry to results, without the friction."
                         />
-                        <div className="mt-12 grid gap-7 md:grid-cols-4">
+                        <StaggerGroup className="mt-12 grid gap-7 md:grid-cols-4">
                             {[
                                 [
                                     '01',
@@ -548,7 +757,7 @@ export default function Welcome() {
                                     'Get clear, timely reports through your designated channel.',
                                 ],
                             ].map(([num, title, text], i) => (
-                                <div key={num} className="relative">
+                                <StaggerItem key={num} className="relative">
                                     <span className="text-5xl font-extrabold tracking-[-.07em] text-moss-100">
                                         {num}
                                     </span>
@@ -561,20 +770,20 @@ export default function Welcome() {
                                     <p className="mt-2 text-sm leading-6 text-slate-500">
                                         {text}
                                     </p>
-                                </div>
+                                </StaggerItem>
                             ))}
-                        </div>
-                    </div>
+                        </StaggerGroup>
+                    </Reveal>
                 </section>
 
                 <section className="py-20 sm:py-28">
-                    <div className="mx-auto max-w-7xl px-5 sm:px-7">
+                    <Reveal className="mx-auto max-w-7xl px-5 sm:px-7">
                         <SectionTitle
                             centered
                             eyebrow="Client voices"
                             title="Trusted by the people behind great teams."
                         />
-                        <div className="mt-12 grid gap-5 lg:grid-cols-3">
+                        <StaggerGroup className="mt-12 grid gap-5 lg:grid-cols-3">
                             {[
                                 [
                                     '“Their process is incredibly organized. We can manage our annual exams with confidence and minimal downtime.”',
@@ -592,32 +801,31 @@ export default function Welcome() {
                                     'People Operations Lead',
                                 ],
                             ].map(([quote, name, role]) => (
-                                <blockquote
-                                    key={name}
-                                    className="rounded-2xl border border-slate-200 p-7 shadow-sm"
-                                >
-                                    <div className="mb-6 text-lg tracking-[.18em] text-moss-500">
-                                        ★★★★★
-                                    </div>
-                                    <p className="text-base leading-7 text-slate-700">
-                                        {quote}
-                                    </p>
-                                    <footer className="mt-7 border-t border-slate-100 pt-5">
-                                        <strong className="block text-sm text-slate-950">
-                                            {name}
-                                        </strong>
-                                        <span className="mt-1 block text-xs text-slate-500">
-                                            {role}
-                                        </span>
-                                    </footer>
-                                </blockquote>
+                                <StaggerItem key={name}>
+                                    <blockquote className="h-full rounded-2xl border border-slate-200 p-7 shadow-sm transition-colors hover:border-moss-200">
+                                        <div className="mb-6 text-lg tracking-[.18em] text-moss-500">
+                                            ★★★★★
+                                        </div>
+                                        <p className="text-base leading-7 text-slate-700">
+                                            {quote}
+                                        </p>
+                                        <footer className="mt-7 border-t border-slate-100 pt-5">
+                                            <strong className="block text-sm text-slate-950">
+                                                {name}
+                                            </strong>
+                                            <span className="mt-1 block text-xs text-slate-500">
+                                                {role}
+                                            </span>
+                                        </footer>
+                                    </blockquote>
+                                </StaggerItem>
                             ))}
-                        </div>
-                    </div>
+                        </StaggerGroup>
+                    </Reveal>
                 </section>
 
                 <section className="bg-moss-50 py-20 sm:py-24">
-                    <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-7 lg:grid-cols-2">
+                    <Reveal className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-7 lg:grid-cols-2">
                         <SectionTitle
                             eyebrow="Frequently asked questions"
                             title="Straight answers for smarter planning."
@@ -658,114 +866,96 @@ export default function Welcome() {
                                 </div>
                             ))}
                         </div>
-                    </div>
+                    </Reveal>
                 </section>
 
                 <section
                     id="contact"
-                    className="bg-moss-800 py-20 text-white sm:py-28"
+                    className="relative isolate overflow-hidden bg-moss-900 py-20 text-white sm:py-28"
+                    style={{
+                        backgroundImage: "url('/images/BGofMaps.png')",
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
+                    }}
                 >
-                    <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-7 lg:grid-cols-[.9fr_1.1fr]">
-                        <div>
-                            <p className="mb-4 text-xs font-bold tracking-[.18em] text-moss-300 uppercase">
-                                Let’s talk
+                    <div
+                        className="absolute inset-0 -z-10 bg-moss-950/75"
+                        aria-hidden="true"
+                    />
+                    <div
+                        className="absolute inset-0 -z-10 bg-gradient-to-r from-moss-950/50 via-transparent to-moss-950/30"
+                        aria-hidden="true"
+                    />
+                    <div className="mx-auto max-w-7xl px-5 sm:px-7">
+                        <Reveal className="mx-auto max-w-2xl text-center">
+                            <p className="text-xs font-bold tracking-[.18em] text-moss-200 uppercase">
+                                Contact · Find us
                             </p>
-                            <h2 className="text-3xl font-extrabold tracking-[-.04em] sm:text-4xl">
-                                Ready to care for your workforce better?
+                            <h2 className="mt-4 text-3xl font-extrabold tracking-[-.04em] sm:text-4xl">
+                                Visit Living Myth Industrial Clinic
                             </h2>
-                            <p className="mt-5 max-w-md leading-7 text-slate-400">
-                                Tell us about your organization and our
-                                corporate care team will be in touch within one
-                                business day.
+                            <p className="mx-auto mt-4 max-w-xl leading-7 text-white/80">
+                                Find us at Serafin Business Center in Banlic,
+                                Cabuyao, Laguna.
                             </p>
-                            <div className="mt-9 space-y-5 text-sm">
-                                <p className="flex gap-3">
-                                    <Phone
-                                        className="shrink-0 text-moss-300"
-                                        size={19}
-                                    />
-                                    <span>
-                                        <strong className="block text-white">
-                                            (02) 8123 4567
-                                        </strong>
-                                        <span className="text-slate-400">
-                                            Mon–Fri, 8:00 AM–5:00 PM
-                                        </span>
-                                    </span>
+                        </Reveal>
+
+                        <div className="mt-10 grid items-stretch gap-5 lg:grid-cols-[.78fr_1.22fr] lg:gap-7">
+                            <Reveal
+                                offsetX={-12}
+                                offsetY={0}
+                                className="rounded-[1.5rem] border border-white/20 bg-moss-950/80 p-6 shadow-[0_20px_55px_rgba(12,25,15,.22)] backdrop-blur-sm sm:p-8"
+                            >
+                                <h3 className="text-xl font-extrabold tracking-[-.03em]">
+                                    Contact information
+                                </h3>
+                                <p className="mt-2 text-sm leading-6 text-white/70">
+                                    Reach the clinic or visit us during our
+                                    regular operating hours.
                                 </p>
-                                <p className="flex gap-3">
-                                    <Mail
-                                        className="shrink-0 text-moss-300"
-                                        size={19}
+                                <dl className="mt-7 space-y-6">
+                                    <ContactDetail
+                                        icon={MapPin}
+                                        label="Clinic address"
+                                        value="2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna"
                                     />
-                                    <span>
-                                        <strong className="block text-white">
-                                            livingmythindustrialclinic@gmail.com
-                                        </strong>
-                                        <span className="text-slate-400">
-                                            Corporate care inquiries
-                                        </span>
-                                    </span>
-                                </p>
-                                <p className="flex gap-3">
-                                    <MapPin
-                                        className="shrink-0 text-moss-300"
-                                        size={19}
+                                    <ContactDetail
+                                        icon={Phone}
+                                        label="Contact number"
+                                        value="+63 922 889 6850"
                                     />
-                                    <span>
-                                        <strong className="block text-white">
-                                            Living Myth Industrial Clinic
-                                        </strong>
-                                        <span className="text-slate-400">
-                                            Your trusted local health partner
-                                        </span>
-                                    </span>
-                                </p>
-                            </div>
-                        </div>
-                        <form
-                            className="rounded-[1.5rem] bg-white p-6 text-slate-900 shadow-2xl sm:p-8"
-                            onSubmit={(e) => e.preventDefault()}
-                        >
-                            <h3 className="text-xl font-extrabold tracking-[-.03em]">
-                                Request a consultation
-                            </h3>
-                            <p className="mt-2 text-sm text-slate-500">
-                                We’ll tailor a program to your company’s needs.
-                            </p>
-                            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                                {[
-                                    ['Name', 'Your full name'],
-                                    ['Company', 'Company name'],
-                                    ['Work email', 'you@company.com'],
-                                    ['Phone', 'Your contact number'],
-                                ].map(([label, placeholder]) => (
-                                    <label
-                                        key={label}
-                                        className="text-xs font-bold text-slate-700"
-                                    >
-                                        {label}
-                                        <input
-                                            aria-label={label}
-                                            placeholder={placeholder}
-                                            className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm transition outline-none placeholder:text-slate-400 focus:border-moss-600 focus:bg-white focus:ring-2 focus:ring-moss-100"
+                                    <ContactDetail
+                                        icon={Mail}
+                                        label="Email"
+                                        value="livingmythindustrialclinic@gmail.com"
+                                    />
+                                    <ContactDetail
+                                        icon={Clock3}
+                                        label="Clinic hours"
+                                        value="Monday–Friday, 8:00 AM–5:00 PM"
+                                    />
+                                </dl>
+                            </Reveal>
+
+                            <Reveal offsetX={12} offsetY={0}>
+                                <figure className="h-full overflow-hidden rounded-[1.5rem] border border-white/25 bg-white p-2.5 shadow-[0_20px_55px_rgba(12,25,15,.28)] sm:p-3">
+                                    <div className="flex h-full min-h-72 items-center overflow-hidden rounded-[1.05rem] bg-slate-100 sm:min-h-96">
+                                        <img
+                                            src="/images/Maps.png"
+                                            alt="Map showing the location of Living Myth Industrial Clinic"
+                                            className="h-full w-full object-contain"
+                                            loading="lazy"
+                                            decoding="async"
                                         />
-                                    </label>
-                                ))}
-                            </div>
-                            <label className="mt-4 block text-xs font-bold text-slate-700">
-                                How can we help?
-                                <textarea
-                                    aria-label="How can we help?"
-                                    rows={3}
-                                    placeholder="Tell us about your workforce needs..."
-                                    className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm transition outline-none placeholder:text-slate-400 focus:border-moss-600 focus:bg-white focus:ring-2 focus:ring-moss-100"
-                                />
-                            </label>
-                            <button className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-moss-700 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-moss-800">
-                                Send inquiry <ArrowRight size={16} />
-                            </button>
-                        </form>
+                                    </div>
+                                    <figcaption className="px-2 pt-3 pb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                                        Clinic location · Banlic, Cabuyao,
+                                        Laguna
+                                    </figcaption>
+                                </figure>
+                            </Reveal>
+                        </div>
                     </div>
                 </section>
                 <footer className="bg-moss-800 px-5 pb-7 sm:px-7">

@@ -5,6 +5,7 @@ import {
     ChartSpline,
     Building2,
     CalendarDays,
+    CalendarClock,
     ChevronDown,
     ClipboardList,
     FlaskConical,
@@ -60,6 +61,11 @@ const navigation: Record<string, Item[]> = {
                     title: 'Appointments',
                     href: '/admin/appointments',
                     icon: CalendarDays,
+                },
+                {
+                    title: "Today's Appointments",
+                    href: '/admin/todays-appointments',
+                    icon: CalendarClock,
                 },
                 {
                     title: 'Bulk requests',

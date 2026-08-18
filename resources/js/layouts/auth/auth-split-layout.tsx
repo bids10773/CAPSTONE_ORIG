@@ -1,4 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
     Activity,
     BarChart3,
@@ -7,7 +8,6 @@ import {
     ShieldCheck,
     Sparkles,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import type { AuthLayoutProps } from '@/types';
 import logo from '/public/images/full_logo2.png';
 
@@ -16,6 +16,7 @@ export default function AuthSplitLayout({
     variant = 'login',
 }: AuthLayoutProps) {
     const { auth } = usePage().props as any;
+    const reduceMotion = useReducedMotion();
     const isRegister = variant === 'register';
     const dashboardRoute = auth?.user ? '/dashboard' : '/';
 
@@ -47,9 +48,14 @@ export default function AuthSplitLayout({
                         </Link>
 
                         <motion.div
-                            initial={{ opacity: 0, y: 18 }}
+                            initial={
+                                reduceMotion ? false : { opacity: 0, y: 18 }
+                            }
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.65, ease: 'easeOut' }}
+                            transition={{
+                                duration: reduceMotion ? 0 : 0.42,
+                                ease: 'easeOut',
+                            }}
                             className="my-auto max-w-xl py-14"
                         >
                             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-moss-200 bg-white px-3.5 py-2 text-xs font-medium text-moss-700 shadow-sm">
@@ -66,10 +72,14 @@ export default function AuthSplitLayout({
 
                             <div className="relative mt-12 h-56 max-w-lg">
                                 <motion.div
-                                    animate={{ y: [0, -7, 0] }}
+                                    animate={
+                                        reduceMotion
+                                            ? { y: 0 }
+                                            : { y: [0, -7, 0] }
+                                    }
                                     transition={{
                                         duration: 5,
-                                        repeat: Infinity,
+                                        repeat: reduceMotion ? 0 : Infinity,
                                         ease: 'easeInOut',
                                     }}
                                     className="absolute top-4 left-0 w-[72%] rounded-2xl border border-moss-200 bg-white p-5 shadow-[0_18px_45px_-28px_rgba(69,94,74,.35)]"
@@ -101,10 +111,14 @@ export default function AuthSplitLayout({
                                     </div>
                                 </motion.div>
                                 <motion.div
-                                    animate={{ y: [0, 7, 0] }}
+                                    animate={
+                                        reduceMotion
+                                            ? { y: 0 }
+                                            : { y: [0, 7, 0] }
+                                    }
                                     transition={{
                                         duration: 5.5,
-                                        repeat: Infinity,
+                                        repeat: reduceMotion ? 0 : Infinity,
                                         ease: 'easeInOut',
                                     }}
                                     className="absolute right-0 bottom-0 w-52 rounded-2xl border border-moss-200 bg-white p-4 shadow-[0_18px_45px_-28px_rgba(69,94,74,.35)]"
@@ -146,11 +160,11 @@ export default function AuthSplitLayout({
                 <section className="relative flex min-h-screen items-center justify-center overflow-y-auto px-5 py-8 sm:px-8 lg:px-12">
                     <div className="absolute top-0 right-0 size-72 translate-x-1/3 -translate-y-1/2 rounded-full bg-moss-100/60 blur-3xl" />
                     <motion.div
-                        initial={{ opacity: 0, y: 14 }}
+                        initial={reduceMotion ? false : { opacity: 0, y: 14 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{
-                            duration: 0.5,
-                            delay: 0.08,
+                            duration: reduceMotion ? 0 : 0.42,
+                            delay: reduceMotion ? 0 : 0.08,
                             ease: 'easeOut',
                         }}
                         className={`relative z-10 w-full ${isRegister ? 'max-w-[720px]' : 'max-w-[480px]'}`}

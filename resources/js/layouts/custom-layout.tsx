@@ -1,9 +1,9 @@
 import { usePage } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { GlobalSearch } from '@/components/global-search';
+import { PageTransition } from '@/components/motion';
 import { NotificationBell } from '@/components/notification-bell';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -100,14 +100,9 @@ export default function ClinicDashboardLayout({
                 </header>
 
                 <main className="relative flex-1">
-                    <motion.div
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.24 }}
-                        className="mx-auto w-full max-w-[1600px]"
-                    >
+                    <PageTransition className="mx-auto w-full max-w-[1600px]">
                         {children}
-                    </motion.div>
+                    </PageTransition>
                 </main>
             </SidebarInset>
         </SidebarProvider>

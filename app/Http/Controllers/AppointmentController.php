@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AdminAppointmentIndexRequest;
+use App\Http\Requests\TodayAppointmentIndexRequest;
 use App\Models\Appointment;
 use App\Models\Company;
 use App\Models\CompanyReferral;
 use App\Models\MedicalHistory;
 use App\Models\User;
-use App\Services\IndividualAppointmentBookingService;
 use App\Services\AppointmentApprovalService;
+use App\Services\IndividualAppointmentBookingService;
 use App\Services\LaboratoryFormDefinition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -694,6 +695,70 @@ class AppointmentController extends Controller
                 ->where('type', 'individual')
                 ->where('status', 'pending')
                 ->count(),
+        ]);
+    }
+
+    /**
+     * Admin: Display today's active clinic queue.
+     */
+    public function today(TodayAppointmentIndexRequest $request): Response
+    {
+        $search = trim((string) $request->validated('search', ''));
+        $today = today();
+        $baseQuery = Appointment::query()
+            ->whereDate('appointment_date', $today)
+            ->whereNotIn('status', ['rejected', 'cancelled'])
+            ->whereHas('user', fn ($query) => $query->where('role', 'patient'));
+
+        $summary = (clone $baseQuery)
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $query = (clone $baseQuery)->with([
+            'user:id,first_name,middle_name,last_name,email,contact',
+            'company:id,company_name',
+            'doctor:id,first_name,middle_name,last_name',
+        ]);
+
+        if ($search !== '') {
+            $nameTokens = preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [$search];
+            $query->whereHas('user', function ($patient) use ($search, $nameTokens): void {
+                $patient->where(function ($identity) use ($search, $nameTokens): void {
+                    $identity->where('email', 'like', "%{$search}%")
+                        ->orWhere('contact', 'like', "%{$search}%")
+                        ->orWhere(function ($name) use ($nameTokens): void {
+                            foreach ($nameTokens as $token) {
+                                $name->where(fn ($part) => $part
+                                    ->where('first_name', 'like', "%{$token}%")
+                                    ->orWhere('middle_name', 'like', "%{$token}%")
+                                    ->orWhere('last_name', 'like', "%{$token}%"));
+                            }
+                        });
+                });
+            });
+        }
+
+        $appointments = $query
+            ->orderByRaw('CASE WHEN start_time IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('start_time')
+            ->orderByRaw('COALESCE(arrived_at, created_at)')
+            ->orderBy('id')
+            ->paginate($this->perPage($request))
+            ->withQueryString();
+
+        $inProgressStatuses = ['arrived', 'for_diagnostics', 'for_xray', 'for_final_evaluation'];
+
+        return Inertia::render('admin/appointments/today', [
+            'appointments' => $appointments,
+            'filters' => ['search' => $search],
+            'today' => $today->toDateString(),
+            'summary' => [
+                'total' => (int) $summary->sum(),
+                'waiting' => (int) collect(['pending', 'accepted'])->sum(fn ($status) => $summary->get($status, 0)),
+                'in_progress' => (int) collect($inProgressStatuses)->sum(fn ($status) => $summary->get($status, 0)),
+                'completed' => (int) $summary->get('completed', 0),
+            ],
         ]);
     }
 

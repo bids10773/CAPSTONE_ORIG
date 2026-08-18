@@ -9,11 +9,18 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import {
+    evaluatePassword,
+    PasswordMatch,
+    PasswordRequirements,
+} from '@/components/password-requirements';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function ChangeTemporaryPassword() {
+    const [password, setPassword] = useState('');
+    const [confirmation, setConfirmation] = useState('');
     const [visibleFields, setVisibleFields] = useState({
         current: false,
         password: false,
@@ -110,6 +117,10 @@ export default function ChangeTemporaryPassword() {
                                                     : 'password'
                                             }
                                             autoComplete="new-password"
+                                            value={password}
+                                            onChange={(event) =>
+                                                setPassword(event.target.value)
+                                            }
                                             className="h-11 px-10"
                                             required
                                         />
@@ -136,6 +147,7 @@ export default function ChangeTemporaryPassword() {
                                         </button>
                                     </div>
                                     <InputError message={errors.password} />
+                                    <PasswordRequirements password={password} />
                                 </div>
 
                                 <div className="space-y-2">
@@ -153,6 +165,12 @@ export default function ChangeTemporaryPassword() {
                                                     : 'password'
                                             }
                                             autoComplete="new-password"
+                                            value={confirmation}
+                                            onChange={(event) =>
+                                                setConfirmation(
+                                                    event.target.value,
+                                                )
+                                            }
                                             className="h-11 px-10"
                                             required
                                         />
@@ -181,16 +199,23 @@ export default function ChangeTemporaryPassword() {
                                     <InputError
                                         message={errors.password_confirmation}
                                     />
+                                    <PasswordMatch
+                                        password={password}
+                                        confirmation={confirmation}
+                                    />
                                 </div>
 
                                 <p className="rounded-xl bg-moss-50 px-4 py-3 text-xs leading-5 text-moss-800">
-                                    Use at least eight characters and avoid
-                                    reusing the temporary password.
+                                    Do not reuse the temporary password.
                                 </p>
 
                                 <Button
                                     type="submit"
-                                    disabled={processing}
+                                    disabled={
+                                        processing ||
+                                        !evaluatePassword(password).isValid ||
+                                        password !== confirmation
+                                    }
                                     className="h-11 w-full"
                                 >
                                     {processing && (

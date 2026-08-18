@@ -61,6 +61,11 @@
 }
 
 :root {
+    --motion-fast: 180ms;
+    --motion-normal: 260ms;
+    --motion-entrance: 420ms;
+    --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
     --background: #f7faf7;
     --foreground: #1f2937;
 
@@ -207,26 +212,30 @@
     .app-workspace main button,
     .app-workspace main a {
         @apply focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none;
+        transition-duration: var(--motion-fast);
     }
 
-    .app-workspace main > div {
-        animation: page-enter 240ms ease-out both;
+    .motion-press {
+        transition-duration: var(--motion-fast);
+        transition-timing-function: var(--motion-ease-out);
+    }
+
+    .motion-press:active:not(:disabled) {
+        transform: scale(0.98);
+    }
+
+    .motion-status {
+        transition:
+            color var(--motion-fast) var(--motion-ease-out),
+            background-color var(--motion-fast) var(--motion-ease-out),
+            border-color var(--motion-fast) var(--motion-ease-out),
+            opacity var(--motion-fast) var(--motion-ease-out),
+            transform var(--motion-fast) var(--motion-ease-out);
     }
 
     .app-workspace main section,
     .app-workspace main [data-slot='card'] {
         isolation: isolate;
-    }
-}
-
-@keyframes page-enter {
-    from {
-        opacity: 0;
-        transform: translateY(6px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
     }
 }
 
@@ -238,6 +247,10 @@
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+    }
+
+    .motion-press:active:not(:disabled) {
+        transform: none !important;
     }
 }
 

@@ -1,9 +1,15 @@
 import { Transition } from '@headlessui/react';
 import { Form, Head } from '@inertiajs/react';
-import { useRef } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+import { useRef, useState } from 'react';
 import PasswordController from '@/actions/App/Http/Controllers/Settings/PasswordController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import {
+    evaluatePassword,
+    PasswordMatch,
+    PasswordRequirements,
+} from '@/components/password-requirements';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +28,14 @@ const breadcrumbs: BreadcrumbItem[] = [
 export default function Password() {
     const passwordInput = useRef<HTMLInputElement>(null);
     const currentPasswordInput = useRef<HTMLInputElement>(null);
+    const [password, setPassword] = useState('');
+    const [confirmation, setConfirmation] = useState('');
+    const [shown, setShown] = useState({
+        current: false,
+        password: false,
+        confirmation: false,
+    });
+    const matches = confirmation.length > 0 && password === confirmation;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -66,15 +80,31 @@ export default function Password() {
                                         Current password
                                     </Label>
 
-                                    <Input
-                                        id="current_password"
-                                        ref={currentPasswordInput}
-                                        name="current_password"
-                                        type="password"
-                                        className="mt-1 block w-full"
-                                        autoComplete="current-password"
-                                        placeholder="Current password"
-                                    />
+                                    <div className="relative">
+                                        <Input
+                                            id="current_password"
+                                            ref={currentPasswordInput}
+                                            name="current_password"
+                                            type={
+                                                shown.current
+                                                    ? 'text'
+                                                    : 'password'
+                                            }
+                                            className="mt-1 block w-full pr-11"
+                                            autoComplete="current-password"
+                                            placeholder="Current password"
+                                        />
+                                        <PasswordToggle
+                                            shown={shown.current}
+                                            onClick={() =>
+                                                setShown((value) => ({
+                                                    ...value,
+                                                    current: !value.current,
+                                                }))
+                                            }
+                                            label="current password"
+                                        />
+                                    </div>
 
                                     <InputError
                                         message={errors.current_password}
@@ -86,17 +116,38 @@ export default function Password() {
                                         New password
                                     </Label>
 
-                                    <Input
-                                        id="password"
-                                        ref={passwordInput}
-                                        name="password"
-                                        type="password"
-                                        className="mt-1 block w-full"
-                                        autoComplete="new-password"
-                                        placeholder="New password"
-                                    />
+                                    <div className="relative">
+                                        <Input
+                                            id="password"
+                                            ref={passwordInput}
+                                            name="password"
+                                            type={
+                                                shown.password
+                                                    ? 'text'
+                                                    : 'password'
+                                            }
+                                            value={password}
+                                            onChange={(event) =>
+                                                setPassword(event.target.value)
+                                            }
+                                            className="mt-1 block w-full pr-11"
+                                            autoComplete="new-password"
+                                            placeholder="New password"
+                                        />
+                                        <PasswordToggle
+                                            shown={shown.password}
+                                            onClick={() =>
+                                                setShown((value) => ({
+                                                    ...value,
+                                                    password: !value.password,
+                                                }))
+                                            }
+                                            label="new password"
+                                        />
+                                    </div>
 
                                     <InputError message={errors.password} />
+                                    <PasswordRequirements password={password} />
                                 </div>
 
                                 <div className="grid gap-2">
@@ -104,23 +155,55 @@ export default function Password() {
                                         Confirm password
                                     </Label>
 
-                                    <Input
-                                        id="password_confirmation"
-                                        name="password_confirmation"
-                                        type="password"
-                                        className="mt-1 block w-full"
-                                        autoComplete="new-password"
-                                        placeholder="Confirm password"
-                                    />
+                                    <div className="relative">
+                                        <Input
+                                            id="password_confirmation"
+                                            name="password_confirmation"
+                                            type={
+                                                shown.confirmation
+                                                    ? 'text'
+                                                    : 'password'
+                                            }
+                                            value={confirmation}
+                                            onChange={(event) =>
+                                                setConfirmation(
+                                                    event.target.value,
+                                                )
+                                            }
+                                            className="mt-1 block w-full pr-11"
+                                            autoComplete="new-password"
+                                            placeholder="Confirm password"
+                                        />
+                                        <PasswordToggle
+                                            shown={shown.confirmation}
+                                            onClick={() =>
+                                                setShown((value) => ({
+                                                    ...value,
+                                                    confirmation:
+                                                        !value.confirmation,
+                                                }))
+                                            }
+                                            label="password confirmation"
+                                        />
+                                    </div>
 
                                     <InputError
                                         message={errors.password_confirmation}
+                                    />
+                                    <PasswordMatch
+                                        password={password}
+                                        confirmation={confirmation}
                                     />
                                 </div>
 
                                 <div className="flex items-center gap-4">
                                     <Button
-                                        disabled={processing}
+                                        disabled={
+                                            processing ||
+                                            !evaluatePassword(password)
+                                                .isValid ||
+                                            !matches
+                                        }
                                         data-test="update-password-button"
                                     >
                                         Save password
@@ -144,5 +227,27 @@ export default function Password() {
                 </div>
             </SettingsLayout>
         </AppLayout>
+    );
+}
+
+function PasswordToggle({
+    shown,
+    onClick,
+    label,
+}: {
+    shown: boolean;
+    onClick: () => void;
+    label: string;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="absolute top-0 right-0 flex h-full w-11 items-center justify-center text-slate-500 hover:text-slate-800"
+            aria-label={`${shown ? 'Hide' : 'Show'} ${label}`}
+            aria-pressed={shown}
+        >
+            {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
     );
 }
