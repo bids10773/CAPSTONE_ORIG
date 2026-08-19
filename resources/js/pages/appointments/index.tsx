@@ -328,7 +328,11 @@ export default function AppointmentsIndex() {
                                                                 'cancelled' && (
                                                                 <XCircle className="h-3 w-3" />
                                                             )}
-                                                            <span>{appointmentStatusLabel(appointment.status)}</span>
+                                                            <span>
+                                                                {appointmentStatusLabel(
+                                                                    appointment.status,
+                                                                )}
+                                                            </span>
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">

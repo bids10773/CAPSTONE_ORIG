@@ -42,6 +42,11 @@ interface BookingData {
     appointment_date: string;
     service_types: string[];
     notes: string;
+    service_location: string;
+    event_address: string;
+    event_contact_name: string;
+    event_contact_number: string;
+    expected_employee_count: string;
 }
 
 interface PatientProfile {
@@ -143,6 +148,11 @@ const INITIAL_DATA: BookingData = {
     appointment_date: '',
     service_types: [],
     notes: '',
+    service_location: 'onsite',
+    event_address: '',
+    event_contact_name: '',
+    event_contact_number: '',
+    expected_employee_count: '',
 };
 
 const isStringArray = (value: unknown): value is string[] =>
@@ -183,6 +193,26 @@ const restoreDraft = (storageKey: string): BookingData => {
             notes:
                 typeof draft.notes === 'string'
                     ? draft.notes.slice(0, 500)
+                    : '',
+            service_location:
+                typeof draft.service_location === 'string'
+                    ? draft.service_location
+                    : 'onsite',
+            event_address:
+                typeof draft.event_address === 'string'
+                    ? draft.event_address
+                    : '',
+            event_contact_name:
+                typeof draft.event_contact_name === 'string'
+                    ? draft.event_contact_name
+                    : '',
+            event_contact_number:
+                typeof draft.event_contact_number === 'string'
+                    ? draft.event_contact_number
+                    : '',
+            expected_employee_count:
+                typeof draft.expected_employee_count === 'string'
+                    ? draft.expected_employee_count
                     : '',
         };
     } catch {
@@ -538,6 +568,24 @@ export default function CreateAppointment() {
             )
                 nextErrors.start_time = 'Choose an available time.';
         }
+        if (currentStep === 3 && isCompanyAccount) {
+            if (!formData.service_location)
+                nextErrors.service_location = 'Choose a service setup.';
+            if (!formData.expected_employee_count)
+                nextErrors.expected_employee_count =
+                    'Enter the expected employee count.';
+            if (
+                ['onsite', 'hybrid'].includes(formData.service_location) &&
+                !formData.event_address.trim()
+            )
+                nextErrors.event_address = 'Enter the event address.';
+            if (!formData.event_contact_name.trim())
+                nextErrors.event_contact_name =
+                    'Enter the onsite contact person.';
+            if (!formData.event_contact_number.trim())
+                nextErrors.event_contact_number =
+                    'Enter the onsite contact number.';
+        }
         setErrors((current) => ({ ...current, ...nextErrors }));
         return Object.keys(nextErrors).length === 0;
     };
@@ -886,6 +934,11 @@ export default function CreateAppointment() {
                                                         isCompanyAccount
                                                     }
                                                     notes={formData.notes}
+                                                    event={formData}
+                                                    errors={errors}
+                                                    onEvent={(field, value) =>
+                                                        update(field, value)
+                                                    }
                                                     onNotes={(notes) =>
                                                         update('notes', notes)
                                                     }
@@ -1405,6 +1458,9 @@ interface DetailsStepProps {
     isCompanyAccount: boolean;
     notes: string;
     onNotes: (notes: string) => void;
+    event: BookingData;
+    errors: BookingErrors;
+    onEvent: (field: keyof BookingData, value: string) => void;
 }
 
 function DetailsStep({
@@ -1413,6 +1469,9 @@ function DetailsStep({
     isCompanyAccount,
     notes,
     onNotes,
+    event,
+    errors,
+    onEvent,
 }: DetailsStepProps) {
     const age = calculateAge(profile?.birthdate);
     const details = [
@@ -1443,6 +1502,94 @@ function DetailsStep({
                     <div className="rounded-xl border border-moss-100 bg-moss-50 p-4 text-sm text-moss-800">
                         Only the company representative's contact information is
                         needed for this bulk request.
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <label className="text-sm font-semibold text-slate-800">
+                            Service setup
+                            <select
+                                value={event.service_location}
+                                onChange={(e) =>
+                                    onEvent('service_location', e.target.value)
+                                }
+                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
+                            >
+                                <option value="onsite">
+                                    Onsite at company
+                                </option>
+                                <option value="clinic">At LMIC clinic</option>
+                                <option value="hybrid">Hybrid</option>
+                            </select>
+                        </label>
+                        <label className="text-sm font-semibold text-slate-800">
+                            Expected employees
+                            <input
+                                type="number"
+                                min="1"
+                                max="5000"
+                                required
+                                value={event.expected_employee_count}
+                                onChange={(e) =>
+                                    onEvent(
+                                        'expected_employee_count',
+                                        e.target.value,
+                                    )
+                                }
+                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
+                            />
+                        </label>
+                        <InlineError message={errors.expected_employee_count} />
+                        {(event.service_location === 'onsite' ||
+                            event.service_location === 'hybrid') && (
+                            <label className="text-sm font-semibold text-slate-800 sm:col-span-2">
+                                Event address
+                                <input
+                                    required
+                                    maxLength={500}
+                                    value={event.event_address}
+                                    onChange={(e) =>
+                                        onEvent('event_address', e.target.value)
+                                    }
+                                    className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
+                                />
+                            </label>
+                        )}
+                        <InlineError message={errors.event_address} />
+                        <label className="text-sm font-semibold text-slate-800">
+                            Onsite contact person
+                            <input
+                                required
+                                maxLength={255}
+                                value={event.event_contact_name}
+                                onChange={(e) =>
+                                    onEvent(
+                                        'event_contact_name',
+                                        e.target.value,
+                                    )
+                                }
+                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
+                            />
+                        </label>
+                        <label className="text-sm font-semibold text-slate-800">
+                            Contact number
+                            <input
+                                required
+                                maxLength={30}
+                                value={event.event_contact_number}
+                                onChange={(e) =>
+                                    onEvent(
+                                        'event_contact_number',
+                                        e.target.value,
+                                    )
+                                }
+                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
+                            />
+                        </label>
+                        <InlineError
+                            message={
+                                errors.event_contact_name ??
+                                errors.event_contact_number
+                            }
+                        />
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                         <div className="flex min-h-18 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">

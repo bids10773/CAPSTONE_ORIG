@@ -14,6 +14,7 @@ use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\LaboratoryController;
 use App\Http\Controllers\MedTechDashboardController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OnsiteEventController;
 use App\Http\Controllers\PatientDashboardController;
 use App\Http\Controllers\PatientVisitForecastController;
 use App\Http\Controllers\PhysicalExamController;
@@ -104,9 +105,12 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::get('/queue', [ReceptionistWalkInController::class, 'queue'])->name('queue.index');
         Route::get('/patients', [ReceptionistWalkInController::class, 'patients'])->name('patients.index');
         Route::get('/patients/search', [ReceptionistWalkInController::class, 'searchPatients'])->name('patients.search');
+        Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'show'])->name('onsite-events.show');
+        Route::patch('/onsite-employees/{employee}/attendance', [OnsiteEventController::class, 'attendance'])->name('onsite-employees.attendance');
     });
 
     Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(function () {
+        Route::get('/onsite-events/{event}/queue', [OnsiteEventController::class, 'myQueue'])->name('onsite-events.queue');
         Route::get('/dashboard', DoctorDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor')->name('appointments');
         Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
@@ -121,6 +125,7 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
     });
 
     Route::middleware('role:medtech')->prefix('medtech')->name('medtech.')->group(function () {
+        Route::get('/onsite-events/{event}/queue', [OnsiteEventController::class, 'myQueue'])->name('onsite-events.queue');
         Route::get('/dashboard', MedTechDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'medtech')->name('appointments');
         Route::get('/lab-results/{appointment}', [LaboratoryController::class, 'create'])->name('lab-results.create');
@@ -138,6 +143,7 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         ->name('clinical-forms.xray.pdf');
 
     Route::middleware('role:radtech')->prefix('radtech')->name('radtech.')->group(function () {
+        Route::get('/onsite-events/{event}/queue', [OnsiteEventController::class, 'myQueue'])->name('onsite-events.queue');
         Route::get('/dashboard', RadTechDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'radtech')->name('appointments');
         Route::get('/xrays/{appointment}', [XrayController::class, 'create'])->name('xrays.create');
@@ -145,6 +151,10 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
     });
 
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'show'])->name('onsite-events.show');
+        Route::post('/onsite-events/{event}/staff', [OnsiteEventController::class, 'assignStaff'])->name('onsite-events.staff.assign');
+        Route::delete('/onsite-events/{event}/staff/{deployment}', [OnsiteEventController::class, 'removeStaff'])->name('onsite-events.staff.remove');
+        Route::patch('/onsite-employees/{employee}/attendance', [OnsiteEventController::class, 'attendance'])->name('onsite-employees.attendance');
         Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
         Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
         Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');

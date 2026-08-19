@@ -31,6 +31,7 @@ class AppointmentPolicy
     {
         return $user->role === 'admin'
             || ($user->role === 'medtech'
+                && $this->eligibleOnsiteStaff($user, $appointment, 'medtech')
                 && $appointment->status !== 'completed'
                 && app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment) !== []);
     }
@@ -39,6 +40,7 @@ class AppointmentPolicy
     {
         return $user->role === 'admin'
             || ($user->role === 'doctor'
+                && $this->eligibleOnsiteStaff($user, $appointment, 'doctor')
                 && $appointment->status !== 'completed'
                 && in_array('PE', $appointment->service_types ?? [], true)
                 && ($appointment->doctor_id === null || $appointment->doctor_id === $user->id));
@@ -48,6 +50,7 @@ class AppointmentPolicy
     {
         return $user->role === 'admin'
             || ($user->role === 'radtech'
+                && $this->eligibleOnsiteStaff($user, $appointment, 'radtech')
                 && $appointment->status !== 'completed'
                 && $appointment->requiresXray());
     }
@@ -56,7 +59,29 @@ class AppointmentPolicy
     {
         return $user->role === 'admin'
             || ($user->role === 'doctor'
+                && $this->eligibleOnsiteStaff($user, $appointment, 'doctor')
                 && ($appointment->doctor_id === null || $appointment->doctor_id === $user->id));
+    }
+
+    private function eligibleOnsiteStaff(User $user, Appointment $appointment, string $role): bool
+    {
+        if ($appointment->bulk_appointment_id === null) {
+            return true;
+        }
+
+        return $appointment->attendance_status === 'arrived'
+            && \App\Models\OnsiteEventStaff::query()
+                ->where('bulk_appointment_id', $appointment->bulk_appointment_id)
+                ->where('user_id', $user->id)
+                ->where('service_role', $role)
+                ->where('is_active', true)
+                ->exists()
+            && \App\Models\OnsiteServiceQueue::query()
+                ->where('appointment_id', $appointment->id)
+                ->where('service_role', $role)
+                ->where('assigned_staff_id', $user->id)
+                ->whereIn('status', ['assigned', 'in_progress'])
+                ->exists();
     }
 
     public function verifyDiagnosticResults(User $user, Appointment $appointment): bool

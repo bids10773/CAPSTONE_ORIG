@@ -20,7 +20,7 @@ class AdminAppointmentIndexRequest extends FormRequest
             'search' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', Rule::in([
                 'pending', 'accepted', 'arrived', 'for_diagnostics', 'for_xray',
-                'for_final_evaluation', 'completed', 'rejected', 'cancelled',
+                'for_final_evaluation', 'awaiting_xray_result', 'completed', 'rejected', 'cancelled',
             ])],
             'type' => ['nullable', Rule::in(array_keys(Appointment::getTypeOptions()))],
             'date_filter' => ['nullable', Rule::in(['today', 'upcoming', 'past'])],

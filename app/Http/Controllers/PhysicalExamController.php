@@ -82,6 +82,7 @@ class PhysicalExamController extends Controller
                 ? 'for_diagnostics'
                 : ($appointment->requiresXray() ? 'for_xray' : 'for_final_evaluation');
             $appointment->update(['status' => $next]);
+            app(\App\Services\OnsiteEventWorkflowService::class)->completeService($appointment, 'doctor', $request->user());
             $this->audit($request, $appointment, 'physical_exam', $exam->wasRecentlyCreated ? 'created' : 'updated', $exam->getChanges());
         });
 

@@ -176,18 +176,18 @@ export default function PatientDashboard() {
     const firstName =
         auth.user.first_name || auth.user.name?.split(' ')[0] || 'there';
     const nextAppointment = upcomingAppointments[0];
-    const records = appointments.filter(
-        (appointment) => {
-            const hasRecord =
-                appointment.physical_exam ||
-                appointment.lab_result ||
-                appointment.xray_report;
-            const isPe = appointment.service_types?.includes('PE');
+    const records = appointments.filter((appointment) => {
+        const hasRecord =
+            appointment.physical_exam ||
+            appointment.lab_result ||
+            appointment.xray_report;
+        const isPe = appointment.service_types?.includes('PE');
 
-            return hasRecord &&
-                (!isPe || appointment.medical_workflow?.report_available);
-        },
-    );
+        return (
+            hasRecord &&
+            (!isPe || appointment.medical_workflow?.report_available)
+        );
+    });
 
     return (
         <>

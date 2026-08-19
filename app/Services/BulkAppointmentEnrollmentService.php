@@ -34,6 +34,9 @@ class BulkAppointmentEnrollmentService
                     'status' => $this->employeeStatus($parent->status),
                     'service_types' => $parent->service_types,
                     'batch_id' => $batchId,
+                    'attendance_status' => 'not_arrived',
+                    'service_location' => $parent->service_location,
+                    'event_address' => $parent->event_address,
                 ]
             );
         });
@@ -49,8 +52,9 @@ class BulkAppointmentEnrollmentService
                 $parent->bulkEmployees()->where('status', 'pending')->update(['status' => 'accepted']);
             } elseif ($status === 'cancelled') {
                 $parent->bulkEmployees()
-                    ->whereNotIn('status', ['completed', 'cancelled'])
-                    ->update(['status' => 'cancelled']);
+                    ->whereNotIn('status', ['completed', 'absent'])
+                    ->update(['status' => 'absent', 'attendance_status' => 'absent', 'attendance_marked_at' => now(), 'absence_reason' => 'event_cancelled']);
+                $parent->onsiteQueues()->whereNotIn('status', ['completed'])->update(['status' => 'removed', 'assigned_staff_id' => null]);
             }
         });
     }
@@ -72,8 +76,8 @@ class BulkAppointmentEnrollmentService
                 return;
             }
 
-            $closed = $statuses->every(fn (string $status) => in_array($status, ['completed', 'cancelled'], true));
-            $started = $statuses->contains(fn (string $status) => ! in_array($status, ['pending', 'accepted', 'cancelled'], true));
+            $closed = $statuses->every(fn (string $status) => in_array($status, ['completed', 'absent'], true));
+            $started = $statuses->contains(fn (string $status) => ! in_array($status, ['pending', 'accepted', 'absent'], true));
 
             if ($closed) {
                 $parent->updateQuietly(['status' => 'completed']);

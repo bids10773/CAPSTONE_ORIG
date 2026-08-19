@@ -1,0 +1,22 @@
+import { Head, router, usePage } from '@inertiajs/react';
+import AppLayout from '@/layouts/app-layout';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+
+type Employee = { id:number; attendance_status:string; status:string; user:{first_name:string;middle_name?:string;last_name:string}; service_queues:Array<{service_role:string;status:string;assigned_staff?:{first_name:string;last_name:string}}> };
+type Event = { id:number; appointment_date:string; event_address?:string; company?:{company_name:string}; onsite_staff:Array<{id:number;service_role:string;queue_capacity:number;user:{first_name:string;last_name:string}}> };
+
+export default function OnsiteEvent() {
+    const { event, attendance, employees, auth, staffOptions, staffing } = usePage<{event:Event;attendance:Record<string,number>;employees:Employee[];auth:{user:{role:string}};staffOptions:Array<{id:number;first_name:string;last_name:string;role:string}>;staffing:{ready:boolean;missing_roles:string[]}}>().props;
+    const [capacity,setCapacity]=useState(10);
+    const mark = (employee:number, attendance_status:'arrived'|'absent') => router.patch(`/${auth.user.role === 'admin' ? 'admin' : 'receptionist'}/onsite-employees/${employee}/attendance`, { attendance_status, ...(attendance_status === 'absent' ? {absence_reason:'no_show'} : {}) }, {preserveScroll:true});
+    return <AppLayout breadcrumbs={[{title:'Onsite Events',href:'#'},{title:event.company?.company_name ?? 'Event',href:'#'}]}>
+        <Head title="Onsite Medical Event" />
+        <div className="space-y-6 p-6">
+            <header><h1 className="text-2xl font-semibold">{event.company?.company_name} Onsite Medical Examination</h1><p className="text-sm text-slate-500">{event.appointment_date.slice(0,10)} · {event.event_address}</p></header>
+            <div className="grid gap-3 sm:grid-cols-5">{Object.entries(attendance).map(([key,value])=><div key={key} className="rounded-xl border bg-white p-4"><p className="text-xs uppercase text-slate-500">{key.replaceAll('_',' ')}</p><p className="text-2xl font-semibold">{value}</p></div>)}</div>
+            {auth.user.role === 'admin' && <section className="space-y-4 rounded-xl border bg-white p-5"><div><h2 className="font-semibold">Assign onsite medical team</h2><p className={`text-sm ${staffing.ready?'text-emerald-700':'text-amber-700'}`}>{staffing.ready?'Required team complete':'Missing: '+staffing.missing_roles.join(', ')}</p></div><label className="text-sm">Queue capacity <input type="number" min="1" max="100" value={capacity} onChange={e=>setCapacity(Number(e.target.value))} className="ml-2 w-20 rounded border px-2 py-1" /></label>{(['doctor','medtech','radtech','receptionist'] as const).map(role=><div key={role}><h3 className="mb-2 text-sm font-semibold capitalize">{role}</h3><div className="flex flex-wrap gap-2">{staffOptions.filter(s=>s.role===role).map(staff=>{const assigned=event.onsite_staff.some(a=>a.user && a.service_role===role && `${a.user.first_name} ${a.user.last_name}`===`${staff.first_name} ${staff.last_name}`);return <Button key={staff.id} size="sm" variant={assigned?'default':'outline'} disabled={assigned} onClick={()=>router.post(`/admin/onsite-events/${event.id}/staff`,{user_id:staff.id,service_role:role,queue_capacity:capacity},{preserveScroll:true})}>{staff.first_name} {staff.last_name}{assigned?' ✓':''}</Button>})}</div></div>)}</section>}
+            <div className="overflow-x-auto rounded-xl border bg-white"><table className="w-full text-sm"><thead><tr className="border-b bg-slate-50 text-left"><th className="p-3">Employee</th><th>Attendance</th><th>Progress</th><th>Actions</th></tr></thead><tbody>{employees.map(employee=><tr key={employee.id} className="border-b"><td className="p-3 font-medium">{[employee.user.first_name,employee.user.middle_name,employee.user.last_name].filter(Boolean).join(' ')}</td><td>{employee.attendance_status.replaceAll('_',' ')}</td><td>{employee.service_queues.map(q=>`${q.service_role}: ${q.status}`).join(' · ') || '-'}</td><td className="space-x-2"><Button size="sm" disabled={employee.attendance_status==='arrived'} onClick={()=>mark(employee.id,'arrived')}>Mark Arrived</Button><Button size="sm" variant="outline" disabled={employee.attendance_status==='absent'} onClick={()=>mark(employee.id,'absent')}>Mark Absent</Button></td></tr>)}</tbody></table></div>
+        </div>
+    </AppLayout>;
+}

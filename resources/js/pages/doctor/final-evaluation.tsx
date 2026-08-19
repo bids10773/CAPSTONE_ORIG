@@ -288,21 +288,27 @@ export default function FinalEvaluation({
                                         }
                                         className="mt-1 block w-full rounded-xl border-slate-300"
                                     >
-                                        <option value="negative">Negative</option>
+                                        <option value="negative">
+                                            Negative
+                                        </option>
                                         <option value="positive_confirmed">
                                             Positive — Confirmed
                                         </option>
                                         <option value="inconclusive_repeat">
                                             Inconclusive / For Repeat
                                         </option>
-                                        <option value="cancelled">Cancelled</option>
+                                        <option value="cancelled">
+                                            Cancelled
+                                        </option>
                                     </select>
                                 </label>
                                 <label className="text-sm font-semibold text-slate-700">
                                     Official result date
                                     <input
                                         type="date"
-                                        value={drugForm.data.official_result_date}
+                                        value={
+                                            drugForm.data.official_result_date
+                                        }
                                         onChange={(event) =>
                                             drugForm.setData(
                                                 'official_result_date',
@@ -315,7 +321,10 @@ export default function FinalEvaluation({
                                 <label className="text-sm font-semibold text-slate-700">
                                     Reference number
                                     <input
-                                        value={drugForm.data.official_reference_number}
+                                        value={
+                                            drugForm.data
+                                                .official_reference_number
+                                        }
                                         onChange={(event) =>
                                             drugForm.setData(
                                                 'official_reference_number',
@@ -544,111 +553,129 @@ export default function FinalEvaluation({
                     )}
                 </div>
 
-                {!medicalExamination.finalized_at && <form
-                    onSubmit={submit}
-                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-                >
-                    <h2 className="font-bold text-slate-900">
-                        Medical classification
-                    </h2>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                        {[
-                            ['A', 'Class A', 'Fit to work'],
-                            ['B', 'Class B', 'Fit with minor findings'],
-                            ['C', 'Class C', 'Management discretion'],
-                            ['pending', 'Pending', 'Further clearance needed'],
-                            ['unfit', 'Unfit', 'Not fit for work'],
-                        ].map(([value, label, description]) => (
-                            <label
-                                key={value}
-                                className={`cursor-pointer rounded-xl border p-4 transition ${form.data.medical_class === value ? 'border-moss-500 bg-moss-50 ring-2 ring-moss-500/20' : 'border-slate-200 hover:border-moss-300'}`}
-                            >
-                                <input
-                                    type="radio"
-                                    className="sr-only"
-                                    name="medical_class"
-                                    value={value}
-                                    checked={form.data.medical_class === value}
-                                    onChange={() => setClass(value)}
-                                />
-                                <span className="block font-bold text-slate-900">
-                                    {label}
-                                </span>
-                                <span className="mt-1 block text-xs text-slate-500">
-                                    {description}
-                                </span>
-                            </label>
-                        ))}
-                    </div>
-                    <InputError message={form.errors.medical_class} />
-                    <label
-                        htmlFor="final_diagnosis"
-                        className="mt-5 block text-sm font-bold text-slate-800"
+                {!medicalExamination.finalized_at && (
+                    <form
+                        onSubmit={submit}
+                        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                     >
-                        Final diagnosis <span className="text-red-600">*</span>
-                    </label>
-                    <textarea
-                        id="final_diagnosis"
-                        rows={3}
-                        className="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15"
-                        value={form.data.final_diagnosis}
-                        onChange={(event) =>
-                            form.setData('final_diagnosis', event.target.value)
-                        }
-                    />
-                    <InputError message={form.errors.final_diagnosis} />
-                    <label
-                        htmlFor="final_remarks"
-                        className="mt-5 block text-sm font-bold text-slate-800"
-                    >
-                        Final remarks
-                    </label>
-                    <textarea
-                        id="final_remarks"
-                        rows={4}
-                        className="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15"
-                        value={form.data.final_remarks}
-                        onChange={(event) =>
-                            form.setData('final_remarks', event.target.value)
-                        }
-                    />
-                    <InputError message={form.errors.final_remarks} />
-                    <label
-                        htmlFor="recommendations"
-                        className="mt-5 block text-sm font-bold text-slate-800"
-                    >
-                        Recommendations
-                    </label>
-                    <textarea
-                        id="recommendations"
-                        rows={3}
-                        className="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15"
-                        value={form.data.recommendations}
-                        onChange={(event) =>
-                            form.setData('recommendations', event.target.value)
-                        }
-                    />
-                    <InputError message={form.errors.recommendations} />
-                    <div className="mt-5 flex justify-end">
-                        <button
-                            disabled={
-                                form.processing ||
-                                !form.data.medical_class ||
-                                !form.data.final_diagnosis ||
-                                !readyForFinalEvaluation ||
-                                selectedServices.length === 0
-                            }
-                            className="inline-flex items-center gap-2 rounded-xl bg-moss-600 px-5 py-2.5 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        <h2 className="font-bold text-slate-900">
+                            Medical classification
+                        </h2>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                            {[
+                                ['A', 'Class A', 'Fit to work'],
+                                ['B', 'Class B', 'Fit with minor findings'],
+                                ['C', 'Class C', 'Management discretion'],
+                                [
+                                    'pending',
+                                    'Pending',
+                                    'Further clearance needed',
+                                ],
+                                ['unfit', 'Unfit', 'Not fit for work'],
+                            ].map(([value, label, description]) => (
+                                <label
+                                    key={value}
+                                    className={`cursor-pointer rounded-xl border p-4 transition ${form.data.medical_class === value ? 'border-moss-500 bg-moss-50 ring-2 ring-moss-500/20' : 'border-slate-200 hover:border-moss-300'}`}
+                                >
+                                    <input
+                                        type="radio"
+                                        className="sr-only"
+                                        name="medical_class"
+                                        value={value}
+                                        checked={
+                                            form.data.medical_class === value
+                                        }
+                                        onChange={() => setClass(value)}
+                                    />
+                                    <span className="block font-bold text-slate-900">
+                                        {label}
+                                    </span>
+                                    <span className="mt-1 block text-xs text-slate-500">
+                                        {description}
+                                    </span>
+                                </label>
+                            ))}
+                        </div>
+                        <InputError message={form.errors.medical_class} />
+                        <label
+                            htmlFor="final_diagnosis"
+                            className="mt-5 block text-sm font-bold text-slate-800"
                         >
-                            {form.processing ? (
-                                <LoaderCircle className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <CheckCircle2 className="h-4 w-4" />
-                            )}
-                            Issue final evaluation
-                        </button>
-                    </div>
-                </form>}
+                            Final diagnosis{' '}
+                            <span className="text-red-600">*</span>
+                        </label>
+                        <textarea
+                            id="final_diagnosis"
+                            rows={3}
+                            className="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15"
+                            value={form.data.final_diagnosis}
+                            onChange={(event) =>
+                                form.setData(
+                                    'final_diagnosis',
+                                    event.target.value,
+                                )
+                            }
+                        />
+                        <InputError message={form.errors.final_diagnosis} />
+                        <label
+                            htmlFor="final_remarks"
+                            className="mt-5 block text-sm font-bold text-slate-800"
+                        >
+                            Final remarks
+                        </label>
+                        <textarea
+                            id="final_remarks"
+                            rows={4}
+                            className="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15"
+                            value={form.data.final_remarks}
+                            onChange={(event) =>
+                                form.setData(
+                                    'final_remarks',
+                                    event.target.value,
+                                )
+                            }
+                        />
+                        <InputError message={form.errors.final_remarks} />
+                        <label
+                            htmlFor="recommendations"
+                            className="mt-5 block text-sm font-bold text-slate-800"
+                        >
+                            Recommendations
+                        </label>
+                        <textarea
+                            id="recommendations"
+                            rows={3}
+                            className="mt-1 w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15"
+                            value={form.data.recommendations}
+                            onChange={(event) =>
+                                form.setData(
+                                    'recommendations',
+                                    event.target.value,
+                                )
+                            }
+                        />
+                        <InputError message={form.errors.recommendations} />
+                        <div className="mt-5 flex justify-end">
+                            <button
+                                disabled={
+                                    form.processing ||
+                                    !form.data.medical_class ||
+                                    !form.data.final_diagnosis ||
+                                    !readyForFinalEvaluation ||
+                                    selectedServices.length === 0
+                                }
+                                className="inline-flex items-center gap-2 rounded-xl bg-moss-600 px-5 py-2.5 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {form.processing ? (
+                                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <CheckCircle2 className="h-4 w-4" />
+                                )}
+                                Issue final evaluation
+                            </button>
+                        </div>
+                    </form>
+                )}
             </main>
         </>
     );

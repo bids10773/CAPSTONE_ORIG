@@ -54,12 +54,23 @@ class CompanyDashboardController extends Controller
             ->where('type', 'company_bulk')
             ->whereNotIn('status', ['completed', 'cancelled'])
             ->orderByDesc('appointment_date')
-            ->get(['id', 'appointment_date', 'status', 'service_types'])
+            ->withCount([
+                'bulkEmployees',
+                'bulkEmployees as completed_employees_count' => fn ($employees) => $employees->where('status', 'completed'),
+                'bulkEmployees as awaiting_results_count' => fn ($employees) => $employees->whereIn('status', ['awaiting_xray_result', 'for_final_evaluation']),
+            ])
+            ->get(['id', 'appointment_date', 'status', 'service_types', 'service_location', 'event_address', 'expected_employee_count'])
             ->map(fn ($appointment) => [
                 'id' => $appointment->id,
                 'appointment_date' => $appointment->appointment_date?->toDateString(),
                 'status' => $appointment->status,
                 'service_types' => $appointment->service_types ?? [],
+                'service_location' => $appointment->service_location,
+                'event_address' => $appointment->event_address,
+                'expected_employee_count' => $appointment->expected_employee_count,
+                'employee_count' => $appointment->bulk_employees_count,
+                'completed_count' => $appointment->completed_employees_count,
+                'awaiting_results_count' => $appointment->awaiting_results_count,
             ]);
 
         $employees = $company->users()->where('role', 'patient');

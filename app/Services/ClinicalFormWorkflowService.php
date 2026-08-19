@@ -67,6 +67,7 @@ class ClinicalFormWorkflowService
                 $medicalExamination->update(['status' => $medicalExamination->isReadyForFinalEvaluation()
                     ? 'ready_for_final_evaluation'
                     : 'awaiting_finalized_results']);
+                app(OnsiteEventWorkflowService::class)->completeService($appointment, 'medtech', $actor);
             }
 
             ClinicalFormAudit::create([

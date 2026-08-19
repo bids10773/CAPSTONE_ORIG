@@ -150,14 +150,24 @@ class CompanyEmployeeImportService
                     continue;
                 }
 
-                if ($this->duplicateExists(
+                $existingEmployee = $this->findDuplicate(
                     $companyId,
                     $row['first_name'],
                     $row['middle_name'],
                     $row['last_name'],
                     $row['birthdate']
-                )) {
+                );
+                if ($existingEmployee) {
                     $result['duplicates']++;
+
+                    if ($bulkAppointment) {
+                        $before = $bulkAppointment->bulkEmployees()
+                            ->where('user_id', $existingEmployee->id)->exists();
+                        $this->enrollment->enroll($bulkAppointment, $existingEmployee);
+                        if (! $before) {
+                            $result['attached']++;
+                        }
+                    }
 
                     continue;
                 }
@@ -378,8 +388,19 @@ class CompanyEmployeeImportService
         string $lastName,
         string $birthdate
     ): bool {
+        return $this->findDuplicate($companyId, $firstName, $middleName, $lastName, $birthdate) !== null;
+    }
+
+    private function findDuplicate(
+        int $companyId,
+        string $firstName,
+        ?string $middleName,
+        string $lastName,
+        string $birthdate
+    ): ?User {
         return User::query()
             ->where('company_id', $companyId)
+            ->where('role', 'patient')
             ->whereRaw('LOWER(first_name) = ?', [mb_strtolower($firstName)])
             ->where(function ($query) use ($middleName) {
                 $middleName === null
@@ -388,7 +409,7 @@ class CompanyEmployeeImportService
             })
             ->whereRaw('LOWER(last_name) = ?', [mb_strtolower($lastName)])
             ->whereHas('patientProfile', fn ($query) => $query->whereDate('birthdate', $birthdate))
-            ->exists();
+            ->first();
     }
 
     private function duplicateKey(string $firstName, ?string $middleName, string $lastName, string $birthdate): string

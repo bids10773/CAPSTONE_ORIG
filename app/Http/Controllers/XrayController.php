@@ -54,6 +54,7 @@ class XrayController extends Controller
                 'is_completed' => $complete,
             ]);
             $appointment->update(['status' => $complete ? 'for_final_evaluation' : 'awaiting_xray_result']);
+            app(\App\Services\OnsiteEventWorkflowService::class)->completeService($appointment, 'radtech', $request->user());
             ClinicalFormAudit::create([
                 'appointment_id' => $appointment->id, 'actor_id' => $request->user()->id,
                 'form_type' => 'xray', 'action' => $complete ? 'result_verified' : 'procedure_performed',

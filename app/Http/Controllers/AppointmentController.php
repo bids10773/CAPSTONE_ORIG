@@ -208,6 +208,11 @@ class AppointmentController extends Controller
             'service_types' => ['required', 'array'],
             'service_types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(Appointment::getServiceTypeOptions()))],
             'notes' => ['nullable', 'string', 'max:500'],
+            'service_location' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), Rule::in(['onsite', 'clinic', 'hybrid'])],
+            'event_address' => [Rule::requiredIf(fn () => $request->type === 'company_bulk' && in_array($request->service_location, ['onsite', 'hybrid'], true)), 'nullable', 'string', 'max:500'],
+            'event_contact_name' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), 'nullable', 'string', 'max:255'],
+            'event_contact_number' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), 'nullable', 'string', 'max:30'],
+            'expected_employee_count' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), 'nullable', 'integer', 'min:1', 'max:5000'],
             'company_referral_id' => ['nullable', 'required_if:type,company_referral', 'exists:company_referrals,id'],
             'present_illness' => ['nullable', 'string', 'max:1000'],
             'past_medical_history' => ['nullable', 'string', 'max:1000'],
@@ -295,14 +300,19 @@ class AppointmentController extends Controller
                 'company_name' => $data['company_name']
                     ?? (isset($data['company_id']) ? Company::find($data['company_id'])?->company_name : null),
                 'doctor_id' => $data['doctor_id'] ?? null,
-                'start_time' => $startTime?->format('H:i'),
-                'end_time' => $endTime?->format('H:i'),
+                'start_time' => $data['type'] === 'company_bulk' ? '08:00' : $startTime?->format('H:i'),
+                'end_time' => $data['type'] === 'company_bulk' ? '17:00' : $endTime?->format('H:i'),
                 'appointment_date' => $data['appointment_date'],
                 'type' => $data['type'],
                 'status' => 'pending',
                 'service_types' => $data['service_types'],
                 'referral_code' => $data['referral_code'] ?? null,
                 'notes' => $data['notes'] ?? null,
+                'service_location' => $data['service_location'] ?? null,
+                'event_address' => $data['event_address'] ?? null,
+                'event_contact_name' => $data['event_contact_name'] ?? null,
+                'event_contact_number' => $data['event_contact_number'] ?? null,
+                'expected_employee_count' => $data['expected_employee_count'] ?? null,
                 'company_referral_id' => $lockedReferral?->id,
             ]);
 
@@ -359,7 +369,7 @@ class AppointmentController extends Controller
     public function updateStatus(Request $request, Appointment $appointment)
     {
         $validator = Validator::make($request->all(), [
-            'status' => ['required', 'string', 'in:pending,accepted,arrived,for_diagnostics,for_xray,for_final_evaluation,completed,cancelled'],
+            'status' => ['required', 'string', 'in:pending,accepted,arrived,for_diagnostics,for_xray,awaiting_xray_result,for_final_evaluation,completed,cancelled'],
         ]);
 
         if ($validator->fails()) {
@@ -578,7 +588,11 @@ class AppointmentController extends Controller
 
         $query->when(
             $bulkOnly,
-            fn ($query) => $query->where('type', 'company_bulk'),
+            fn ($query) => $query->bulkParents()->withCount([
+                'bulkEmployees',
+                'bulkEmployees as completed_employees_count' => fn ($employees) => $employees->where('status', 'completed'),
+                'bulkEmployees as awaiting_results_count' => fn ($employees) => $employees->whereIn('status', ['awaiting_xray_result', 'for_final_evaluation']),
+            ]),
             fn ($query) => $query->where('type', '!=', 'company_bulk'),
         );
 
@@ -685,6 +699,7 @@ class AppointmentController extends Controller
                 'for_diagnostics',
                 'for_xray',
                 'for_final_evaluation',
+                'awaiting_xray_result',
                 'completed',
                 'rejected',
                 'cancelled',
@@ -962,7 +977,7 @@ class AppointmentController extends Controller
     public function staffUpdateStatus(Request $request, Appointment $appointment)
     {
         $request->validate([
-            'status' => ['required', 'in:pending,accepted,arrived,for_diagnostics,for_xray,for_final_evaluation,completed,cancelled'],
+            'status' => ['required', 'in:pending,accepted,arrived,for_diagnostics,for_xray,awaiting_xray_result,for_final_evaluation,completed,cancelled'],
         ]);
 
         $appointment->update(['status' => $request->status]);

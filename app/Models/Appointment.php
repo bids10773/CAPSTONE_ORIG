@@ -12,7 +12,7 @@ class Appointment extends Model
     public const ACTIVE_RESERVATION_STATUSES = ['pending', 'accepted'];
 
     public const OPEN_STATUSES = [
-        'pending', 'accepted', 'arrived', 'for_diagnostics', 'for_xray', 'for_final_evaluation',
+        'pending', 'accepted', 'arrived', 'for_diagnostics', 'for_xray', 'awaiting_xray_result', 'for_final_evaluation',
     ];
 
     public const TYPES = ['individual', 'company_referral', 'company_bulk', 'walk_in'];
@@ -64,6 +64,13 @@ class Appointment extends Model
         'notes',
         'batch_id',
         'bulk_appointment_id',
+        'service_location',
+        'event_address',
+        'event_contact_name',
+        'event_contact_number',
+        'expected_employee_count',
+        'attendance_status', 'attendance_marked_by', 'attendance_marked_at',
+        'absence_reason', 'absence_details', 'onsite_event_status',
         'company_referral_id',
         'arrived_at',
         'checked_in_by',
@@ -93,6 +100,7 @@ class Appointment extends Model
             'auto_cancelled_at' => 'datetime',
             'released_slot_assigned_at' => 'datetime',
             'processed_at' => 'datetime',
+            'attendance_marked_at' => 'datetime',
         ];
     }
 
@@ -155,11 +163,31 @@ class Appointment extends Model
         return $this->hasMany(self::class, 'bulk_appointment_id');
     }
 
+    public function onsiteStaff(): HasMany
+    {
+        return $this->hasMany(OnsiteEventStaff::class, 'bulk_appointment_id');
+    }
+
+    public function onsiteQueues(): HasMany
+    {
+        return $this->hasMany(OnsiteServiceQueue::class, 'bulk_appointment_id');
+    }
+
+    public function serviceQueues(): HasMany
+    {
+        return $this->hasMany(OnsiteServiceQueue::class);
+    }
+
     public function isBulkParent(): bool
     {
         return $this->type === 'company_bulk'
             && $this->bulk_appointment_id === null
             && $this->user?->role === 'company';
+    }
+
+    public function scopeBulkParents($query)
+    {
+        return $query->where('type', 'company_bulk')->whereNull('bulk_appointment_id');
     }
 
     public function releasedFromAppointment(): BelongsTo

@@ -217,3 +217,33 @@ test('imported employees inherit the selected bulk appointment batch', function 
         ->and($employeeAppointment->appointment_date->toDateString())->toBe($bulkAppointment->appointment_date->toDateString())
         ->and($employeeAppointment->service_types)->toBe(['PE']);
 });
+
+test('existing company employees are reused and enrolled into a selected bulk event', function () {
+    $company = Company::create(['company_name' => 'Repeat Employee Company']);
+    $employee = User::factory()->create([
+        'role' => 'patient', 'company_id' => $company->id,
+        'first_name' => 'Maria', 'middle_name' => null, 'last_name' => 'Santos',
+    ]);
+    $employee->patientProfile()->create([
+        'birthdate' => '1993-04-10', 'sex' => 'Female', 'civil_status' => 'Single',
+    ]);
+    $representative = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
+    $parent = Appointment::create([
+        'user_id' => $representative->id, 'company_id' => $company->id,
+        'appointment_date' => today()->addDay(), 'type' => 'company_bulk',
+        'status' => 'pending', 'service_types' => ['PE'],
+    ]);
+    $file = employeeSpreadsheet([
+        ['first_name', 'middle_name', 'last_name', 'sex', 'birthdate', 'civil_status', 'employee_number'],
+        ['Maria', '', 'Santos', 'Female', '1993-04-10', 'Single', 'EMP-OLD'],
+    ]);
+
+    $service = app(\App\Services\CompanyEmployeeImportService::class);
+    $result = $service->import($service->preview($file, $company->id, $parent->id), $company->id);
+
+    expect($result['imported'])->toBe(0)
+        ->and($result['duplicates'])->toBe(1)
+        ->and($result['attached'])->toBe(1)
+        ->and(User::where('company_id', $company->id)->where('role', 'patient')->count())->toBe(1)
+        ->and($parent->bulkEmployees()->where('user_id', $employee->id)->exists())->toBeTrue();
+});

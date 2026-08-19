@@ -468,7 +468,9 @@ export default function CompanyDashboard() {
                                 >
                                     {label}
                                     <input
-                                        type={field === 'email' ? 'email' : 'text'}
+                                        type={
+                                            field === 'email' ? 'email' : 'text'
+                                        }
                                         value={referralForm.data[field]}
                                         onChange={(e) =>
                                             referralForm.setData(

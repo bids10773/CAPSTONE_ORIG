@@ -25,6 +25,9 @@ test('company accounts always create company bulk appointments', function () {
             'company_id' => null,
             'appointment_date' => $date->format('Y-m-d'),
             'service_types' => ['PE'],
+            'service_location' => 'onsite', 'event_address' => 'Acme Plant',
+            'event_contact_name' => 'Ana Cruz', 'event_contact_number' => '09171234567',
+            'expected_employee_count' => 100,
         ])
         ->assertRedirect(route('appointments.index'));
 
@@ -34,7 +37,7 @@ test('company accounts always create company bulk appointments', function () {
         'company_name' => $company->company_name,
         'type' => 'company_bulk',
         'doctor_id' => null,
-        'start_time' => null,
+        'start_time' => '08:00',
     ]);
 });
 
@@ -49,6 +52,8 @@ test('drug and pregnancy tests are optional PE add-ons for company bulk appointm
     $this->actingAs($account)->post(route('appointments.store'), [
         'appointment_date' => today()->addDay()->toDateString(),
         'service_types' => ['PE'],
+        'service_location' => 'clinic', 'event_contact_name' => 'Ana Cruz',
+        'event_contact_number' => '09171234567', 'expected_employee_count' => 100,
     ])->assertSessionDoesntHaveErrors();
 
     $standard = Appointment::query()->latest('id')->firstOrFail();
@@ -58,6 +63,8 @@ test('drug and pregnancy tests are optional PE add-ons for company bulk appointm
     $this->actingAs($account)->post(route('appointments.store'), [
         'appointment_date' => today()->addDays(2)->toDateString(),
         'service_types' => ['PE', 'Drug Test', 'Pregnancy Test'],
+        'service_location' => 'clinic', 'event_contact_name' => 'Ana Cruz',
+        'event_contact_number' => '09171234567', 'expected_employee_count' => 100,
     ])->assertSessionDoesntHaveErrors();
 
     $withAddOns = Appointment::query()->latest('id')->firstOrFail();
@@ -104,6 +111,25 @@ test('bulk requests have a separate admin approval queue and do not require pati
         ->assertSessionDoesntHaveErrors();
 
     expect($bulk->refresh()->status)->toBe('accepted');
+});
+
+test('admin bulk request queue contains parent events but not enrolled employee appointments', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $company = Company::create(['company_name' => 'Parent Queue Company']);
+    $representative = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
+    $employee = User::factory()->create(['role' => 'patient', 'company_id' => $company->id]);
+    $parent = Appointment::create([
+        'user_id' => $representative->id, 'company_id' => $company->id,
+        'appointment_date' => today()->addDay(), 'type' => 'company_bulk',
+        'status' => 'accepted', 'service_types' => ['PE'],
+    ]);
+    app(BulkAppointmentEnrollmentService::class)->enroll($parent, $employee);
+
+    $this->actingAs($admin)->get(route('admin.bulk-appointments.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('appointments.data', 1)
+            ->where('appointments.data.0.id', $parent->id)
+            ->where('appointments.data.0.bulk_employees_count', 1));
 });
 
 test('individual appointments require complete patient details before admin approval', function () {

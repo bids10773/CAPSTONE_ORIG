@@ -131,6 +131,7 @@ const statusStyles: Record<string, string> = {
     for_diagnostics: 'border-cyan-200 bg-cyan-50 text-cyan-700',
     for_xray: 'border-violet-200 bg-violet-50 text-violet-700',
     for_final_evaluation: 'border-purple-200 bg-purple-50 text-purple-700',
+    awaiting_xray_result: 'border-amber-200 bg-amber-50 text-amber-700',
     completed: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     rejected: 'border-rose-200 bg-rose-50 text-rose-700',
     cancelled: 'border-red-200 bg-red-50 text-red-700',
@@ -196,8 +197,27 @@ function appointmentTime(appointment: Appointment): string {
 }
 
 function isPastAppointment(appointment: Appointment): boolean {
-    if (!appointment.start_time) return true;
-    return new Date(`${appointment.appointment_date.slice(0, 10)}T${appointment.start_time.slice(0, 5)}:00`).getTime() < Date.now();
+    const appointmentDate = appointment.appointment_date.slice(0, 10);
+
+    // Bulk company events intentionally have no individual time slot. Keep a
+    // pending event confirmable for the whole scheduled day and only consider
+    // it past once its calendar date has elapsed.
+    if (appointment.type === 'company_bulk' || !appointment.start_time) {
+        const now = new Date();
+        const today = [
+            now.getFullYear(),
+            String(now.getMonth() + 1).padStart(2, '0'),
+            String(now.getDate()).padStart(2, '0'),
+        ].join('-');
+
+        return appointmentDate < today;
+    }
+
+    return (
+        new Date(
+            `${appointmentDate}T${appointment.start_time.slice(0, 5)}:00`,
+        ).getTime() < Date.now()
+    );
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -219,12 +239,8 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 export default function AdminAppointmentsIndex() {
-    const {
-        appointments,
-        filters,
-        bulkOnly,
-        pendingRequestsCount,
-    } = usePage<Props>().props;
+    const { appointments, filters, bulkOnly, pendingRequestsCount } =
+        usePage<Props>().props;
     const endpoint = bulkOnly
         ? '/admin/bulk-appointments'
         : '/admin/appointments';
@@ -235,7 +251,8 @@ export default function AdminAppointmentsIndex() {
     const suppressSearchVisit = useRef(false);
     const [loading, setLoading] = useState(false);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
-    const [rejectingAppointment, setRejectingAppointment] = useState<Appointment | null>(null);
+    const [rejectingAppointment, setRejectingAppointment] =
+        useState<Appointment | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
     const [rejectionDetails, setRejectionDetails] = useState('');
     const [rejectionError, setRejectionError] = useState('');
@@ -262,12 +279,16 @@ export default function AdminAppointmentsIndex() {
         if (search === filters.search) return;
         const timeout = window.setTimeout(() => {
             setLoading(true);
-            router.get(endpoint, { search, per_page: appointments.per_page }, {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-                onFinish: () => setLoading(false),
-            });
+            router.get(
+                endpoint,
+                { search, per_page: appointments.per_page },
+                {
+                    preserveState: true,
+                    preserveScroll: true,
+                    replace: true,
+                    onFinish: () => setLoading(false),
+                },
+            );
         }, 400);
         return () => window.clearTimeout(timeout);
         // `visit` intentionally uses the latest server filters after each visit.
@@ -284,12 +305,16 @@ export default function AdminAppointmentsIndex() {
         if (search !== '') suppressSearchVisit.current = true;
         setSearch('');
         setLoading(true);
-        router.get(endpoint, { per_page: appointments.per_page }, {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-            onFinish: () => setLoading(false),
-        });
+        router.get(
+            endpoint,
+            { per_page: appointments.per_page },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                onFinish: () => setLoading(false),
+            },
+        );
     };
 
     const clearFilters = () => {
@@ -322,12 +347,22 @@ export default function AdminAppointmentsIndex() {
 
     const approve = (appointment: Appointment) => {
         setUpdatingId(appointment.id);
-        router.patch(`/admin/appointments/${appointment.id}/approve`, {}, {
-            preserveScroll: true,
-            onSuccess: () => setSelectedAppointment(null),
-            onError: (errors) => toast.error(String(Object.values(errors)[0] ?? 'Unable to confirm this appointment.')),
-            onFinish: () => setUpdatingId(null),
-        });
+        router.patch(
+            `/admin/appointments/${appointment.id}/approve`,
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => setSelectedAppointment(null),
+                onError: (errors) =>
+                    toast.error(
+                        String(
+                            Object.values(errors)[0] ??
+                                'Unable to confirm this appointment.',
+                        ),
+                    ),
+                onFinish: () => setUpdatingId(null),
+            },
+        );
     };
 
     const openReject = (appointment: Appointment) => {
@@ -338,19 +373,32 @@ export default function AdminAppointmentsIndex() {
     };
 
     const reject = () => {
-        if (!rejectingAppointment || !rejectionReason || (rejectionReason === 'other' && !rejectionDetails.trim())) {
-            setRejectionError('Select a reason and provide details when required.');
+        if (
+            !rejectingAppointment ||
+            !rejectionReason ||
+            (rejectionReason === 'other' && !rejectionDetails.trim())
+        ) {
+            setRejectionError(
+                'Select a reason and provide details when required.',
+            );
             return;
         }
         setUpdatingId(rejectingAppointment.id);
-        router.patch(`/admin/appointments/${rejectingAppointment.id}/reject`, {
-            reason: rejectionReason,
-            details: rejectionDetails,
-        }, {
-            preserveScroll: true,
-            onSuccess: () => { setRejectingAppointment(null); setSelectedAppointment(null); },
-            onFinish: () => setUpdatingId(null),
-        });
+        router.patch(
+            `/admin/appointments/${rejectingAppointment.id}/reject`,
+            {
+                reason: rejectionReason,
+                details: rejectionDetails,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setRejectingAppointment(null);
+                    setSelectedAppointment(null);
+                },
+                onFinish: () => setUpdatingId(null),
+            },
+        );
     };
 
     const missingFields = (appointment: Appointment): string[] => {
@@ -384,20 +432,38 @@ export default function AdminAppointmentsIndex() {
                 >
                     <Eye className="size-4" /> View details
                 </DropdownMenuItem>
+                {appointment.type === 'company_bulk' && bulkOnly && (
+                    <DropdownMenuItem onSelect={() => router.visit(`/admin/onsite-events/${appointment.id}`)}>
+                        <Building2 className="size-4" /> Assign onsite team
+                    </DropdownMenuItem>
+                )}
                 {appointment.status === 'pending' && (
                     <DropdownMenuItem
-                        disabled={missingFields(appointment).length > 0 || isPastAppointment(appointment)}
-                        onSelect={() => appointment.type === 'individual' ? approve(appointment) : updateStatus(appointment, 'accepted')}
+                        disabled={
+                            missingFields(appointment).length > 0 ||
+                            isPastAppointment(appointment)
+                        }
+                        onSelect={() =>
+                            appointment.type === 'individual'
+                                ? approve(appointment)
+                                : updateStatus(appointment, 'accepted')
+                        }
                     >
                         <CheckCircle2 className="size-4" /> Confirm request
                     </DropdownMenuItem>
                 )}
-                {appointment.status === 'pending' && appointment.type === 'individual' && (
-                    <DropdownMenuItem className="text-red-600" onSelect={() => openReject(appointment)}>
-                        <XCircle className="size-4" /> Reject request
-                    </DropdownMenuItem>
-                )}
-                {!['pending', 'completed', 'cancelled', 'rejected'].includes(appointment.status) && (
+                {appointment.status === 'pending' &&
+                    appointment.type === 'individual' && (
+                        <DropdownMenuItem
+                            className="text-red-600"
+                            onSelect={() => openReject(appointment)}
+                        >
+                            <XCircle className="size-4" /> Reject request
+                        </DropdownMenuItem>
+                    )}
+                {!['pending', 'completed', 'cancelled', 'rejected'].includes(
+                    appointment.status,
+                ) && (
                     <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -442,8 +508,24 @@ export default function AdminAppointmentsIndex() {
                 </header>
 
                 {!bulkOnly && pendingRequestsCount > 0 && (
-                    <button type="button" onClick={() => visit({ status: 'pending', type: 'individual' })} className="flex w-full items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left text-amber-900 shadow-sm">
-                        <span><strong>{pendingRequestsCount} appointment {pendingRequestsCount === 1 ? 'request' : 'requests'}</strong><span className="mt-1 block text-sm text-amber-700">Waiting for administrator review</span></span>
+                    <button
+                        type="button"
+                        onClick={() =>
+                            visit({ status: 'pending', type: 'individual' })
+                        }
+                        className="flex w-full items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left text-amber-900 shadow-sm"
+                    >
+                        <span>
+                            <strong>
+                                {pendingRequestsCount} appointment{' '}
+                                {pendingRequestsCount === 1
+                                    ? 'request'
+                                    : 'requests'}
+                            </strong>
+                            <span className="mt-1 block text-sm text-amber-700">
+                                Waiting for administrator review
+                            </span>
+                        </span>
                         <ArrowRight className="size-5" />
                     </button>
                 )}
@@ -463,7 +545,12 @@ export default function AdminAppointmentsIndex() {
                                 className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-11 pl-10 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
                             />
                             {search && (
-                                <button type="button" onClick={clearSearch} aria-label="Clear search" className="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                                <button
+                                    type="button"
+                                    onClick={clearSearch}
+                                    aria-label="Clear search"
+                                    className="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                >
                                     <X className="size-4" />
                                 </button>
                             )}
@@ -811,12 +898,24 @@ export default function AdminAppointmentsIndex() {
                             </div>
                         )}
 
-                        {selectedAppointment.status === 'pending' && isPastAppointment(selectedAppointment) && (
-                            <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-                                <CircleAlert className="mt-0.5 size-4 shrink-0" />
-                                <div><p className="font-semibold">Appointment time has passed</p><p className="mt-1 text-xs leading-5">Past requests cannot be confirmed. Reject this request and ask the patient to select a future schedule.</p></div>
-                            </div>
-                        )}
+                        {selectedAppointment.status === 'pending' &&
+                            isPastAppointment(selectedAppointment) && (
+                                <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                                    <CircleAlert className="mt-0.5 size-4 shrink-0" />
+                                    <div>
+                                        <p className="font-semibold">
+                                            {selectedAppointment.start_time
+                                                ? 'Appointment time has passed'
+                                                : 'Appointment date has passed'}
+                                        </p>
+                                        <p className="mt-1 text-xs leading-5">
+                                            Past requests cannot be confirmed.
+                                            Cancel this request and arrange a
+                                            future schedule with the requester.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                         <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
                             <Button
@@ -825,9 +924,12 @@ export default function AdminAppointmentsIndex() {
                             >
                                 Close
                             </Button>
-                            {!['pending', 'completed', 'cancelled', 'rejected'].includes(
-                                selectedAppointment.status,
-                            ) && (
+                            {![
+                                'pending',
+                                'completed',
+                                'cancelled',
+                                'rejected',
+                            ].includes(selectedAppointment.status) && (
                                 <Button
                                     variant="destructive"
                                     disabled={
@@ -845,14 +947,40 @@ export default function AdminAppointmentsIndex() {
                             )}
                             {selectedAppointment.status === 'pending' && (
                                 <>
-                                    {selectedAppointment.type === 'individual' && (
-                                        <Button variant="destructive" disabled={updatingId === selectedAppointment.id} onClick={() => openReject(selectedAppointment)}>
+                                    {selectedAppointment.type ===
+                                        'individual' && (
+                                        <Button
+                                            variant="destructive"
+                                            disabled={
+                                                updatingId ===
+                                                selectedAppointment.id
+                                            }
+                                            onClick={() =>
+                                                openReject(selectedAppointment)
+                                            }
+                                        >
                                             Reject Request
                                         </Button>
                                     )}
                                     <Button
-                                        disabled={missingFields(selectedAppointment).length > 0 || isPastAppointment(selectedAppointment) || updatingId === selectedAppointment.id}
-                                        onClick={() => selectedAppointment.type === 'individual' ? approve(selectedAppointment) : updateStatus(selectedAppointment, 'accepted')}
+                                        disabled={
+                                            missingFields(selectedAppointment)
+                                                .length > 0 ||
+                                            isPastAppointment(
+                                                selectedAppointment,
+                                            ) ||
+                                            updatingId ===
+                                                selectedAppointment.id
+                                        }
+                                        onClick={() =>
+                                            selectedAppointment.type ===
+                                            'individual'
+                                                ? approve(selectedAppointment)
+                                                : updateStatus(
+                                                      selectedAppointment,
+                                                      'accepted',
+                                                  )
+                                        }
                                         className="bg-moss-700 text-white hover:bg-moss-800"
                                     >
                                         Confirm Appointment
@@ -864,30 +992,80 @@ export default function AdminAppointmentsIndex() {
                 )}
             </Dialog>
 
-            <Dialog open={rejectingAppointment !== null} onOpenChange={(open) => !open && setRejectingAppointment(null)}>
+            <Dialog
+                open={rejectingAppointment !== null}
+                onOpenChange={(open) => !open && setRejectingAppointment(null)}
+            >
                 <DialogContent className="max-w-lg rounded-2xl">
                     <DialogHeader>
                         <DialogTitle>Reject appointment request</DialogTitle>
-                        <DialogDescription>The reserved time will become available again. The patient will receive the reason.</DialogDescription>
+                        <DialogDescription>
+                            The reserved time will become available again. The
+                            patient will receive the reason.
+                        </DialogDescription>
                     </DialogHeader>
-                    <label className="text-sm font-medium text-slate-700">Reason
-                        <select value={rejectionReason} onChange={(event) => { setRejectionReason(event.target.value); setRejectionError(''); }} className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm">
+                    <label className="text-sm font-medium text-slate-700">
+                        Reason
+                        <select
+                            value={rejectionReason}
+                            onChange={(event) => {
+                                setRejectionReason(event.target.value);
+                                setRejectionError('');
+                            }}
+                            className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm"
+                        >
                             <option value="">Select a reason</option>
-                            <option value="doctor_unavailable">Doctor unavailable</option>
-                            <option value="schedule_adjustment">Schedule adjustment needed</option>
-                            <option value="clinic_unavailable">Clinic unavailable</option>
-                            <option value="incomplete_requirements">Incomplete requirements</option>
-                            <option value="duplicate_appointment">Duplicate appointment</option>
+                            <option value="doctor_unavailable">
+                                Doctor unavailable
+                            </option>
+                            <option value="schedule_adjustment">
+                                Schedule adjustment needed
+                            </option>
+                            <option value="clinic_unavailable">
+                                Clinic unavailable
+                            </option>
+                            <option value="incomplete_requirements">
+                                Incomplete requirements
+                            </option>
+                            <option value="duplicate_appointment">
+                                Duplicate appointment
+                            </option>
                             <option value="other">Other</option>
                         </select>
                     </label>
-                    <label className="text-sm font-medium text-slate-700">Details {rejectionReason === 'other' ? '(required)' : '(optional)'}
-                        <textarea value={rejectionDetails} maxLength={500} onChange={(event) => { setRejectionDetails(event.target.value); setRejectionError(''); }} rows={4} className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm" />
+                    <label className="text-sm font-medium text-slate-700">
+                        Details{' '}
+                        {rejectionReason === 'other'
+                            ? '(required)'
+                            : '(optional)'}
+                        <textarea
+                            value={rejectionDetails}
+                            maxLength={500}
+                            onChange={(event) => {
+                                setRejectionDetails(event.target.value);
+                                setRejectionError('');
+                            }}
+                            rows={4}
+                            className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm"
+                        />
                     </label>
-                    {rejectionError && <p className="text-sm text-red-600">{rejectionError}</p>}
+                    {rejectionError && (
+                        <p className="text-sm text-red-600">{rejectionError}</p>
+                    )}
                     <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setRejectingAppointment(null)}>Keep Request</Button>
-                        <Button variant="destructive" disabled={updatingId !== null} onClick={reject}>Reject Request</Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => setRejectingAppointment(null)}
+                        >
+                            Keep Request
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            disabled={updatingId !== null}
+                            onClick={reject}
+                        >
+                            Reject Request
+                        </Button>
                     </div>
                 </DialogContent>
             </Dialog>
