@@ -23,6 +23,8 @@ class XrayReport extends Model
         'remarks',
         'finalized_by',
         'finalized_at',
+        'sent_for_verification_by',
+        'sent_for_verification_at',
     ];
 
     protected function casts(): array
@@ -33,6 +35,7 @@ class XrayReport extends Model
             'performed_at' => 'datetime',
             'result_available_at' => 'datetime',
             'verified_at' => 'datetime',
+            'sent_for_verification_at' => 'datetime',
         ];
     }
 

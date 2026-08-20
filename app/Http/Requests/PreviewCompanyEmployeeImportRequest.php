@@ -22,6 +22,7 @@ class PreviewCompanyEmployeeImportRequest extends FormRequest
                 Rule::exists('appointments', 'id')->where(fn ($query) => $query
                     ->where('company_id', $this->user()->company_id)
                     ->where('type', 'company_bulk')
+                    ->whereNotIn('status', ['completed', 'cancelled'])
                     ->whereNull('bulk_appointment_id')),
             ],
         ];

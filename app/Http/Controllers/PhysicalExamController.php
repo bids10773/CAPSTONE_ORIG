@@ -24,6 +24,7 @@ class PhysicalExamController extends Controller
     public function create(Appointment $appointment, MedicalExaminationService $examinations): Response
     {
         Gate::authorize('updatePhysicalExam', $appointment);
+        app(\App\Services\OnsiteEventWorkflowService::class)->startService($appointment, 'doctor', request()->user());
         $medicalExamination = $examinations->forAppointment($appointment);
         $appointment->load(['user', 'company', 'medicalExamination', 'physicalExam', 'medicalHistory', 'patientProfile']);
         $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'diagnosticResults', 'xrayReport']);
@@ -83,6 +84,7 @@ class PhysicalExamController extends Controller
                 : ($appointment->requiresXray() ? 'for_xray' : 'for_final_evaluation');
             $appointment->update(['status' => $next]);
             app(\App\Services\OnsiteEventWorkflowService::class)->completeService($appointment, 'doctor', $request->user());
+            app(\App\Services\OnsiteEventWorkflowService::class)->refreshFinalEvaluationTask($appointment->fresh());
             $this->audit($request, $appointment, 'physical_exam', $exam->wasRecentlyCreated ? 'created' : 'updated', $exam->getChanges());
         });
 
@@ -91,7 +93,17 @@ class PhysicalExamController extends Controller
 
     public function final(Appointment $appointment, MedicalExaminationService $examinations): Response
     {
-        Gate::authorize('finalizeMedicalEvaluation', $appointment);
+        $canFinalize = Gate::allows('finalizeMedicalEvaluation', $appointment);
+        $canVerify = Gate::allows('verifyDiagnosticResults', $appointment);
+        abort_unless($canFinalize || $canVerify, 403);
+        $verificationTask = $appointment->serviceQueues()->where('assigned_staff_id', request()->user()->id)
+            ->whereIn('service_role', ['drug_verification', 'xray_verification'])
+            ->whereIn('status', ['assigned', 'in_progress'])->value('service_role');
+        app(\App\Services\OnsiteEventWorkflowService::class)->startService(
+            $appointment,
+            $canFinalize ? 'final_evaluation' : ($verificationTask ?: 'drug_verification'),
+            request()->user()
+        );
         $medicalExamination = $examinations->forAppointment($appointment);
         $appointment->load(['user', 'company', 'patientProfile', 'physicalExam', 'labResult.encodedBy', 'xrayReport', 'medicalHistory']);
         $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'diagnosticResults', 'xrayReport']);
@@ -102,6 +114,7 @@ class PhysicalExamController extends Controller
             'medicalExamination' => $medicalExamination,
             'childSummaries' => $medicalExamination->childSummaries(),
             'readyForFinalEvaluation' => $medicalExamination->isReadyForFinalEvaluation(),
+            'canFinalize' => $canFinalize,
         ]);
     }
 
@@ -119,7 +132,7 @@ class PhysicalExamController extends Controller
                 throw ValidationException::withMessages(['medical_class' => 'Complete the physical examination before final evaluation.']);
             }
 
-            if ($requested->intersect(['CBC', 'Urinalysis', 'Fecalysis', 'Drug Test', 'Hepatitis', 'Pregnancy Test', 'FBS', 'Blood Chemistry', 'Blood Typing'])->isNotEmpty()
+            if (app(LaboratoryFormDefinition::class)->sectionsFor($appointment) !== []
                 && ! $appointment->labResult?->isFinalized()) {
                 throw ValidationException::withMessages(['medical_class' => 'Finalize all requested laboratory results first.']);
             }
@@ -143,6 +156,7 @@ class PhysicalExamController extends Controller
                 'finalized_at' => now(),
             ]);
             $appointment->update(['status' => 'completed']);
+            app(\App\Services\OnsiteEventWorkflowService::class)->completeService($appointment, 'final_evaluation', $request->user());
             $this->audit($request, $appointment, 'final_evaluation', 'finalized', ['classification' => $classification]);
         });
 

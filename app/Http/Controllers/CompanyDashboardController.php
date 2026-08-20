@@ -52,9 +52,9 @@ class CompanyDashboardController extends Controller
         $bulkAppointments = $company->appointments()
             ->where('user_id', $user->id)
             ->where('type', 'company_bulk')
-            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->where('status', '!=', 'cancelled')
             ->orderByDesc('appointment_date')
-            ->withCount([
+            ->with('bulkMedicalReport:id,bulk_appointment_id,status,released_at')->withCount([
                 'bulkEmployees',
                 'bulkEmployees as completed_employees_count' => fn ($employees) => $employees->where('status', 'completed'),
                 'bulkEmployees as awaiting_results_count' => fn ($employees) => $employees->whereIn('status', ['awaiting_xray_result', 'for_final_evaluation']),
@@ -71,10 +71,17 @@ class CompanyDashboardController extends Controller
                 'employee_count' => $appointment->bulk_employees_count,
                 'completed_count' => $appointment->completed_employees_count,
                 'awaiting_results_count' => $appointment->awaiting_results_count,
+                'report_status' => $appointment->bulkMedicalReport?->status,
+                'report_released_at' => $appointment->bulkMedicalReport?->released_at?->toIso8601String(),
+                'report_download_url' => $appointment->bulkMedicalReport?->released_at
+                    ? route('company.bulk-medical-results.download', $appointment) : null,
             ]);
 
         $employees = $company->users()->where('role', 'patient');
         $previewToken = (string) $request->query('preview_token', '');
+        $bulkUploadId = $company->appointments()->whereKey($request->integer('bulk_upload'))
+            ->where('user_id', $user->id)->where('type', 'company_bulk')
+            ->where('onsite_event_status', 'draft')->value('id');
         $importPreview = null;
         if (Str::isUuid($previewToken)) {
             $cachedPreview = Cache::get("company-employee-import:{$user->id}:{$previewToken}");
@@ -139,6 +146,7 @@ class CompanyDashboardController extends Controller
             ],
             'uploads' => $uploads,
             'importPreview' => $importPreview,
+            'bulkUploadId' => $bulkUploadId,
             'referrals' => $referrals,
             'referralStats' => [
                 'pending' => $referrals->whereIn('status', ['pending', 'sent', 'viewed'])->count(),
@@ -146,7 +154,9 @@ class CompanyDashboardController extends Controller
                 'completed' => $referrals->where('status', 'completed')->count(),
                 'expired' => $referrals->where('status', 'expired')->count(),
             ],
-            'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'serviceTypes' => collect(Appointment::getServiceTypeOptions())
+                ->except(['ECG', 'Audiometry', 'Neuro Psychiatric Test'])
+                ->all(),
         ];
     }
 }

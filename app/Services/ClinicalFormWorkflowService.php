@@ -26,7 +26,8 @@ class ClinicalFormWorkflowService
                 throw ValidationException::withMessages(['form' => 'This laboratory report has been finalized and is locked.']);
             }
 
-            $attributes = $this->laboratoryAttributes($data['results'] ?? []);
+            $sections = app(LaboratoryFormDefinition::class)->sectionsFor($appointment);
+            $attributes = $this->laboratoryAttributes($data['results'] ?? [], $sections);
             $finalize = (bool) $data['finalize'];
             $attributes += [
                 'medical_examination_id' => $medicalExamination->id,
@@ -39,28 +40,48 @@ class ClinicalFormWorkflowService
             ];
 
             $result = LabResult::updateOrCreate(['appointment_id' => $appointment->id], $attributes);
-            foreach (app(LaboratoryFormDefinition::class)->sectionsFor($appointment) as $key => $definition) {
+            foreach ($sections as $key => $definition) {
                 if (! array_key_exists($key, $data['results'] ?? [])) {
                     continue;
                 }
 
                 $isDrugTest = $key === 'drug_test';
+                $drugAction = $data['drug_workflow_action'] ?? 'complete';
+                $initialDrugResult = $data['results'][$key];
+                $reactiveDrugResult = $isDrugTest && collect($initialDrugResult)
+                    ->contains(fn ($value) => strtolower((string) $value) === 'positive');
+                if ($finalize && $isDrugTest && $reactiveDrugResult && $drugAction !== 'send_verification') {
+                    throw ValidationException::withMessages(['drug_workflow_action' => 'A positive Drug Test must be sent for verification before it can be finalized.']);
+                }
+                $drugVerifying = $isDrugTest && $finalize && $drugAction === 'send_verification';
                 $medicalExamination->diagnosticResults()->updateOrCreate(['service_key' => $key], [
                     'appointment_id' => $appointment->id,
                     'patient_id' => $appointment->user_id,
                     'company_id' => $appointment->company_id,
                     'batch_id' => $appointment->batch_id,
                     'status' => $finalize
-                        ? ($isDrugTest ? 'awaiting_official_result' : 'verified')
+                        ? ($drugVerifying ? 'verifying' : 'verified')
                         : 'in_progress',
-                    'result_data' => $data['results'][$key],
+                    'result_data' => $isDrugTest
+                        ? ['initial_result' => $initialDrugResult, 'final_result' => $drugVerifying ? null : $initialDrugResult]
+                        : $data['results'][$key],
                     'performed_by' => $actor->id,
                     'performed_at' => now(),
-                    'encoded_by' => $isDrugTest ? null : $actor->id,
-                    'encoded_at' => $isDrugTest ? null : now(),
-                    'verified_by' => $finalize && ! $isDrugTest ? $actor->id : null,
-                    'verified_at' => $finalize && ! $isDrugTest ? now() : null,
+                    'encoded_by' => $actor->id,
+                    'encoded_at' => now(),
+                    'verified_by' => $finalize && ! $drugVerifying ? $actor->id : null,
+                    'verified_at' => $finalize && ! $drugVerifying ? now() : null,
+                    'sent_for_verification_by' => $drugVerifying ? $actor->id : null,
+                    'sent_for_verification_at' => $drugVerifying ? now() : null,
                 ]);
+                if ($drugVerifying) {
+                    ClinicalFormAudit::create([
+                        'appointment_id' => $appointment->id, 'actor_id' => $actor->id,
+                        'form_type' => 'drug_test', 'action' => 'sent_for_verification',
+                        'changes' => ['old_status' => $existing?->status, 'new_status' => 'verifying'],
+                        'ip_address' => $request->ip(), 'user_agent' => $request->userAgent(),
+                    ]);
+                }
             }
             if ($finalize) {
                 $appointment->update(['status' => $this->nextStatus($appointment)]);
@@ -68,6 +89,10 @@ class ClinicalFormWorkflowService
                     ? 'ready_for_final_evaluation'
                     : 'awaiting_finalized_results']);
                 app(OnsiteEventWorkflowService::class)->completeService($appointment, 'medtech', $actor);
+                if (array_key_exists('drug_test', $data['results'] ?? []) && ($data['drug_workflow_action'] ?? 'complete') === 'send_verification') {
+                    app(OnsiteEventWorkflowService::class)->createDoctorTask($appointment, 'drug_verification');
+                }
+                app(EmployeeMedicalStatusResolver::class)->resolve($appointment->fresh());
             }
 
             ClinicalFormAudit::create([
@@ -93,10 +118,10 @@ class ClinicalFormWorkflowService
         ]);
     }
 
-    private function laboratoryAttributes(array $results): array
+    private function laboratoryAttributes(array $results, array $sections): array
     {
         $attributes = [];
-        foreach (app(LaboratoryFormDefinition::class)->sections() as $key => $section) {
+        foreach ($sections as $key => $section) {
             if (! array_key_exists($key, $results)) {
                 continue;
             }

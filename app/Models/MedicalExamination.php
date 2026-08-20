@@ -95,7 +95,7 @@ class MedicalExamination extends Model
             $result = $lab?->{$definition['column']};
             $completed = $diagnostic?->isVerified() ?? (filled($result) && $lab?->isFinalized() && $key !== 'drug_test');
             $status = $completed ? 'completed' : match ($diagnostic?->status) {
-                'awaiting_official_result' => 'awaiting_result',
+                'verifying', 'awaiting_official_result', 'official_result_received' => 'awaiting_result',
                 'in_progress' => 'draft',
                 default => 'pending',
             };

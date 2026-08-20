@@ -19,6 +19,7 @@ class LaboratoryController extends Controller
     public function create(Appointment $appointment, LaboratoryFormDefinition $definitions): Response
     {
         Gate::authorize('updateLaboratory', $appointment);
+        app(\App\Services\OnsiteEventWorkflowService::class)->startService($appointment, 'medtech', request()->user());
         $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy']);
 
         return Inertia::render('medtech/lab-results-form', [
@@ -35,6 +36,7 @@ class LaboratoryController extends Controller
 
     public function store(SaveLaboratoryResultRequest $request, Appointment $appointment, ClinicalFormWorkflowService $workflow): RedirectResponse
     {
+        app(\App\Services\OnsiteEventWorkflowService::class)->startService($appointment, 'medtech', $request->user());
         $workflow->saveLaboratory($appointment, $request->user(), $request->validated(), $request);
         $message = $request->boolean('finalize')
             ? 'Laboratory report finalized and forwarded to the next required stage.'
@@ -118,6 +120,8 @@ class LaboratoryController extends Controller
         if ($request->user()->role !== 'patient') {
             return;
         }
+
+        abort_unless($appointment->labResult?->isFinalized(), 403, 'The laboratory report has not been finalized yet.');
 
         if ($appointment->isPePackage()) {
             $appointment->loadMissing('medicalExamination');

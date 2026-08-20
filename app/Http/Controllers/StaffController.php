@@ -88,7 +88,6 @@ class StaffController extends Controller
             'contact' => ['nullable', 'string', 'max:20'],
             'sex' => ['nullable', 'string', 'in:male,female'],
             'role' => ['required', 'string', 'in:doctor,medtech,radtech,receptionist'],
-            'license_no' => ['nullable', 'string', 'max:255'],
             'specialization' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -110,7 +109,6 @@ class StaffController extends Controller
                     'sex' => $data['sex'] ?? null,
                     'password' => Hash::make($temporaryPassword),
                     'role' => $data['role'],
-                    'license_no' => $data['license_no'] ?? null,
                     'specialization' => $data['specialization'] ?? null,
                     'is_active' => true,
                     'email_verified_at' => now(),

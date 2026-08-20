@@ -18,7 +18,6 @@ function staffPayload(array $overrides = []): array
         'email' => 'maria.santos@example.test',
         'contact' => '09123456789',
         'role' => 'doctor',
-        'license_no' => '1234567',
         'specialization' => 'General Medicine',
     ], $overrides);
 }
@@ -33,6 +32,7 @@ test('an administrator creates staff and credentials are emailed without exposin
     $staff = User::where('email', 'maria.santos@example.test')->firstOrFail();
 
     expect($staff->must_change_password)->toBeTrue()
+        ->and($staff->license_no)->toBeNull()
         ->and($staff->temporary_password_created_at)->not->toBeNull()
         ->and($staff->temporary_password_expires_at)->not->toBeNull()
         ->and($staff->password)->not->toBeEmpty();

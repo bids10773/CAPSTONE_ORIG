@@ -8,15 +8,27 @@ class LaboratoryFormDefinition
 {
     public function sectionsFor(Appointment $appointment): array
     {
+        $appointment->loadMissing('user.patientProfile');
         $requested = collect($appointment->service_types ?? []);
         if ($appointment->isPePackage()) {
             $requested = $requested->merge(config('medical.pe_package.laboratory_services', []))->unique();
         }
         $sections = $this->sections();
 
-        return collect($sections)->filter(function (array $section, string $key) use ($requested): bool {
+        return collect($sections)->filter(function (array $section, string $key) use ($requested, $appointment): bool {
+            if ($key === 'pregnancy' && $appointment->user?->role === 'patient' && ! $this->isFemale($appointment)) {
+                return false;
+            }
+
             return $requested->contains(fn (string $service): bool => in_array($service, $section['services'], true));
         })->all();
+    }
+
+    private function isFemale(Appointment $appointment): bool
+    {
+        $sex = $appointment->user?->patientProfile?->sex ?? $appointment->user?->sex;
+
+        return in_array(strtolower(trim((string) $sex)), ['female', 'f'], true);
     }
 
     public function sections(): array
@@ -62,8 +74,8 @@ class LaboratoryFormDefinition
                 $this->field('parasite', 'Parasite / Ova'), $this->field('others', 'Others'),
             ]],
             'drug_test' => ['label' => 'Drug Test', 'column' => 'drug_test_results', 'services' => ['Drug Test'], 'fields' => [
-                $this->field('methamphetamine', 'Methamphetamine', 'select', null, null, ['Negative', 'Positive']),
-                $this->field('tetrahydrocannabinol', 'Tetrahydrocannabinol (THC)', 'select', null, null, ['Negative', 'Positive']),
+                $this->field('methamphetamine', 'Methamphetamine', 'select', null, null, ['Negative', 'Positive', 'Pending']),
+                $this->field('tetrahydrocannabinol', 'Marijuana / THC', 'select', null, null, ['Negative', 'Positive', 'Pending']),
             ]],
             'serology' => ['label' => 'Serology', 'column' => 'serology_results', 'services' => ['Hepatitis'], 'fields' => [
                 $this->field('hbsag', 'Hepatitis B Surface Antigen', 'select', null, null, ['Non-reactive', 'Reactive']),

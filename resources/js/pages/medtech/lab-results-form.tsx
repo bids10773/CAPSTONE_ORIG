@@ -80,6 +80,7 @@ export default function LaboratoryResultsForm({
         results: initialResults(sections, labResult),
         remarks: labResult?.remarks ?? '',
         finalize: false,
+        drug_workflow_action: 'complete',
     });
     const inputClass =
         'mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15 disabled:bg-slate-100';
@@ -88,10 +89,21 @@ export default function LaboratoryResultsForm({
             ...form.data.results,
             [section]: { ...form.data.results[section], [field]: value },
         });
-    const submit = (finalize: boolean) => {
-        form.transform((data) => ({ ...data, finalize }));
+    const submit = (
+        finalize: boolean,
+        drugWorkflowAction: 'complete' | 'send_verification' = 'complete',
+    ) => {
+        form.transform((data) => ({
+            ...data,
+            finalize,
+            drug_workflow_action: drugWorkflowAction,
+        }));
         form.post(submitUrl);
     };
+    const drugValues = Object.values(form.data.results.drug_test ?? {});
+    const drugRequiresVerification = drugValues.some((value) =>
+        ['positive', 'pending'].includes(String(value).toLowerCase()),
+    );
 
     return (
         <>
@@ -324,6 +336,30 @@ export default function LaboratoryResultsForm({
                                         )}
                                         Finalize report
                                     </button>
+                                    {sections.drug_test &&
+                                        drugRequiresVerification && (
+                                            <button
+                                                type="button"
+                                                disabled={form.processing}
+                                                onClick={() =>
+                                                    submit(
+                                                        true,
+                                                        'send_verification',
+                                                    )
+                                                }
+                                                className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 font-semibold text-white disabled:opacity-50"
+                                            >
+                                                <ShieldCheck className="h-4 w-4" />
+                                                Send Drug Test for Verification
+                                            </button>
+                                        )}
+                                    <InputError
+                                        message={
+                                            (form.errors as Record<string, string>)[
+                                                'drug_workflow_action'
+                                            ]
+                                        }
+                                    />
                                 </>
                             )}
                         </div>

@@ -76,7 +76,7 @@ test('assigned doctor verifies an official drug test while unauthorized clinical
 
     $result = $examination->diagnosticResults()->where('service_key', 'drug_test')->firstOrFail();
     expect($result->status)->toBe('verified')
-        ->and($result->result_data['summary'])->toBe('negative')
+        ->and($result->result_data['final_result']['summary'])->toBe('negative')
         ->and($result->verified_by)->toBe($appointment->doctor_id)
         ->and($result->supporting_document_path)->not->toBeNull();
 });
@@ -95,6 +95,38 @@ test('xray procedure alone is not a verified final result', function () {
 
     expect($appointment->fresh()->xrayReport->isVerified())->toBeFalse()
         ->and($examination->fresh()->isReadyForFinalEvaluation())->toBeFalse();
+});
+
+test('combined verification status recalculates as each result is verified', function () {
+    $patient = User::factory()->create(['role' => 'patient']);
+    $appointment = Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => today(),
+        'type' => 'individual',
+        'status' => 'for_diagnostics',
+        'service_types' => ['Drug Test', 'X-Ray'],
+    ]);
+    $examination = app(MedicalExaminationService::class)->forAppointment($appointment);
+    $drug = $examination->diagnosticResults()->where('service_key', 'drug_test')->firstOrFail();
+    $drug->update(['status' => 'verifying', 'performed_at' => now()]);
+    $xray = XrayReport::create([
+        'appointment_id' => $appointment->id,
+        'medical_examination_id' => $examination->id,
+        'radiologist_id' => User::factory()->create(['role' => 'radtech'])->id,
+        'status' => 'verifying',
+        'performed_at' => now(),
+        'is_completed' => false,
+    ]);
+
+    $resolver = app(\App\Services\EmployeeMedicalStatusResolver::class);
+    expect($resolver->resolve($appointment->fresh()))->toBe('verifying_drug_and_xray');
+
+    $xray->update(['status' => 'completed', 'is_completed' => true, 'verified_by' => $xray->radiologist_id, 'verified_at' => now()]);
+    expect($resolver->resolve($appointment->fresh()))->toBe('verifying_drug_test');
+
+    $drug->update(['status' => 'verified', 'verified_by' => User::factory()->create(['role' => 'doctor'])->id, 'verified_at' => now()]);
+    expect($resolver->resolve($appointment->fresh()))->toBe('for_final_evaluation')
+        ->and($appointment->fresh()->status)->toBe('for_final_evaluation');
 });
 
 test('patient cannot download PE records until finalized report is explicitly released', function () {

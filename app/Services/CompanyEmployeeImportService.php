@@ -199,6 +199,10 @@ class CompanyEmployeeImportService
 
                 $result['imported']++;
             }
+
+            if ($bulkAppointment && $bulkAppointment->bulkEmployees()->exists()) {
+                $bulkAppointment->update(['onsite_event_status' => 'submitted']);
+            }
         });
 
         return $result;
@@ -211,6 +215,7 @@ class CompanyEmployeeImportService
             ->whereKey($appointmentId)
             ->where('company_id', $companyId)
             ->where('type', 'company_bulk')
+            ->whereNotIn('status', ['completed', 'cancelled'])
             ->whereNull('bulk_appointment_id')
             ->firstOrFail();
     }

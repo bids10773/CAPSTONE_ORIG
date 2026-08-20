@@ -163,6 +163,11 @@ class Appointment extends Model
         return $this->hasMany(self::class, 'bulk_appointment_id');
     }
 
+    public function bulkMedicalReport(): HasOne
+    {
+        return $this->hasOne(BulkMedicalReport::class, 'bulk_appointment_id');
+    }
+
     public function onsiteStaff(): HasMany
     {
         return $this->hasMany(OnsiteEventStaff::class, 'bulk_appointment_id');

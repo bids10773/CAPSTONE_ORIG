@@ -6,6 +6,7 @@ import {
     MonitorCheck,
     Save,
     ScanLine,
+    ShieldCheck,
     UserRound,
 } from 'lucide-react';
 import type React from 'react';
@@ -72,7 +73,9 @@ export default function XrayReportForm({
     });
     const { data, setData, processing } = form;
 
-    const submit = (action: 'performed' | 'complete') => {
+    const submit = (
+        action: 'performed' | 'send_verification' | 'complete',
+    ) => {
         form.transform((values) => ({
             ...values,
             workflow_action: action,
@@ -324,6 +327,17 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                 </div>
 
                 <StickyActionFooter hint="Submitting forwards the completed imaging report through the existing workflow.">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        disabled={
+                            processing || !!xrayReport?.sent_for_verification_at
+                        }
+                        onClick={() => submit('send_verification')}
+                    >
+                        <ShieldCheck className="size-4" />
+                        Send for Verification
+                    </Button>
                     <Button
                         type="button"
                         variant="outline"

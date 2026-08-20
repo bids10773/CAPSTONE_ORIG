@@ -176,6 +176,29 @@ test('receptionist can update todays walk-in and online queue statuses', functio
         ->assertSessionHasErrors('status');
 });
 
+test('bulk employees never appear in or mutate through the walk-in queue', function () {
+    $staff = receptionist();
+    $employee = User::factory()->create(['role' => 'patient']);
+    $bulkEmployee = Appointment::create([
+        'user_id' => $employee->id,
+        'appointment_date' => today(),
+        'type' => 'company_bulk',
+        'status' => 'arrived',
+        'attendance_status' => 'arrived',
+        'service_types' => ['PE'],
+    ]);
+
+    $this->actingAs($staff)->get(route('receptionist.walk-ins.index'))
+        ->assertInertia(fn (Assert $page) => $page->has('walkIns.data', 0));
+    $this->actingAs($staff)->get(route('receptionist.queue.index'))
+        ->assertInertia(fn (Assert $page) => $page->has('walkIns.data', 0));
+    $this->actingAs($staff)
+        ->patch(route('receptionist.walk-ins.status', $bulkEmployee), ['status' => 'cancelled'])
+        ->assertForbidden();
+
+    expect($bulkEmployee->fresh()->status)->toBe('arrived');
+});
+
 test('receptionist is forbidden from administrative medical analytics and system routes', function (string $url) {
     $this->actingAs(receptionist())->get($url)->assertForbidden();
 })->with([

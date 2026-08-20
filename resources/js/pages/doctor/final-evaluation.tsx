@@ -48,6 +48,7 @@ type Props = {
     medicalExamination: any;
     childSummaries: ChildSummary[];
     readyForFinalEvaluation: boolean;
+    canFinalize: boolean;
 };
 
 export default function FinalEvaluation({
@@ -56,6 +57,7 @@ export default function FinalEvaluation({
     medicalExamination,
     childSummaries = [],
     readyForFinalEvaluation,
+    canFinalize,
 }: Props) {
     const form = useForm({
         medical_class: '',
@@ -70,6 +72,12 @@ export default function FinalEvaluation({
         official_result_date: new Date().toISOString().slice(0, 10),
         remarks: '',
         supporting_document: null as File | null,
+    });
+    const xrayVerificationForm = useForm({
+        result: 'normal_chest',
+        findings: '',
+        impression: '',
+        remarks: '',
     });
     const patient = appointment.user;
     const profile = appointment.patient_profile;
@@ -359,6 +367,75 @@ export default function FinalEvaluation({
                         </form>
                     )}
 
+                    {xray?.status === 'verifying' && (
+                        <form
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                xrayVerificationForm.post(
+                                    `/doctor/final-evaluation/${appointment.id}/xray`,
+                                );
+                            }}
+                            className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm"
+                        >
+                            <h2 className="font-bold text-slate-900">
+                                Verify official X-Ray result
+                            </h2>
+                            <p className="mt-1 text-sm text-slate-500">
+                                The onsite procedure is complete. Enter the
+                                authorized final interpretation below.
+                            </p>
+                            <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                <label className="text-sm font-semibold text-slate-700">
+                                    Result
+                                    <select
+                                        value={xrayVerificationForm.data.result}
+                                        onChange={(event) =>
+                                            xrayVerificationForm.setData(
+                                                'result',
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="mt-1 block w-full rounded-xl border-slate-300"
+                                    >
+                                        <option value="normal_chest">Normal chest</option>
+                                        <option value="with_findings">With findings</option>
+                                        <option value="for_repeat">For repeat</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </label>
+                                <label className="text-sm font-semibold text-slate-700">
+                                    Findings
+                                    <textarea
+                                        value={xrayVerificationForm.data.findings}
+                                        onChange={(event) =>
+                                            xrayVerificationForm.setData('findings', event.target.value)
+                                        }
+                                        className="mt-1 block min-h-24 w-full rounded-xl border-slate-300"
+                                    />
+                                </label>
+                                <label className="text-sm font-semibold text-slate-700 md:col-span-2">
+                                    Impression
+                                    <textarea
+                                        value={xrayVerificationForm.data.impression}
+                                        onChange={(event) =>
+                                            xrayVerificationForm.setData('impression', event.target.value)
+                                        }
+                                        className="mt-1 block min-h-24 w-full rounded-xl border-slate-300"
+                                    />
+                                </label>
+                            </div>
+                            <InputError message={xrayVerificationForm.errors.result} />
+                            <InputError message={xrayVerificationForm.errors.findings} />
+                            <InputError message={xrayVerificationForm.errors.impression} />
+                            <button
+                                disabled={xrayVerificationForm.processing}
+                                className="mt-4 rounded-xl bg-moss-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                            >
+                                Verify X-Ray result
+                            </button>
+                        </form>
+                    )}
+
                 <div className="grid gap-5 lg:grid-cols-2">
                     {has('PE') && (
                         <ReviewSection
@@ -553,7 +630,7 @@ export default function FinalEvaluation({
                     )}
                 </div>
 
-                {!medicalExamination.finalized_at && (
+                {!medicalExamination.finalized_at && canFinalize && (
                     <form
                         onSubmit={submit}
                         className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"

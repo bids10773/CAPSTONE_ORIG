@@ -29,7 +29,7 @@ test('company accounts always create company bulk appointments', function () {
             'event_contact_name' => 'Ana Cruz', 'event_contact_number' => '09171234567',
             'expected_employee_count' => 100,
         ])
-        ->assertRedirect(route('appointments.index'));
+        ->assertRedirectContains('/company/dashboard?bulk_upload=');
 
     $this->assertDatabaseHas('appointments', [
         'user_id' => $representative->id,
@@ -91,6 +91,8 @@ test('bulk requests have a separate admin approval queue and do not require pati
         'status' => 'pending',
         'service_types' => ['PE'],
     ]);
+    $employee = User::factory()->create(['role' => 'patient', 'company_id' => $company->id]);
+    app(BulkAppointmentEnrollmentService::class)->enroll($bulk, $employee);
 
     $this->actingAs($admin)
         ->get(route('admin.bulk-appointments.index'))
@@ -113,6 +115,24 @@ test('bulk requests have a separate admin approval queue and do not require pati
     expect($bulk->refresh()->status)->toBe('accepted');
 });
 
+test('draft bulk requests stay hidden until a masterlist is attached and empty requests cannot be approved', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $company = Company::create(['company_name' => 'Draft Masterlist Company']);
+    $representative = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
+    $draft = Appointment::create([
+        'user_id' => $representative->id, 'company_id' => $company->id,
+        'appointment_date' => today()->addDay(), 'type' => 'company_bulk',
+        'status' => 'pending', 'onsite_event_status' => 'draft', 'service_types' => ['PE'],
+    ]);
+
+    $this->actingAs($admin)->get(route('admin.bulk-appointments.index'))
+        ->assertInertia(fn (Assert $page) => $page->has('appointments.data', 0));
+    $this->actingAs($admin)->get(route('admin.onsite-events.show', $draft))->assertNotFound();
+    $this->actingAs($admin)->patch(route('admin.appointments.update-status', $draft), ['status' => 'accepted'])
+        ->assertSessionHasErrors('masterlist');
+    expect($draft->refresh()->status)->toBe('pending');
+});
+
 test('admin bulk request queue contains parent events but not enrolled employee appointments', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $company = Company::create(['company_name' => 'Parent Queue Company']);
@@ -130,6 +150,13 @@ test('admin bulk request queue contains parent events but not enrolled employee 
             ->has('appointments.data', 1)
             ->where('appointments.data.0.id', $parent->id)
             ->where('appointments.data.0.bulk_employees_count', 1));
+
+    $this->actingAs($admin)->get(route('admin.onsite-events.show', $parent))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/onsite-events/show')
+            ->where('attendance.total', 1)
+            ->has('employees.data', 1)
+            ->where('employees.data.0.user.id', $employee->id));
 });
 
 test('individual appointments require complete patient details before admin approval', function () {
@@ -219,7 +246,7 @@ test('bulk approval schedules every enrolled employee independently under the pa
     expect($parent->refresh()->status)->toBe('completed');
 });
 
-test('receptionist can check in bulk employees without exposing the parent request', function () {
+test('receptionist checks in bulk employees only through assigned bulk attendance', function () {
     $company = Company::create(['company_name' => 'Arrival Company']);
     $representative = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
     $employee = User::factory()->create(['role' => 'patient', 'company_id' => $company->id]);
@@ -228,22 +255,66 @@ test('receptionist can check in bulk employees without exposing the parent reque
         'user_id' => $representative->id,
         'company_id' => $company->id,
         'appointment_date' => today(),
+        'start_time' => '08:00',
+        'end_time' => '17:00',
         'type' => 'company_bulk',
         'status' => 'accepted',
         'service_types' => ['PE'],
     ]);
     $child = app(BulkAppointmentEnrollmentService::class)->enroll($parent, $employee);
+    app(\App\Services\OnsiteEventWorkflowService::class)->assignStaff($parent, $receptionist, 'receptionist', 10);
 
     $this->actingAs($receptionist)
         ->get(route('receptionist.queue.index'))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('walkIns.data', 1)
-            ->where('walkIns.data.0.id', $child->id));
+        ->assertInertia(fn (Assert $page) => $page->has('walkIns.data', 0));
 
-    $this->patch(route('receptionist.walk-ins.status', $child), ['status' => 'arrived'])
+    $this->get(route('receptionist.onsite-events.show', $parent))
+        ->assertInertia(fn (Assert $page) => $page->has('employees.data', 1)->where('employees.data.0.id', $child->id));
+
+    $this->patch(route('receptionist.onsite-employees.attendance', $child), ['attendance_status' => 'arrived'])
         ->assertSessionDoesntHaveErrors();
 
     expect($child->refresh()->status)->toBe('arrived')
         ->and($child->arrived_at)->not->toBeNull();
+});
+
+test('company employee bookings show completed bulk children but not parent events or other companies', function () {
+    $company = Company::create(['company_name' => 'Employee Status Company', 'status' => 'active']);
+    $account = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
+    $event = Appointment::create([
+        'user_id' => $account->id,
+        'company_id' => $company->id,
+        'appointment_date' => today(),
+        'start_time' => '08:00',
+        'end_time' => '17:00',
+        'type' => 'company_bulk',
+        'status' => 'accepted',
+        'service_types' => ['PE'],
+        'service_location' => 'onsite',
+    ]);
+    $employee = User::factory()->create(['role' => 'patient', 'company_id' => $company->id]);
+    $child = app(BulkAppointmentEnrollmentService::class)->enroll($event, $employee);
+    $child->update(['status' => 'completed']);
+
+    $otherCompany = Company::create(['company_name' => 'Private Other Company', 'status' => 'active']);
+    $outsider = User::factory()->create(['role' => 'patient', 'company_id' => $otherCompany->id]);
+    Appointment::create([
+        'user_id' => $outsider->id,
+        'company_id' => $otherCompany->id,
+        'appointment_date' => today(),
+        'type' => 'company_referral',
+        'status' => 'completed',
+        'service_types' => ['CBC'],
+    ]);
+
+    $this->actingAs($account)->get(route('appointments.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('appointments/index')
+            ->where('isCompanyView', true)
+            ->has('appointments.data', 1)
+            ->where('appointments.data.0.id', $child->id)
+            ->where('appointments.data.0.status', 'completed'));
+
+    $this->actingAs($account)->get(route('appointments.show', $child))->assertForbidden();
 });

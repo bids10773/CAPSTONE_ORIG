@@ -138,6 +138,7 @@ const navigation: Record<string, Item[]> = {
             href: '/doctor/appointments',
             icon: CalendarDays,
         },
+        { title: 'Onsite Events', href: '/doctor/onsite-events', icon: Building2 },
         {
             title: 'Availability',
             href: '/doctor/availability',
@@ -156,6 +157,7 @@ const navigation: Record<string, Item[]> = {
             href: '/medtech/appointments',
             icon: FlaskConical,
         },
+        { title: 'Onsite Events', href: '/medtech/onsite-events', icon: Building2 },
         { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
     radtech: [
@@ -169,6 +171,7 @@ const navigation: Record<string, Item[]> = {
             href: '/radtech/appointments',
             icon: ScanLine,
         },
+        { title: 'Onsite Events', href: '/radtech/onsite-events', icon: Building2 },
         { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
     receptionist: [
@@ -181,6 +184,11 @@ const navigation: Record<string, Item[]> = {
             title: 'Walk-in Patients',
             href: '/receptionist/walk-ins',
             icon: UsersRound,
+        },
+        {
+            title: 'Bulk Attendance',
+            href: '/receptionist/onsite-events',
+            icon: Building2,
         },
         {
             title: 'Queue Management',

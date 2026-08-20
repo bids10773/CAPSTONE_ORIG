@@ -32,6 +32,10 @@ interface Appointment {
         finalized_at?: string | null;
         released_at?: string | null;
     };
+    service_queues?: Array<{
+        service_role: string;
+        status: string;
+    }>;
 }
 
 interface Props {
@@ -274,6 +278,26 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                         }
                                                         className="inline-flex items-center rounded-2xl p-2 text-moss-600 hover:bg-moss-50 hover:text-moss-700"
                                                         title="Final Evaluation"
+                                                    >
+                                                        <Stethoscope className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                                {appointment.service_queues?.some(
+                                                    (queue) =>
+                                                        queue.service_role ===
+                                                            'drug_verification' &&
+                                                        ['assigned', 'in_progress'].includes(
+                                                            queue.status,
+                                                        ),
+                                                ) && (
+                                                    <button
+                                                        onClick={() =>
+                                                            router.visit(
+                                                                `/doctor/final-evaluation/${appointment.id}`,
+                                                            )
+                                                        }
+                                                        className="inline-flex items-center rounded-2xl p-2 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                                                        title="Verify official drug-test result"
                                                     >
                                                         <Stethoscope className="h-4 w-4" />
                                                     </button>

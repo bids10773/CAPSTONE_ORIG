@@ -15,7 +15,7 @@ class SaveLaboratoryResultRequest extends FormRequest
 
     public function rules(): array
     {
-        $rules = ['finalize' => ['required', 'boolean'], 'remarks' => ['nullable', 'string', 'max:3000']];
+        $rules = ['finalize' => ['required', 'boolean'], 'drug_workflow_action' => ['nullable', 'in:complete,send_verification'], 'remarks' => ['nullable', 'string', 'max:3000']];
         $sections = app(LaboratoryFormDefinition::class)->sectionsFor($this->route('appointment'));
 
         foreach ($sections as $sectionKey => $section) {

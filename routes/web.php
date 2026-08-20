@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ClinicalDocumentController;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\CompanyBulkMedicalReportController;
 use App\Http\Controllers\CompanyDashboardController;
 use App\Http\Controllers\CompanyEmployeeImportController;
 use App\Http\Controllers\CompanyReferralController;
@@ -95,6 +96,7 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::get('/company/employees/import/errors/{token}', [CompanyEmployeeImportController::class, 'errorReport'])->whereUuid('token')->name('company.employees.import.errors');
         Route::post('/company/referrals', [CompanyReferralController::class, 'store'])->name('company.referrals.store');
         Route::patch('/company/referrals/{companyReferral}/cancel', [CompanyReferralController::class, 'cancel'])->name('company.referrals.cancel');
+        Route::get('/company/bulk-appointments/{event}/medical-results/download', [CompanyBulkMedicalReportController::class, 'companyDownload'])->name('company.bulk-medical-results.download');
     });
 
     Route::middleware('role:receptionist')->prefix('receptionist')->name('receptionist.')->group(function () {
@@ -105,11 +107,14 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         Route::get('/queue', [ReceptionistWalkInController::class, 'queue'])->name('queue.index');
         Route::get('/patients', [ReceptionistWalkInController::class, 'patients'])->name('patients.index');
         Route::get('/patients/search', [ReceptionistWalkInController::class, 'searchPatients'])->name('patients.search');
-        Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'show'])->name('onsite-events.show');
+        Route::get('/onsite-events', [OnsiteEventController::class, 'receptionistIndex'])->name('onsite-events.index');
+        Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'receptionistShow'])->name('onsite-events.show');
         Route::patch('/onsite-employees/{employee}/attendance', [OnsiteEventController::class, 'attendance'])->name('onsite-employees.attendance');
     });
 
     Route::middleware('role:doctor')->prefix('doctor')->name('doctor.')->group(function () {
+        Route::get('/onsite-events', [OnsiteEventController::class, 'staffIndex'])->name('onsite-events.index');
+        Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'staffShow'])->name('onsite-events.show');
         Route::get('/onsite-events/{event}/queue', [OnsiteEventController::class, 'myQueue'])->name('onsite-events.queue');
         Route::get('/dashboard', DoctorDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor')->name('appointments');
@@ -125,6 +130,8 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
     });
 
     Route::middleware('role:medtech')->prefix('medtech')->name('medtech.')->group(function () {
+        Route::get('/onsite-events', [OnsiteEventController::class, 'staffIndex'])->name('onsite-events.index');
+        Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'staffShow'])->name('onsite-events.show');
         Route::get('/onsite-events/{event}/queue', [OnsiteEventController::class, 'myQueue'])->name('onsite-events.queue');
         Route::get('/dashboard', MedTechDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'medtech')->name('appointments');
@@ -143,6 +150,8 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
         ->name('clinical-forms.xray.pdf');
 
     Route::middleware('role:radtech')->prefix('radtech')->name('radtech.')->group(function () {
+        Route::get('/onsite-events', [OnsiteEventController::class, 'staffIndex'])->name('onsite-events.index');
+        Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'staffShow'])->name('onsite-events.show');
         Route::get('/onsite-events/{event}/queue', [OnsiteEventController::class, 'myQueue'])->name('onsite-events.queue');
         Route::get('/dashboard', RadTechDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'radtech')->name('appointments');
@@ -151,10 +160,14 @@ Route::middleware(['auth', 'staff.verified'])->group(function () {
     });
 
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'show'])->name('onsite-events.show');
+        Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'adminShow'])->name('onsite-events.show');
         Route::post('/onsite-events/{event}/staff', [OnsiteEventController::class, 'assignStaff'])->name('onsite-events.staff.assign');
         Route::delete('/onsite-events/{event}/staff/{deployment}', [OnsiteEventController::class, 'removeStaff'])->name('onsite-events.staff.remove');
-        Route::patch('/onsite-employees/{employee}/attendance', [OnsiteEventController::class, 'attendance'])->name('onsite-employees.attendance');
+        Route::patch('/onsite-events/{event}/complete-activities', [OnsiteEventController::class, 'completeActivities'])->name('onsite-events.activities.complete');
+        Route::get('/onsite-events/{event}/medical-results', [CompanyBulkMedicalReportController::class, 'show'])->name('bulk-medical-results.show');
+        Route::post('/onsite-events/{event}/medical-results/generate', [CompanyBulkMedicalReportController::class, 'generate'])->name('bulk-medical-results.generate');
+        Route::post('/onsite-events/{event}/medical-results/release', [CompanyBulkMedicalReportController::class, 'release'])->name('bulk-medical-results.release');
+        Route::get('/onsite-events/{event}/medical-results/download', [CompanyBulkMedicalReportController::class, 'adminDownload'])->name('bulk-medical-results.download');
         Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
         Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
         Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');

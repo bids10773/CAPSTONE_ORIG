@@ -58,6 +58,26 @@ test('selecting PE creates its master and expands configured child requirements'
         ->and($appointment->requiresXray())->toBeTrue();
 });
 
+test('pregnancy testing is available only for female patients', function () {
+    $appointment = clinicalAppointment(['Pregnancy Test']);
+
+    expect(array_keys(app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment)))
+        ->toBe(['pregnancy']);
+
+    $appointment->user->patientProfile->update(['sex' => 'Male']);
+    $appointment->user->update(['sex' => 'male']);
+    $appointment->unsetRelation('user');
+    expect(app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment))->toBe([]);
+
+    $medtech = User::factory()->create(['role' => 'medtech']);
+    $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), [
+        'finalize' => false,
+        'results' => ['pregnancy' => ['pregnancy_test' => 'Positive']],
+    ])->assertForbidden();
+
+    expect($appointment->fresh()->labResult)->toBeNull();
+});
+
 test('medtech saves structured laboratory results and finalization advances workflow', function () {
     $appointment = clinicalAppointment();
     $medtech = User::factory()->create(['role' => 'medtech']);
@@ -159,13 +179,21 @@ test('patient cannot download an unverified official drug test result', function
 
     $payload = [
         'finalize' => true,
+        'drug_workflow_action' => 'send_verification',
         'results' => ['drug_test' => [
-            'methamphetamine' => 'Negative',
+            'methamphetamine' => 'Positive',
             'tetrahydrocannabinol' => 'Negative',
         ]],
     ];
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), $payload)
         ->assertSessionHas('success');
+
+    expect($appointment->fresh()->status)->toBe('verifying_drug_test');
+    $this->assertDatabaseHas('clinical_form_audits', [
+        'appointment_id' => $appointment->id,
+        'form_type' => 'drug_test',
+        'action' => 'sent_for_verification',
+    ]);
 
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'drug_test']))
@@ -173,6 +201,22 @@ test('patient cannot download an unverified official drug test result', function
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.laboratory.pdf', $appointment))
         ->assertForbidden();
+});
+
+test('positive drug test cannot be accidentally completed without verification', function () {
+    $appointment = clinicalAppointment(['Drug Test']);
+    $medtech = User::factory()->create(['role' => 'medtech']);
+
+    $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), [
+        'finalize' => true,
+        'drug_workflow_action' => 'complete',
+        'results' => ['drug_test' => [
+            'methamphetamine' => 'Positive',
+            'tetrahydrocannabinol' => 'Negative',
+        ]],
+    ])->assertSessionHasErrors('drug_workflow_action');
+
+    expect($appointment->fresh()->labResult)->toBeNull();
 });
 
 test('patient cannot download an xray report before doctor verification', function () {
@@ -288,7 +332,7 @@ test('performed xray remains in the radtech queue until its official result is v
         'workflow_action' => 'performed',
     ])->assertSessionHas('success');
 
-    expect($appointment->fresh()->status)->toBe('awaiting_xray_result')
+    expect($appointment->fresh()->status)->toBe('verifying_xray')
         ->and($appointment->xrayReport->performed_at)->not->toBeNull()
         ->and($appointment->xrayReport->isVerified())->toBeFalse();
 

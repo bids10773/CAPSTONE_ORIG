@@ -70,6 +70,8 @@ interface Appointment {
     rejection_reason?: string | null;
     rejection_details?: string | null;
     batch_id?: string | null;
+    expected_employee_count?: number | null;
+    bulk_employees_count?: number;
     user: Person;
     company: { id: number; company_name: string } | null;
     doctor: Person | null;
@@ -433,11 +435,17 @@ export default function AdminAppointmentsIndex() {
                     <Eye className="size-4" /> View details
                 </DropdownMenuItem>
                 {appointment.type === 'company_bulk' && bulkOnly && (
-                    <DropdownMenuItem onSelect={() => router.visit(`/admin/onsite-events/${appointment.id}`)}>
-                        <Building2 className="size-4" /> Assign onsite team
+                    <DropdownMenuItem
+                        onSelect={() =>
+                            router.visit(
+                                `/admin/onsite-events/${appointment.id}`,
+                            )
+                        }
+                    >
+                        <Building2 className="size-4" /> Review masterlist
                     </DropdownMenuItem>
                 )}
-                {appointment.status === 'pending' && (
+                {appointment.status === 'pending' && !bulkOnly && (
                     <DropdownMenuItem
                         disabled={
                             missingFields(appointment).length > 0 ||
@@ -962,29 +970,49 @@ export default function AdminAppointmentsIndex() {
                                             Reject Request
                                         </Button>
                                     )}
-                                    <Button
-                                        disabled={
-                                            missingFields(selectedAppointment)
-                                                .length > 0 ||
-                                            isPastAppointment(
-                                                selectedAppointment,
-                                            ) ||
-                                            updatingId ===
-                                                selectedAppointment.id
-                                        }
-                                        onClick={() =>
-                                            selectedAppointment.type ===
-                                            'individual'
-                                                ? approve(selectedAppointment)
-                                                : updateStatus(
-                                                      selectedAppointment,
-                                                      'accepted',
-                                                  )
-                                        }
-                                        className="bg-moss-700 text-white hover:bg-moss-800"
-                                    >
-                                        Confirm Appointment
-                                    </Button>
+                                    {selectedAppointment.type ===
+                                    'company_bulk' ? (
+                                        <Button
+                                            onClick={() =>
+                                                router.visit(
+                                                    `/admin/onsite-events/${selectedAppointment.id}`,
+                                                )
+                                            }
+                                            className="bg-moss-700 text-white hover:bg-moss-800"
+                                        >
+                                            Review{' '}
+                                            {selectedAppointment.bulk_employees_count ??
+                                                0}{' '}
+                                            employees
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            disabled={
+                                                missingFields(
+                                                    selectedAppointment,
+                                                ).length > 0 ||
+                                                isPastAppointment(
+                                                    selectedAppointment,
+                                                ) ||
+                                                updatingId ===
+                                                    selectedAppointment.id
+                                            }
+                                            onClick={() =>
+                                                selectedAppointment.type ===
+                                                'individual'
+                                                    ? approve(
+                                                          selectedAppointment,
+                                                      )
+                                                    : updateStatus(
+                                                          selectedAppointment,
+                                                          'accepted',
+                                                      )
+                                            }
+                                            className="bg-moss-700 text-white hover:bg-moss-800"
+                                        >
+                                            Confirm Appointment
+                                        </Button>
+                                    )}
                                 </>
                             )}
                         </div>

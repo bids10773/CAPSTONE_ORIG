@@ -211,6 +211,7 @@ test('imported employees inherit the selected bulk appointment batch', function 
     $employeeAppointment = Appointment::where('user_id', $employee->id)->firstOrFail();
 
     expect($result['attached'])->toBe(1)
+        ->and($bulkAppointment->refresh()->onsite_event_status)->toBe('submitted')
         ->and($bulkAppointment->refresh()->batch_id)->not->toBeNull()
         ->and($employeeAppointment->bulk_appointment_id)->toBe($bulkAppointment->id)
         ->and($employeeAppointment->batch_id)->toBe($bulkAppointment->batch_id)

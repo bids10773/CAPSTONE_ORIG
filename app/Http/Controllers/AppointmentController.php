@@ -44,12 +44,17 @@ class AppointmentController extends Controller
 
         // If patient, show only their appointments
         if ($user->role === 'patient') {
-            $query->where('user_id', $user->id);
+            $query->where('user_id', $user->id)->where('type', '!=', 'company_bulk');
         }
 
         // If company, show appointments for their employees
         if ($user->role === 'company') {
-            $query->where('company_id', $user->company_id);
+            $query->where('company_id', $user->company_id)
+                ->whereHas('user', fn ($employee) => $employee->where('role', 'patient'));
+        }
+
+        if (! in_array($user->role, ['patient', 'company'], true)) {
+            $query->where('type', '!=', 'company_bulk');
         }
 
         if ($search) {
@@ -81,6 +86,7 @@ class AppointmentController extends Controller
             'can' => [
                 'create' => in_array($user->role, ['patient', 'company']),
             ],
+            'isCompanyView' => $user->role === 'company',
         ]);
     }
 
@@ -228,6 +234,18 @@ class AppointmentController extends Controller
 
         $validator = Validator::make($request->all(), $rules);
 
+        $validator->after(function ($validator) use ($request): void {
+            if ($request->type !== 'company_bulk') {
+                return;
+            }
+            $unsupported = collect($request->input('service_types', []))
+                ->intersect(['ECG', 'Audiometry', 'Neuro Psychiatric Test']);
+            if ($unsupported->isNotEmpty()) {
+                $validator->errors()->add('service_types',
+                    'These services cannot be selected for bulk events until their clinical result forms are available: '.$unsupported->join(', ').'.');
+            }
+        });
+
         // For company referral, company is required
         if ($request->type === 'company_referral' && ! $request->company_id && ! $request->company_name) {
             $validator->errors()->add('company_name', 'Company is required.');
@@ -288,7 +306,7 @@ class AppointmentController extends Controller
                 ?? 'REF-'.now()->format('Ymd').'-'.strtoupper(Str::random(4));
         }
 
-        DB::transaction(function () use ($data, $user, $startTime, $endTime, $referral) {
+        $appointment = DB::transaction(function () use ($data, $user, $startTime, $endTime, $referral) {
             $lockedReferral = null;
             if ($referral) {
                 $lockedReferral = CompanyReferral::query()->lockForUpdate()->findOrFail($referral->id);
@@ -313,6 +331,7 @@ class AppointmentController extends Controller
                 'event_contact_name' => $data['event_contact_name'] ?? null,
                 'event_contact_number' => $data['event_contact_number'] ?? null,
                 'expected_employee_count' => $data['expected_employee_count'] ?? null,
+                'onsite_event_status' => $data['type'] === 'company_bulk' ? 'draft' : null,
                 'company_referral_id' => $lockedReferral?->id,
             ]);
 
@@ -326,7 +345,14 @@ class AppointmentController extends Controller
                     'ob_menstrual_history',
                 ])->all(),
             ]);
+
+            return $appointment;
         });
+
+        if ($data['type'] === 'company_bulk' && $user->role === 'company') {
+            return redirect()->route('company.dashboard', ['bulk_upload' => $appointment->id])
+                ->with('success', 'Bulk request draft created. Upload its employee masterlist to submit it for Admin review.');
+        }
 
         return redirect()->route('appointments.index')
             ->with('success',
@@ -383,6 +409,9 @@ class AppointmentController extends Controller
         }
 
         if ($appointment->isBulkParent()) {
+            if ($request->status === 'accepted' && ! $appointment->bulkEmployees()->exists()) {
+                return back()->withErrors(['masterlist' => 'This bulk request cannot be approved until the company uploads at least one valid employee.']);
+            }
             app(\App\Services\BulkAppointmentEnrollmentService::class)
                 ->synchronizeParentStatus($appointment, $request->status);
         } else {
@@ -588,11 +617,13 @@ class AppointmentController extends Controller
 
         $query->when(
             $bulkOnly,
-            fn ($query) => $query->bulkParents()->withCount([
-                'bulkEmployees',
-                'bulkEmployees as completed_employees_count' => fn ($employees) => $employees->where('status', 'completed'),
-                'bulkEmployees as awaiting_results_count' => fn ($employees) => $employees->whereIn('status', ['awaiting_xray_result', 'for_final_evaluation']),
-            ]),
+            fn ($query) => $query->bulkParents()
+                ->where(fn ($status) => $status->whereNull('onsite_event_status')->orWhere('onsite_event_status', '!=', 'draft'))
+                ->withCount([
+                    'bulkEmployees',
+                    'bulkEmployees as completed_employees_count' => fn ($employees) => $employees->where('status', 'completed'),
+                    'bulkEmployees as awaiting_results_count' => fn ($employees) => $employees->whereIn('status', ['awaiting_xray_result', 'for_final_evaluation']),
+                ]),
             fn ($query) => $query->where('type', '!=', 'company_bulk'),
         );
 
@@ -722,6 +753,7 @@ class AppointmentController extends Controller
         $today = today();
         $baseQuery = Appointment::query()
             ->whereDate('appointment_date', $today)
+            ->where('type', '!=', 'company_bulk')
             ->whereNotIn('status', ['rejected', 'cancelled'])
             ->whereHas('user', fn ($query) => $query->where('role', 'patient'));
 
@@ -1047,37 +1079,24 @@ class AppointmentController extends Controller
         $date = $request->get('date', '');
         $batch = $request->get('batch', '');
 
-        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport', 'medicalExamination'])
+        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport', 'medicalExamination', 'serviceQueues'])
+            ->where('type', '!=', 'company_bulk')
             ->whereHas('user', fn ($user) => $user->where('role', 'patient'));
 
         if ($role === 'doctor') {
-            $query->where(function ($q) {
-                $q->where(function ($sub) {
-                    $sub->whereIn('status', ['accepted', 'arrived'])
-                        ->whereDoesntHave('physicalExam');
-                })
+            $query->where(function ($sub) {
+                $sub->where(fn ($physical) => $physical->whereIn('status', ['accepted', 'arrived'])->whereDoesntHave('physicalExam'))
                     ->orWhere('status', 'for_final_evaluation')
-                    ->orWhere(function ($sub) {
-                        $sub->where('status', 'completed')
-                            ->whereHas('medicalExamination', fn ($examination) => $examination
-                                ->whereNotNull('finalized_at')
-                                ->whereNull('released_at'));
-                    });
+                    ->orWhere(fn ($release) => $release->where('status', 'completed')->whereHas('medicalExamination', fn ($exam) => $exam->whereNotNull('finalized_at')->whereNull('released_at')));
             });
 
         } elseif ($role === 'medtech') {
             $query->where('status', 'for_diagnostics')
-                ->where(function ($query) {
-                    $query->whereDoesntHave('labResult')
-                        ->orWhereHas('labResult', fn ($result) => $result->where('status', '!=', 'finalized'));
-                });
+                ->where(fn ($result) => $result->whereDoesntHave('labResult')->orWhereHas('labResult', fn ($lab) => $lab->where('status', '!=', 'finalized')));
 
         } elseif ($role === 'radtech') {
-            $query->whereIn('status', ['for_xray', 'awaiting_xray_result'])
-                ->where(function ($query) {
-                    $query->whereDoesntHave('xrayReport')
-                        ->orWhereHas('xrayReport', fn ($result) => $result->where('is_completed', false));
-                });
+            $query->whereIn('status', ['for_xray', 'awaiting_xray_result', 'verifying_xray'])
+                ->where(fn ($result) => $result->whereDoesntHave('xrayReport')->orWhereHas('xrayReport', fn ($xray) => $xray->where('is_completed', false)));
         }
 
         if ($status) {

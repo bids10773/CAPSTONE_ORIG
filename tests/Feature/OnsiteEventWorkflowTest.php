@@ -3,6 +3,7 @@
 use App\Models\Appointment;
 use App\Models\Company;
 use App\Models\OnsiteServiceQueue;
+use App\Models\SecurityAudit;
 use App\Models\User;
 use App\Services\BulkAppointmentEnrollmentService;
 use App\Services\OnsiteEventWorkflowService;
@@ -61,4 +62,150 @@ test('queue balancing assigns to the least loaded deployed staff without exceedi
     $workflow->markArrived($second, $receptionist);
     expect($child->serviceQueues()->where('service_role', 'doctor')->value('assigned_staff_id'))
         ->not->toBe($second->serviceQueues()->where('service_role', 'doctor')->value('assigned_staff_id'));
+});
+
+test('attendance is restricted to the receptionist assigned to the selected event', function () {
+    extract(onsiteFixture());
+    $admin = User::factory()->create(['role' => 'admin']);
+    $assigned = User::factory()->create(['role' => 'receptionist', 'is_active' => true]);
+    $other = User::factory()->create(['role' => 'receptionist', 'is_active' => true]);
+    app(OnsiteEventWorkflowService::class)->assignStaff($event, $assigned, 'receptionist', 10, $admin);
+
+    $this->actingAs($admin)->patch("/receptionist/onsite-employees/{$child->id}/attendance", ['attendance_status' => 'arrived'])->assertForbidden();
+    $this->actingAs($other)->get(route('receptionist.onsite-events.show', $event))->assertForbidden();
+    $this->actingAs($assigned)->patch(route('receptionist.onsite-employees.attendance', $child), ['attendance_status' => 'arrived'])->assertRedirect();
+
+    expect($child->refresh()->attendance_status)->toBe('arrived')
+        ->and(SecurityAudit::where('action', 'onsite_employee_marked_arrived')->where('actor_id', $assigned->id)->exists())->toBeTrue();
+});
+
+test('receptionist employee search is scoped to one bulk event and supports employee number', function () {
+    extract(onsiteFixture());
+    $admin = User::factory()->create(['role' => 'admin']);
+    $receptionist = User::factory()->create(['role' => 'receptionist', 'is_active' => true]);
+    app(OnsiteEventWorkflowService::class)->assignStaff($event, $receptionist, 'receptionist', 10, $admin);
+    $employee->patientProfile()->create(['employee_number' => 'EVENT-A-001', 'birthdate' => '1990-01-01', 'sex' => 'male', 'civil_status' => 'Single']);
+
+    $otherCompany = Company::create(['company_name' => 'Other Company']);
+    $otherRepresentative = User::factory()->create(['role' => 'company', 'company_id' => $otherCompany->id]);
+    $otherEvent = Appointment::create(['user_id' => $otherRepresentative->id, 'company_id' => $otherCompany->id, 'appointment_date' => today(), 'start_time' => '08:00', 'end_time' => '17:00', 'type' => 'company_bulk', 'status' => 'accepted', 'service_types' => ['PE'], 'service_location' => 'onsite']);
+    $outsider = User::factory()->create(['role' => 'patient', 'company_id' => $otherCompany->id]);
+    $outsider->patientProfile()->create(['employee_number' => 'EVENT-B-999', 'birthdate' => '1990-01-01', 'sex' => 'female', 'civil_status' => 'Single']);
+    app(BulkAppointmentEnrollmentService::class)->enroll($otherEvent, $outsider);
+
+    $this->actingAs($receptionist)->get(route('receptionist.onsite-events.show', ['event' => $event, 'search' => 'EVENT-A-001']))
+        ->assertInertia(fn ($page) => $page->component('receptionist/onsite-events/attendance')->has('employees.data', 1));
+    $this->actingAs($receptionist)->get(route('receptionist.onsite-events.show', ['event' => $event, 'search' => 'EVENT-B-999']))
+        ->assertInertia(fn ($page) => $page->has('employees.data', 0));
+});
+
+test('staffing recommendations scale with employee count and required services', function () {
+    extract(onsiteFixture());
+    config()->set('onsite.staffing_ratios', ['doctor' => 2, 'medtech' => 3, 'radtech' => 4, 'receptionist' => 5]);
+    for ($i = 0; $i < 9; $i++) {
+        app(BulkAppointmentEnrollmentService::class)->enroll($event, User::factory()->create(['role' => 'patient', 'company_id' => $company->id]));
+    }
+
+    $result = app(\App\Services\OnsiteStaffingRecommendationService::class)->for($event);
+    expect($result['doctor']['recommended'])->toBe(5)
+        ->and($result['medtech']['recommended'])->toBe(4)
+        ->and($result['radtech']['recommended'])->toBe(3)
+        ->and($result['receptionist']['recommended'])->toBe(2);
+});
+
+test('opening assigned onsite work marks the queue in progress and protects the deployment', function () {
+    extract(onsiteFixture());
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $workflow = app(OnsiteEventWorkflowService::class);
+    $deployment = $workflow->assignStaff($event, $doctor, 'doctor', 10);
+    $workflow->markArrived($child, $receptionist);
+
+    $workflow->startService($child, 'doctor', $doctor);
+
+    expect($child->serviceQueues()->where('service_role', 'doctor')->value('status'))->toBe('in_progress')
+        ->and($child->serviceQueues()->where('service_role', 'doctor')->value('started_at'))->not->toBeNull();
+    expect(fn () => $workflow->removeStaff($event, $deployment))
+        ->toThrow(\Illuminate\Validation\ValidationException::class);
+});
+
+test('doctor follow-up tasks use doctor deployments and are independently authorized', function () {
+    extract(onsiteFixture());
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $otherDoctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $workflow = app(OnsiteEventWorkflowService::class);
+    $workflow->assignStaff($event, $doctor, 'doctor', 10);
+    $workflow->markArrived($child, $receptionist);
+    $workflow->completeService($child, 'doctor', $doctor);
+
+    $task = $workflow->createDoctorTask($child, 'final_evaluation');
+
+    expect($task->service_role)->toBe('final_evaluation')
+        ->and($task->assigned_staff_id)->toBe($doctor->id)
+        ->and($doctor->can('finalizeMedicalEvaluation', $child->fresh()))->toBeTrue()
+        ->and($otherDoctor->can('finalizeMedicalEvaluation', $child->fresh()))->toBeFalse();
+});
+
+test('bulk employees stay out of regular dashboards and remain available in onsite events', function () {
+    extract(onsiteFixture());
+    $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
+    $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $workflow = app(OnsiteEventWorkflowService::class);
+    $workflow->assignStaff($event, $medtech, 'medtech', 10);
+    $workflow->assignStaff($event, $radtech, 'radtech', 10);
+    $workflow->markArrived($child, $receptionist);
+
+    expect($child->fresh()->status)->toBe('arrived');
+    $this->actingAs($medtech)->get(route('medtech.dashboard'))
+        ->assertInertia(fn ($page) => $page->component('medtech/dashboard')
+            ->where('pendingTests', 0)
+            ->has('pendingAppointments', 0));
+    $this->actingAs($radtech)->get(route('radtech.dashboard'))
+        ->assertInertia(fn ($page) => $page->component('radtech/dashboard')
+            ->where('pendingScans', 0)
+            ->has('pendingAppointments', 0));
+    $this->actingAs($medtech)->get(route('medtech.onsite-events.show', $event))
+        ->assertInertia(fn ($page) => $page->has('queues.data', 1));
+    $this->actingAs($radtech)->get(route('radtech.onsite-events.show', $event))
+        ->assertInertia(fn ($page) => $page->has('queues.data', 1));
+});
+
+test('clinical staff have dedicated onsite event pages scoped to their own assignments', function () {
+    extract(onsiteFixture());
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
+    $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
+    $otherDoctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $workflow = app(OnsiteEventWorkflowService::class);
+    foreach ([[$doctor, 'doctor'], [$medtech, 'medtech'], [$radtech, 'radtech']] as [$staff, $role]) {
+        $workflow->assignStaff($event, $staff, $role, 10);
+    }
+    $workflow->markArrived($child, $receptionist);
+
+    foreach ([[$doctor, 'doctor'], [$medtech, 'medtech'], [$radtech, 'radtech']] as [$staff, $role]) {
+        $this->actingAs($staff)->get(route("{$role}.appointments"))
+            ->assertInertia(fn ($page) => $page->has('appointments.data', 0));
+        $this->actingAs($staff)->get(route("{$role}.onsite-events.index"))
+            ->assertInertia(fn ($page) => $page->component('staff/onsite-events/index')->has('events.data', 1));
+        $this->actingAs($staff)->get(route("{$role}.onsite-events.show", $event))
+            ->assertInertia(fn ($page) => $page->component('staff/onsite-events/show')->has('queues.data', 1));
+    }
+
+    $this->actingAs($otherDoctor)->get(route('doctor.onsite-events.show', $event))->assertForbidden();
+});
+
+test('admin can complete onsite activities without medically completing pending employees', function () {
+    extract(onsiteFixture());
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $this->actingAs($admin)->patch(route('admin.onsite-events.activities.complete', $event))
+        ->assertRedirect()->assertSessionHas('success');
+
+    expect($event->fresh()->onsite_event_status)->toBe('activities_completed')
+        ->and($event->status)->toBe('accepted')
+        ->and($child->fresh()->status)->not->toBe('completed')
+        ->and(SecurityAudit::where('action', 'onsite_activities_completed')->where('actor_id', $admin->id)->exists())->toBeTrue();
 });

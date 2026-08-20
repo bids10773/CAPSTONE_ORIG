@@ -13,25 +13,30 @@ class RadTechDashboardController extends Controller
     public function __invoke(Request $request): Response
     {
         $user = $request->user();
+        $staffQueue = fn () => Appointment::query()->where(function ($query) {
+            $query->where('type', '!=', 'company_bulk');
+        });
+        $actionableQueue = fn () => Appointment::query()->where(function ($query) {
+            $query->where('type', '!=', 'company_bulk')->whereIn('status', ['for_xray', 'awaiting_xray_result', 'verifying_xray']);
+        });
 
         // ✅ Today's scans
-        $todayScans = Appointment::whereIn('status', ['for_xray', 'awaiting_xray_result'])
+        $todayScans = $actionableQueue()
             ->whereDate('appointment_date', today())
             ->count();
 
         // ✅ Pending scans (waiting for X-ray)
-        $pendingScans = Appointment::whereIn('status', ['for_xray', 'awaiting_xray_result'])->count();
+        $pendingScans = $actionableQueue()->count();
 
         // ✅ Completed scans (today)
-        $completedScans = Appointment::where('status', 'completed')
+        $completedScans = $staffQueue()->where('status', 'completed')
             ->whereDate('updated_at', today())
             ->count();
 
         // ✅ Capacity (same idea as MedTech)
-        $totalToday = Appointment::whereDate('appointment_date', today())->count();
+        $totalToday = $staffQueue()->whereDate('appointment_date', today())->count();
 
-        $pendingAppointments = Appointment::with('user')
-            ->whereIn('status', ['for_xray', 'awaiting_xray_result'])
+        $pendingAppointments = $actionableQueue()->with('user')
             ->orderBy('appointment_date')
             ->take(5)
             ->get();
@@ -42,10 +47,13 @@ class RadTechDashboardController extends Controller
             'pendingScans' => $pendingScans,
             'completedScans' => $completedScans,
             'workflowCounts' => XrayReport::query()
+                ->whereHas('appointment', fn ($appointment) => $appointment->where('type', '!=', 'company_bulk'))
                 ->selectRaw('status, COUNT(*) as total')
                 ->groupBy('status')
                 ->pluck('total', 'status'),
-            'activeStationCount' => XrayReport::query()->whereNull('performed_at')->count(),
+            'activeStationCount' => XrayReport::query()
+                ->whereHas('appointment', fn ($appointment) => $appointment->where('type', '!=', 'company_bulk'))
+                ->whereNull('performed_at')->count(),
             'pendingAppointments' => $pendingAppointments, // 👈 ADD THIS
         ]);
     }

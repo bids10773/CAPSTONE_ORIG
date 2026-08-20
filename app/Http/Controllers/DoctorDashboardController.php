@@ -19,20 +19,17 @@ class DoctorDashboardController extends Controller
         $doctor = $request->user();
 
         $doctorQueue = fn () => Appointment::query()->where(function ($query) use ($doctor) {
-            $query->where('doctor_id', $doctor->id)
-                ->orWhere(function ($bulk) {
-                    $bulk->whereNull('doctor_id')->whereNotNull('bulk_appointment_id');
-                });
+            $query->where('type', '!=', 'company_bulk')->where('doctor_id', $doctor->id);
         });
 
         $pendingCount = $doctorQueue()
             ->whereIn('status', ['accepted', 'for_final_evaluation'])
             ->count();
         $workflowCounts = MedicalExamination::query()
-            ->whereHas('appointment', fn ($query) => $query->where(function ($appointments) use ($doctor) {
-                $appointments->where('doctor_id', $doctor->id)
-                    ->orWhere(fn ($bulk) => $bulk->whereNull('doctor_id')->whereNotNull('bulk_appointment_id'));
-            }))
+            ->where(function ($query) use ($doctor) {
+                $query->whereHas('appointment', fn ($appointment) => $appointment
+                    ->where('type', '!=', 'company_bulk')->where('doctor_id', $doctor->id));
+            })
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');

@@ -24,7 +24,8 @@ interface AppointmentData {
     appointment_date: string;
     type: string;
     status: string;
-    service_type: string;
+    service_type?: string;
+    service_types?: string[];
     referral_code: string | null;
     user: { id: number; first_name: string; last_name: string; email: string };
     company: { id: number; company_name: string } | null;
@@ -32,7 +33,7 @@ interface AppointmentData {
 
 export default function AppointmentsIndex() {
     const props = usePage().props as any;
-    const { appointments, filters, can } = props;
+    const { appointments, filters, can, isCompanyView } = props;
 
     const [search, setSearch] = useState(filters?.search || '');
     const [statusFilter, setStatusFilter] = useState(filters?.status || '');
@@ -95,16 +96,20 @@ export default function AppointmentsIndex() {
 
     return (
         <>
-            <Head title="Appointments" />
+            <Head title={isCompanyView ? 'Employee Appointments' : 'Appointments'} />
 
             <div className="mx-auto max-w-7xl space-y-8 p-6 lg:p-8">
                 {/* PAGE HEADER */}
                 <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-                            Appointments
+                            {isCompanyView ? 'Employee Appointments' : 'Appointments'}
                         </h1>
-                        <p className="mt-1 text-muted-foreground"></p>
+                        <p className="mt-1 text-muted-foreground">
+                            {isCompanyView
+                                ? 'Track the appointment and completion status of your company employees.'
+                                : ''}
+                        </p>
                     </div>
                     {can?.create && (
                         <Link
@@ -160,6 +165,15 @@ export default function AppointmentsIndex() {
                                     <option value="accepted">Confirmed</option>
                                     <option value="rejected">Rejected</option>
                                     <option value="completed">Completed</option>
+                                    <option value="verifying_drug_test">
+                                        Verifying Drug Test Result
+                                    </option>
+                                    <option value="verifying_xray">
+                                        Verifying X-Ray Result
+                                    </option>
+                                    <option value="verifying_drug_and_xray">
+                                        Verifying Drug and X-Ray Test Result
+                                    </option>
                                     <option value="cancelled">Cancelled</option>
                                 </select>
                             </div>
@@ -180,6 +194,11 @@ export default function AppointmentsIndex() {
                                     <option value="company_referral">
                                         Company Referral
                                     </option>
+                                    {isCompanyView && (
+                                        <option value="company_bulk">
+                                            Bulk Appointment
+                                        </option>
+                                    )}
                                 </select>
                             </div>
                         </div>
@@ -286,9 +305,9 @@ export default function AppointmentsIndex() {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="text-sm font-semibold text-gray-900">
-                                                            {
-                                                                appointment.service_type
-                                                            }
+                                                            {appointment.service_types?.join(', ') ||
+                                                                appointment.service_type ||
+                                                                'Medical examination'}
                                                         </div>
                                                         <div className="text-[10px] font-bold tracking-tight text-muted-foreground uppercase">
                                                             {appointment.type.replace(
@@ -336,13 +355,20 @@ export default function AppointmentsIndex() {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
-                                                        <Link
-                                                            href={`/appointments/${appointment.id}`}
-                                                            className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-moss-600 transition-all hover:bg-moss-50"
-                                                        >
-                                                            <Eye className="h-4 w-4" />
-                                                            Details
-                                                        </Link>
+                                                        {!isCompanyView && (
+                                                            <Link
+                                                                href={`/appointments/${appointment.id}`}
+                                                                className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-moss-600 transition-all hover:bg-moss-50"
+                                                            >
+                                                                <Eye className="h-4 w-4" />
+                                                                Details
+                                                            </Link>
+                                                        )}
+                                                        {isCompanyView && (
+                                                            <span className="text-xs font-medium text-slate-500">
+                                                                Status only
+                                                            </span>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             );

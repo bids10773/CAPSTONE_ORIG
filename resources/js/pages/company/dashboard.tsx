@@ -39,6 +39,9 @@ interface BulkAppointment {
     appointment_date: string;
     status: string;
     service_types: string[];
+    report_status?: string | null;
+    report_released_at?: string | null;
+    report_download_url?: string | null;
 }
 
 interface ImportError {
@@ -125,6 +128,7 @@ interface DashboardProps {
     };
     uploads: UploadHistory[];
     importPreview?: ImportPreview;
+    bulkUploadId?: number | null;
     flash?: { import_result?: ImportResult | null };
     referrals: CompanyReferral[];
     referralStats: {
@@ -164,12 +168,15 @@ export default function CompanyDashboard() {
         employeeStats,
         uploads,
         importPreview,
+        bulkUploadId,
         flash,
         referrals,
         referralStats,
         serviceTypes,
     } = usePage<DashboardProps>().props;
-    const [isUploadOpen, setIsUploadOpen] = useState(!!importPreview);
+    const [isUploadOpen, setIsUploadOpen] = useState(
+        !!importPreview || !!bulkUploadId,
+    );
     const [dragging, setDragging] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const [isReferralOpen, setIsReferralOpen] = useState(false);
@@ -177,7 +184,10 @@ export default function CompanyDashboard() {
     const previewForm = useForm<{
         file: File | null;
         bulk_appointment_id: string;
-    }>({ file: null, bulk_appointment_id: '' });
+    }>({
+        file: null,
+        bulk_appointment_id: bulkUploadId ? String(bulkUploadId) : '',
+    });
     const importResult = flash?.import_result;
     const referralForm = useForm({
         first_name: '',
@@ -230,7 +240,11 @@ export default function CompanyDashboard() {
     };
 
     const confirm = () => {
-        if (!importPreview || confirming || importPreview.summary.valid === 0)
+        if (
+            !importPreview ||
+            confirming ||
+            importPreview.summary.valid + importPreview.summary.duplicates === 0
+        )
             return;
         setConfirming(true);
         router.post(
@@ -588,7 +602,7 @@ export default function CompanyDashboard() {
                                         htmlFor="bulk-appointment"
                                         className="mb-2 block text-xs font-semibold text-slate-700"
                                     >
-                                        Bulk appointment (optional)
+                                        Bulk appointment
                                     </label>
                                     <select
                                         id="bulk-appointment"
@@ -736,6 +750,24 @@ export default function CompanyDashboard() {
                 )}
 
                 <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,.8fr)]">
+                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                        <h2 className="flex items-center gap-2 font-semibold"><FileSpreadsheet className="size-4 text-moss-600" /> Bulk medical reports</h2>
+                        <p className="mt-1 text-xs text-slate-500">Final employee results become downloadable only after clinic review and release.</p>
+                        <div className="mt-4 space-y-2">
+                            {bulkAppointments.map((appointment) => (
+                                <div key={appointment.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3">
+                                    <div><p className="text-sm font-medium">{formatDate(appointment.appointment_date)}</p><p className="mt-0.5 text-[11px] text-slate-400">{appointment.service_types.join(', ')}</p></div>
+                                    {appointment.report_download_url ? (
+                                        <a href={appointment.report_download_url} className="inline-flex items-center gap-2 rounded-lg bg-moss-600 px-3 py-2 text-xs font-semibold text-white hover:bg-moss-700"><Download className="size-3.5" /> Download final Excel</a>
+                                    ) : (
+                                        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700">{appointment.report_status === 'ready_for_review' ? 'Under clinic review' : 'Not yet released'}</span>
+                                    )}
+                                </div>
+                            ))}
+                            {bulkAppointments.length === 0 && <p className="py-5 text-center text-xs text-slate-400">No bulk appointments yet.</p>}
+                        </div>
+                    </section>
+
                     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                         <div className="mb-5 flex items-center justify-between">
                             <div>
@@ -1104,7 +1136,10 @@ function PreviewTable({
                 <Button
                     type="button"
                     onClick={onConfirm}
-                    disabled={processing || preview.summary.valid === 0}
+                    disabled={
+                        processing ||
+                        preview.summary.valid + preview.summary.duplicates === 0
+                    }
                     className="h-10 rounded-xl bg-moss-600 hover:bg-moss-700"
                 >
                     {processing ? (
@@ -1115,7 +1150,8 @@ function PreviewTable({
                     ) : (
                         <>
                             <CheckCircle2 className="mr-2 size-4" /> Confirm{' '}
-                            {preview.summary.valid} valid records
+                            {preview.summary.valid} new and{' '}
+                            {preview.summary.duplicates} existing employees
                         </>
                     )}
                 </Button>

@@ -20,9 +20,14 @@ class AppointmentPolicy
         }
 
         return match ($user->role) {
-            'doctor' => $appointment->doctor_id === null || $appointment->doctor_id === $user->id,
-            'medtech' => app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment) !== [],
-            'radtech' => $appointment->requiresXray(),
+            'doctor' => $appointment->bulk_appointment_id === null
+                ? ($appointment->doctor_id === null || $appointment->doctor_id === $user->id)
+                : ($this->hasAnyAssignedTask($user, $appointment, ['doctor', 'drug_verification', 'xray_verification', 'final_evaluation'])
+                    || $appointment->medicalExamination?->examining_doctor_id === $user->id
+                    || $appointment->medicalExamination?->finalized_by === $user->id),
+            'medtech' => app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment) !== []
+                && $this->eligibleOnsiteStaff($user, $appointment, 'medtech'),
+            'radtech' => $appointment->requiresXray() && $this->eligibleOnsiteStaff($user, $appointment, 'radtech'),
             default => false,
         };
     }
@@ -59,8 +64,7 @@ class AppointmentPolicy
     {
         return $user->role === 'admin'
             || ($user->role === 'doctor'
-                && $this->eligibleOnsiteStaff($user, $appointment, 'doctor')
-                && ($appointment->doctor_id === null || $appointment->doctor_id === $user->id));
+                && $this->eligibleOnsiteStaff($user, $appointment, 'final_evaluation'));
     }
 
     private function eligibleOnsiteStaff(User $user, Appointment $appointment, string $role): bool
@@ -73,7 +77,7 @@ class AppointmentPolicy
             && \App\Models\OnsiteEventStaff::query()
                 ->where('bulk_appointment_id', $appointment->bulk_appointment_id)
                 ->where('user_id', $user->id)
-                ->where('service_role', $role)
+                ->where('service_role', in_array($role, ['drug_verification', 'xray_verification', 'final_evaluation'], true) ? 'doctor' : $role)
                 ->where('is_active', true)
                 ->exists()
             && \App\Models\OnsiteServiceQueue::query()
@@ -87,7 +91,9 @@ class AppointmentPolicy
     public function verifyDiagnosticResults(User $user, Appointment $appointment): bool
     {
         return in_array($user->role, ['doctor', 'admin'], true)
-            && ($user->role === 'admin' || $appointment->doctor_id === null || $appointment->doctor_id === $user->id);
+            && ($user->role === 'admin' || ($appointment->bulk_appointment_id === null
+                ? ($appointment->doctor_id === null || $appointment->doctor_id === $user->id)
+                : $this->hasAnyAssignedTask($user, $appointment, ['drug_verification', 'xray_verification'])));
     }
 
     public function releaseMedicalReport(User $user, Appointment $appointment): bool
@@ -95,6 +101,19 @@ class AppointmentPolicy
         return in_array($user->role, ['doctor', 'admin'], true)
             && $appointment->medicalExamination?->finalized_at !== null
             && $appointment->medicalExamination?->released_at === null
-            && ($user->role === 'admin' || $appointment->doctor_id === null || $appointment->doctor_id === $user->id);
+            && ($user->role === 'admin' || ($appointment->bulk_appointment_id === null
+                ? ($appointment->doctor_id === null || $appointment->doctor_id === $user->id)
+                : $appointment->medicalExamination?->finalized_by === $user->id));
+    }
+
+    private function hasAnyAssignedTask(User $user, Appointment $appointment, array $tasks): bool
+    {
+        return $appointment->attendance_status === 'arrived'
+            && \App\Models\OnsiteServiceQueue::query()
+                ->where('appointment_id', $appointment->id)
+                ->where('assigned_staff_id', $user->id)
+                ->whereIn('service_role', $tasks)
+                ->whereIn('status', ['assigned', 'in_progress'])
+                ->exists();
     }
 }

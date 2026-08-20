@@ -34,7 +34,6 @@ export default function CreateStaff() {
         contact: '',
         sex: '',
         role: 'doctor',
-        license_no: '',
         specialization: '',
     });
 
@@ -45,8 +44,7 @@ export default function CreateStaff() {
     ) => {
         const { name, value } = e.target;
 
-        // Add 'license_no' to the numeric-only check
-        if (name === 'contact' || name === 'license_no') {
+        if (name === 'contact') {
             // This regex strips out any character that is NOT a number (0-9)
             const onlyNums = value.replace(/[^0-9]/g, '');
 
@@ -314,28 +312,7 @@ export default function CreateStaff() {
                                         </h2>
                                     </div>
 
-                                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                                        {/* PRC License Input */}
-                                        <div className="space-y-2">
-                                            <Label className="ml-1 text-[11px] font-bold text-muted-foreground uppercase">
-                                                PRC License No.
-                                            </Label>
-                                            <div className="group relative">
-                                                <BadgeCheck className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-purple-500" />
-                                                <input
-                                                    type="text"
-                                                    name="license_no"
-                                                    value={formData.license_no}
-                                                    onChange={handleChange}
-                                                    className={`${inputStyle} pl-10 focus:ring-2 focus:ring-purple-500/20`}
-                                                    placeholder="7-digit License #"
-                                                    maxLength={7}
-                                                    pattern="\d{7}" // Validates exactly 7 digits
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
-
+                                    <div className="grid grid-cols-1 gap-6">
                                         {/* Specialization Selection */}
                                         <div className="space-y-2">
                                             <Label className="ml-1 text-[11px] font-bold text-muted-foreground uppercase">
