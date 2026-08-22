@@ -66,6 +66,7 @@ interface DashboardStats {
 interface DashboardProps {
     stats?: Partial<DashboardStats>;
     recentAppointments?: AppointmentData[];
+    recentCompanyAppointments?: AppointmentData[];
     todayAppointments?: AppointmentData[];
     appointmentsByStatus?: Record<string, number>;
     appointmentsByType?: Record<string, number>;
@@ -166,6 +167,7 @@ export default function AdminDashboard() {
     const {
         stats = {},
         recentAppointments = [],
+        recentCompanyAppointments = [],
         todayAppointments = [],
         appointmentsByStatus = {},
         appointmentsByType = {},
@@ -220,14 +222,7 @@ export default function AdminDashboard() {
         },
     ].filter((item) => item.count > 0);
 
-    const companyActivity = [...todayAppointments, ...recentAppointments]
-        .filter((appointment) => appointment.company)
-        .filter(
-            (appointment, index, appointments) =>
-                appointments.findIndex((item) => item.id === appointment.id) ===
-                index,
-        )
-        .slice(0, 4);
+    const companyActivity = recentCompanyAppointments;
 
     const kpis = [
         {

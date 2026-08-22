@@ -209,3 +209,37 @@ test('admin can complete onsite activities without medically completing pending 
         ->and($child->fresh()->status)->not->toBe('completed')
         ->and(SecurityAudit::where('action', 'onsite_activities_completed')->where('actor_id', $admin->id)->exists())->toBeTrue();
 });
+
+test('onsite xray sent for verification stays assigned to the same radtech', function () {
+    extract(onsiteFixture());
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
+    $workflow = app(OnsiteEventWorkflowService::class);
+    $workflow->assignStaff($event, $radtech, 'radtech', 10);
+    $workflow->markArrived($child, $receptionist);
+
+    $this->actingAs($radtech)->post(route('radtech.xrays.store', $child), [
+        'workflow_action' => 'send_verification',
+        'chest_findings' => 'Images acquired onsite.',
+        'impression' => 'Pending verified interpretation.',
+    ])->assertSessionHas('success');
+
+    expect($child->fresh()->status)->toBe('verifying_xray')
+        ->and($child->xrayReport()->count())->toBe(1)
+        ->and($child->serviceQueues()->where('service_role', 'radtech')->value('status'))->toBe('in_progress');
+
+    $this->get(route('radtech.onsite-events.show', $event))
+        ->assertInertia(fn ($page) => $page
+            ->where('queues.data.0.appointment.id', $child->id)
+            ->where('queues.data.0.status', 'in_progress'));
+    $this->get(route('radtech.xrays.create', $child))
+        ->assertInertia(fn ($page) => $page->where('locked', false));
+});
+
+test('parent event reaches results completed independently through child resolution', function () {
+    extract(onsiteFixture());
+    $child->update(['status' => 'completed']);
+
+    expect($event->fresh()->status)->toBe('completed')
+        ->and($event->fresh()->onsite_event_status)->toBe('results_completed');
+});

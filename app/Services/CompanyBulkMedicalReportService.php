@@ -142,7 +142,9 @@ class CompanyBulkMedicalReportService
             'pregnancy' => $this->isFemale($employee) ? $this->arrayText($lab?->pregnancy_test) : '-',
             'fbs' => filled(data_get($lab?->blood_chemistry_results, 'fbs')) ? data_get($lab?->blood_chemistry_results, 'fbs').' mg/dL' : '-',
             'blood_chemistry' => $this->arrayText($lab?->blood_chemistry_results),
-            'xray' => $exam?->xrayReport?->isVerified() ? ($exam->xrayReport->impression ?: $exam->xrayReport->findings ?: 'FINAL') : '-',
+            'xray' => $exam?->xrayReport?->isVerified()
+                ? ($exam->xrayReport->impression ?: $exam->xrayReport->findings ?: 'FINAL')
+                : ($exam?->xrayReport ? 'PENDING - '.str($exam->xrayReport->status)->replace('_', ' ')->upper() : 'PENDING'),
             'ecg' => $this->verifiedDiagnostic($diagnostics->get('ecg')),
             'audiometry' => $this->verifiedDiagnostic($diagnostics->get('audiometry')),
             'neuro_psychiatric_test' => $this->verifiedDiagnostic($diagnostics->get('neuro_psychiatric_test')),
@@ -156,7 +158,7 @@ class CompanyBulkMedicalReportService
     private function labSummary($diagnostic, mixed $result): string
     {
         if ($diagnostic && ! $diagnostic->isVerified()) {
-            return '-';
+            return 'PENDING - '.str($diagnostic->status)->replace('_', ' ')->upper();
         }
         if ($diagnostic?->findings) {
             return $diagnostic->findings;
@@ -167,7 +169,13 @@ class CompanyBulkMedicalReportService
 
     private function verifiedDiagnostic($diagnostic): string
     {
-        return $diagnostic?->isVerified() ? ($diagnostic->findings ?: $this->arrayText($diagnostic->result_data)) : '-';
+        if (! $diagnostic) {
+            return 'PENDING';
+        }
+
+        return $diagnostic->isVerified()
+            ? ($diagnostic->findings ?: $this->arrayText($diagnostic->result_data))
+            : 'PENDING - '.str($diagnostic->status)->replace('_', ' ')->upper();
     }
 
     private function arrayText(mixed $value): string

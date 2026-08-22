@@ -41,9 +41,17 @@ class AdminDashboardController extends Controller
         ];
 
         $recentAppointments = Appointment::with(['user', 'company'])
+            ->whereNotIn('type', ['company_referral', 'company_bulk'])
             ->whereNotIn('status', ['completed', 'cancelled', 'rejected'])
             ->latest('created_at')
             ->limit(10)
+            ->get();
+
+        $recentCompanyAppointments = Appointment::with(['user', 'company'])
+            ->whereIn('type', ['company_referral', 'company_bulk'])
+            ->whereNotIn('status', ['completed', 'cancelled', 'rejected'])
+            ->latest('created_at')
+            ->limit(4)
             ->get();
 
         $historyAppointments = Appointment::with(['user', 'company'])
@@ -97,6 +105,7 @@ class AdminDashboardController extends Controller
             'user' => $request->user(),
             'stats' => $stats,
             'recentAppointments' => $recentAppointments,
+            'recentCompanyAppointments' => $recentCompanyAppointments,
             'historyAppointments' => $historyAppointments,
             'todayAppointments' => $todayAppointments,
             'appointmentsByStatus' => $appointmentsByStatus,

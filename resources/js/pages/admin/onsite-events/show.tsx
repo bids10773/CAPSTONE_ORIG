@@ -9,8 +9,8 @@ import {
     X,
 } from 'lucide-react';
 import { useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
+import AppLayout from '@/layouts/app-layout';
 
 type Role = 'doctor' | 'medtech' | 'radtech' | 'receptionist';
 type Staff = { id: number; first_name: string; last_name: string; role: Role };
@@ -35,6 +35,10 @@ type Employee = {
         last_name: string;
         patient_profile?: { employee_number?: string | null };
     };
+    service_progress: Record<
+        'physical_exam' | 'laboratory' | 'drug_test' | 'xray' | 'final_evaluation',
+        string
+    >;
 };
 type Page<T> = {
     data: T[];
@@ -48,6 +52,24 @@ const roleName = (role: Role) =>
         radtech: 'Radiologic Technologists',
         receptionist: 'Receptionists',
     })[role];
+const progressLabel = (status: string) =>
+    ({
+        completed: 'Completed',
+        awaiting_result: 'For verification',
+        draft: 'Pending',
+        pending: 'Pending',
+        ready: 'Ready',
+        locked: 'Locked',
+        not_required: 'N/A',
+    })[status] ?? status.replaceAll('_', ' ');
+const progressClass = (status: string) =>
+    status === 'completed'
+        ? 'bg-emerald-50 text-emerald-700'
+        : status === 'ready'
+          ? 'bg-blue-50 text-blue-700'
+          : status === 'not_required'
+            ? 'bg-slate-50 text-slate-400'
+            : 'bg-amber-50 text-amber-700';
 
 export default function AdminOnsiteEvent({
     event,
@@ -140,6 +162,7 @@ export default function AdminOnsiteEvent({
                     ['Not arrived', 'not_arrived'],
                     ['Absent', 'absent'],
                     ['Completed', 'completed'],
+                    ['Onsite procedures finished', 'onsite_procedures_finished'],
                     ['Drug verification', 'verifying_drug_test'],
                     ['X-Ray verification', 'verifying_xray'],
                     ['Both verifying', 'verifying_both'],
@@ -188,6 +211,11 @@ export default function AdminOnsiteEvent({
                             <tr>
                                 <th className="px-4 py-3">Employee</th>
                                 <th className="px-4 py-3">Employee number</th>
+                                <th className="px-4 py-3">PE</th>
+                                <th className="px-4 py-3">Lab</th>
+                                <th className="px-4 py-3">Drug Test</th>
+                                <th className="px-4 py-3">X-Ray</th>
+                                <th className="px-4 py-3">Final</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y">
@@ -206,6 +234,22 @@ export default function AdminOnsiteEvent({
                                         {employee.user.patient_profile
                                             ?.employee_number ?? '—'}
                                     </td>
+                                    {([
+                                        'physical_exam',
+                                        'laboratory',
+                                        'drug_test',
+                                        'xray',
+                                        'final_evaluation',
+                                    ] as const).map((service) => {
+                                        const status = employee.service_progress[service];
+                                        return (
+                                            <td key={service} className="px-4 py-3">
+                                                <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-[10px] font-semibold ${progressClass(status)}`}>
+                                                    {progressLabel(status)}
+                                                </span>
+                                            </td>
+                                        );
+                                    })}
                                 </tr>
                             ))}
                         </tbody>
@@ -382,9 +426,13 @@ export default function AdminOnsiteEvent({
                         <FileSpreadsheet className="size-4" /> Review company medical results
                     </Link>
                     <div>
-                    {event.onsite_event_status === 'activities_completed' ? (
+                    {['activities_completed', 'results_completed', 'closed'].includes(event.onsite_event_status) ? (
                         <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-semibold text-emerald-700">
-                            Onsite activities completed — medical processing continues
+                            {event.onsite_event_status === 'closed'
+                                ? 'Event closed — final report released'
+                                : event.onsite_event_status === 'results_completed'
+                                  ? 'Results processing completed'
+                                  : 'Onsite completed — results processing'}
                         </span>
                     ) : (
                         <Button

@@ -111,11 +111,38 @@ class OnsiteEventController extends Controller
 
         $requiredRoles = collect($recommendations->requiredRoles($event));
         $assignedRoles = $event->onsiteStaff->where('is_active', true)->pluck('service_role')->unique();
+        $employees = $this->employeeQuery($event, $request->string('search')->trim()->toString())
+            ->with([
+                'medicalExamination.physicalExam',
+                'medicalExamination.laboratoryResult',
+                'medicalExamination.diagnosticResults',
+                'medicalExamination.xrayReport',
+            ])
+            ->paginate(25)->withQueryString();
+        $employees->getCollection()->each(function (Appointment $employee): void {
+            $summaries = collect($employee->medicalExamination?->childSummaries() ?? []);
+            $regularLab = $summaries->reject(fn (array $summary) => in_array($summary['key'], ['physical_exam', 'drug_test', 'xray'], true));
+            $requiredLab = collect(app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($employee))
+                ->except('drug_test')->isNotEmpty();
+            $employee->setAttribute('service_progress', [
+                'physical_exam' => $summaries->firstWhere('key', 'physical_exam')['status']
+                    ?? (in_array('PE', $employee->service_types ?? [], true) ? 'pending' : 'not_required'),
+                'laboratory' => $regularLab->isEmpty()
+                    ? ($requiredLab ? 'pending' : 'not_required')
+                    : ($regularLab->every(fn (array $summary) => $summary['status'] === 'completed') ? 'completed' : 'pending'),
+                'drug_test' => $summaries->firstWhere('key', 'drug_test')['status']
+                    ?? (in_array('Drug Test', $employee->service_types ?? [], true) ? 'pending' : 'not_required'),
+                'xray' => $summaries->firstWhere('key', 'xray')['status']
+                    ?? ($employee->requiresXray() ? 'pending' : 'not_required'),
+                'final_evaluation' => $employee->status === 'completed'
+                    ? 'completed'
+                    : ($employee->status === 'for_final_evaluation' ? 'ready' : 'locked'),
+            ]);
+        });
 
         return Inertia::render('admin/onsite-events/show', [
             'event' => $event,
-            'employees' => $this->employeeQuery($event, $request->string('search')->trim()->toString())
-                ->paginate(25)->withQueryString(),
+            'employees' => $employees,
             'attendance' => $this->attendanceSummary($event),
             'staffing' => [
                 'required_roles' => $requiredRoles,
@@ -163,6 +190,9 @@ class OnsiteEventController extends Controller
     {
         abort_unless($request->user()->role === 'admin' && $event->isBulkParent(), 403);
         abort_if(in_array($event->status, ['pending', 'rejected', 'cancelled'], true), 422, 'The event must be approved first.');
+        if (in_array($event->onsite_event_status, ['activities_completed', 'results_completed', 'closed'], true)) {
+            return back()->with('success', 'The onsite activities are already completed.');
+        }
         $event->update(['onsite_event_status' => 'activities_completed']);
         SecurityAudit::create([
             'actor_id' => $request->user()->id,
@@ -239,14 +269,26 @@ class OnsiteEventController extends Controller
         $counts = $event->bulkEmployees()->selectRaw("COALESCE(attendance_status, 'not_arrived') as attendance, COUNT(*) as aggregate")
             ->groupBy('attendance')->pluck('aggregate', 'attendance');
 
+        $drugVerification = $event->bulkEmployees()->whereIn('status', ['verifying_drug_test', 'verifying_drug_and_xray'])->count();
+        $xrayVerification = $event->bulkEmployees()->whereIn('status', ['verifying_xray', 'verifying_drug_and_xray'])->count();
+        $onsiteFinished = $event->bulkEmployees()->where('attendance_status', 'arrived')
+            ->when(in_array('PE', $event->service_types ?? [], true), fn ($query) => $query
+                ->whereHas('physicalExam', fn ($physical) => $physical->where('is_completed', true)))
+            ->when(app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($event) !== [], fn ($query) => $query
+                ->whereHas('labResult', fn ($lab) => $lab->where('is_completed', true)))
+            ->when($event->requiresXray(), fn ($query) => $query
+                ->whereHas('xrayReport', fn ($xray) => $xray->whereNotNull('performed_at')))
+            ->count();
+
         return [
             'total' => (int) $counts->sum(),
             'not_arrived' => (int) ($counts['not_arrived'] ?? 0),
             'arrived' => (int) ($counts['arrived'] ?? 0),
             'absent' => (int) ($counts['absent'] ?? 0),
             'completed' => $event->bulkEmployees()->where('status', 'completed')->count(),
-            'verifying_drug_test' => $event->bulkEmployees()->where('status', 'verifying_drug_test')->count(),
-            'verifying_xray' => $event->bulkEmployees()->where('status', 'verifying_xray')->count(),
+            'onsite_procedures_finished' => $onsiteFinished,
+            'verifying_drug_test' => $drugVerification,
+            'verifying_xray' => $xrayVerification,
             'verifying_both' => $event->bulkEmployees()->where('status', 'verifying_drug_and_xray')->count(),
             'for_final_evaluation' => $event->bulkEmployees()->where('status', 'for_final_evaluation')->count(),
         ];

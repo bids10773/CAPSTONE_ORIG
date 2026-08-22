@@ -24,7 +24,8 @@ class XrayController extends Controller
 
         return Inertia::render('radtech/xray-report-form', [
             'appointment' => $appointment, 'xrayReport' => $appointment->xrayReport,
-            'locked' => $appointment->medicalExamination?->finalized_at !== null && request()->user()->role !== 'admin',
+            'locked' => ($appointment->medicalExamination?->finalized_at !== null || $appointment->xrayReport?->isVerified())
+                && request()->user()->role !== 'admin',
             'submitUrl' => request()->user()->role === 'admin'
                 ? route('admin.xrays.update', $appointment)
                 : route('radtech.xrays.store', $appointment),
@@ -34,35 +35,37 @@ class XrayController extends Controller
     public function store(SaveXrayReportRequest $request, Appointment $appointment, MedicalExaminationService $examinations): RedirectResponse
     {
         app(\App\Services\OnsiteEventWorkflowService::class)->startService($appointment, 'radtech', $request->user());
-        if (($appointment->medicalExamination?->finalized_at || $appointment->xrayReport?->finalized_at) && $request->user()->role !== 'admin') {
-            throw ValidationException::withMessages(['form' => 'The X-ray report is finalized and locked.']);
-        }
-
         DB::transaction(function () use ($request, $appointment, $examinations): void {
             $medicalExamination = $examinations->forAppointment($appointment);
+            $existing = XrayReport::query()->where('appointment_id', $appointment->id)->lockForUpdate()->first();
+            if (($medicalExamination->finalized_at || $existing?->isVerified() || $existing?->finalized_at) && $request->user()->role !== 'admin') {
+                throw ValidationException::withMessages(['form' => 'The X-ray report is finalized and locked.']);
+            }
             $action = $request->validated('workflow_action');
             $complete = $action === 'complete';
             $sendForVerification = $action === 'send_verification';
-            if ($sendForVerification && $appointment->xrayReport?->sent_for_verification_at) {
+            if ($sendForVerification && $existing?->sent_for_verification_at) {
                 throw ValidationException::withMessages(['workflow_action' => 'This X-ray has already been sent for verification.']);
             }
             $report = XrayReport::updateOrCreate(['appointment_id' => $appointment->id], [
                 'medical_examination_id' => $medicalExamination->id,
-                'radiologist_id' => $request->user()->id,
+                'radiologist_id' => $existing?->radiologist_id ?? $request->user()->id,
                 'findings' => $request->validated('chest_findings'),
                 'impression' => $request->validated('impression'),
                 'recommendation' => $request->validated('recommendation'),
                 'remarks' => $request->validated('remarks'),
                 'status' => $complete ? 'completed' : ($sendForVerification ? 'verifying' : 'awaiting_result'),
-                'performed_at' => $appointment->xrayReport?->performed_at ?? now(),
+                'performed_at' => $existing?->performed_at ?? now(),
                 'result_available_at' => $complete ? now() : null,
                 'verified_by' => $complete ? $request->user()->id : null,
                 'verified_at' => $complete ? now() : null,
                 'is_completed' => $complete,
-                'sent_for_verification_by' => $sendForVerification ? $request->user()->id : $appointment->xrayReport?->sent_for_verification_by,
-                'sent_for_verification_at' => $sendForVerification ? now() : $appointment->xrayReport?->sent_for_verification_at,
+                'finalized_by' => $complete ? $request->user()->id : null,
+                'finalized_at' => $complete ? now() : null,
+                'sent_for_verification_by' => $sendForVerification ? $request->user()->id : $existing?->sent_for_verification_by,
+                'sent_for_verification_at' => $sendForVerification ? now() : $existing?->sent_for_verification_at,
             ]);
-            if ($complete || $sendForVerification) {
+            if ($complete) {
                 app(\App\Services\OnsiteEventWorkflowService::class)->completeService($appointment, 'radtech', $request->user());
             }
             if ($sendForVerification) {
@@ -77,9 +80,9 @@ class XrayController extends Controller
         });
 
         $message = match ($request->validated('workflow_action')) {
-            'complete' => 'Official X-ray result verified and sent for final evaluation.',
+            'complete' => 'X-Ray result finalized successfully.',
             'send_verification' => 'X-ray sent for verification.',
-            default => 'X-ray marked as performed. The examination remains pending until the official result is available.',
+            default => 'X-Ray saved as pending. The examination remains available until it is finalized.',
         };
 
         return redirect()->route('radtech.appointments')->with('success', $message);

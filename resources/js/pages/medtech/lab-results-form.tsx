@@ -41,6 +41,7 @@ type Props = {
     sections: Record<string, Section>;
     labResult?: Record<string, any> | null;
     locked: boolean;
+    drugVerificationPending: boolean;
     submitUrl: string;
 };
 
@@ -74,6 +75,7 @@ export default function LaboratoryResultsForm({
     sections,
     labResult,
     locked,
+    drugVerificationPending,
     submitUrl,
 }: Props) {
     const form = useForm({
@@ -91,7 +93,10 @@ export default function LaboratoryResultsForm({
         });
     const submit = (
         finalize: boolean,
-        drugWorkflowAction: 'complete' | 'send_verification' = 'complete',
+        drugWorkflowAction:
+            | 'complete'
+            | 'send_verification'
+            | 'update_verification' = 'complete',
     ) => {
         form.transform((data) => ({
             ...data,
@@ -99,6 +104,15 @@ export default function LaboratoryResultsForm({
             drug_workflow_action: drugWorkflowAction,
         }));
         form.post(submitUrl);
+    };
+    const confirmFinalize = () => {
+        if (
+            window.confirm(
+                'Finalize Drug Test?\n\nPlease confirm that the result has been reviewed and verified. Once finalized, this service will be marked as completed and become read-only.',
+            )
+        ) {
+            submit(true);
+        }
     };
     const drugValues = Object.values(form.data.results.drug_test ?? {});
     const drugRequiresVerification = drugValues.some((value) =>
@@ -214,7 +228,12 @@ export default function LaboratoryResultsForm({
                                             {field.type === 'select' ? (
                                                 <select
                                                     id={`${sectionKey}-${field.key}`}
-                                                    disabled={locked}
+                                                disabled={
+                                                    locked ||
+                                                    (drugVerificationPending &&
+                                                        sectionKey !==
+                                                            'drug_test')
+                                                }
                                                     className={inputClass}
                                                     value={value}
                                                     onChange={(e) =>
@@ -243,7 +262,12 @@ export default function LaboratoryResultsForm({
                                                 <div className="relative">
                                                     <input
                                                         id={`${sectionKey}-${field.key}`}
-                                                        disabled={locked}
+                                                        disabled={
+                                                            locked ||
+                                                            (drugVerificationPending &&
+                                                                sectionKey !==
+                                                                    'drug_test')
+                                                        }
                                                         type={field.type}
                                                         step="any"
                                                         className={`${inputClass} ${field.unit ? 'pr-20' : ''}`}
@@ -314,11 +338,22 @@ export default function LaboratoryResultsForm({
                                     <button
                                         type="button"
                                         disabled={form.processing}
-                                        onClick={() => submit(false)}
+                                        onClick={() =>
+                                            submit(
+                                                false,
+                                                drugVerificationPending
+                                                    ? 'update_verification'
+                                                    : 'complete',
+                                            )
+                                        }
                                         className="inline-flex items-center gap-2 rounded-xl border border-moss-300 px-4 py-2.5 font-semibold text-moss-800"
                                     >
                                         <Save className="h-4 w-4" />
-                                        Save draft
+                                        {drugVerificationPending
+                                            ? 'Save Verification Update'
+                                            : sections.drug_test
+                                            ? 'Save as Pending'
+                                            : 'Save draft'}
                                     </button>
                                     <button
                                         type="button"
@@ -326,7 +361,7 @@ export default function LaboratoryResultsForm({
                                             form.processing ||
                                             Object.keys(sections).length === 0
                                         }
-                                        onClick={() => submit(true)}
+                                        onClick={confirmFinalize}
                                         className="inline-flex items-center gap-2 rounded-xl bg-moss-600 px-4 py-2.5 font-semibold text-white disabled:opacity-50"
                                     >
                                         {form.processing ? (
@@ -334,9 +369,11 @@ export default function LaboratoryResultsForm({
                                         ) : (
                                             <ShieldCheck className="h-4 w-4" />
                                         )}
-                                        Finalize report
+                                        {sections.drug_test
+                                            ? 'Finalize Drug Test'
+                                            : 'Finalize report'}
                                     </button>
-                                    {sections.drug_test &&
+                                    {!drugVerificationPending && sections.drug_test &&
                                         drugRequiresVerification && (
                                             <button
                                                 type="button"

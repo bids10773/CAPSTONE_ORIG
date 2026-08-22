@@ -20,7 +20,7 @@ class MedTechDashboardController extends Controller
             $query->where('type', '!=', 'company_bulk');
         });
         $actionableQueue = fn () => Appointment::query()->where(function ($query) {
-            $query->where('type', '!=', 'company_bulk')->where('status', 'for_diagnostics');
+            $query->where('type', '!=', 'company_bulk')->whereIn('status', ['for_diagnostics', 'verifying_drug_test']);
         });
 
         // ✅ Completed Tests (after final evaluation)

@@ -40,6 +40,7 @@ interface Props {
         service_types: string;
     };
     xrayReport?: any;
+    locked: boolean;
     submitUrl: string;
 }
 
@@ -61,6 +62,7 @@ function getAge(birthdate?: string) {
 export default function XrayReportForm({
     appointment,
     xrayReport,
+    locked,
     submitUrl,
 }: Props) {
     const form = useForm({
@@ -81,6 +83,15 @@ export default function XrayReportForm({
             workflow_action: action,
         }));
         form.post(submitUrl, { preserveScroll: true });
+    };
+    const confirmFinalize = () => {
+        if (
+            window.confirm(
+                'Finalize X-Ray Result?\n\nPlease confirm that the findings and impression have been reviewed and verified. Once finalized, this service will be marked as completed and become read-only.',
+            )
+        ) {
+            submit('complete');
+        }
     };
     const patientName = `${appointment.user.first_name} ${appointment.user.last_name}`;
 
@@ -216,7 +227,7 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                                     id="chest-findings"
                                     className="mt-1.5 min-h-52 font-mono text-sm leading-6"
                                     value={data.chest_findings}
-                                    disabled={data.chest_status === 'normal'}
+                                    disabled={locked || data.chest_status === 'normal'}
                                     onChange={(event) =>
                                         setData(
                                             'chest_findings',
@@ -284,7 +295,7 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                                 id="impression"
                                 className="mt-1.5 min-h-40"
                                 value={data.impression}
-                                disabled={data.chest_status === 'normal'}
+                                disabled={locked || data.chest_status === 'normal'}
                                 onChange={(event) =>
                                     setData('impression', event.target.value)
                                 }
@@ -298,6 +309,7 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                                 id="remarks"
                                 className="mt-1.5 min-h-28"
                                 value={data.remarks}
+                                disabled={locked}
                                 onChange={(event) =>
                                     setData('remarks', event.target.value)
                                 }
@@ -314,6 +326,7 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                                 id="recommendation"
                                 className="mt-1.5 min-h-28"
                                 value={data.recommendation}
+                                disabled={locked}
                                 onChange={(event) =>
                                     setData(
                                         'recommendation',
@@ -331,7 +344,9 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                         type="button"
                         variant="outline"
                         disabled={
-                            processing || !!xrayReport?.sent_for_verification_at
+                            locked ||
+                            processing ||
+                            !!xrayReport?.sent_for_verification_at
                         }
                         onClick={() => submit('send_verification')}
                     >
@@ -349,21 +364,21 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                     <Button
                         type="button"
                         variant="outline"
-                        disabled={processing || !!xrayReport?.performed_at}
+                        disabled={locked || processing}
                         onClick={() => submit('performed')}
                     >
                         <ScanLine className="size-4" />
-                        Mark procedure performed
+                        Save as Pending
                     </Button>
                     <Button
                         type="button"
-                        disabled={processing}
-                        onClick={() => submit('complete')}
+                        disabled={locked || processing}
+                        onClick={confirmFinalize}
                     >
                         <Save className="size-4" />
                         {processing
-                            ? 'Completing imaging…'
-                            : 'Verify official result'}
+                            ? 'Finalizing X-Ray…'
+                            : 'Finalize X-Ray'}
                     </Button>
                 </StickyActionFooter>
             </form>

@@ -34,11 +34,18 @@ class AppointmentPolicy
 
     public function updateLaboratory(User $user, Appointment $appointment): bool
     {
+        $drugVerification = $appointment->medicalExamination?->diagnosticResults
+            ?->firstWhere('service_key', 'drug_test');
+        $isVerificationUpdate = in_array($drugVerification?->status, ['verifying', 'awaiting_official_result', 'official_result_received'], true);
+
         return $user->role === 'admin'
             || ($user->role === 'medtech'
                 && $this->eligibleOnsiteStaff($user, $appointment, 'medtech')
                 && $appointment->status !== 'completed'
-                && app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment) !== []);
+                && app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment) !== []
+                && (! $isVerificationUpdate
+                    || $appointment->bulk_appointment_id !== null
+                    || $appointment->labResult?->encoded_by === $user->id));
     }
 
     public function updatePhysicalExam(User $user, Appointment $appointment): bool

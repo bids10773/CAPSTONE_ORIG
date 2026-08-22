@@ -80,7 +80,10 @@ class BulkAppointmentEnrollmentService
             $started = $statuses->contains(fn (string $status) => ! in_array($status, ['pending', 'accepted', 'absent'], true));
 
             if ($closed) {
-                $parent->updateQuietly(['status' => 'completed']);
+                $parent->updateQuietly([
+                    'status' => 'completed',
+                    'onsite_event_status' => 'results_completed',
+                ]);
             } elseif ($started && $parent->status === 'accepted') {
                 $parent->updateQuietly(['status' => 'arrived']);
             }

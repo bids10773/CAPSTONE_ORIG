@@ -41,6 +41,7 @@ class CompanyBulkMedicalReportController extends Controller
         abort_unless($report && Storage::disk('local')->exists($report->file_path), 422, 'Generate the final report before releasing it.');
         abort_if($report->released_at, 422, 'This report has already been released.');
         $report->update(['status' => 'released', 'released_by' => $request->user()->id, 'released_at' => now()]);
+        $event->update(['onsite_event_status' => 'closed']);
         $this->audit($request, $event, 'bulk_medical_report_released', ['report_id' => $report->id]);
 
         return back()->with('success', 'The report is now available to the company account.');

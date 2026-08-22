@@ -22,26 +22,41 @@ class ClinicalFormWorkflowService
                 throw ValidationException::withMessages(['form' => 'This medical examination has been finalized and is locked.']);
             }
             $existing = $appointment->labResult()->lockForUpdate()->first();
-            if ($existing?->isFinalized() && $actor->role !== 'admin') {
+            $existingDrug = $medicalExamination->diagnosticResults()
+                ->where('service_key', 'drug_test')->lockForUpdate()->first();
+            $verificationUpdate = ($data['drug_workflow_action'] ?? null) === 'update_verification'
+                && in_array($existingDrug?->status, ['verifying', 'awaiting_official_result', 'official_result_received'], true);
+            $verificationFinalize = (bool) $data['finalize']
+                && ($data['drug_workflow_action'] ?? null) === 'complete'
+                && in_array($existingDrug?->status, ['verifying', 'awaiting_official_result', 'official_result_received'], true);
+            $verificationStage = $verificationUpdate || $verificationFinalize;
+            if ($existing?->isFinalized() && ! $verificationStage && $actor->role !== 'admin') {
                 throw ValidationException::withMessages(['form' => 'This laboratory report has been finalized and is locked.']);
             }
 
             $sections = app(LaboratoryFormDefinition::class)->sectionsFor($appointment);
             $attributes = $this->laboratoryAttributes($data['results'] ?? [], $sections);
             $finalize = (bool) $data['finalize'];
+            if ($verificationStage) {
+                $attributes = array_intersect_key($attributes, ['drug_test_results' => true]);
+            }
             $attributes += [
                 'medical_examination_id' => $medicalExamination->id,
-                'encoded_by' => $actor->id,
+                // Preserve the original encoder while still auditing every update.
+                'encoded_by' => $existing?->encoded_by ?? $actor->id,
                 'remarks' => $data['remarks'] ?? null,
-                'status' => $finalize ? 'finalized' : 'draft',
-                'is_completed' => $finalize,
-                'verified_by' => $finalize ? $actor->id : null,
-                'finalized_at' => $finalize ? now() : null,
+                'status' => $verificationFinalize ? 'finalized' : ($verificationStage ? $existing->status : ($finalize ? 'finalized' : 'draft')),
+                'is_completed' => $verificationFinalize ? true : ($verificationStage ? $existing->is_completed : $finalize),
+                'verified_by' => $verificationFinalize ? $actor->id : ($verificationStage ? $existing->verified_by : ($finalize ? $actor->id : null)),
+                'finalized_at' => $verificationFinalize ? now() : ($verificationStage ? $existing->finalized_at : ($finalize ? now() : null)),
             ];
 
             $result = LabResult::updateOrCreate(['appointment_id' => $appointment->id], $attributes);
             foreach ($sections as $key => $definition) {
                 if (! array_key_exists($key, $data['results'] ?? [])) {
+                    continue;
+                }
+                if ($verificationStage && $key !== 'drug_test') {
                     continue;
                 }
 
@@ -50,29 +65,34 @@ class ClinicalFormWorkflowService
                 $initialDrugResult = $data['results'][$key];
                 $reactiveDrugResult = $isDrugTest && collect($initialDrugResult)
                     ->contains(fn ($value) => strtolower((string) $value) === 'positive');
-                if ($finalize && $isDrugTest && $reactiveDrugResult && $drugAction !== 'send_verification') {
+                if ($finalize && $isDrugTest && $reactiveDrugResult && $drugAction !== 'send_verification' && ! $verificationFinalize) {
                     throw ValidationException::withMessages(['drug_workflow_action' => 'A positive Drug Test must be sent for verification before it can be finalized.']);
                 }
                 $drugVerifying = $isDrugTest && $finalize && $drugAction === 'send_verification';
+                $existingDiagnostic = $medicalExamination->diagnosticResults()
+                    ->where('service_key', $key)
+                    ->first();
                 $medicalExamination->diagnosticResults()->updateOrCreate(['service_key' => $key], [
                     'appointment_id' => $appointment->id,
                     'patient_id' => $appointment->user_id,
                     'company_id' => $appointment->company_id,
                     'batch_id' => $appointment->batch_id,
-                    'status' => $finalize
+                    'status' => $verificationUpdate && $isDrugTest
+                        ? 'official_result_received'
+                        : ($finalize
                         ? ($drugVerifying ? 'verifying' : 'verified')
-                        : 'in_progress',
+                        : 'in_progress'),
                     'result_data' => $isDrugTest
-                        ? ['initial_result' => $initialDrugResult, 'final_result' => $drugVerifying ? null : $initialDrugResult]
+                        ? ['initial_result' => $existingDiagnostic?->result_data['initial_result'] ?? $initialDrugResult, 'final_result' => $drugVerifying ? null : $initialDrugResult]
                         : $data['results'][$key],
-                    'performed_by' => $actor->id,
-                    'performed_at' => now(),
-                    'encoded_by' => $actor->id,
+                    'performed_by' => $existingDiagnostic?->performed_by ?? $actor->id,
+                    'performed_at' => $existingDiagnostic?->performed_at ?? now(),
+                    'encoded_by' => $existingDiagnostic?->encoded_by ?? $actor->id,
                     'encoded_at' => now(),
-                    'verified_by' => $finalize && ! $drugVerifying ? $actor->id : null,
-                    'verified_at' => $finalize && ! $drugVerifying ? now() : null,
-                    'sent_for_verification_by' => $drugVerifying ? $actor->id : null,
-                    'sent_for_verification_at' => $drugVerifying ? now() : null,
+                    'verified_by' => $finalize && ! $drugVerifying ? $actor->id : $existingDiagnostic?->verified_by,
+                    'verified_at' => $finalize && ! $drugVerifying ? now() : $existingDiagnostic?->verified_at,
+                    'sent_for_verification_by' => $drugVerifying ? $actor->id : $existingDiagnostic?->sent_for_verification_by,
+                    'sent_for_verification_at' => $drugVerifying ? now() : $existingDiagnostic?->sent_for_verification_at,
                 ]);
                 if ($drugVerifying) {
                     ClinicalFormAudit::create([
@@ -83,15 +103,21 @@ class ClinicalFormWorkflowService
                     ]);
                 }
             }
-            if ($finalize) {
+            if ($finalize && ! $verificationUpdate) {
                 $appointment->update(['status' => $this->nextStatus($appointment)]);
                 $medicalExamination->update(['status' => $medicalExamination->isReadyForFinalEvaluation()
                     ? 'ready_for_final_evaluation'
                     : 'awaiting_finalized_results']);
-                app(OnsiteEventWorkflowService::class)->completeService($appointment, 'medtech', $actor);
-                if (array_key_exists('drug_test', $data['results'] ?? []) && ($data['drug_workflow_action'] ?? 'complete') === 'send_verification') {
-                    app(OnsiteEventWorkflowService::class)->createDoctorTask($appointment, 'drug_verification');
+                if (($data['drug_workflow_action'] ?? 'complete') !== 'send_verification') {
+                    app(OnsiteEventWorkflowService::class)->completeService($appointment, 'medtech', $actor);
                 }
+                if ($verificationFinalize) {
+                    $appointment->serviceQueues()->where('service_role', 'drug_verification')
+                        ->whereNotIn('status', ['completed', 'removed'])
+                        ->update(['status' => 'removed', 'assigned_staff_id' => null]);
+                }
+                app(EmployeeMedicalStatusResolver::class)->resolve($appointment->fresh());
+            } elseif ($verificationUpdate) {
                 app(EmployeeMedicalStatusResolver::class)->resolve($appointment->fresh());
             }
 

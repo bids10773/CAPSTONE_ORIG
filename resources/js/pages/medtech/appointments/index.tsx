@@ -24,7 +24,7 @@ interface Appointment {
     company: {
         company_name: string;
     } | null;
-    labResult?: any;
+    lab_result?: { status: string } | null;
 }
 
 // Define the shape of the paginated data
@@ -103,16 +103,13 @@ export default function MedTechAppointmentsIndex({
                         </div>
                         <select
                             name="status"
-                            defaultValue={
-                                filters.status || 'pending_diagnostics'
-                            }
+                            defaultValue={filters.status || ''}
                             className="rounded-2xl border border-gray-300 bg-white px-4 py-2 text-gray-900"
                         >
-                            <option value="pending_diagnostics">
-                                Waiting for Lab
+                            <option value="">All pending laboratory work</option>
+                            <option value="for_diagnostics">
+                                Waiting for Lab / Verification
                             </option>
-                            <option value="arrived">Arrived</option>
-                            <option value="completed">Completed</option>
                         </select>
                         <button
                             type="submit"
@@ -172,14 +169,19 @@ export default function MedTechAppointmentsIndex({
                                                 {apt.service_type}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <StatusBadge
-                                                    status={apt.status}
-                                                />
+                                                {apt.lab_result ? (
+                                                    <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                                                        For Verification
+                                                    </span>
+                                                ) : (
+                                                    <StatusBadge
+                                                        status={apt.status}
+                                                    />
+                                                )}
                                             </td>
                                             <td className="space-x-2 px-6 py-4 text-right">
                                                 {apt.status ===
-                                                    'for_diagnostics' &&
-                                                    !apt.labResult && (
+                                                    'for_diagnostics' && (
                                                         <button
                                                             onClick={() =>
                                                                 startLabTest(
@@ -189,7 +191,9 @@ export default function MedTechAppointmentsIndex({
                                                             className="inline-flex items-center gap-1 rounded-xl bg-green-600 px-3 py-1.5 text-sm text-white transition-colors hover:bg-green-700"
                                                         >
                                                             <Play className="h-3 w-3 fill-current" />
-                                                            Encode Lab
+                                                            {apt.lab_result
+                                                                ? 'Edit Result'
+                                                                : 'Encode Lab'}
                                                         </button>
                                                     )}
                                                 <Link

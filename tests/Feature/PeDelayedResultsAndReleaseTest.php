@@ -57,8 +57,7 @@ test('pending official drug test prevents readiness for multiple days independen
         ->toBe('awaiting_official_result');
 });
 
-test('assigned doctor verifies an official drug test while unauthorized clinical staff cannot', function () {
-    Storage::fake('local');
+test('doctor cannot finalize a drug test because finalization belongs to medtech', function () {
     $appointment = delayedPeAppointment();
     $examination = app(MedicalExaminationService::class)->forAppointment($appointment);
     $examination->diagnosticResults()->where('service_key', 'drug_test')->update(['status' => 'awaiting_official_result']);
@@ -69,16 +68,12 @@ test('assigned doctor verifies an official drug test while unauthorized clinical
         'supporting_document' => UploadedFile::fake()->create('official.pdf', 100, 'application/pdf'),
     ];
 
-    $medtech = User::factory()->create(['role' => 'medtech']);
-    $this->actingAs($medtech)->post(route('doctor.diagnostics.drug-test.verify', $appointment), $payload)->assertForbidden();
     $this->actingAs($appointment->doctor)->post(route('doctor.diagnostics.drug-test.verify', $appointment), $payload)
-        ->assertSessionHas('success');
+        ->assertForbidden();
 
     $result = $examination->diagnosticResults()->where('service_key', 'drug_test')->firstOrFail();
-    expect($result->status)->toBe('verified')
-        ->and($result->result_data['final_result']['summary'])->toBe('negative')
-        ->and($result->verified_by)->toBe($appointment->doctor_id)
-        ->and($result->supporting_document_path)->not->toBeNull();
+    expect($result->status)->toBe('awaiting_official_result')
+        ->and($result->verified_by)->toBeNull();
 });
 
 test('xray procedure alone is not a verified final result', function () {

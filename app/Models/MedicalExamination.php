@@ -93,7 +93,9 @@ class MedicalExamination extends Model
         foreach (app(LaboratoryFormDefinition::class)->sectionsFor($appointment) as $key => $definition) {
             $diagnostic = $diagnostics->get($key);
             $result = $lab?->{$definition['column']};
-            $completed = $diagnostic?->isVerified() ?? (filled($result) && $lab?->isFinalized() && $key !== 'drug_test');
+            $completed = $key === 'drug_test'
+                ? ($diagnostic?->isVerified() ?? false)
+                : (($diagnostic?->isVerified() ?? false) || (filled($result) && $lab?->isFinalized()));
             $status = $completed ? 'completed' : match ($diagnostic?->status) {
                 'verifying', 'awaiting_official_result', 'official_result_received' => 'awaiting_result',
                 'in_progress' => 'draft',
@@ -107,7 +109,7 @@ class MedicalExamination extends Model
 
         if ($appointment->requiresXray()) {
             $summaries[] = $this->summary('xray', 'Chest X-Ray',
-                $this->xrayReport?->isVerified() ? 'completed' : ($this->xrayReport?->performed_at ? 'draft' : 'pending'),
+                $this->xrayReport?->isVerified() ? 'completed' : ($this->xrayReport?->performed_at ? 'awaiting_result' : 'pending'),
                 $this->xrayReport?->impression ?: ($this->xrayReport?->performed_at ? 'Performed — awaiting official result' : 'Awaiting procedure'));
         }
 

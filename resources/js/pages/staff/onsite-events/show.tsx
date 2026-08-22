@@ -1,8 +1,9 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, Building2, Play, Search } from 'lucide-react';
-import { FormEvent, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
+import AppLayout from '@/layouts/app-layout';
 
 type Role = 'doctor' | 'medtech' | 'radtech';
 type Queue = {

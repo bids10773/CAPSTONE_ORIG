@@ -1081,7 +1081,14 @@ class AppointmentController extends Controller
 
         $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport', 'medicalExamination', 'serviceQueues'])
             ->where('type', '!=', 'company_bulk')
-            ->whereHas('user', fn ($user) => $user->where('role', 'patient'));
+            ->whereHas('user', fn ($user) => $user->where('role', 'patient'))
+            ->where(function ($access) use ($request, $role) {
+                $access->whereNull('bulk_appointment_id')
+                    ->orWhereHas('serviceQueues', fn ($queue) => $queue
+                        ->where('service_role', $role)
+                        ->where('assigned_staff_id', $request->user()->id)
+                        ->whereIn('status', ['assigned', 'in_progress']));
+            });
 
         if ($role === 'doctor') {
             $query->where(function ($sub) {
@@ -1091,8 +1098,17 @@ class AppointmentController extends Controller
             });
 
         } elseif ($role === 'medtech') {
-            $query->where('status', 'for_diagnostics')
-                ->where(fn ($result) => $result->whereDoesntHave('labResult')->orWhereHas('labResult', fn ($lab) => $lab->where('status', '!=', 'finalized')));
+            $query->where(function ($work) use ($request) {
+                $work->where(fn ($pending) => $pending->where('status', 'for_diagnostics')
+                    ->where(fn ($result) => $result->whereDoesntHave('labResult')
+                        ->orWhereHas('labResult', fn ($lab) => $lab->where('status', '!=', 'finalized'))))
+                    ->orWhere(fn ($verification) => $verification->where('status', 'verifying_drug_test')
+                        ->whereHas('medicalExamination.diagnosticResults', fn ($result) => $result
+                            ->where('service_key', 'drug_test')
+                            ->whereIn('status', ['verifying', 'awaiting_official_result', 'official_result_received']))
+                        ->where(fn ($owner) => $owner->whereNotNull('bulk_appointment_id')
+                            ->orWhereHas('labResult', fn ($lab) => $lab->where('encoded_by', $request->user()->id))));
+            });
 
         } elseif ($role === 'radtech') {
             $query->whereIn('status', ['for_xray', 'awaiting_xray_result', 'verifying_xray'])

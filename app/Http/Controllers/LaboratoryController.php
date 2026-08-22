@@ -20,14 +20,17 @@ class LaboratoryController extends Controller
     {
         Gate::authorize('updateLaboratory', $appointment);
         app(\App\Services\OnsiteEventWorkflowService::class)->startService($appointment, 'medtech', request()->user());
-        $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy']);
+        $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'medicalExamination.diagnosticResults']);
+        $drugResult = $appointment->medicalExamination?->diagnosticResults->firstWhere('service_key', 'drug_test');
+        $drugVerificationPending = in_array($drugResult?->status, ['verifying', 'awaiting_official_result', 'official_result_received'], true);
 
         return Inertia::render('medtech/lab-results-form', [
             'appointment' => $appointment,
             'labResult' => $appointment->labResult,
             'sections' => $definitions->sectionsFor($appointment),
             'patientSummary' => $this->patientSummary($appointment),
-            'locked' => $appointment->labResult?->isFinalized() && request()->user()->role !== 'admin',
+            'locked' => $appointment->labResult?->isFinalized() && ! $drugVerificationPending && request()->user()->role !== 'admin',
+            'drugVerificationPending' => $drugVerificationPending,
             'submitUrl' => request()->user()->role === 'admin'
                 ? route('admin.lab-results.update', $appointment)
                 : route('medtech.lab-results.store', $appointment),
@@ -38,9 +41,12 @@ class LaboratoryController extends Controller
     {
         app(\App\Services\OnsiteEventWorkflowService::class)->startService($appointment, 'medtech', $request->user());
         $workflow->saveLaboratory($appointment, $request->user(), $request->validated(), $request);
-        $message = $request->boolean('finalize')
-            ? 'Laboratory report finalized and forwarded to the next required stage.'
-            : 'Laboratory draft saved successfully.';
+        $hasDrugTest = array_key_exists('drug_test', $request->validated('results', []));
+        $message = $request->validated('drug_workflow_action') === 'update_verification'
+            ? 'Drug Test verification result updated successfully.'
+            : ($request->boolean('finalize')
+            ? ($hasDrugTest ? 'Drug Test result finalized successfully.' : 'Laboratory report finalized and forwarded to the next required stage.')
+            : ($hasDrugTest ? 'Drug Test saved as pending.' : 'Laboratory draft saved successfully.'));
 
         return redirect()->route('medtech.appointments')->with('success', $message);
     }
