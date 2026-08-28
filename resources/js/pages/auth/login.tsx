@@ -1,4 +1,4 @@
-import { Form, Head, router, usePage } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     AlertCircle,
@@ -22,15 +22,30 @@ type Props = {
     status?: string;
     canResetPassword: boolean;
     canRegister: boolean;
+    email?: string;
+    loginAttemptLimit?: LoginAttemptLimit;
+};
+
+type LoginAttemptLimit = {
+    maxAttempts: number;
+    remainingAttempts: number;
+    locked: boolean;
+    retryAfter: number;
 };
 
 export default function Login({
     status,
     canResetPassword,
     canRegister,
+    email,
+    loginAttemptLimit,
 }: Props) {
-    const { auth, errors: pageErrors } = usePage().props as any;
+    const { flash } = usePage().props as {
+        flash?: { error?: string };
+    };
     const [showPassword, setShowPassword] = useState(false);
+    const [attemptLimit, setAttemptLimit] =
+        useState<LoginAttemptLimit | null>(loginAttemptLimit ?? null);
     const [showVerified, setShowVerified] = useState(
         () =>
             typeof window !== 'undefined' &&
@@ -38,7 +53,6 @@ export default function Login({
     );
 
     useEffect(() => {
-        if (auth?.user) router.visit('/dashboard');
         if (showVerified) {
             window.history.replaceState(
                 {},
@@ -46,7 +60,34 @@ export default function Login({
                 window.location.pathname,
             );
         }
-    }, [auth?.user, showVerified]);
+    }, [showVerified]);
+
+    useEffect(() => {
+        setAttemptLimit(loginAttemptLimit ?? null);
+    }, [loginAttemptLimit]);
+
+    useEffect(() => {
+        if (!attemptLimit?.locked || attemptLimit.retryAfter <= 0) return;
+
+        const timer = window.setInterval(() => {
+            setAttemptLimit((current) => {
+                if (!current?.locked) return current;
+
+                const retryAfter = Math.max(0, current.retryAfter - 1);
+
+                return retryAfter === 0
+                    ? null
+                    : { ...current, retryAfter };
+            });
+        }, 1000);
+
+        return () => window.clearInterval(timer);
+    }, [attemptLimit?.locked]);
+
+    const isLocked = attemptLimit?.locked === true;
+    const retryTime = attemptLimit
+        ? `${String(Math.floor(attemptLimit.retryAfter / 60)).padStart(2, '0')}:${String(attemptLimit.retryAfter % 60).padStart(2, '0')}`
+        : '00:00';
 
     return (
         <>
@@ -68,23 +109,24 @@ export default function Login({
                     </p>
                 </header>
 
-                {(status || pageErrors?.email) && (
+                {(status || flash?.error) && (
                     <div
                         role="alert"
-                        className={`mb-5 flex items-start gap-3 rounded-xl border p-3.5 text-sm ${pageErrors?.email ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}
+                        className={`mb-5 flex items-start gap-3 rounded-xl border p-3.5 text-sm ${flash?.error ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}
                     >
-                        {pageErrors?.email ? (
+                        {flash?.error ? (
                             <AlertCircle className="mt-0.5 size-4 shrink-0" />
                         ) : (
                             <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
                         )}
-                        <span>{pageErrors?.email || status}</span>
+                        <span>{flash?.error || status}</span>
                     </div>
                 )}
 
                 <Form
                     {...store.form()}
                     resetOnSuccess={['password']}
+                    resetOnError={['password']}
                     className="space-y-5"
                 >
                     {({ processing, errors }) => (
@@ -94,7 +136,7 @@ export default function Login({
                                     htmlFor="email"
                                     className="mb-2 block text-sm font-medium text-slate-700"
                                 >
-                                    Email address
+                                    Email address *
                                 </label>
                                 <div className="auth-input-wrap">
                                     <Mail
@@ -106,13 +148,76 @@ export default function Login({
                                         name="email"
                                         type="email"
                                         required
+                                        defaultValue={email}
                                         autoFocus
                                         autoComplete="email"
                                         placeholder="you@example.com"
                                         className={`auth-input ${errors.email ? 'auth-input-error' : ''}`}
                                         aria-invalid={!!errors.email}
+                                        aria-describedby={errors.email ? 'email-error' : undefined}
+                                        onInvalid={(event) => {
+                                            event.currentTarget.setCustomValidity(
+                                                event.currentTarget.validity.valueMissing
+                                                    ? 'Email address is required.'
+                                                    : 'Please enter a valid email address.',
+                                            );
+                                        }}
+                                        onInput={(event) => event.currentTarget.setCustomValidity('')}
                                     />
                                 </div>
+                                {errors.email && (
+                                    <p id="email-error" className="mt-1.5 text-sm text-red-600">
+                                        {isLocked
+                                            ? 'Too many failed login attempts.'
+                                            : errors.email}
+                                    </p>
+                                )}
+                                {attemptLimit && (
+                                    <div
+                                        className={`mt-3 rounded-xl border p-3.5 ${isLocked ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}`}
+                                        role="status"
+                                        aria-live="polite"
+                                    >
+                                        <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
+                                            <span>Attempts Remaining</span>
+                                            <span>
+                                                {attemptLimit.remainingAttempts} /{' '}
+                                                {attemptLimit.maxAttempts}
+                                            </span>
+                                        </div>
+                                        <div
+                                            className="mt-2 flex gap-1.5"
+                                            aria-hidden="true"
+                                        >
+                                            {Array.from({
+                                                length: attemptLimit.maxAttempts,
+                                            }).map((_, index) => (
+                                                <span
+                                                    key={index}
+                                                    className={`size-2.5 rounded-full ${index < attemptLimit.remainingAttempts ? 'bg-moss-600' : 'bg-slate-200'}`}
+                                                />
+                                            ))}
+                                        </div>
+                                        {isLocked ? (
+                                            <div className="mt-2 text-sm text-red-700">
+                                                <p className="font-semibold">
+                                                    Login is temporarily locked.
+                                                </p>
+                                                <p>Try again in {retryTime}</p>
+                                            </div>
+                                        ) : attemptLimit.remainingAttempts === 1 ? (
+                                            <p className="mt-2 text-sm font-medium text-amber-800">
+                                                Warning: 1 login attempt remaining
+                                                before temporary lockout.
+                                            </p>
+                                        ) : (
+                                            <p className="mt-2 text-sm text-amber-800">
+                                                {attemptLimit.remainingAttempts}{' '}
+                                                attempts remaining.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <div className="mb-2 flex items-center justify-between">
@@ -120,7 +225,7 @@ export default function Login({
                                         htmlFor="password"
                                         className="text-sm font-medium text-slate-700"
                                     >
-                                        Password
+                                        Password *
                                     </label>
                                     {canResetPassword && (
                                         <TextLink
@@ -145,7 +250,13 @@ export default function Login({
                                         required
                                         autoComplete="current-password"
                                         placeholder="Enter your password"
-                                        className="auth-input pr-12"
+                                        className={`auth-input pr-12 ${errors.password ? 'auth-input-error' : ''}`}
+                                        aria-invalid={!!errors.password}
+                                        aria-describedby={errors.password ? 'password-error' : undefined}
+                                        onInvalid={(event) =>
+                                            event.currentTarget.setCustomValidity('Password is required.')
+                                        }
+                                        onInput={(event) => event.currentTarget.setCustomValidity('')}
                                     />
                                     <button
                                         type="button"
@@ -166,6 +277,11 @@ export default function Login({
                                         )}
                                     </button>
                                 </div>
+                                {errors.password && (
+                                    <p id="password-error" className="mt-1.5 text-sm text-red-600">
+                                        {errors.password}
+                                    </p>
+                                )}
                             </div>
                             <div className="flex items-center gap-3">
                                 <Checkbox
@@ -192,10 +308,12 @@ export default function Login({
                             </div>
                             <button
                                 type="submit"
-                                disabled={processing}
+                                disabled={processing || isLocked}
                                 className="auth-primary-button"
                             >
-                                {processing ? (
+                                {isLocked ? (
+                                    'Login Temporarily Locked'
+                                ) : processing ? (
                                     <>
                                         <Spinner className="size-4" /> Signing
                                         in securely…

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Fortify;
 
+use App\Support\RoleDashboard;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 
@@ -10,19 +11,6 @@ class CustomLoginResponse implements LoginResponseContract
     public function toResponse($request)
     {
         $user = $request->user()->fresh();
-        $preVerifiedRoles = [
-            'admin',
-            'doctor',
-            'medtech',
-            'radtech',
-            'company',
-            'receptionist',
-        ];
-
-        if (! $user->hasVerifiedEmail() && in_array($user->role, $preVerifiedRoles, true)) {
-            $user->markEmailAsVerified();
-            $user->refresh();
-        }
 
         if (! $user->hasVerifiedEmail()) {
             // The auth middleware stores a signed verification link as the
@@ -45,16 +33,6 @@ class CustomLoginResponse implements LoginResponseContract
             return redirect()->route('temporary-password.edit');
         }
 
-        $destination = match ($user->role) {
-            'admin' => '/admin/dashboard',
-            'doctor' => '/doctor/dashboard',
-            'medtech' => '/medtech/dashboard',
-            'radtech' => '/radtech/dashboard',
-            'company' => '/company/dashboard',
-            'receptionist' => '/receptionist/dashboard',
-            default => '/dashboard',
-        };
-
-        return redirect()->intended($destination);
+        return redirect(RoleDashboard::path($user->role));
     }
 }

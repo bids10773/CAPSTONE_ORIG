@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Concerns\PasswordValidationRules;
 use App\Models\SecurityAudit;
 use App\Notifications\PasswordChanged;
+use App\Support\RoleDashboard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -19,7 +20,7 @@ class TemporaryPasswordController extends Controller
     public function edit(Request $request): Response|RedirectResponse
     {
         if (! $request->user()->must_change_password) {
-            return redirect($this->dashboardFor($request->user()->role));
+            return redirect(RoleDashboard::path($request->user()->role));
         }
 
         return Inertia::render('auth/change-temporary-password');
@@ -62,20 +63,7 @@ class TemporaryPasswordController extends Controller
 
         $user->notify(new PasswordChanged);
 
-        return redirect($this->dashboardFor($user->role))
+        return redirect(RoleDashboard::path($user->role))
             ->with('success', 'Your password has been changed successfully.');
-    }
-
-    private function dashboardFor(string $role): string
-    {
-        return match ($role) {
-            'admin' => '/admin/dashboard',
-            'doctor' => '/doctor/dashboard',
-            'medtech' => '/medtech/dashboard',
-            'radtech' => '/radtech/dashboard',
-            'company' => '/company/dashboard',
-            'receptionist' => '/receptionist/dashboard',
-            default => '/dashboard',
-        };
     }
 }

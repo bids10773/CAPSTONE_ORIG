@@ -29,7 +29,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => RoleMiddleware::class,
-            'staff.verified' => \App\Http\Middleware\StaffVerified::class,
             'patient.only' => \App\Http\Middleware\PatientOnlyMiddleware::class,
         ]);
 

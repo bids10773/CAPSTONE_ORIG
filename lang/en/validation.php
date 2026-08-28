@@ -179,6 +179,13 @@ return [
     */
 
     'custom' => [
+        'email' => [
+            'required' => 'Email address is required.',
+            'email' => 'Please enter a valid email address.',
+        ],
+        'password' => [
+            'required' => 'Password is required.',
+        ],
         'attribute-name' => [
             'rule-name' => 'custom-message',
         ],

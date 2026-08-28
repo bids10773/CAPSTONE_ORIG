@@ -3,8 +3,8 @@
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ClinicalDocumentController;
-use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyBulkMedicalReportController;
+use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
 use App\Http\Controllers\CompanyEmployeeImportController;
 use App\Http\Controllers\CompanyReferralController;
@@ -25,6 +25,7 @@ use App\Http\Controllers\ReceptionistWalkInController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TemporaryPasswordController;
 use App\Http\Controllers\XrayController;
+use App\Support\RoleDashboard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -46,18 +47,10 @@ Route::get('/', function () {
         return Inertia::render('welcome');
     }
 
-    return redirect(match (auth()->user()->role) {
-        'admin' => '/admin/dashboard',
-        'doctor' => '/doctor/dashboard',
-        'medtech' => '/medtech/dashboard',
-        'radtech' => '/radtech/dashboard',
-        'company' => '/company/dashboard',
-        'receptionist' => '/receptionist/dashboard',
-        default => '/dashboard',
-    });
+    return redirect(RoleDashboard::path(auth()->user()->role));
 })->name('home');
 
-Route::middleware(['auth', 'staff.verified'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::patch('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('notifications.read');
@@ -215,7 +208,7 @@ require __DIR__.'/settings.php';
 
 Route::get('/email/verify', function (Request $request) {
     if ($request->user()->hasVerifiedEmail()) {
-        return redirect()->route('dashboard');
+        return redirect(RoleDashboard::path($request->user()->role));
     }
 
     return Inertia::render('auth/verify-email', [
@@ -227,7 +220,7 @@ Route::post('/email/verification-notification', function (Request $request) {
     $user = $request->user();
 
     if ($user->hasVerifiedEmail()) {
-        return redirect()->route('dashboard')->with('status', 'already-verified');
+        return redirect(RoleDashboard::path($user->role))->with('status', 'already-verified');
     }
 
     $user->sendEmailVerificationNotification();
