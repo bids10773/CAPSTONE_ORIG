@@ -16,13 +16,13 @@ return [
         'slot_minutes' => 30,
     ],
     'pe_package' => [
-        'laboratory_services' => [
+        'pre_employment_services' => [
+            'PE',
             'CBC',
             'Urinalysis',
             'Fecalysis',
-            'Hepatitis',
+            'X-Ray',
         ],
-        'requires_xray' => true,
         'optional_bulk_services' => [
             'Drug Test',
             'Pregnancy Test',

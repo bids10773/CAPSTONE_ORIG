@@ -14,6 +14,14 @@ class CompanyReferralService
 {
     public function create(User $creator, array $data): CompanyReferral
     {
+        if ($data['examination_purpose'] === 'pre_employment') {
+            $data['service_types'] = collect(config('medical.pe_package.pre_employment_services', []))
+                ->merge($data['service_types'])
+                ->unique()
+                ->values()
+                ->all();
+        }
+
         [$referral, $token] = DB::transaction(function () use ($creator, $data): array {
             $patient = $this->findPatient($data);
             $token = Str::random(64);
@@ -27,6 +35,7 @@ class CompanyReferralService
                 'first_name' => trim($data['first_name']),
                 'last_name' => trim($data['last_name']),
                 'required_services' => array_values($data['service_types']),
+                'examination_purpose' => $data['examination_purpose'],
                 'valid_until' => today()->addDays(30),
                 'status' => 'sent',
                 'sent_at' => now(),

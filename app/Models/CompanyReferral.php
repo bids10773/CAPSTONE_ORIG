@@ -11,7 +11,7 @@ class CompanyReferral extends Model
     protected $fillable = [
         'company_id', 'patient_id', 'created_by', 'referral_number',
         'invitation_token_hash', 'employee_email', 'employee_contact', 'first_name',
-        'middle_name', 'last_name', 'birthdate', 'sex', 'required_services',
+        'middle_name', 'last_name', 'birthdate', 'sex', 'required_services', 'examination_purpose',
         'valid_until', 'status', 'instructions', 'sent_at', 'viewed_at',
         'scheduled_at', 'completed_at', 'cancelled_at', 'cancelled_by',
         'cancellation_reason',

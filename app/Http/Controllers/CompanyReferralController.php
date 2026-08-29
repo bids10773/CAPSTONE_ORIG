@@ -6,12 +6,14 @@ use App\Http\Requests\StoreCompanyReferralRequest;
 use App\Models\CompanyReferral;
 use App\Models\SecurityAudit;
 use App\Services\CompanyReferralService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class CompanyReferralController extends Controller
 {
@@ -44,6 +46,7 @@ class CompanyReferralController extends Controller
                 'company' => $referral->company->company_name,
                 'employee_name' => trim($referral->first_name.' '.$referral->middle_name.' '.$referral->last_name),
                 'required_services' => $referral->required_services,
+                'examination_purpose' => $referral->examination_purpose,
                 'valid_until' => $referral->valid_until->toDateString(),
                 'status' => $referral->status,
             ],
@@ -52,8 +55,28 @@ class CompanyReferralController extends Controller
                 $referral->valid_until->endOfDay(),
                 ['token' => $token],
             ),
+            'downloadUrl' => URL::temporarySignedRoute(
+                'company-referrals.download',
+                $referral->valid_until->endOfDay(),
+                ['token' => $token],
+            ),
             'authenticated' => $request->user()?->role === 'patient',
         ]);
+    }
+
+    public function download(Request $request, string $token): HttpResponse
+    {
+        $referral = $this->fromToken($token)->load('company:id,company_name');
+        SecurityAudit::create([
+            'actor_id' => $request->user()?->id,
+            'target_user_id' => $referral->patient_id,
+            'action' => 'company_referral_downloaded',
+            'status' => 'success',
+            'metadata' => ['referral_id' => $referral->id, 'referral_number' => $referral->referral_number],
+        ]);
+
+        return Pdf::loadView('pdf.company-referral', ['referral' => $referral])
+            ->download('medical-referral-'.$referral->referral_number.'.pdf');
     }
 
     public function accept(Request $request, string $token): RedirectResponse

@@ -1,16 +1,9 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import axios from 'axios';
-import {
-    Check,
-    History,
-    Printer,
-    Search,
-    SkipForward,
-    UserPlus,
-    Users,
-} from 'lucide-react';
+import { Check, History, Printer, Search, UserPlus, Users } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import BirthdateInput from '@/components/birthdate-input';
 import { Pagination } from '@/components/pagination';
 import AppLayout from '@/layouts/app-layout';
 import type { PaginatedResponse } from '@/types/pagination';
@@ -101,6 +94,7 @@ export default function WalkIns({
         birthdate: '',
         sex: '',
         civil_status: '',
+        examination_purpose: '',
         service_types: [] as string[],
         notes: '',
     });
@@ -129,10 +123,10 @@ export default function WalkIns({
         });
     }
 
-    function updateStatus(walkIn: WalkIn, status: WalkIn['status']) {
+    function markArrived(walkIn: WalkIn) {
         router.patch(
             `/receptionist/walk-ins/${walkIn.id}/status`,
-            { status },
+            { status: 'arrived' },
             { preserveScroll: true },
         );
     }
@@ -262,103 +256,194 @@ export default function WalkIns({
                             </div>
                         ) : (
                             <div className="grid gap-4 md:grid-cols-3">
-                                <input
-                                    required
-                                    placeholder="First name"
-                                    value={form.data.first_name}
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'first_name',
-                                            e.target.value,
-                                        )
-                                    }
-                                    className="rounded-xl border border-slate-200 px-4 py-2.5"
-                                />
-                                <input
-                                    placeholder="Middle name"
-                                    value={form.data.middle_name}
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'middle_name',
-                                            e.target.value,
-                                        )
-                                    }
-                                    className="rounded-xl border border-slate-200 px-4 py-2.5"
-                                />
-                                <input
-                                    required
-                                    placeholder="Last name"
-                                    value={form.data.last_name}
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'last_name',
-                                            e.target.value,
-                                        )
-                                    }
-                                    className="rounded-xl border border-slate-200 px-4 py-2.5"
-                                />
-                                <input
-                                    type="email"
-                                    placeholder="Email (optional)"
-                                    value={form.data.email}
-                                    onChange={(e) =>
-                                        form.setData('email', e.target.value)
-                                    }
-                                    className="rounded-xl border border-slate-200 px-4 py-2.5"
-                                />
-                                <input
-                                    placeholder="Contact number"
-                                    value={form.data.contact}
-                                    onChange={(e) =>
-                                        form.setData('contact', e.target.value)
-                                    }
-                                    className="rounded-xl border border-slate-200 px-4 py-2.5"
-                                />
-                                <input
-                                    type="date"
-                                    value={form.data.birthdate}
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'birthdate',
-                                            e.target.value,
-                                        )
-                                    }
-                                    className="rounded-xl border border-slate-200 px-4 py-2.5"
-                                />
-                                <select
-                                    value={form.data.sex}
-                                    onChange={(e) =>
-                                        form.setData('sex', e.target.value)
-                                    }
-                                    className="rounded-xl border border-slate-200 px-4 py-2.5"
-                                >
-                                    <option value="">Sex</option>
-                                    <option>Male</option>
-                                    <option>Female</option>
-                                </select>
-                                <select
-                                    value={form.data.civil_status}
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'civil_status',
-                                            e.target.value,
-                                        )
-                                    }
-                                    className="rounded-xl border border-slate-200 px-4 py-2.5"
-                                >
-                                    <option value="">Civil status</option>
-                                    {[
-                                        'Single',
-                                        'Married',
-                                        'Divorced',
-                                        'Widowed',
-                                        'Separated',
-                                    ].map((value) => (
-                                        <option key={value}>{value}</option>
-                                    ))}
-                                </select>
+                                <label className="text-xs font-medium text-slate-600">
+                                    First name
+                                    <input
+                                        required
+                                        placeholder="Enter first name"
+                                        value={form.data.first_name}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'first_name',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="mt-1.5 h-11 w-full min-w-0 rounded-xl border border-slate-200 px-4 py-2.5"
+                                    />
+                                </label>
+                                <label className="text-xs font-medium text-slate-600">
+                                    Middle name{' '}
+                                    <span className="text-slate-400">
+                                        (optional)
+                                    </span>
+                                    <input
+                                        placeholder="Enter middle name"
+                                        value={form.data.middle_name}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'middle_name',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="mt-1.5 h-11 w-full min-w-0 rounded-xl border border-slate-200 px-4 py-2.5"
+                                    />
+                                </label>
+                                <label className="text-xs font-medium text-slate-600">
+                                    Last name
+                                    <input
+                                        required
+                                        placeholder="Enter last name"
+                                        value={form.data.last_name}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'last_name',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="mt-1.5 h-11 w-full min-w-0 rounded-xl border border-slate-200 px-4 py-2.5"
+                                    />
+                                </label>
+                                <label className="self-start text-xs font-medium text-slate-600">
+                                    Email{' '}
+                                    <span className="text-slate-400">
+                                        (optional)
+                                    </span>
+                                    <input
+                                        type="email"
+                                        placeholder="Enter email address"
+                                        value={form.data.email}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'email',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="mt-1.5 h-11 w-full min-w-0 rounded-xl border border-slate-200 px-4 py-2.5"
+                                    />
+                                </label>
+                                <label className="self-start text-xs font-medium text-slate-600">
+                                    Contact number
+                                    <input
+                                        placeholder="09XX XXX XXXX"
+                                        value={form.data.contact}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'contact',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="mt-1.5 h-11 w-full min-w-0 rounded-xl border border-slate-200 px-4 py-2.5"
+                                    />
+                                </label>
+                                <div>
+                                    <p className="mb-1.5 text-xs font-medium text-slate-600">
+                                        Birthdate
+                                    </p>
+                                    <BirthdateInput
+                                        required
+                                        minimumAge={18}
+                                        value={form.data.birthdate}
+                                        onChange={(value) =>
+                                            form.setData('birthdate', value)
+                                        }
+                                        error={form.errors.birthdate}
+                                    />
+                                </div>
+                                <label className="text-xs font-medium text-slate-600">
+                                    Sex
+                                    <select
+                                        value={form.data.sex}
+                                        onChange={(e) =>
+                                            form.setData('sex', e.target.value)
+                                        }
+                                        className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-4 py-2.5"
+                                    >
+                                        <option value="">Select sex</option>
+                                        <option>Male</option>
+                                        <option>Female</option>
+                                    </select>
+                                </label>
+                                <label className="text-xs font-medium text-slate-600">
+                                    Civil status
+                                    <select
+                                        value={form.data.civil_status}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'civil_status',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-4 py-2.5"
+                                    >
+                                        <option value="">
+                                            Select civil status
+                                        </option>
+                                        {[
+                                            'Single',
+                                            'Married',
+                                            'Divorced',
+                                            'Widowed',
+                                            'Separated',
+                                        ].map((value) => (
+                                            <option key={value}>{value}</option>
+                                        ))}
+                                    </select>
+                                </label>
                             </div>
                         )}
+
+                        <div className="mt-6">
+                            <p className="text-sm font-semibold text-slate-700">
+                                Examination purpose
+                            </p>
+                            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                                {[
+                                    ['pre_employment', 'Pre-employment'],
+                                    ['annual_pe', 'Annual PE'],
+                                    ['medical_clearance', 'Medical Clearance'],
+                                ].map(([value, label]) => {
+                                    const selected =
+                                        form.data.examination_purpose === value;
+                                    return (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            onClick={() => {
+                                                const basics = [
+                                                    'PE',
+                                                    'CBC',
+                                                    'Urinalysis',
+                                                    'Fecalysis',
+                                                    'X-Ray',
+                                                ];
+                                                form.setData((current) => ({
+                                                    ...current,
+                                                    examination_purpose: value,
+                                                    service_types:
+                                                        value ===
+                                                        'pre_employment'
+                                                            ? Array.from(
+                                                                  new Set([
+                                                                      ...basics,
+                                                                      ...current.service_types,
+                                                                  ]),
+                                                              )
+                                                            : current.service_types.filter(
+                                                                  (service) =>
+                                                                      !basics.includes(
+                                                                          service,
+                                                                      ),
+                                                              ),
+                                                }));
+                                            }}
+                                            className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold ${selected ? 'border-moss-600 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-600'}`}
+                                        >
+                                            {label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
 
                         <div className="mt-6">
                             <p className="text-sm font-semibold text-slate-700">
@@ -371,10 +456,21 @@ export default function WalkIns({
                                             form.data.service_types.includes(
                                                 value,
                                             );
+                                        const included =
+                                            form.data.examination_purpose ===
+                                                'pre_employment' &&
+                                            [
+                                                'PE',
+                                                'CBC',
+                                                'Urinalysis',
+                                                'Fecalysis',
+                                                'X-Ray',
+                                            ].includes(value);
                                         return (
                                             <button
                                                 type="button"
                                                 key={value}
+                                                disabled={included}
                                                 onClick={() =>
                                                     form.setData(
                                                         'service_types',
@@ -394,6 +490,7 @@ export default function WalkIns({
                                                 className={`rounded-full border px-3 py-2 text-xs font-semibold ${selected ? 'border-moss-600 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-600'}`}
                                             >
                                                 {label}
+                                                {included && ' · Included'}
                                             </button>
                                         );
                                     },
@@ -409,14 +506,26 @@ export default function WalkIns({
                             className="mt-5 min-h-20 w-full rounded-xl border border-slate-200 px-4 py-3"
                         />
                         {Object.keys(form.errors).length > 0 && (
-                            <p className="mt-3 text-sm text-rose-600">
-                                Please review the patient and service
-                                information.
-                            </p>
+                            <div
+                                role="alert"
+                                className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4"
+                            >
+                                <p className="text-sm font-semibold text-rose-800">
+                                    Please correct the following:
+                                </p>
+                                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-rose-700">
+                                    {Object.entries(form.errors).map(
+                                        ([field, message]) => (
+                                            <li key={field}>{message}</li>
+                                        ),
+                                    )}
+                                </ul>
+                            </div>
                         )}
                         <button
                             disabled={
                                 form.processing ||
+                                !form.data.examination_purpose ||
                                 form.data.service_types.length === 0 ||
                                 (form.data.patient_type === 'existing' &&
                                     !form.data.user_id)
@@ -500,63 +609,26 @@ export default function WalkIns({
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        {['pending', 'accepted'].includes(
-                                            walkIn.status,
-                                        ) && (
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    updateStatus(
-                                                        walkIn,
-                                                        'arrived',
-                                                    )
-                                                }
-                                                className="inline-flex items-center gap-1 rounded-xl bg-moss-700 px-3 py-2 text-xs font-bold text-white hover:bg-moss-800"
-                                            >
-                                                <Check className="size-3.5" />
-                                                Mark Arrived
-                                            </button>
-                                        )}
-                                        <select
-                                            value={walkIn.status}
-                                            onChange={(e) =>
-                                                updateStatus(
-                                                    walkIn,
-                                                    e.target
-                                                        .value as WalkIn['status'],
-                                                )
-                                            }
-                                            className={`rounded-xl border-0 px-3 py-2 text-xs font-bold ${statusStyles[walkIn.status]}`}
-                                        >
-                                            {Object.entries(statusLabels).map(
-                                                ([value, label]) => (
-                                                    <option
-                                                        key={value}
-                                                        value={value}
-                                                    >
-                                                        {label}
-                                                    </option>
-                                                ),
+                                        {walkIn.type !== 'walk_in' &&
+                                            ['pending', 'accepted'].includes(
+                                                walkIn.status,
+                                            ) && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        markArrived(walkIn)
+                                                    }
+                                                    className="inline-flex items-center gap-1 rounded-xl bg-moss-700 px-3 py-2 text-xs font-bold text-white hover:bg-moss-800"
+                                                >
+                                                    <Check className="size-3.5" />
+                                                    Mark Arrived
+                                                </button>
                                             )}
-                                        </select>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                if (
-                                                    window.confirm(
-                                                        'Skip this appointment? It will be moved to history as cancelled.',
-                                                    )
-                                                )
-                                                    updateStatus(
-                                                        walkIn,
-                                                        'cancelled',
-                                                    );
-                                            }}
-                                            className="inline-flex items-center gap-1 rounded-xl border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50"
+                                        <span
+                                            className={`rounded-xl px-3 py-2 text-xs font-bold ${statusStyles[walkIn.status]}`}
                                         >
-                                            <SkipForward className="size-3.5" />
-                                            Skip
-                                        </button>
+                                            {statusLabels[walkIn.status]}
+                                        </span>
                                     </div>
                                 </article>
                             ))}

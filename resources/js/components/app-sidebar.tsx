@@ -35,6 +35,7 @@ import {
     SidebarMenuSub,
     SidebarMenuSubButton,
     SidebarMenuSubItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import logo from '/public/images/full_logo2.png';
 
@@ -111,11 +112,6 @@ const navigation: Record<string, Item[]> = {
                     href: '/admin/forecast',
                     icon: ChartSpline,
                 },
-                {
-                    title: 'Patient visit forecast',
-                    href: '/admin/patient-visits',
-                    icon: UserRoundSearch,
-                },
             ],
         },
         {
@@ -138,7 +134,11 @@ const navigation: Record<string, Item[]> = {
             href: '/doctor/appointments',
             icon: CalendarDays,
         },
-        { title: 'Onsite Events', href: '/doctor/onsite-events', icon: Building2 },
+        {
+            title: 'Onsite Events',
+            href: '/doctor/onsite-events',
+            icon: Building2,
+        },
         {
             title: 'Availability',
             href: '/doctor/availability',
@@ -157,7 +157,11 @@ const navigation: Record<string, Item[]> = {
             href: '/medtech/appointments',
             icon: FlaskConical,
         },
-        { title: 'Onsite Events', href: '/medtech/onsite-events', icon: Building2 },
+        {
+            title: 'Onsite Events',
+            href: '/medtech/onsite-events',
+            icon: Building2,
+        },
         { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
     radtech: [
@@ -171,7 +175,11 @@ const navigation: Record<string, Item[]> = {
             href: '/radtech/appointments',
             icon: ScanLine,
         },
-        { title: 'Onsite Events', href: '/radtech/onsite-events', icon: Building2 },
+        {
+            title: 'Onsite Events',
+            href: '/radtech/onsite-events',
+            icon: Building2,
+        },
         { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
     receptionist: [
@@ -234,9 +242,13 @@ const roleLabels: Record<string, string> = {
 
 export function AppSidebar({ className }: { auth?: any; className?: string }) {
     const { props, url } = usePage();
+    const { isMobile, setOpenMobile } = useSidebar();
     const role = (props.auth as any)?.user?.role || 'patient';
     const items = navigation[role] || navigation.patient;
     const home = items[0].href;
+    const closeMobileSidebar = () => {
+        if (isMobile) setOpenMobile(false);
+    };
 
     return (
         <Sidebar
@@ -246,6 +258,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
             <SidebarHeader className="h-[72px] justify-center border-b border-border px-4">
                 <Link
                     href={home}
+                    onClick={closeMobileSidebar}
                     className="flex items-center gap-3 rounded-xl p-1 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
                 >
                     <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-moss-200 bg-moss-100 shadow-sm">
@@ -343,6 +356,9 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                                                             href={
                                                                                 child.href
                                                                             }
+                                                                            onClick={
+                                                                                closeMobileSidebar
+                                                                            }
                                                                         >
                                                                             <ChildIcon className="size-3.5" />
                                                                             <span>
@@ -371,7 +387,10 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                         isActive={active}
                                         className="relative h-11 rounded-xl px-3 text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-950 data-[active=true]:bg-moss-50 data-[active=true]:font-semibold data-[active=true]:text-moss-700"
                                     >
-                                        <Link href={item.href}>
+                                        <Link
+                                            href={item.href}
+                                            onClick={closeMobileSidebar}
+                                        >
                                             {active && (
                                                 <motion.span
                                                     layoutId="navigation-marker"

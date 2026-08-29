@@ -53,6 +53,7 @@ interface DashboardStats {
     totalCompanies: number;
     totalPatients: number;
     todayAppointments: number;
+    todayBulkEmployees: number;
     weekAppointments: number;
     monthAppointments: number;
     completedAppointments: number;
@@ -66,10 +67,16 @@ interface DashboardStats {
 interface DashboardProps {
     stats?: Partial<DashboardStats>;
     recentAppointments?: AppointmentData[];
-    recentCompanyAppointments?: AppointmentData[];
+    recentBulkEmployees?: AppointmentData[];
     todayAppointments?: AppointmentData[];
     appointmentsByStatus?: Record<string, number>;
     appointmentsByType?: Record<string, number>;
+    bulkSummary?: {
+        events: number;
+        employees: number;
+        completed: number;
+        active: number;
+    };
     securityAlerts?: {
         possibleDuplicateAccounts: number;
         repeatedBookingAttempts: number;
@@ -167,10 +174,11 @@ export default function AdminDashboard() {
     const {
         stats = {},
         recentAppointments = [],
-        recentCompanyAppointments = [],
+        recentBulkEmployees = [],
         todayAppointments = [],
         appointmentsByStatus = {},
         appointmentsByType = {},
+        bulkSummary = { events: 0, employees: 0, completed: 0, active: 0 },
         securityAlerts = {
             possibleDuplicateAccounts: 0,
             repeatedBookingAttempts: 0,
@@ -222,26 +230,24 @@ export default function AdminDashboard() {
         },
     ].filter((item) => item.count > 0);
 
-    const companyActivity = recentCompanyAppointments;
-
     const kpis = [
         {
-            label: "Today's appointments",
+            label: "Today's clinic appointments",
             value: count(stats.todayAppointments),
-            detail: 'Scheduled for the current day',
+            detail: 'Individual, walk-in, online and referred',
             icon: CalendarDays,
+        },
+        {
+            label: "Today's bulk employees",
+            value: count(stats.todayBulkEmployees),
+            detail: 'Employees under company bulk events',
+            icon: Users,
         },
         {
             label: 'Pending approval requests',
             value: count(stats.pendingAppointmentRequests),
             detail: 'Individual requests awaiting admin review',
             icon: Clock3,
-        },
-        {
-            label: 'Registered patients',
-            value: count(stats.totalPatients),
-            detail: 'Patient accounts in the system',
-            icon: Users,
         },
         {
             label: 'Partner companies',
@@ -548,7 +554,7 @@ export default function AdminDashboard() {
                 <section className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,.8fr)]">
                     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                         <SectionHeader
-                            title="Today's Clinic Activity"
+                            title="Today's Individual, Online & Referred Patients"
                             description={`${count(stats.todayAppointments)} appointment${count(stats.todayAppointments) === 1 ? '' : 's'} scheduled today`}
                             action={
                                 <Link
@@ -688,8 +694,8 @@ export default function AdminDashboard() {
                 <section className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
                     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                         <SectionHeader
-                            title="Recent Active Appointments"
-                            description="Latest non-completed appointment records"
+                            title="Individual, Online & Referred"
+                            description="Active clinic and company-referral patients; bulk employees are excluded"
                         />
                         <div className="divide-y divide-slate-100">
                             {recentAppointments.length > 0 ? (
@@ -729,12 +735,12 @@ export default function AdminDashboard() {
 
                     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                         <SectionHeader
-                            title="Company Appointment Activity"
-                            description="Company-linked records in the current overview"
+                            title="Company Bulk Employees"
+                            description={`${bulkSummary.active} active employees across ${bulkSummary.events} bulk event${bulkSummary.events === 1 ? '' : 's'}`}
                         />
                         <div className="divide-y divide-slate-100">
-                            {companyActivity.length > 0 ? (
-                                companyActivity.map((appointment) => (
+                            {recentBulkEmployees.length > 0 ? (
+                                recentBulkEmployees.map((appointment) => (
                                     <div
                                         key={appointment.id}
                                         className="flex items-center gap-3 px-5 py-4"
@@ -765,7 +771,7 @@ export default function AdminDashboard() {
                                 <div className="px-5 py-10 text-center">
                                     <Building2 className="mx-auto size-7 text-slate-300" />
                                     <p className="mt-2 text-sm text-slate-500">
-                                        No current company appointment activity.
+                                        No active company bulk employees.
                                     </p>
                                 </div>
                             )}
@@ -822,10 +828,11 @@ export default function AdminDashboard() {
                             </span>
                             <div>
                                 <h2 className="text-sm font-semibold text-slate-900">
-                                    Appointment Type Mix
+                                    Clinic Appointment Type Mix
                                 </h2>
                                 <p className="mt-1 text-xs text-slate-500">
-                                    Current distribution by booking source
+                                    Individual, walk-in/online and company
+                                    referrals only
                                 </p>
                             </div>
                         </div>
@@ -849,6 +856,32 @@ export default function AdminDashboard() {
                                     No appointment type data available.
                                 </span>
                             )}
+                        </div>
+                    </div>
+                    <div className="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-3">
+                        <div className="rounded-xl border border-moss-200 bg-moss-50 p-4">
+                            <p className="text-[11px] font-semibold tracking-wide text-moss-700 uppercase">
+                                Bulk events
+                            </p>
+                            <p className="mt-2 text-2xl font-semibold text-moss-950">
+                                {bulkSummary.events.toLocaleString()}
+                            </p>
+                        </div>
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                            <p className="text-[11px] font-semibold tracking-wide text-blue-700 uppercase">
+                                Bulk employees
+                            </p>
+                            <p className="mt-2 text-2xl font-semibold text-blue-950">
+                                {bulkSummary.employees.toLocaleString()}
+                            </p>
+                        </div>
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                            <p className="text-[11px] font-semibold tracking-wide text-emerald-700 uppercase">
+                                Completed employees
+                            </p>
+                            <p className="mt-2 text-2xl font-semibold text-emerald-950">
+                                {bulkSummary.completed.toLocaleString()}
+                            </p>
                         </div>
                     </div>
                 </section>

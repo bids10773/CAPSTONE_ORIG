@@ -45,7 +45,7 @@ class FortifyServiceProvider extends ServiceProvider
         {
             public function toResponse($request)
             {
-                return redirect(RoleDashboard::path($request->user()->role).'?verified=1')
+                return redirect()->intended(RoleDashboard::path($request->user()->role).'?verified=1')
                     ->with('status', 'email-verified');
             }
         });

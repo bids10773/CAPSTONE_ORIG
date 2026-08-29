@@ -15,6 +15,14 @@ class WalkInService
     /** @param array<string, mixed> $data */
     public function create(array $data, User $staff): Appointment
     {
+        if ($data['examination_purpose'] === 'pre_employment') {
+            $data['service_types'] = collect(config('medical.pe_package.pre_employment_services', []))
+                ->merge($data['service_types'])
+                ->unique()
+                ->values()
+                ->all();
+        }
+
         return DB::transaction(function () use ($data, $staff): Appointment {
             $patient = $data['patient_type'] === 'existing'
                 ? User::query()->where('role', 'patient')->where('is_active', true)->findOrFail($data['user_id'])
@@ -27,6 +35,7 @@ class WalkInService
                 'status' => 'pending',
                 'arrived_at' => now(),
                 'checked_in_by' => $staff->id,
+                'examination_purpose' => $data['examination_purpose'],
                 'service_types' => $data['service_types'],
                 'notes' => $data['notes'] ?? null,
             ]);

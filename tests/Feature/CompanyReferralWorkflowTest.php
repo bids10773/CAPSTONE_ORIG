@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Notifications\CompanyMedicalReferralInvitation;
 use App\Services\CompanyReferralService;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 
 beforeEach(fn () => Notification::fake());
 
@@ -24,6 +25,7 @@ function referralData(array $overrides = []): array
         'first_name' => 'Juan',
         'last_name' => 'Cruz',
         'email' => 'juan.referral@example.com',
+        'examination_purpose' => 'medical_clearance',
         'service_types' => ['PE', 'CBC', 'X-Ray'],
     ], $overrides);
 }
@@ -46,6 +48,7 @@ test('company creates a referral linked to an existing patient without duplicati
     expect($referral->company_id)->toBe($company->id)
         ->and($referral->patient_id)->toBe($patient->id)
         ->and($referral->required_services)->toBe(['PE', 'CBC', 'X-Ray'])
+        ->and($referral->examination_purpose)->toBe('medical_clearance')
         ->and($referral->valid_until->toDateString())->toBe(today()->addDays(30)->toDateString())
         ->and(User::where('email', 'juan.referral@example.com')->count())->toBe(1);
     Notification::assertSentOnDemand(CompanyMedicalReferralInvitation::class);
@@ -81,8 +84,81 @@ test('matching patient securely accepts referral and company services override b
     expect($appointment->type)->toBe('company_referral')
         ->and($appointment->company_id)->toBe($company->id)
         ->and($appointment->service_types)->toBe(['PE', 'CBC', 'X-Ray'])
+        ->and($appointment->examination_purpose)->toBe('medical_clearance')
         ->and($appointment->company_referral_id)->toBe($referral->id)
         ->and($referral->refresh()->status)->toBe('scheduled');
+});
+
+test('new referred patient continues to scheduling automatically after registration and verification', function () {
+    [$company, $account] = referralCompanyAccount();
+    $token = 'registration-referral-token';
+    $referral = CompanyReferral::create([
+        'company_id' => $company->id,
+        'created_by' => $account->id,
+        'referral_number' => 'REF-REGISTER-001',
+        'invitation_token_hash' => hash('sha256', $token),
+        'employee_email' => 'new.referral@example.com',
+        'first_name' => 'Maria',
+        'last_name' => 'Santos',
+        'required_services' => ['PE', 'CBC'],
+        'examination_purpose' => 'pre_employment',
+        'valid_until' => today()->addDays(30),
+        'status' => 'sent',
+    ]);
+    $acceptUrl = URL::temporarySignedRoute(
+        'company-referrals.accept',
+        $referral->valid_until->endOfDay(),
+        ['token' => $token],
+    );
+
+    $this->get($acceptUrl)->assertRedirect(route('login'));
+
+    $this->post(route('register.store'), [
+        'first_name' => 'Maria',
+        'middle_name' => null,
+        'last_name' => 'Santos',
+        'email' => 'new.referral@example.com',
+        'contact' => '09171234567',
+        'birthdate' => '1995-05-10',
+        'sex' => 'Female',
+        'civil_status' => 'Single',
+        'password' => 'Secure123!',
+        'password_confirmation' => 'Secure123!',
+    ])->assertRedirect($acceptUrl);
+
+    $this->get($acceptUrl)->assertRedirect(route('verification.notice'));
+
+    $patient = User::where('email', 'new.referral@example.com')->firstOrFail();
+    $verificationUrl = URL::temporarySignedRoute(
+        'verification.verify',
+        now()->addMinutes(60),
+        ['id' => $patient->id, 'hash' => sha1($patient->email)],
+    );
+
+    $this->get($verificationUrl)->assertRedirect($acceptUrl);
+    $this->get($acceptUrl)->assertRedirect(route('appointment.create', ['referral' => $referral->id]));
+
+    expect($patient->fresh()->hasVerifiedEmail())->toBeTrue()
+        ->and($referral->fresh()->patient_id)->toBe($patient->id);
+});
+
+test('referred employee can download the referral code from a signed invitation link', function () {
+    [$company, $account] = referralCompanyAccount();
+    $token = 'downloadable-referral-token';
+    $referral = CompanyReferral::create([
+        'company_id' => $company->id, 'created_by' => $account->id,
+        'referral_number' => 'REF-DOWNLOAD-001', 'invitation_token_hash' => hash('sha256', $token),
+        'employee_email' => 'employee@example.com', 'first_name' => 'Ana', 'last_name' => 'Reyes',
+        'required_services' => ['PE', 'CBC'], 'examination_purpose' => 'annual_pe',
+        'valid_until' => today()->addDays(30), 'status' => 'sent',
+    ]);
+    $url = URL::temporarySignedRoute('company-referrals.download', $referral->valid_until->endOfDay(), ['token' => $token]);
+
+    $this->get($url)
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf')
+        ->assertHeader('content-disposition', 'attachment; filename=medical-referral-REF-DOWNLOAD-001.pdf');
+    $this->get(route('company-referrals.download', ['token' => $token]))->assertForbidden();
 });
 
 test('expired referrals cannot be scheduled and another company cannot cancel them', function () {

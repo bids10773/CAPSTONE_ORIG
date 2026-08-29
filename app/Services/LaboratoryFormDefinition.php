@@ -10,9 +10,6 @@ class LaboratoryFormDefinition
     {
         $appointment->loadMissing('user.patientProfile');
         $requested = collect($appointment->service_types ?? []);
-        if ($appointment->isPePackage()) {
-            $requested = $requested->merge(config('medical.pe_package.laboratory_services', []))->unique();
-        }
         $sections = $this->sections();
 
         return collect($sections)->filter(function (array $section, string $key) use ($requested, $appointment): bool {

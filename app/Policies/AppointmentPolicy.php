@@ -22,7 +22,7 @@ class AppointmentPolicy
         return match ($user->role) {
             'doctor' => $appointment->bulk_appointment_id === null
                 ? ($appointment->doctor_id === null || $appointment->doctor_id === $user->id)
-                : ($this->hasAnyAssignedTask($user, $appointment, ['doctor', 'drug_verification', 'xray_verification', 'final_evaluation'])
+                : ($this->hasAnyAssignedTask($user, $appointment, ['doctor', 'drug_verification', 'final_evaluation'])
                     || $appointment->medicalExamination?->examining_doctor_id === $user->id
                     || $appointment->medicalExamination?->finalized_by === $user->id),
             'medtech' => app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment) !== []
@@ -84,7 +84,7 @@ class AppointmentPolicy
             && \App\Models\OnsiteEventStaff::query()
                 ->where('bulk_appointment_id', $appointment->bulk_appointment_id)
                 ->where('user_id', $user->id)
-                ->where('service_role', in_array($role, ['drug_verification', 'xray_verification', 'final_evaluation'], true) ? 'doctor' : $role)
+                ->where('service_role', in_array($role, ['drug_verification', 'final_evaluation'], true) ? 'doctor' : $role)
                 ->where('is_active', true)
                 ->exists()
             && \App\Models\OnsiteServiceQueue::query()
@@ -100,7 +100,7 @@ class AppointmentPolicy
         return in_array($user->role, ['doctor', 'admin'], true)
             && ($user->role === 'admin' || ($appointment->bulk_appointment_id === null
                 ? ($appointment->doctor_id === null || $appointment->doctor_id === $user->id)
-                : $this->hasAnyAssignedTask($user, $appointment, ['drug_verification', 'xray_verification'])));
+                : $this->hasAnyAssignedTask($user, $appointment, ['drug_verification'])));
     }
 
     public function releaseMedicalReport(User $user, Appointment $appointment): bool

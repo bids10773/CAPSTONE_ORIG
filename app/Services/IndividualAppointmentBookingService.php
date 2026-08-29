@@ -7,8 +7,8 @@ use App\Models\MedicalHistory;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class IndividualAppointmentBookingService
@@ -93,6 +93,7 @@ class IndividualAppointmentBookingService
                 'appointment_date' => $data['appointment_date'],
                 'type' => 'individual',
                 'status' => 'pending',
+                'examination_purpose' => $data['examination_purpose'] ?? null,
                 'service_types' => $data['service_types'],
                 'notes' => $data['notes'] ?? null,
             ]);

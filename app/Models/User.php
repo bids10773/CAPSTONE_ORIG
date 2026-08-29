@@ -36,6 +36,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'company_id',
         'is_active',
         'availability',
+        'email_verified_at',
         'must_change_password',
         'temporary_password_created_at',
         'temporary_password_expires_at',

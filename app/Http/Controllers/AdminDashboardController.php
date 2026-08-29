@@ -24,16 +24,21 @@ class AdminDashboardController extends Controller
         $today = Carbon::today();
         $thisWeek = Carbon::now()->startOfWeek();
         $thisMonth = Carbon::now()->startOfMonth();
+        $clinicAppointments = fn () => Appointment::query()->where('type', '!=', 'company_bulk');
+        $bulkEmployees = fn () => Appointment::query()
+            ->where('type', 'company_bulk')
+            ->whereNotNull('bulk_appointment_id');
 
         $stats = [
             'totalStaff' => User::whereIn('role', ['doctor', 'medtech', 'radtech'])->count(),
             'totalCompanies' => Company::count(),
             'totalPatients' => User::where('role', 'patient')->count(),
-            'todayAppointments' => Appointment::whereDate('appointment_date', $today)->count(),
-            'weekAppointments' => Appointment::where('appointment_date', '>=', $thisWeek)->count(),
-            'monthAppointments' => Appointment::where('appointment_date', '>=', $thisMonth)->count(),
-            'completedAppointments' => Appointment::where('status', 'completed')->count(),
-            'pendingAppointments' => Appointment::where('status', 'pending')->count(),
+            'todayAppointments' => $clinicAppointments()->whereDate('appointment_date', $today)->count(),
+            'todayBulkEmployees' => $bulkEmployees()->whereDate('appointment_date', $today)->count(),
+            'weekAppointments' => $clinicAppointments()->where('appointment_date', '>=', $thisWeek)->count(),
+            'monthAppointments' => $clinicAppointments()->where('appointment_date', '>=', $thisMonth)->count(),
+            'completedAppointments' => $clinicAppointments()->where('status', 'completed')->count(),
+            'pendingAppointments' => $clinicAppointments()->where('status', 'pending')->count(),
             'pendingAppointmentRequests' => Appointment::where('type', 'individual')->where('status', 'pending')->count(),
             'totalLabResults' => LabResult::count(),
             'totalPhysicalExams' => PhysicalExam::count(),
@@ -41,14 +46,15 @@ class AdminDashboardController extends Controller
         ];
 
         $recentAppointments = Appointment::with(['user', 'company'])
-            ->whereNotIn('type', ['company_referral', 'company_bulk'])
+            ->whereIn('type', ['individual', 'walk_in', 'company_referral'])
             ->whereNotIn('status', ['completed', 'cancelled', 'rejected'])
             ->latest('created_at')
             ->limit(10)
             ->get();
 
-        $recentCompanyAppointments = Appointment::with(['user', 'company'])
-            ->whereIn('type', ['company_referral', 'company_bulk'])
+        $recentBulkEmployees = Appointment::with(['user', 'company'])
+            ->where('type', 'company_bulk')
+            ->whereNotNull('bulk_appointment_id')
             ->whereNotIn('status', ['completed', 'cancelled', 'rejected'])
             ->latest('created_at')
             ->limit(4)
@@ -61,15 +67,16 @@ class AdminDashboardController extends Controller
             ->get();
 
         $todayAppointments = Appointment::with(['user', 'company'])
+            ->where('type', '!=', 'company_bulk')
             ->whereDate('appointment_date', $today)
             ->orderBy('appointment_date', 'asc')
             ->limit(10)
             ->get();
 
-        $appointmentsByStatus = Appointment::selectRaw('status, COUNT(*) as count')
+        $appointmentsByStatus = $clinicAppointments()->selectRaw('status, COUNT(*) as count')
             ->groupBy('status')->get()->pluck('count', 'status')->toArray();
 
-        $appointmentsByType = Appointment::selectRaw('type, COUNT(*) as count')
+        $appointmentsByType = $clinicAppointments()->selectRaw('type, COUNT(*) as count')
             ->groupBy('type')->get()->pluck('count', 'type')->toArray();
 
         $securityAlerts = [
@@ -105,11 +112,17 @@ class AdminDashboardController extends Controller
             'user' => $request->user(),
             'stats' => $stats,
             'recentAppointments' => $recentAppointments,
-            'recentCompanyAppointments' => $recentCompanyAppointments,
+            'recentBulkEmployees' => $recentBulkEmployees,
             'historyAppointments' => $historyAppointments,
             'todayAppointments' => $todayAppointments,
             'appointmentsByStatus' => $appointmentsByStatus,
             'appointmentsByType' => $appointmentsByType,
+            'bulkSummary' => [
+                'events' => Appointment::query()->bulkParents()->count(),
+                'employees' => $bulkEmployees()->count(),
+                'completed' => $bulkEmployees()->where('status', 'completed')->count(),
+                'active' => $bulkEmployees()->whereNotIn('status', ['completed', 'cancelled', 'rejected'])->count(),
+            ],
             'monthlyTrends' => $monthlyTrends,
             'securityAlerts' => $securityAlerts,
         ]);

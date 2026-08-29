@@ -31,7 +31,8 @@ test('an administrator creates staff and credentials are emailed without exposin
     $response->assertRedirect(route('admin.staff.index'));
     $staff = User::where('email', 'maria.santos@example.test')->firstOrFail();
 
-    expect($staff->must_change_password)->toBeTrue()
+    expect($staff->hasVerifiedEmail())->toBeTrue()
+        ->and($staff->must_change_password)->toBeTrue()
         ->and($staff->license_no)->toBeNull()
         ->and($staff->temporary_password_created_at)->not->toBeNull()
         ->and($staff->temporary_password_expires_at)->not->toBeNull()

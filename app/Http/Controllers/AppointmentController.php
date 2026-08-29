@@ -135,9 +135,8 @@ class AppointmentController extends Controller
             'companies' => $companies,
             'serviceTypes' => Appointment::getServiceTypeOptions(),
             'pePackage' => [
-                'includedLaboratoryServices' => config('medical.pe_package.laboratory_services', []),
+                'preEmploymentServices' => config('medical.pe_package.pre_employment_services', []),
                 'optionalBulkServices' => config('medical.pe_package.optional_bulk_services', []),
-                'requiresXray' => config('medical.pe_package.requires_xray', true),
             ],
             'appointmentTypes' => collect(Appointment::getTypeOptions())
                 ->when(! $referral, fn ($types) => $types->except('company_referral'))
@@ -156,6 +155,7 @@ class AppointmentController extends Controller
                 'company_id' => $referral->company_id,
                 'company_name' => $referral->company->company_name,
                 'required_services' => $referral->required_services,
+                'examination_purpose' => $referral->examination_purpose,
                 'valid_until' => $referral->valid_until->toDateString(),
             ] : null,
         ]);
@@ -186,6 +186,7 @@ class AppointmentController extends Controller
                 'type' => 'company_referral',
                 'company_id' => $referral->company_id,
                 'service_types' => $referral->required_services,
+                'examination_purpose' => $referral->examination_purpose,
             ]);
         }
 
@@ -201,6 +202,7 @@ class AppointmentController extends Controller
                 'company_name' => $company->company_name,
                 'doctor_id' => null,
                 'start_time' => null,
+                'examination_purpose' => $request->input('examination_purpose', 'annual_pe'),
             ]);
         }
 
@@ -211,6 +213,7 @@ class AppointmentController extends Controller
             'company_id' => ['nullable', 'exists:companies,id'],
             'company_name' => ['nullable', 'string', 'max:255'],
             'appointment_date' => ['required', 'date', 'after_or_equal:today'],
+            'examination_purpose' => ['nullable', 'string', Rule::in(['pre_employment', 'annual_pe', 'medical_clearance'])],
             'service_types' => ['required', 'array'],
             'service_types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(Appointment::getServiceTypeOptions()))],
             'notes' => ['nullable', 'string', 'max:500'],
@@ -256,6 +259,13 @@ class AppointmentController extends Controller
         }
 
         $data = $validator->validated();
+        if (($data['examination_purpose'] ?? null) === 'pre_employment') {
+            $data['service_types'] = collect(config('medical.pe_package.pre_employment_services', []))
+                ->merge($data['service_types'])
+                ->unique()
+                ->values()
+                ->all();
+        }
 
         if ($data['type'] === 'individual') {
             app(IndividualAppointmentBookingService::class)->create($user, $data, $request);
@@ -323,6 +333,7 @@ class AppointmentController extends Controller
                 'appointment_date' => $data['appointment_date'],
                 'type' => $data['type'],
                 'status' => 'pending',
+                'examination_purpose' => $data['examination_purpose'] ?? null,
                 'service_types' => $data['service_types'],
                 'referral_code' => $data['referral_code'] ?? null,
                 'notes' => $data['notes'] ?? null,

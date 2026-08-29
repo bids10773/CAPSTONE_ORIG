@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\DiagnosticResult;
+use App\Services\OnsiteDashboardService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,7 +14,7 @@ class MedTechDashboardController extends Controller
     /**
      * Handle the incoming request.
      */
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, OnsiteDashboardService $onsiteDashboard): Response
     {
         $user = $request->user();
         $staffQueue = fn () => Appointment::query()->where(function ($query) {
@@ -65,6 +66,7 @@ class MedTechDashboardController extends Controller
                 ->where('service_key', 'drug_test')
                 ->whereIn('status', ['in_progress', 'awaiting_official_result', 'official_result_received'])
                 ->count(),
+            'onsiteSummary' => $onsiteDashboard->summaryFor($user),
         ]);
     }
 }

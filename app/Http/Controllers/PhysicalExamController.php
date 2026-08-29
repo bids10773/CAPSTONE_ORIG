@@ -88,7 +88,11 @@ class PhysicalExamController extends Controller
             $this->audit($request, $appointment, 'physical_exam', $exam->wasRecentlyCreated ? 'created' : 'updated', $exam->getChanges());
         });
 
-        return redirect()->route('doctor.dashboard')->with('success', 'Physical examination saved and forwarded to the next required stage.');
+        $destination = $appointment->bulk_appointment_id !== null
+            ? route('doctor.onsite-events.show', $appointment->bulk_appointment_id)
+            : route('doctor.dashboard');
+
+        return redirect()->to($destination)->with('success', 'Physical examination saved and forwarded to the next required stage.');
     }
 
     public function final(Appointment $appointment, MedicalExaminationService $examinations): Response
@@ -97,7 +101,7 @@ class PhysicalExamController extends Controller
         $canVerify = Gate::allows('verifyDiagnosticResults', $appointment);
         abort_unless($canFinalize || $canVerify, 403);
         $verificationTask = $appointment->serviceQueues()->where('assigned_staff_id', request()->user()->id)
-            ->whereIn('service_role', ['drug_verification', 'xray_verification'])
+            ->where('service_role', 'drug_verification')
             ->whereIn('status', ['assigned', 'in_progress'])->value('service_role');
         app(\App\Services\OnsiteEventWorkflowService::class)->startService(
             $appointment,
@@ -160,7 +164,11 @@ class PhysicalExamController extends Controller
             $this->audit($request, $appointment, 'final_evaluation', 'finalized', ['classification' => $classification]);
         });
 
-        return redirect()->route('doctor.dashboard')->with('success', 'Final medical evaluation completed. All clinical forms are now locked.');
+        $destination = $appointment->bulk_appointment_id !== null
+            ? route('doctor.onsite-events.show', $appointment->bulk_appointment_id)
+            : route('doctor.dashboard');
+
+        return redirect()->to($destination)->with('success', 'Final medical evaluation completed. All clinical forms are now locked.');
     }
 
     public function release(Request $request, Appointment $appointment): RedirectResponse

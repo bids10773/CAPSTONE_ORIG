@@ -4,6 +4,7 @@ import {
     Building2,
     CheckCircle2,
     FileSpreadsheet,
+    LoaderCircle,
     UserPlus,
     UsersRound,
     X,
@@ -25,7 +26,9 @@ type Recommendation = {
     required: boolean;
     recommended: number;
     active_available: number;
-    employees_per_staff: number;
+    employees_per_staff: number | null;
+    scales_with_masterlist: boolean;
+    capacity_per_staff: number | null;
 };
 type Employee = {
     id: number;
@@ -36,7 +39,11 @@ type Employee = {
         patient_profile?: { employee_number?: string | null };
     };
     service_progress: Record<
-        'physical_exam' | 'laboratory' | 'drug_test' | 'xray' | 'final_evaluation',
+        | 'physical_exam'
+        | 'laboratory'
+        | 'drug_test'
+        | 'xray'
+        | 'final_evaluation',
         string
     >;
 };
@@ -51,6 +58,13 @@ const roleName = (role: Role) =>
         medtech: 'Medical Technologists',
         radtech: 'Radiologic Technologists',
         receptionist: 'Receptionists',
+    })[role];
+const roleSingular = (role: Role) =>
+    ({
+        doctor: 'doctor',
+        medtech: 'medical technologist',
+        radtech: 'radiologic technologist',
+        receptionist: 'receptionist',
     })[role];
 const progressLabel = (status: string) =>
     ({
@@ -84,13 +98,16 @@ export default function AdminOnsiteEvent({
     staffing: {
         ready: boolean;
         missing_roles: Role[];
+        masterlist_employee_count: number;
         recommendations: Record<Role, Recommendation>;
-        default_queue_capacity: number;
     };
     staffOptions: Staff[];
 }) {
-    const [capacity, setCapacity] = useState(staffing.default_queue_capacity);
     const [mode, setMode] = useState<'manual' | 'recommended'>('manual');
+    const [assigningStaffId, setAssigningStaffId] = useState<number | null>(
+        null,
+    );
+    const [assignmentError, setAssignmentError] = useState<string | null>(null);
     const approve = () =>
         router.patch(`/admin/appointments/${event.id}/status`, {
             status: 'accepted',
@@ -99,16 +116,28 @@ export default function AdminOnsiteEvent({
         event.onsite_staff.filter(
             (d: Deployment) => d.service_role === role && d.is_active,
         );
-    const add = (staff: Staff) =>
+    const add = (staff: Staff) => {
+        setAssignmentError(null);
         router.post(
             `/admin/onsite-events/${event.id}/staff`,
             {
                 user_id: staff.id,
                 service_role: staff.role,
-                queue_capacity: capacity,
             },
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onStart: () => setAssigningStaffId(staff.id),
+                onError: (errors) =>
+                    setAssignmentError(
+                        Object.values(errors).find(
+                            (message): message is string =>
+                                typeof message === 'string',
+                        ) ?? 'The staff member could not be assigned.',
+                    ),
+                onFinish: () => setAssigningStaffId(null),
+            },
         );
+    };
     const remove = (deployment: Deployment) => {
         if (
             confirm(
@@ -149,9 +178,11 @@ export default function AdminOnsiteEvent({
                     <span
                         className={`rounded-full px-3 py-1.5 text-sm font-medium ${staffing.ready ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
                     >
-                        {staffing.ready
-                            ? 'Required team complete'
-                            : `Missing: ${staffing.missing_roles.join(', ')}`}
+                        {staffing.masterlist_employee_count === 0
+                            ? 'Employee masterlist required'
+                            : staffing.ready
+                              ? 'Required team complete'
+                              : `Staff assignments incomplete: ${staffing.missing_roles.join(', ')}`}
                     </span>
                 </div>
             </header>
@@ -162,7 +193,10 @@ export default function AdminOnsiteEvent({
                     ['Not arrived', 'not_arrived'],
                     ['Absent', 'absent'],
                     ['Completed', 'completed'],
-                    ['Onsite procedures finished', 'onsite_procedures_finished'],
+                    [
+                        'Onsite procedures finished',
+                        'onsite_procedures_finished',
+                    ],
                     ['Drug verification', 'verifying_drug_test'],
                     ['X-Ray verification', 'verifying_xray'],
                     ['Both verifying', 'verifying_both'],
@@ -205,8 +239,8 @@ export default function AdminOnsiteEvent({
                         </Button>
                     )}
                 </div>
-                <div className="mt-4 overflow-hidden rounded-lg border">
-                    <table className="w-full text-left text-sm">
+                <div className="mt-4 overflow-x-auto rounded-lg border">
+                    <table className="w-full min-w-[900px] text-left text-sm">
                         <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                             <tr>
                                 <th className="px-4 py-3">Employee</th>
@@ -234,17 +268,25 @@ export default function AdminOnsiteEvent({
                                         {employee.user.patient_profile
                                             ?.employee_number ?? '—'}
                                     </td>
-                                    {([
-                                        'physical_exam',
-                                        'laboratory',
-                                        'drug_test',
-                                        'xray',
-                                        'final_evaluation',
-                                    ] as const).map((service) => {
-                                        const status = employee.service_progress[service];
+                                    {(
+                                        [
+                                            'physical_exam',
+                                            'laboratory',
+                                            'drug_test',
+                                            'xray',
+                                            'final_evaluation',
+                                        ] as const
+                                    ).map((service) => {
+                                        const status =
+                                            employee.service_progress[service];
                                         return (
-                                            <td key={service} className="px-4 py-3">
-                                                <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-[10px] font-semibold ${progressClass(status)}`}>
+                                            <td
+                                                key={service}
+                                                className="px-4 py-3"
+                                            >
+                                                <span
+                                                    className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold whitespace-nowrap ${progressClass(status)}`}
+                                                >
                                                     {progressLabel(status)}
                                                 </span>
                                             </td>
@@ -282,14 +324,16 @@ export default function AdminOnsiteEvent({
                             schedule conflicts are validated when assigned.
                         </p>
                     </div>
-                    <div className="flex rounded-lg border p-1">
+                    <div className="flex flex-wrap rounded-lg border p-1">
                         <button
+                            type="button"
                             onClick={() => setMode('manual')}
                             className={`rounded px-3 py-1.5 text-sm ${mode === 'manual' ? 'bg-moss-600 text-white' : ''}`}
                         >
                             Manual selection
                         </button>
                         <button
+                            type="button"
                             onClick={() => setMode('recommended')}
                             className={`rounded px-3 py-1.5 text-sm ${mode === 'recommended' ? 'bg-moss-600 text-white' : ''}`}
                         >
@@ -298,47 +342,51 @@ export default function AdminOnsiteEvent({
                     </div>
                 </div>
                 {mode === 'recommended' && (
-                    <div className="mt-5 grid gap-3 sm:grid-cols-4">
-                        {roles.map((role) => {
-                            const r = staffing.recommendations[role];
-                            return (
-                                <div
-                                    key={role}
-                                    className="rounded-lg border bg-slate-50 p-4"
-                                >
-                                    <p className="text-xs font-medium text-slate-500 uppercase">
-                                        {roleName(role)}
-                                    </p>
-                                    <p className="mt-1 text-2xl font-semibold">
-                                        {r.recommended}
-                                    </p>
-                                    <p className="text-xs text-slate-500">
-                                        1 per {r.employees_per_staff} employees
-                                        · {r.active_available} active
-                                    </p>
-                                </div>
-                            );
-                        })}
+                    <div className="mt-5">
+                        <p className="mb-3 text-sm text-slate-600">
+                            Based on{' '}
+                            <strong className="text-slate-900">
+                                {staffing.masterlist_employee_count} employees
+                            </strong>{' '}
+                            in the uploaded company masterlist.
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-4">
+                            {roles.map((role) => {
+                                const r = staffing.recommendations[role];
+                                return (
+                                    <div
+                                        key={role}
+                                        className="rounded-lg border bg-slate-50 p-4"
+                                    >
+                                        <p className="text-xs font-medium text-slate-500 uppercase">
+                                            {roleName(role)}
+                                        </p>
+                                        <p className="mt-1 text-2xl font-semibold">
+                                            {r.recommended}
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                            {r.scales_with_masterlist
+                                                ? `${r.capacity_per_staff ?? 0} employees per assigned staff`
+                                                : '1 attendance coordinator per event'}{' '}
+                                            · {r.active_available} active
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
-                <label className="mt-5 block text-sm font-medium">
-                    Queue capacity per staff{' '}
-                    <input
-                        type="number"
-                        min="1"
-                        max="100"
-                        value={capacity}
-                        onChange={(e) => setCapacity(Number(e.target.value))}
-                        className="ml-2 w-20 rounded border px-2 py-1.5"
-                    />
-                </label>
                 <div className="mt-6 grid gap-5 lg:grid-cols-2">
                     {roles.map((role) => {
                         const deployments = assigned(role);
                         const recommendation = staffing.recommendations[role];
+                        const remaining = Math.max(
+                            0,
+                            recommendation.recommended - deployments.length,
+                        );
                         return (
                             <div key={role} className="rounded-xl border p-4">
-                                <div className="flex justify-between">
+                                <div className="flex flex-wrap justify-between gap-2">
                                     <h3 className="font-semibold">
                                         {roleName(role)}
                                     </h3>
@@ -347,11 +395,13 @@ export default function AdminOnsiteEvent({
                                         {recommendation.recommended} recommended
                                     </span>
                                 </div>
-                                {deployments.length <
-                                    recommendation.recommended && (
+                                {remaining > 0 && (
                                     <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-800">
-                                        Below the recommendation; employees may
-                                        experience longer queues.
+                                        Assign {remaining} more{' '}
+                                        {roleSingular(role)}
+                                        {remaining === 1 ? '' : 's'} to cover
+                                        the {staffing.masterlist_employee_count}
+                                        -employee masterlist.
                                     </p>
                                 )}
                                 <div className="mt-3 flex flex-wrap gap-2">
@@ -363,8 +413,10 @@ export default function AdminOnsiteEvent({
                                             {d.user.first_name}{' '}
                                             {d.user.last_name}
                                             <button
-                                                aria-label="Remove staff"
+                                                type="button"
+                                                aria-label={`Remove ${d.user.first_name} ${d.user.last_name}`}
                                                 onClick={() => remove(d)}
+                                                className="-mr-1 grid size-7 place-items-center rounded-full transition hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
                                             >
                                                 <X className="size-3.5" />
                                             </button>
@@ -387,11 +439,18 @@ export default function AdminOnsiteEvent({
                                                 size="sm"
                                                 variant="outline"
                                                 disabled={
-                                                    event.status === 'pending'
+                                                    event.status ===
+                                                        'pending' ||
+                                                    assigningStaffId !== null
                                                 }
                                                 onClick={() => add(staff)}
                                             >
-                                                <UserPlus className="size-4" />
+                                                {assigningStaffId ===
+                                                staff.id ? (
+                                                    <LoaderCircle className="size-4 animate-spin" />
+                                                ) : (
+                                                    <UserPlus className="size-4" />
+                                                )}
                                                 {staff.first_name}{' '}
                                                 {staff.last_name}
                                             </Button>
@@ -408,6 +467,14 @@ export default function AdminOnsiteEvent({
                         );
                     })}
                 </div>
+                {assignmentError && (
+                    <p
+                        role="alert"
+                        className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+                    >
+                        {assignmentError}
+                    </p>
+                )}
             </section>
             <section className="rounded-xl border bg-white p-5">
                 <h2 className="flex items-center gap-2 font-semibold">
@@ -423,29 +490,36 @@ export default function AdminOnsiteEvent({
                         href={`/admin/onsite-events/${event.id}/medical-results`}
                         className="mb-3 inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                     >
-                        <FileSpreadsheet className="size-4" /> Review company medical results
+                        <FileSpreadsheet className="size-4" /> Review company
+                        medical results
                     </Link>
                     <div>
-                    {['activities_completed', 'results_completed', 'closed'].includes(event.onsite_event_status) ? (
-                        <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-semibold text-emerald-700">
-                            {event.onsite_event_status === 'closed'
-                                ? 'Event closed — final report released'
-                                : event.onsite_event_status === 'results_completed'
-                                  ? 'Results processing completed'
-                                  : 'Onsite completed — results processing'}
-                        </span>
-                    ) : (
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                router.patch(
-                                    `/admin/onsite-events/${event.id}/complete-activities`,
-                                )
-                            }
-                        >
-                            <CheckCircle2 className="size-4" /> Mark onsite activities completed
-                        </Button>
-                    )}
+                        {[
+                            'activities_completed',
+                            'results_completed',
+                            'closed',
+                        ].includes(event.onsite_event_status) ? (
+                            <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-semibold text-emerald-700">
+                                {event.onsite_event_status === 'closed'
+                                    ? 'Event closed — final report released'
+                                    : event.onsite_event_status ===
+                                        'results_completed'
+                                      ? 'Results processing completed'
+                                      : 'Onsite completed — results processing'}
+                            </span>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                onClick={() =>
+                                    router.patch(
+                                        `/admin/onsite-events/${event.id}/complete-activities`,
+                                    )
+                                }
+                            >
+                                <CheckCircle2 className="size-4" /> Mark onsite
+                                activities completed
+                            </Button>
+                        )}
                     </div>
                 </div>
             </section>

@@ -26,11 +26,25 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 
+const EXAMINATION_PURPOSES = [
+    ['pre_employment', 'Pre-employment'],
+    ['annual_pe', 'Annual PE'],
+    ['medical_clearance', 'Medical Clearance'],
+] as const;
+const PRE_EMPLOYMENT_SERVICES = [
+    'PE',
+    'CBC',
+    'Urinalysis',
+    'Fecalysis',
+    'X-Ray',
+];
+
 interface Appointment {
     id: number;
     patient_name?: string | null;
     appointment_date: string;
     status: string;
+    examination_purpose: string;
     appointment_type: string;
 }
 
@@ -193,6 +207,7 @@ export default function CompanyDashboard() {
         first_name: '',
         last_name: '',
         email: '',
+        examination_purpose: 'annual_pe',
         service_types: [] as string[],
     });
 
@@ -503,6 +518,48 @@ export default function CompanyDashboard() {
                         </div>
                         <div className="mt-5">
                             <p className="text-xs font-semibold text-slate-700">
+                                Medical purpose
+                            </p>
+                            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                                {EXAMINATION_PURPOSES.map(([value, label]) => (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        onClick={() => {
+                                            referralForm.setData((current) => ({
+                                                ...current,
+                                                examination_purpose: value,
+                                                service_types:
+                                                    value === 'pre_employment'
+                                                        ? Array.from(
+                                                              new Set([
+                                                                  ...PRE_EMPLOYMENT_SERVICES,
+                                                                  ...current.service_types,
+                                                              ]),
+                                                          )
+                                                        : current.service_types.filter(
+                                                              (service) =>
+                                                                  !PRE_EMPLOYMENT_SERVICES.includes(
+                                                                      service,
+                                                                  ),
+                                                          ),
+                                            }));
+                                        }}
+                                        className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold ${referralForm.data.examination_purpose === value ? 'border-moss-500 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-700'}`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                            <InputError
+                                message={
+                                    referralForm.errors.examination_purpose
+                                }
+                                className="mt-1"
+                            />
+                        </div>
+                        <div className="mt-5">
+                            <p className="text-xs font-semibold text-slate-700">
                                 Required medical services
                             </p>
                             <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -514,6 +571,14 @@ export default function CompanyDashboard() {
                                         >
                                             <input
                                                 type="checkbox"
+                                                disabled={
+                                                    referralForm.data
+                                                        .examination_purpose ===
+                                                        'pre_employment' &&
+                                                    PRE_EMPLOYMENT_SERVICES.includes(
+                                                        value,
+                                                    )
+                                                }
                                                 checked={referralForm.data.service_types.includes(
                                                     value,
                                                 )}
@@ -751,20 +816,57 @@ export default function CompanyDashboard() {
 
                 <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,.8fr)]">
                     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                        <h2 className="flex items-center gap-2 font-semibold"><FileSpreadsheet className="size-4 text-moss-600" /> Bulk medical reports</h2>
-                        <p className="mt-1 text-xs text-slate-500">Final employee results become downloadable only after clinic review and release.</p>
+                        <h2 className="flex items-center gap-2 font-semibold">
+                            <FileSpreadsheet className="size-4 text-moss-600" />{' '}
+                            Bulk medical reports
+                        </h2>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Final employee results become downloadable only
+                            after clinic review and release.
+                        </p>
                         <div className="mt-4 space-y-2">
                             {bulkAppointments.map((appointment) => (
-                                <div key={appointment.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3">
-                                    <div><p className="text-sm font-medium">{formatDate(appointment.appointment_date)}</p><p className="mt-0.5 text-[11px] text-slate-400">{appointment.service_types.join(', ')}</p></div>
+                                <div
+                                    key={appointment.id}
+                                    className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 p-3"
+                                >
+                                    <div>
+                                        <p className="text-sm font-medium">
+                                            {formatDate(
+                                                appointment.appointment_date,
+                                            )}
+                                        </p>
+                                        <p className="mt-0.5 text-[11px] text-slate-400">
+                                            {appointment.service_types.join(
+                                                ', ',
+                                            )}
+                                        </p>
+                                    </div>
                                     {appointment.report_download_url ? (
-                                        <a href={appointment.report_download_url} className="inline-flex items-center gap-2 rounded-lg bg-moss-600 px-3 py-2 text-xs font-semibold text-white hover:bg-moss-700"><Download className="size-3.5" /> Download final Excel</a>
+                                        <a
+                                            href={
+                                                appointment.report_download_url
+                                            }
+                                            className="inline-flex items-center gap-2 rounded-lg bg-moss-600 px-3 py-2 text-xs font-semibold text-white hover:bg-moss-700"
+                                        >
+                                            <Download className="size-3.5" />{' '}
+                                            Download final Excel
+                                        </a>
                                     ) : (
-                                        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700">{appointment.report_status === 'ready_for_review' ? 'Under clinic review' : 'Not yet released'}</span>
+                                        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700">
+                                            {appointment.report_status ===
+                                            'ready_for_review'
+                                                ? 'Under clinic review'
+                                                : 'Not yet released'}
+                                        </span>
                                     )}
                                 </div>
                             ))}
-                            {bulkAppointments.length === 0 && <p className="py-5 text-center text-xs text-slate-400">No bulk appointments yet.</p>}
+                            {bulkAppointments.length === 0 && (
+                                <p className="py-5 text-center text-xs text-slate-400">
+                                    No bulk appointments yet.
+                                </p>
+                            )}
                         </div>
                     </section>
 

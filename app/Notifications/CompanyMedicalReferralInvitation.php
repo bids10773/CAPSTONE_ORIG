@@ -26,10 +26,13 @@ class CompanyMedicalReferralInvitation extends Notification
 
         return (new MailMessage)
             ->subject('Medical Examination Referral')
-            ->greeting('Hello '.$this->referral->first_name.',')
-            ->line($this->referral->company->company_name.' referred you for a medical examination.')
-            ->line('Please securely review the referral and choose your appointment schedule before '.$this->referral->valid_until->format('F j, Y').'.')
-            ->action('Complete Appointment', $url)
-            ->line('This email does not contain medical findings or examination results.');
+            ->view('email.company-referral-invitation', [
+                'employeeName' => $this->referral->first_name,
+                'companyName' => $this->referral->company->company_name,
+                'referralNumber' => $this->referral->referral_number,
+                'examinationPurpose' => $this->referral->examination_purpose,
+                'validUntil' => $this->referral->valid_until,
+                'url' => $url,
+            ]);
     }
 }

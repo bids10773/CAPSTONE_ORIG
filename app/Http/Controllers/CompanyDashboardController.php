@@ -126,6 +126,7 @@ class CompanyDashboardController extends Controller
                     'referral_number' => $referral->referral_number,
                     'employee_name' => trim($referral->first_name.' '.$referral->middle_name.' '.$referral->last_name),
                     'status' => $status,
+                    'examination_purpose' => $referral->examination_purpose,
                     'valid_until' => $referral->valid_until->toDateString(),
                     'appointment_date' => $referral->appointment?->appointment_date?->toDateString(),
                     'can_cancel' => $referral->isSchedulable(),

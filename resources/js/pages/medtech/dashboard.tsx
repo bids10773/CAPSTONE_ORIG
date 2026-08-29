@@ -1,6 +1,4 @@
 import { Head, usePage, Link } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
 import { motion } from 'framer-motion';
 import {
     FlaskConical,
@@ -10,6 +8,10 @@ import {
     CheckCircle,
     Users,
 } from 'lucide-react';
+import { OnsiteOverviewCard } from '@/components/onsite-overview-card';
+import type { OnsiteOverview } from '@/components/onsite-overview-card';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'MedTech Dashboard', href: '' },
@@ -30,6 +32,7 @@ interface Props {
     pendingTests: number;
     labCapacity: string;
     todayCount: number;
+    onsiteSummary: OnsiteOverview;
     pendingAppointments: Appointment[]; // 👈 ADD THIS
 }
 
@@ -41,6 +44,7 @@ export default function MedTechDashboard(props: Props) {
         pendingAppointments,
         todayCount,
         labCapacity,
+        onsiteSummary,
     } = props;
 
     return (
@@ -114,6 +118,11 @@ export default function MedTechDashboard(props: Props) {
                         </motion.div>
                     ))}
                 </div>
+
+                <OnsiteOverviewCard
+                    summary={onsiteSummary}
+                    href="/medtech/onsite-events"
+                />
 
                 {/* MAIN GRID */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

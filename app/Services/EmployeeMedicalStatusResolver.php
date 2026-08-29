@@ -52,7 +52,7 @@ class EmployeeMedicalStatusResolver
     {
         return match ($status) {
             'verifying_drug_test' => 'Verifying Drug Test Result',
-            'verifying_xray' => 'Verifying X-Ray Result',
+            'verifying_xray' => 'Pending RadTech X-Ray Result',
             'verifying_drug_and_xray' => 'Verifying Drug and X-Ray Test Result',
             default => str($status)->replace('_', ' ')->title()->toString(),
         };

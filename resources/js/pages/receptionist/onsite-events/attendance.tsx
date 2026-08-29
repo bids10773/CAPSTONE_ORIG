@@ -1,8 +1,10 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, Search, UserCheck, UserX } from 'lucide-react';
-import { FormEvent, useState } from 'react';
-import AppLayout from '@/layouts/app-layout';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
+import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
+import AppLayout from '@/layouts/app-layout';
 
 type Employee = {
     id: number;
@@ -28,13 +30,6 @@ const name = (e: Employee) =>
     [e.user.first_name, e.user.middle_name, e.user.last_name]
         .filter(Boolean)
         .join(' ');
-const label = (value: string | null) =>
-    value === 'arrived'
-        ? 'Arrived'
-        : value === 'absent'
-          ? 'Absent'
-          : 'Not Yet Arrived';
-
 export default function Attendance({
     event,
     employees,
@@ -111,7 +106,10 @@ export default function Attendance({
                 ))}
             </section>
             <section className="rounded-xl border bg-white p-4 shadow-sm">
-                <form onSubmit={submit} className="flex gap-2">
+                <form
+                    onSubmit={submit}
+                    className="flex flex-col gap-2 sm:flex-row"
+                >
                     <div className="relative flex-1">
                         <Search className="absolute top-2.5 left-3 size-4 text-slate-400" />
                         <input
@@ -121,80 +119,91 @@ export default function Attendance({
                             placeholder="Search name or employee number"
                         />
                     </div>
-                    <Button type="submit">Search employee</Button>
+                    <Button type="submit" className="sm:shrink-0">
+                        Search employee
+                    </Button>
                 </form>
                 <p className="mt-2 text-xs text-slate-500">
                     Results are limited to this company bulk appointment.
                 </p>
             </section>
             <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-                        <tr>
-                            <th className="px-4 py-3">Employee</th>
-                            <th className="px-4 py-3">Employee no.</th>
-                            <th className="px-4 py-3">Attendance</th>
-                            <th className="px-4 py-3">Current process</th>
-                            <th className="px-4 py-3 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                        {employees.data.map((employee) => (
-                            <tr key={employee.id}>
-                                <td className="px-4 py-4 font-medium">
-                                    {name(employee)}
-                                </td>
-                                <td className="px-4 py-4">
-                                    {employee.user.patient_profile
-                                        ?.employee_number ?? '—'}
-                                </td>
-                                <td className="px-4 py-4">
-                                    <span
-                                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${employee.attendance_status === 'arrived' ? 'bg-emerald-100 text-emerald-700' : employee.attendance_status === 'absent' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}
-                                    >
-                                        {label(employee.attendance_status)}
-                                    </span>
-                                </td>
-                                <td className="px-4 py-4 capitalize">
-                                    {employee.attendance_status === 'arrived'
-                                        ? employee.status.replaceAll('_', ' ')
-                                        : '—'}
-                                </td>
-                                <td className="px-4 py-4">
-                                    <div className="flex justify-end gap-2">
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            disabled={
-                                                employee.attendance_status ===
-                                                'arrived'
-                                            }
-                                            onClick={() =>
-                                                mark(employee, 'arrived')
-                                            }
-                                        >
-                                            <UserCheck className="size-4" />{' '}
-                                            Arrived
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            disabled={
-                                                employee.attendance_status ===
-                                                'absent'
-                                            }
-                                            onClick={() =>
-                                                mark(employee, 'absent')
-                                            }
-                                        >
-                                            <UserX className="size-4" /> Absent
-                                        </Button>
-                                    </div>
-                                </td>
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[900px] text-left text-sm">
+                        <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
+                            <tr>
+                                <th className="px-4 py-3">Employee</th>
+                                <th className="px-4 py-3">Employee no.</th>
+                                <th className="px-4 py-3">Attendance</th>
+                                <th className="px-4 py-3">Current process</th>
+                                <th className="px-4 py-3 text-right">
+                                    Actions
+                                </th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y">
+                            {employees.data.map((employee) => (
+                                <tr key={employee.id}>
+                                    <td className="px-4 py-4 font-medium">
+                                        {name(employee)}
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        {employee.user.patient_profile
+                                            ?.employee_number ?? '—'}
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        <StatusBadge
+                                            status={
+                                                employee.attendance_status ??
+                                                'not_arrived'
+                                            }
+                                        />
+                                    </td>
+                                    <td className="px-4 py-4 capitalize">
+                                        {employee.attendance_status ===
+                                        'arrived'
+                                            ? employee.status.replaceAll(
+                                                  '_',
+                                                  ' ',
+                                              )
+                                            : '—'}
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        <div className="flex justify-end gap-2 whitespace-nowrap">
+                                            <Button
+                                                size="sm"
+                                                disabled={
+                                                    employee.attendance_status ===
+                                                    'arrived'
+                                                }
+                                                onClick={() =>
+                                                    mark(employee, 'arrived')
+                                                }
+                                            >
+                                                <UserCheck className="size-4" />{' '}
+                                                Arrived
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="destructive"
+                                                disabled={
+                                                    employee.attendance_status ===
+                                                    'absent'
+                                                }
+                                                onClick={() =>
+                                                    mark(employee, 'absent')
+                                                }
+                                            >
+                                                <UserX className="size-4" />{' '}
+                                                Absent
+                                            </Button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
                 {employees.data.length === 0 && (
                     <div className="p-10 text-center text-sm text-slate-500">
                         No employees match this event search.

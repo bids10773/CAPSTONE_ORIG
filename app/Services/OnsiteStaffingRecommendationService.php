@@ -9,20 +9,30 @@ class OnsiteStaffingRecommendationService
 {
     public function for(Appointment $event): array
     {
-        $employeeCount = max(1, $event->bulkEmployees()->count() ?: (int) $event->expected_employee_count);
+        $employeeCount = $event->bulkEmployees()->count();
         $requiredRoles = $this->requiredRoles($event);
         $ratios = config('onsite.staffing_ratios');
 
         return collect(['doctor', 'medtech', 'radtech', 'receptionist'])->mapWithKeys(function (string $role) use ($event, $employeeCount, $requiredRoles, $ratios) {
             $required = in_array($role, $requiredRoles, true);
-            $recommended = $required ? max(1, (int) ceil($employeeCount / max(1, (int) $ratios[$role]))) : 0;
+            $scalesWithMasterlist = $role !== 'receptionist';
+            $recommended = match (true) {
+                ! $required || $employeeCount === 0 => 0,
+                ! $scalesWithMasterlist => 1,
+                default => max(1, (int) ceil($employeeCount / max(1, (int) $ratios[$role]))),
+            };
+            $capacityPerStaff = $scalesWithMasterlist && $recommended > 0
+                ? (int) ceil($employeeCount / $recommended)
+                : null;
 
             return [$role => [
                 'required' => $required,
                 'recommended' => $recommended,
                 'active_available' => User::where('role', $role)->where('is_active', true)->get()
                     ->filter(fn (User $staff) => app(OnsiteStaffAvailabilityService::class)->conflictReason($event, $staff) === null)->count(),
-                'employees_per_staff' => (int) $ratios[$role],
+                'employees_per_staff' => $scalesWithMasterlist ? (int) $ratios[$role] : null,
+                'scales_with_masterlist' => $scalesWithMasterlist,
+                'capacity_per_staff' => $capacityPerStaff,
             ]];
         })->all();
     }

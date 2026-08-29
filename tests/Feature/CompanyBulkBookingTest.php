@@ -36,12 +36,13 @@ test('company accounts always create company bulk appointments', function () {
         'company_id' => $company->id,
         'company_name' => $company->company_name,
         'type' => 'company_bulk',
+        'examination_purpose' => 'annual_pe',
         'doctor_id' => null,
         'start_time' => '08:00',
     ]);
 });
 
-test('drug and pregnancy tests are optional PE add-ons for company bulk appointments', function () {
+test('pre employment selects five basics while other bulk services remain optional', function () {
     $company = Company::create([
         'company_name' => 'Optional Services Company',
         'status' => 'active',
@@ -52,24 +53,27 @@ test('drug and pregnancy tests are optional PE add-ons for company bulk appointm
     $this->actingAs($account)->post(route('appointments.store'), [
         'appointment_date' => today()->addDay()->toDateString(),
         'service_types' => ['PE'],
+        'examination_purpose' => 'pre_employment',
         'service_location' => 'clinic', 'event_contact_name' => 'Ana Cruz',
         'event_contact_number' => '09171234567', 'expected_employee_count' => 100,
     ])->assertSessionDoesntHaveErrors();
 
     $standard = Appointment::query()->latest('id')->firstOrFail();
-    expect(array_keys(app(LaboratoryFormDefinition::class)->sectionsFor($standard)))
-        ->toBe(['cbc', 'urinalysis', 'fecalysis', 'serology']);
+    expect($standard->service_types)->toBe(['PE', 'CBC', 'Urinalysis', 'Fecalysis', 'X-Ray'])
+        ->and(array_keys(app(LaboratoryFormDefinition::class)->sectionsFor($standard)))
+        ->toBe(['cbc', 'urinalysis', 'fecalysis']);
 
     $this->actingAs($account)->post(route('appointments.store'), [
         'appointment_date' => today()->addDays(2)->toDateString(),
         'service_types' => ['PE', 'Drug Test', 'Pregnancy Test'],
+        'examination_purpose' => 'pre_employment',
         'service_location' => 'clinic', 'event_contact_name' => 'Ana Cruz',
         'event_contact_number' => '09171234567', 'expected_employee_count' => 100,
     ])->assertSessionDoesntHaveErrors();
 
     $withAddOns = Appointment::query()->latest('id')->firstOrFail();
     expect(array_keys(app(LaboratoryFormDefinition::class)->sectionsFor($withAddOns)))
-        ->toBe(['cbc', 'urinalysis', 'fecalysis', 'drug_test', 'serology', 'pregnancy']);
+        ->toBe(['cbc', 'urinalysis', 'fecalysis', 'drug_test', 'pregnancy']);
 });
 
 test('bulk requests have a separate admin approval queue and do not require patient demographics', function () {

@@ -4,13 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\XrayReport;
+use App\Services\OnsiteDashboardService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class RadTechDashboardController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, OnsiteDashboardService $onsiteDashboard): Response
     {
         $user = $request->user();
         $staffQueue = fn () => Appointment::query()->where(function ($query) {
@@ -54,6 +55,7 @@ class RadTechDashboardController extends Controller
             'activeStationCount' => XrayReport::query()
                 ->whereHas('appointment', fn ($appointment) => $appointment->where('type', '!=', 'company_bulk'))
                 ->whereNull('performed_at')->count(),
+            'onsiteSummary' => $onsiteDashboard->summaryFor($user),
             'pendingAppointments' => $pendingAppointments, // 👈 ADD THIS
         ]);
     }

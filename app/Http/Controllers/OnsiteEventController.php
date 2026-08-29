@@ -7,6 +7,7 @@ use App\Models\OnsiteEventStaff;
 use App\Models\OnsiteServiceQueue;
 use App\Models\SecurityAudit;
 use App\Models\User;
+use App\Notifications\OnsiteStaffAssigned;
 use App\Services\OnsiteEventWorkflowService;
 use App\Services\OnsiteStaffingRecommendationService;
 use Illuminate\Http\JsonResponse;
@@ -109,8 +110,16 @@ class OnsiteEventController extends Controller
         abort_if($event->onsite_event_status === 'draft', 404);
         $event->load(['company:id,company_name,address', 'onsiteStaff.user:id,first_name,middle_name,last_name,role']);
 
-        $requiredRoles = collect($recommendations->requiredRoles($event));
-        $assignedRoles = $event->onsiteStaff->where('is_active', true)->pluck('service_role')->unique();
+        $masterlistEmployeeCount = $event->bulkEmployees()->count();
+        $staffingRecommendations = $recommendations->for($event);
+        $assignedByRole = $event->onsiteStaff
+            ->where('is_active', true)
+            ->countBy('service_role');
+        $understaffedRoles = collect($staffingRecommendations)
+            ->filter(fn (array $recommendation, string $role) => $recommendation['required']
+                && ($assignedByRole[$role] ?? 0) < $recommendation['recommended'])
+            ->keys()
+            ->values();
         $employees = $this->employeeQuery($event, $request->string('search')->trim()->toString())
             ->with([
                 'medicalExamination.physicalExam',
@@ -145,11 +154,10 @@ class OnsiteEventController extends Controller
             'employees' => $employees,
             'attendance' => $this->attendanceSummary($event),
             'staffing' => [
-                'required_roles' => $requiredRoles,
-                'missing_roles' => $requiredRoles->diff($assignedRoles)->values(),
-                'ready' => $requiredRoles->diff($assignedRoles)->isEmpty(),
-                'recommendations' => $recommendations->for($event),
-                'default_queue_capacity' => config('onsite.default_queue_capacity'),
+                'masterlist_employee_count' => $masterlistEmployeeCount,
+                'missing_roles' => $understaffedRoles,
+                'ready' => $masterlistEmployeeCount > 0 && $understaffedRoles->isEmpty(),
+                'recommendations' => $staffingRecommendations,
             ],
             'staffOptions' => User::whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'])
                 ->where('is_active', true)->orderBy('first_name')->get(['id', 'first_name', 'last_name', 'role']),
@@ -169,11 +177,19 @@ class OnsiteEventController extends Controller
         return back()->with('success', 'Employee attendance updated.');
     }
 
-    public function assignStaff(Request $request, Appointment $event, OnsiteEventWorkflowService $workflow)
-    {
+    public function assignStaff(
+        Request $request,
+        Appointment $event,
+        OnsiteEventWorkflowService $workflow,
+        OnsiteStaffingRecommendationService $recommendations,
+    ) {
         abort_unless($request->user()->role === 'admin', 403);
-        $data = $request->validate(['user_id' => ['required', 'integer', 'exists:users,id'], 'service_role' => ['required', Rule::in(['doctor', 'medtech', 'radtech', 'receptionist'])], 'queue_capacity' => ['required', 'integer', 'min:1', 'max:100']]);
-        $workflow->assignStaff($event, User::findOrFail($data['user_id']), $data['service_role'], $data['queue_capacity'], $request->user());
+        $data = $request->validate(['user_id' => ['required', 'integer', 'exists:users,id'], 'service_role' => ['required', Rule::in(['doctor', 'medtech', 'radtech', 'receptionist'])]]);
+        $recommendation = $recommendations->for($event)[$data['service_role']];
+        $capacity = $recommendation['capacity_per_staff'] ?? 1;
+        $staff = User::findOrFail($data['user_id']);
+        $workflow->assignStaff($event, $staff, $data['service_role'], $capacity, $request->user());
+        $staff->notify(new OnsiteStaffAssigned($event, $data['service_role']));
 
         return back()->with('success', 'Staff member assigned to the onsite event.');
     }
@@ -210,7 +226,7 @@ class OnsiteEventController extends Controller
         $role = $request->user()->role;
         abort_unless(in_array($role, ['doctor', 'medtech', 'radtech'], true), 403);
         abort_unless(OnsiteEventStaff::where('bulk_appointment_id', $event->id)->where('user_id', $request->user()->id)->where('service_role', $role)->where('is_active', true)->exists(), 403);
-        $tasks = $role === 'doctor' ? ['doctor', 'drug_verification', 'xray_verification', 'final_evaluation'] : [$role];
+        $tasks = $role === 'doctor' ? ['doctor', 'drug_verification', 'final_evaluation'] : [$role];
         $queues = OnsiteServiceQueue::with('appointment.user:id,first_name,middle_name,last_name')->where('bulk_appointment_id', $event->id)->whereIn('service_role', $tasks)->where('assigned_staff_id', $request->user()->id)->whereIn('status', ['assigned', 'in_progress'])->orderByRaw("CASE WHEN status = 'in_progress' THEN 0 ELSE 1 END")->orderBy('assigned_at')->get();
 
         return response()->json(['event' => $event->only(['id', 'appointment_date', 'event_address']), 'queue' => $queues]);
@@ -240,7 +256,7 @@ class OnsiteEventController extends Controller
 
     private function tasksForRole(string $role): array
     {
-        return $role === 'doctor' ? ['doctor', 'drug_verification', 'xray_verification', 'final_evaluation'] : [$role];
+        return $role === 'doctor' ? ['doctor', 'drug_verification', 'final_evaluation'] : [$role];
     }
 
     private function employeeQuery(Appointment $event, string $search)

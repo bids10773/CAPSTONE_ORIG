@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import AppointmentDateInput from '@/components/appointment-date-input';
 import AppLayout from '@/layouts/app-layout';
 import type { Doctor } from '@/types/availability';
 
@@ -40,6 +41,7 @@ interface BookingData {
     type: string;
     company_id: string;
     appointment_date: string;
+    examination_purpose: string;
     service_types: string[];
     notes: string;
     service_location: string;
@@ -70,9 +72,8 @@ interface AppointmentPageProps {
     serviceTypes?: Record<string, string>;
     appointmentTypes?: Record<string, string>;
     pePackage?: {
-        includedLaboratoryServices: string[];
+        preEmploymentServices: string[];
         optionalBulkServices: string[];
-        requiresXray: boolean;
     };
     auth: { user: AppointmentUser };
     bookingPolicy?: {
@@ -92,6 +93,7 @@ interface AppointmentPageProps {
         company_id: number;
         company_name: string;
         required_services: string[];
+        examination_purpose: string;
         valid_until: string;
     } | null;
     [key: string]: unknown;
@@ -138,6 +140,11 @@ const TYPE_DETAILS: Record<
 };
 
 const SERVICE_ICONS = [HeartPulse, FileHeart, Stethoscope, ClipboardCheck];
+const EXAMINATION_PURPOSES = [
+    ['pre_employment', 'Pre-employment'],
+    ['annual_pe', 'Annual PE'],
+    ['medical_clearance', 'Medical Clearance'],
+] as const;
 
 const INITIAL_DATA: BookingData = {
     company_referral_id: '',
@@ -146,6 +153,7 @@ const INITIAL_DATA: BookingData = {
     type: 'individual',
     company_id: '',
     appointment_date: '',
+    examination_purpose: '',
     service_types: [],
     notes: '',
     service_location: 'onsite',
@@ -186,6 +194,10 @@ const restoreDraft = (storageKey: string): BookingData => {
             appointment_date:
                 typeof draft.appointment_date === 'string'
                     ? draft.appointment_date
+                    : '',
+            examination_purpose:
+                typeof draft.examination_purpose === 'string'
+                    ? draft.examination_purpose
                     : '',
             service_types: isStringArray(draft.service_types)
                 ? draft.service_types
@@ -282,9 +294,8 @@ export default function CreateAppointment() {
         serviceTypes = {},
         appointmentTypes = {},
         pePackage = {
-            includedLaboratoryServices: [],
+            preEmploymentServices: [],
             optionalBulkServices: [],
-            requiresXray: true,
         },
         auth,
         referral = null,
@@ -308,6 +319,7 @@ export default function CreateAppointment() {
                 type: 'company_referral',
                 company_id: String(referral.company_id),
                 service_types: referral.required_services,
+                examination_purpose: referral.examination_purpose,
             };
         }
 
@@ -316,6 +328,7 @@ export default function CreateAppointment() {
                   ...draft,
                   type: 'company_bulk',
                   company_id: String(auth.user.company_id ?? ''),
+                  examination_purpose: draft.examination_purpose || 'annual_pe',
               }
             : draft;
     });
@@ -535,6 +548,9 @@ export default function CreateAppointment() {
     const validateStep = () => {
         const nextErrors: BookingErrors = {};
         if (currentStep === 1) {
+            if (!formData.examination_purpose)
+                nextErrors.examination_purpose =
+                    'Choose the purpose of this examination.';
             if (!formData.service_types.length)
                 nextErrors.service_types =
                     'Choose at least one medical service.';
@@ -619,6 +635,7 @@ export default function CreateAppointment() {
                                 'type',
                                 'company_id',
                                 'company_name',
+                                'examination_purpose',
                                 'service_types',
                             ].includes(key),
                         )
@@ -801,6 +818,9 @@ export default function CreateAppointment() {
                                                     optionalBulkServices={
                                                         pePackage.optionalBulkServices
                                                     }
+                                                    preEmploymentServices={
+                                                        pePackage.preEmploymentServices
+                                                    }
                                                     formData={formData}
                                                     errors={errors}
                                                     needsCompany={needsCompany}
@@ -836,6 +856,36 @@ export default function CreateAppointment() {
                                                         setDoctors([]);
                                                         setAvailability(null);
                                                         setCompanySearch('');
+                                                    }}
+                                                    onPurpose={(purpose) => {
+                                                        update(
+                                                            'examination_purpose',
+                                                            purpose,
+                                                        );
+                                                        if (
+                                                            purpose ===
+                                                            'pre_employment'
+                                                        ) {
+                                                            update(
+                                                                'service_types',
+                                                                Array.from(
+                                                                    new Set([
+                                                                        ...pePackage.preEmploymentServices,
+                                                                        ...formData.service_types,
+                                                                    ]),
+                                                                ),
+                                                            );
+                                                        } else {
+                                                            update(
+                                                                'service_types',
+                                                                formData.service_types.filter(
+                                                                    (service) =>
+                                                                        !pePackage.preEmploymentServices.includes(
+                                                                            service,
+                                                                        ),
+                                                                ),
+                                                            );
+                                                        }
                                                     }}
                                                     onService={toggleService}
                                                     onCompanySearch={(
@@ -1072,6 +1122,7 @@ interface VisitStepProps {
     appointmentTypes: OptionEntry[];
     serviceTypes: OptionEntry[];
     optionalBulkServices: string[];
+    preEmploymentServices: string[];
     formData: BookingData;
     errors: BookingErrors;
     needsCompany: boolean;
@@ -1081,6 +1132,7 @@ interface VisitStepProps {
     companyMenuOpen: boolean;
     filteredCompanies: Company[];
     onType: (type: string) => void;
+    onPurpose: (purpose: string) => void;
     onService: (service: string) => void;
     onCompanySearch: (search: string) => void;
     onCompanySelect: (company: Company) => void;
@@ -1091,6 +1143,7 @@ function VisitStep({
     appointmentTypes,
     serviceTypes,
     optionalBulkServices,
+    preEmploymentServices,
     formData,
     errors,
     needsCompany,
@@ -1100,6 +1153,7 @@ function VisitStep({
     companyMenuOpen,
     filteredCompanies,
     onType,
+    onPurpose,
     onService,
     onCompanySearch,
     onCompanySelect,
@@ -1225,12 +1279,39 @@ function VisitStep({
             )}
 
             <FieldGroup
+                title="Examination purpose"
+                description="Choose why this medical examination is being requested."
+            >
+                <div className="grid gap-3 sm:grid-cols-3">
+                    {EXAMINATION_PURPOSES.map(([value, label]) => {
+                        const selected = formData.examination_purpose === value;
+                        return (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => onPurpose(value)}
+                                disabled={!!referral}
+                                aria-pressed={selected}
+                                className={`min-h-12 rounded-xl border px-4 py-3 text-left text-sm font-semibold transition focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-700 hover:border-moss-300'}`}
+                            >
+                                {label}
+                            </button>
+                        );
+                    })}
+                </div>
+                <InlineError message={errors.examination_purpose} />
+            </FieldGroup>
+
+            <FieldGroup
                 title="Medical services"
                 description="Select services based on your needed service during this visit."
             >
                 <div className="grid gap-3 sm:grid-cols-2">
                     {serviceTypes.map(([value, label], index) => {
                         const selected = formData.service_types.includes(value);
+                        const includedInPreEmployment =
+                            formData.examination_purpose === 'pre_employment' &&
+                            preEmploymentServices.includes(value);
                         const Icon =
                             SERVICE_ICONS[index % SERVICE_ICONS.length];
                         return (
@@ -1238,7 +1319,7 @@ function VisitStep({
                                 key={value}
                                 type="button"
                                 onClick={() => onService(value)}
-                                disabled={!!referral}
+                                disabled={!!referral || includedInPreEmployment}
                                 aria-pressed={selected}
                                 className={`flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
                             >
@@ -1257,6 +1338,11 @@ function VisitStep({
                                                 Optional add-on
                                             </small>
                                         )}
+                                    {includedInPreEmployment && (
+                                        <small className="mt-0.5 block text-xs font-semibold text-moss-700">
+                                            Included in Pre-employment
+                                        </small>
+                                    )}
                                 </span>
                                 <span
                                     className={`flex size-5 items-center justify-center rounded-md border ${selected ? 'border-moss-600 bg-moss-600 text-white' : 'border-slate-300'}`}
@@ -1319,14 +1405,12 @@ function ScheduleStep({
                 title="Requested appointment date"
                 description="Choose the preferred date for this bulk booking. The clinic will coordinate staffing and timing separately."
             >
-                <input
-                    type="date"
+                <AppointmentDateInput
                     min={today}
                     value={selectedDate}
-                    onChange={(event) => onDate(event.target.value)}
-                    className="h-12 w-full max-w-sm rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
+                    error={errors.appointment_date}
+                    onChange={onDate}
                 />
-                <InlineError message={errors.appointment_date} />
             </FieldGroup>
         );
     }
@@ -1337,15 +1421,13 @@ function ScheduleStep({
                 title="Appointment date"
                 description="Choose a date first to see doctors with open appointments."
             >
-                <input
-                    type="date"
+                <AppointmentDateInput
                     min={today}
                     max={latestDate}
                     value={selectedDate}
-                    onChange={(event) => onDate(event.target.value)}
-                    className="h-12 w-full max-w-sm rounded-xl border border-slate-200 px-4 text-sm outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
+                    error={errors.appointment_date}
+                    onChange={onDate}
                 />
-                <InlineError message={errors.appointment_date} />
             </FieldGroup>
 
             {selectedDate && (
@@ -1493,6 +1575,15 @@ function DetailsStep({
             label: 'Age',
             value: age === null ? 'Not available' : `${age} years old`,
             icon: CakeSlice,
+        },
+        {
+            label: 'Civil status',
+            value: profile?.civil_status
+                ? profile.civil_status
+                      .replace(/_/g, ' ')
+                      .replace(/\b\w/g, (letter) => letter.toUpperCase())
+                : 'Not provided',
+            icon: UserRound,
         },
     ];
     return (
@@ -1824,6 +1915,16 @@ function ReviewStep({
                               age === null
                                   ? 'Not available'
                                   : `${age} years old`,
+                          ],
+                          [
+                              'Civil status',
+                              profile?.civil_status
+                                  ? profile.civil_status
+                                        .replace(/_/g, ' ')
+                                        .replace(/\b\w/g, (letter) =>
+                                            letter.toUpperCase(),
+                                        )
+                                  : 'Not provided',
                           ],
                           ['Contact', user.contact || user.email],
                           ...(formData.notes

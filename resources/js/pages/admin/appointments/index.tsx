@@ -3,11 +3,14 @@ import { Head, router, usePage } from '@inertiajs/react';
 import {
     ArrowRight,
     Building2,
+    Cake,
     CalendarDays,
     CheckCircle2,
     CircleAlert,
     Ellipsis,
     Eye,
+    HeartHandshake,
+    Phone,
     Search,
     Stethoscope,
     UserRound,
@@ -177,6 +180,29 @@ function formatDate(value: string): string {
         day: 'numeric',
         year: 'numeric',
     }).format(new Date(value));
+}
+
+function calculateAge(birthdate?: string | null): number | null {
+    if (!birthdate) return null;
+    const [year, month, day] = birthdate.slice(0, 10).split('-').map(Number);
+    if (!year || !month || !day) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - year;
+    if (
+        today.getMonth() + 1 < month ||
+        (today.getMonth() + 1 === month && today.getDate() < day)
+    ) {
+        age -= 1;
+    }
+
+    return age;
+}
+
+function formatProfileValue(value: string): string {
+    return value
+        .replaceAll('_', ' ')
+        .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function formatTime(value: string | null): string | null {
@@ -816,44 +842,100 @@ export default function AdminAppointmentsIndex() {
                             </DialogDescription>
                         </DialogHeader>
 
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <DetailCard
-                                icon={UserRound}
-                                label="Patient"
-                                value={fullName(selectedAppointment.user)}
-                                detail={selectedAppointment.user.email}
-                            />
-                            <DetailCard
-                                icon={CalendarDays}
-                                label="Schedule"
-                                value={formatDate(
-                                    selectedAppointment.appointment_date,
-                                )}
-                                detail={appointmentTime(selectedAppointment)}
-                            />
-                            <DetailCard
-                                icon={Building2}
-                                label="Company"
-                                value={
-                                    selectedAppointment.company?.company_name ??
-                                    'Not company-linked'
-                                }
-                                detail={
-                                    selectedAppointment.referral_code
-                                        ? `Referral: ${selectedAppointment.referral_code}`
-                                        : undefined
-                                }
-                            />
-                            <DetailCard
-                                icon={Stethoscope}
-                                label="Assigned doctor"
-                                value={
-                                    selectedAppointment.doctor
-                                        ? `Dr. ${fullName(selectedAppointment.doctor)}`
-                                        : 'Not assigned'
-                                }
-                            />
-                        </div>
+                        <section>
+                            <p className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                                Patient information
+                            </p>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <DetailCard
+                                    icon={UserRound}
+                                    label="Patient"
+                                    value={fullName(selectedAppointment.user)}
+                                    detail={selectedAppointment.user.email}
+                                />
+                                <DetailCard
+                                    icon={Cake}
+                                    label="Age"
+                                    value={
+                                        calculateAge(
+                                            selectedAppointment.user
+                                                .patient_profile?.birthdate,
+                                        ) !== null
+                                            ? `${calculateAge(selectedAppointment.user.patient_profile?.birthdate)} years old`
+                                            : 'Not provided'
+                                    }
+                                    detail={
+                                        selectedAppointment.user.patient_profile
+                                            ?.birthdate
+                                            ? `Born ${formatDate(selectedAppointment.user.patient_profile.birthdate)}`
+                                            : undefined
+                                    }
+                                />
+                                <DetailCard
+                                    icon={HeartHandshake}
+                                    label="Civil status"
+                                    value={
+                                        selectedAppointment.user.patient_profile
+                                            ?.civil_status
+                                            ? formatProfileValue(
+                                                  selectedAppointment.user
+                                                      .patient_profile
+                                                      .civil_status,
+                                              )
+                                            : 'Not provided'
+                                    }
+                                />
+                                <DetailCard
+                                    icon={Phone}
+                                    label="Contact number"
+                                    value={
+                                        selectedAppointment.user.contact ||
+                                        'Not provided'
+                                    }
+                                />
+                            </div>
+                        </section>
+
+                        <section>
+                            <p className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                                Appointment information
+                            </p>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <DetailCard
+                                    icon={CalendarDays}
+                                    label="Schedule"
+                                    value={formatDate(
+                                        selectedAppointment.appointment_date,
+                                    )}
+                                    detail={appointmentTime(
+                                        selectedAppointment,
+                                    )}
+                                />
+                                <DetailCard
+                                    icon={Building2}
+                                    label="Company"
+                                    value={
+                                        selectedAppointment.company
+                                            ?.company_name ??
+                                        'Not company-linked'
+                                    }
+                                    detail={
+                                        selectedAppointment.referral_code
+                                            ? `Referral: ${selectedAppointment.referral_code}`
+                                            : undefined
+                                    }
+                                />
+                                <DetailCard
+                                    icon={Stethoscope}
+                                    label="Assigned doctor"
+                                    value={
+                                        selectedAppointment.doctor
+                                            ? `Dr. ${fullName(selectedAppointment.doctor)}`
+                                            : 'Not assigned'
+                                    }
+                                />
+                            </div>
+                        </section>
 
                         <div className="rounded-xl border border-slate-200 p-4">
                             <div className="flex flex-wrap items-center gap-2">

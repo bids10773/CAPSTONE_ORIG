@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { Building2, CalendarDays, UsersRound } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
+import AppLayout from '@/layouts/app-layout';
 
 type Event = {
     id: number;
@@ -34,59 +34,64 @@ export default function OnsiteEventsIndex({ events }: { events: Page<Event> }) {
                 </p>
             </header>
             <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
-                        <tr>
-                            <th className="px-5 py-3">Company</th>
-                            <th className="px-5 py-3">Date</th>
-                            <th className="px-5 py-3">Employees</th>
-                            <th className="px-5 py-3">Progress</th>
-                            <th className="px-5 py-3">Status</th>
-                            <th />
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                        {events.data.map((event) => (
-                            <tr key={event.id} className="hover:bg-slate-50">
-                                <td className="px-5 py-4 font-medium">
-                                    <span className="flex items-center gap-2">
-                                        <Building2 className="size-4 text-moss-600" />
-                                        {event.company?.company_name ??
-                                            'Company'}
-                                    </span>
-                                </td>
-                                <td className="px-5 py-4">
-                                    <span className="flex items-center gap-2">
-                                        <CalendarDays className="size-4" />
-                                        {new Date(
-                                            event.appointment_date,
-                                        ).toLocaleDateString()}
-                                    </span>
-                                </td>
-                                <td className="px-5 py-4">
-                                    {event.bulk_employees_count}
-                                </td>
-                                <td className="px-5 py-4">
-                                    {event.arrived_count} arrived ·{' '}
-                                    {event.absent_count} absent
-                                </td>
-                                <td className="px-5 py-4 capitalize">
-                                    {event.status.replaceAll('_', ' ')}
-                                </td>
-                                <td className="px-5 py-4 text-right">
-                                    <Button asChild size="sm">
-                                        <Link
-                                            href={`/receptionist/onsite-events/${event.id}`}
-                                        >
-                                            <UsersRound className="size-4" />{' '}
-                                            Manage attendance
-                                        </Link>
-                                    </Button>
-                                </td>
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[820px] text-left text-sm">
+                        <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
+                            <tr>
+                                <th className="px-5 py-3">Company</th>
+                                <th className="px-5 py-3">Date</th>
+                                <th className="px-5 py-3">Employees</th>
+                                <th className="px-5 py-3">Progress</th>
+                                <th className="px-5 py-3">Status</th>
+                                <th />
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y">
+                            {events.data.map((event) => (
+                                <tr
+                                    key={event.id}
+                                    className="hover:bg-slate-50"
+                                >
+                                    <td className="px-5 py-4 font-medium">
+                                        <span className="flex items-center gap-2">
+                                            <Building2 className="size-4 text-moss-600" />
+                                            {event.company?.company_name ??
+                                                'Company'}
+                                        </span>
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        <span className="flex items-center gap-2">
+                                            <CalendarDays className="size-4" />
+                                            {new Date(
+                                                event.appointment_date,
+                                            ).toLocaleDateString()}
+                                        </span>
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        {event.bulk_employees_count}
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        {event.arrived_count} arrived ·{' '}
+                                        {event.absent_count} absent
+                                    </td>
+                                    <td className="px-5 py-4 capitalize">
+                                        {event.status.replaceAll('_', ' ')}
+                                    </td>
+                                    <td className="px-5 py-4 text-right">
+                                        <Button asChild size="sm">
+                                            <Link
+                                                href={`/receptionist/onsite-events/${event.id}`}
+                                            >
+                                                <UsersRound className="size-4" />{' '}
+                                                Manage attendance
+                                            </Link>
+                                        </Button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
                 {events.data.length === 0 && (
                     <div className="p-10 text-center text-sm text-slate-500">
                         No scheduled onsite events are assigned to you.

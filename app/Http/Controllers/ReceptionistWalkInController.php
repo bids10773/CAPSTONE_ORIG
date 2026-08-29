@@ -40,6 +40,7 @@ class ReceptionistWalkInController extends Controller
     private function renderIndex(Request $request, string $mode): Response
     {
         abort_unless($request->user()->can('walkin.view'), 403);
+        $this->scheduling->expireLateAppointments();
 
         $status = $request->string('status')->toString();
         $search = $request->string('search')->toString();
@@ -120,14 +121,10 @@ class ReceptionistWalkInController extends Controller
 
     public function updateStatus(UpdateWalkInStatusRequest $request, Appointment $appointment): RedirectResponse
     {
-        abort_if($appointment->type === 'company_bulk' || $appointment->bulk_appointment_id !== null, 403);
-        if ($request->validated('status') === 'arrived') {
-            $this->scheduling->checkIn($appointment, $request->user());
-        } else {
-            $appointment->update($request->validated());
-        }
+        abort_unless(in_array($appointment->type, ['individual', 'company_referral'], true) && $appointment->bulk_appointment_id === null, 403);
+        $this->scheduling->checkIn($appointment, $request->user());
 
-        return back()->with('success', 'Walk-in status updated.');
+        return back()->with('success', 'Online appointment patient marked as arrived.');
     }
 
     public function searchPatients(SearchPatientsRequest $request): JsonResponse

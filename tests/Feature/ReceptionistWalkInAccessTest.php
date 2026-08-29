@@ -48,7 +48,8 @@ test('receptionist dashboard includes todays active online queue only', function
             ->where('onlineQueue.0.services', ['PE', 'Pregnancy Test']));
 });
 
-test('online appointments have priority and skipped appointments remain in cancelled history', function () {
+test('online appointments have priority and receptionist cannot manually cancel them', function () {
+    $this->travelTo(today()->setTime(9, 0));
     $patient = User::factory()->create(['role' => 'patient']);
     $walkIn = Appointment::create([
         'user_id' => $patient->id,
@@ -77,15 +78,30 @@ test('online appointments have priority and skipped appointments remain in cance
 
     $this->actingAs($staff)
         ->patch(route('receptionist.walk-ins.status', $online), ['status' => 'cancelled'])
-        ->assertRedirect();
+        ->assertSessionHasErrors('status');
 
-    expect($online->refresh()->status)->toBe('cancelled');
-    $this->actingAs($staff)
-        ->get(route('receptionist.queue.index', ['status' => 'cancelled']))
-        ->assertInertia(fn (Assert $page) => $page
-            ->has('walkIns.data', 1)
-            ->where('walkIns.data.0.id', $online->id)
-            ->where('walkIns.data.0.status', 'cancelled'));
+    expect($online->refresh()->status)->toBe('accepted');
+});
+
+test('opening the receptionist queue releases a late online slot to the earliest waiting walk in', function () {
+    $this->travelTo(today()->setTime(9, 11));
+    $patient = User::factory()->create(['role' => 'patient']);
+    $online = Appointment::create([
+        'user_id' => $patient->id, 'appointment_date' => today(),
+        'start_time' => '09:00', 'end_time' => '09:30', 'type' => 'individual',
+        'status' => 'accepted', 'service_types' => ['PE'],
+    ]);
+    $walkIn = Appointment::create([
+        'user_id' => $patient->id, 'appointment_date' => today(),
+        'type' => 'walk_in', 'status' => 'pending', 'arrived_at' => today()->setTime(8, 45),
+        'service_types' => ['CBC'],
+    ]);
+
+    $this->actingAs(receptionist())->get(route('receptionist.queue.index'))->assertOk();
+
+    expect($online->refresh()->status)->toBe('cancelled')
+        ->and($walkIn->refresh()->released_from_appointment_id)->toBe($online->id)
+        ->and($walkIn->start_time->format('H:i'))->toBe('09:00');
 });
 
 test('receptionist can register a new patient and create a walk-in appointment', function () {
@@ -98,6 +114,7 @@ test('receptionist can register a new patient and create a walk-in appointment',
             'birthdate' => '1995-05-10',
             'sex' => 'Female',
             'civil_status' => 'Single',
+            'examination_purpose' => 'annual_pe',
             'service_types' => ['PE', 'CBC'],
             'notes' => 'Walk-in registration',
         ])
@@ -131,6 +148,7 @@ test('receptionist can find and queue an existing patient', function () {
         ->post(route('receptionist.walk-ins.store'), [
             'patient_type' => 'existing',
             'user_id' => $patient->id,
+            'examination_purpose' => 'medical_clearance',
             'service_types' => ['X-Ray'],
         ])
         ->assertRedirect();
@@ -141,7 +159,7 @@ test('receptionist can find and queue an existing patient', function () {
     ]);
 });
 
-test('receptionist can update todays walk-in and online queue statuses', function () {
+test('receptionist can mark online patients arrived but cannot change walk in clinical status', function () {
     $staff = receptionist();
     $patient = User::factory()->create();
     $walkIn = Appointment::create([
@@ -160,20 +178,16 @@ test('receptionist can update todays walk-in and online queue statuses', functio
     ]);
 
     $this->actingAs($staff)
+        ->patch(route('receptionist.walk-ins.status', $online), ['status' => 'arrived'])
+        ->assertRedirect();
+
+    expect($online->refresh()->status)->toBe('arrived');
+
+    $this->actingAs($staff)
         ->patch(route('receptionist.walk-ins.status', $walkIn), ['status' => 'arrived'])
-        ->assertRedirect();
+        ->assertForbidden();
 
-    expect($walkIn->refresh()->status)->toBe('arrived');
-
-    $this->actingAs($staff)
-        ->patch(route('receptionist.walk-ins.status', $online), ['status' => 'cancelled'])
-        ->assertRedirect();
-
-    expect($online->refresh()->status)->toBe('cancelled');
-
-    $this->actingAs($staff)
-        ->patch(route('receptionist.walk-ins.status', $walkIn), ['status' => 'for_xray'])
-        ->assertSessionHasErrors('status');
+    expect($walkIn->refresh()->status)->toBe('pending');
 });
 
 test('bulk employees never appear in or mutate through the walk-in queue', function () {

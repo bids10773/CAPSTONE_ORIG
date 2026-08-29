@@ -6,7 +6,6 @@ import {
     MonitorCheck,
     Save,
     ScanLine,
-    ShieldCheck,
     UserRound,
 } from 'lucide-react';
 import type React from 'react';
@@ -75,9 +74,7 @@ export default function XrayReportForm({
     });
     const { data, setData, processing } = form;
 
-    const submit = (
-        action: 'performed' | 'send_verification' | 'complete',
-    ) => {
+    const submit = (action: 'performed' | 'complete') => {
         form.transform((values) => ({
             ...values,
             workflow_action: action,
@@ -227,7 +224,9 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                                     id="chest-findings"
                                     className="mt-1.5 min-h-52 font-mono text-sm leading-6"
                                     value={data.chest_findings}
-                                    disabled={locked || data.chest_status === 'normal'}
+                                    disabled={
+                                        locked || data.chest_status === 'normal'
+                                    }
                                     onChange={(event) =>
                                         setData(
                                             'chest_findings',
@@ -295,7 +294,9 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                                 id="impression"
                                 className="mt-1.5 min-h-40"
                                 value={data.impression}
-                                disabled={locked || data.chest_status === 'normal'}
+                                disabled={
+                                    locked || data.chest_status === 'normal'
+                                }
                                 onChange={(event) =>
                                     setData('impression', event.target.value)
                                 }
@@ -339,20 +340,7 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                     </aside>
                 </div>
 
-                <StickyActionFooter hint="Submitting forwards the completed imaging report through the existing workflow.">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        disabled={
-                            locked ||
-                            processing ||
-                            !!xrayReport?.sent_for_verification_at
-                        }
-                        onClick={() => submit('send_verification')}
-                    >
-                        <ShieldCheck className="size-4" />
-                        Send for Verification
-                    </Button>
+                <StickyActionFooter hint="Save unfinished work as pending, or verify and finalize the imaging report as the assigned RadTech.">
                     <Button
                         type="button"
                         variant="outline"
@@ -377,8 +365,8 @@ THE REST OF THE CHEST FINDINGS ARE UNREMARKABLE`,
                     >
                         <Save className="size-4" />
                         {processing
-                            ? 'Finalizing X-Ray…'
-                            : 'Finalize X-Ray'}
+                            ? 'Verifying X-Ray…'
+                            : 'Verify & Finalize X-Ray'}
                     </Button>
                 </StickyActionFooter>
             </form>

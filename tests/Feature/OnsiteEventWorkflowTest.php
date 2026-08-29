@@ -101,6 +101,7 @@ test('receptionist employee search is scoped to one bulk event and supports empl
 
 test('staffing recommendations scale with employee count and required services', function () {
     extract(onsiteFixture());
+    $event->update(['expected_employee_count' => 500]);
     config()->set('onsite.staffing_ratios', ['doctor' => 2, 'medtech' => 3, 'radtech' => 4, 'receptionist' => 5]);
     for ($i = 0; $i < 9; $i++) {
         app(BulkAppointmentEnrollmentService::class)->enroll($event, User::factory()->create(['role' => 'patient', 'company_id' => $company->id]));
@@ -108,9 +109,52 @@ test('staffing recommendations scale with employee count and required services',
 
     $result = app(\App\Services\OnsiteStaffingRecommendationService::class)->for($event);
     expect($result['doctor']['recommended'])->toBe(5)
+        ->and($result['doctor']['capacity_per_staff'])->toBe(2)
         ->and($result['medtech']['recommended'])->toBe(4)
+        ->and($result['medtech']['capacity_per_staff'])->toBe(3)
         ->and($result['radtech']['recommended'])->toBe(3)
-        ->and($result['receptionist']['recommended'])->toBe(2);
+        ->and($result['radtech']['capacity_per_staff'])->toBe(4)
+        ->and($result['receptionist']['recommended'])->toBe(1)
+        ->and($result['receptionist']['scales_with_masterlist'])->toBeFalse()
+        ->and($result['receptionist']['capacity_per_staff'])->toBeNull();
+});
+
+test('staffing recommendations do not fall back to an estimate without a masterlist', function () {
+    extract(onsiteFixture());
+    $child->delete();
+    $event->update(['expected_employee_count' => 500]);
+
+    $result = app(\App\Services\OnsiteStaffingRecommendationService::class)->for($event);
+
+    expect($result['doctor']['recommended'])->toBe(0)
+        ->and($result['medtech']['recommended'])->toBe(0)
+        ->and($result['radtech']['recommended'])->toBe(0)
+        ->and($result['receptionist']['recommended'])->toBe(0);
+});
+
+test('admin staff assignment derives clinical queue capacity from the uploaded masterlist', function () {
+    extract(onsiteFixture());
+    config()->set('onsite.staffing_ratios.doctor', 10);
+    for ($i = 0; $i < 20; $i++) {
+        app(BulkAppointmentEnrollmentService::class)->enroll(
+            $event,
+            User::factory()->create(['role' => 'patient', 'company_id' => $company->id]),
+        );
+    }
+    $admin = User::factory()->create(['role' => 'admin']);
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+
+    $this->actingAs($admin)->post(route('admin.onsite-events.staff.assign', $event), [
+        'user_id' => $doctor->id,
+        'service_role' => 'doctor',
+    ])->assertRedirect();
+
+    expect($event->onsiteStaff()->where('user_id', $doctor->id)->value('queue_capacity'))
+        ->toBe(7)
+        ->and($doctor->notifications()->where('data->type', 'onsite_staff_assigned')->count())
+        ->toBe(1)
+        ->and($doctor->unreadNotifications()->first()->data['url'])
+        ->toBe(route('doctor.onsite-events.show', $event, false));
 });
 
 test('opening assigned onsite work marks the queue in progress and protects the deployment', function () {
@@ -210,7 +254,7 @@ test('admin can complete onsite activities without medically completing pending 
         ->and(SecurityAudit::where('action', 'onsite_activities_completed')->where('actor_id', $admin->id)->exists())->toBeTrue();
 });
 
-test('onsite xray sent for verification stays assigned to the same radtech', function () {
+test('onsite xray is verified and finalized by the assigned radtech', function () {
     extract(onsiteFixture());
     $receptionist = User::factory()->create(['role' => 'receptionist']);
     $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
@@ -219,21 +263,57 @@ test('onsite xray sent for verification stays assigned to the same radtech', fun
     $workflow->markArrived($child, $receptionist);
 
     $this->actingAs($radtech)->post(route('radtech.xrays.store', $child), [
-        'workflow_action' => 'send_verification',
+        'workflow_action' => 'complete',
+        'chest_status' => 'findings',
         'chest_findings' => 'Images acquired onsite.',
-        'impression' => 'Pending verified interpretation.',
-    ])->assertSessionHas('success');
+        'impression' => 'No acute findings.',
+    ])->assertRedirect(route('radtech.onsite-events.show', $event))
+        ->assertSessionHas('success');
 
-    expect($child->fresh()->status)->toBe('verifying_xray')
+    expect($child->fresh()->status)->not->toBe('verifying_xray')
         ->and($child->xrayReport()->count())->toBe(1)
-        ->and($child->serviceQueues()->where('service_role', 'radtech')->value('status'))->toBe('in_progress');
+        ->and($child->xrayReport->verified_by)->toBe($radtech->id)
+        ->and($child->xrayReport->verified_at)->not->toBeNull()
+        ->and($child->serviceQueues()->where('service_role', 'radtech')->value('status'))->toBe('completed')
+        ->and($child->serviceQueues()->where('service_role', 'xray_verification')->exists())->toBeFalse();
+});
 
-    $this->get(route('radtech.onsite-events.show', $event))
-        ->assertInertia(fn ($page) => $page
-            ->where('queues.data.0.appointment.id', $child->id)
-            ->where('queues.data.0.status', 'in_progress'));
-    $this->get(route('radtech.xrays.create', $child))
-        ->assertInertia(fn ($page) => $page->where('locked', false));
+test('onsite laboratory work returns the medtech to the company onsite event', function () {
+    extract(onsiteFixture());
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
+    $workflow = app(OnsiteEventWorkflowService::class);
+    $workflow->assignStaff($event, $medtech, 'medtech', 10);
+    $workflow->markArrived($child, $receptionist);
+
+    $this->actingAs($medtech)->post(route('medtech.lab-results.store', $child), [
+        'finalize' => false,
+        'results' => [],
+    ])->assertRedirect(route('medtech.onsite-events.show', $event))
+        ->assertSessionHas('success');
+});
+
+test('onsite physical examination returns the doctor to the company onsite event', function () {
+    extract(onsiteFixture());
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $workflow = app(OnsiteEventWorkflowService::class);
+    $workflow->assignStaff($event, $doctor, 'doctor', 10);
+    $workflow->markArrived($child, $receptionist);
+
+    $payload = [
+        'height' => 170, 'weight' => 65, 'blood_pressure' => '120/80',
+        'pulse_rate' => 72, 'respiration_rate' => 16, 'temperature' => 36.7,
+        'visual_acuity' => '20/20 OU', 'hearing' => 'Normal bilateral',
+    ];
+    foreach (['head_scalp', 'eyes', 'ears', 'nose_sinuses', 'mouth_throat', 'neck_thyroid', 'chest_breast', 'lungs', 'heart', 'abdomen', 'back', 'anus', 'genitals', 'extremities', 'skin', 'dental'] as $part) {
+        $payload["{$part}_status"] = 'normal';
+        $payload[$part] = null;
+    }
+
+    $this->actingAs($doctor)->post(route('doctor.physical-exams.store', $child), $payload)
+        ->assertRedirect(route('doctor.onsite-events.show', $event))
+        ->assertSessionHas('success');
 });
 
 test('parent event reaches results completed independently through child resolution', function () {

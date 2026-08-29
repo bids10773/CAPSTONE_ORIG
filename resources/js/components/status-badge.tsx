@@ -27,6 +27,16 @@ const statusConfig = {
         className: 'border-sky-200 bg-sky-50 text-sky-800',
         icon: CircleDot,
     },
+    not_arrived: {
+        label: 'Not Yet Arrived',
+        className: 'border-amber-200 bg-amber-50 text-amber-800',
+        icon: Clock3,
+    },
+    absent: {
+        label: 'Absent',
+        className: 'border-red-200 bg-red-50 text-red-800',
+        icon: XCircle,
+    },
     for_diagnostics: {
         label: 'For Diagnostics',
         className: 'border-violet-200 bg-violet-50 text-violet-800',
@@ -46,6 +56,16 @@ const statusConfig = {
         label: 'X-ray Performed — Awaiting Result',
         className: 'border-amber-200 bg-amber-50 text-amber-800',
         icon: Clock3,
+    },
+    verifying_xray: {
+        label: 'Verifying X-ray Result',
+        className: 'border-amber-200 bg-amber-50 text-amber-800',
+        icon: ScanLine,
+    },
+    verifying_drug_test: {
+        label: 'Verifying Drug Test Result',
+        className: 'border-amber-200 bg-amber-50 text-amber-800',
+        icon: FlaskConical,
     },
     pending_xray: {
         label: 'For X-ray',

@@ -43,10 +43,6 @@ class XrayController extends Controller
             }
             $action = $request->validated('workflow_action');
             $complete = $action === 'complete';
-            $sendForVerification = $action === 'send_verification';
-            if ($sendForVerification && $existing?->sent_for_verification_at) {
-                throw ValidationException::withMessages(['workflow_action' => 'This X-ray has already been sent for verification.']);
-            }
             $report = XrayReport::updateOrCreate(['appointment_id' => $appointment->id], [
                 'medical_examination_id' => $medicalExamination->id,
                 'radiologist_id' => $existing?->radiologist_id ?? $request->user()->id,
@@ -54,7 +50,7 @@ class XrayController extends Controller
                 'impression' => $request->validated('impression'),
                 'recommendation' => $request->validated('recommendation'),
                 'remarks' => $request->validated('remarks'),
-                'status' => $complete ? 'completed' : ($sendForVerification ? 'verifying' : 'awaiting_result'),
+                'status' => $complete ? 'completed' : 'awaiting_result',
                 'performed_at' => $existing?->performed_at ?? now(),
                 'result_available_at' => $complete ? now() : null,
                 'verified_by' => $complete ? $request->user()->id : null,
@@ -62,29 +58,29 @@ class XrayController extends Controller
                 'is_completed' => $complete,
                 'finalized_by' => $complete ? $request->user()->id : null,
                 'finalized_at' => $complete ? now() : null,
-                'sent_for_verification_by' => $sendForVerification ? $request->user()->id : $existing?->sent_for_verification_by,
-                'sent_for_verification_at' => $sendForVerification ? now() : $existing?->sent_for_verification_at,
+                'sent_for_verification_by' => null,
+                'sent_for_verification_at' => null,
             ]);
             if ($complete) {
                 app(\App\Services\OnsiteEventWorkflowService::class)->completeService($appointment, 'radtech', $request->user());
             }
-            if ($sendForVerification) {
-                app(\App\Services\OnsiteEventWorkflowService::class)->createDoctorTask($appointment, 'xray_verification');
-            }
             app(\App\Services\EmployeeMedicalStatusResolver::class)->resolve($appointment->fresh());
             ClinicalFormAudit::create([
                 'appointment_id' => $appointment->id, 'actor_id' => $request->user()->id,
-                'form_type' => 'xray', 'action' => $complete ? 'result_verified' : ($sendForVerification ? 'sent_for_verification' : 'procedure_performed'),
+                'form_type' => 'xray', 'action' => $complete ? 'result_verified' : 'procedure_performed',
                 'changes' => $report->getChanges(), 'ip_address' => $request->ip(), 'user_agent' => $request->userAgent(),
             ]);
         });
 
         $message = match ($request->validated('workflow_action')) {
-            'complete' => 'X-Ray result finalized successfully.',
-            'send_verification' => 'X-ray sent for verification.',
+            'complete' => 'X-Ray result verified and finalized by RadTech.',
             default => 'X-Ray saved as pending. The examination remains available until it is finalized.',
         };
 
-        return redirect()->route('radtech.appointments')->with('success', $message);
+        $destination = $appointment->bulk_appointment_id !== null
+            ? route('radtech.onsite-events.show', $appointment->bulk_appointment_id)
+            : route('radtech.appointments');
+
+        return redirect()->to($destination)->with('success', $message);
     }
 }

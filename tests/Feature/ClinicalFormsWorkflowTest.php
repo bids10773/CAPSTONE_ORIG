@@ -33,7 +33,7 @@ function cbcPayload(bool $finalize = true): array
 
 function peLaboratoryPayload(): array
 {
-    $appointment = new Appointment(['service_types' => ['PE']]);
+    $appointment = new Appointment(['service_types' => ['PE', 'CBC', 'Urinalysis', 'Fecalysis', 'X-Ray']]);
     $sections = app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment);
 
     return [
@@ -49,12 +49,21 @@ function peLaboratoryPayload(): array
     ];
 }
 
-test('selecting PE creates its master and expands configured child requirements', function () {
+test('PE alone creates the physical exam without silently adding other services', function () {
     $appointment = clinicalAppointment(['PE']);
 
     expect($appointment->medicalExamination)->not->toBeNull()
         ->and(array_keys(app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment)))
-        ->toBe(['cbc', 'urinalysis', 'fecalysis', 'serology'])
+        ->toBe([])
+        ->and($appointment->requiresXray())->toBeFalse();
+});
+
+test('explicit pre employment basics include physical exam cbc urinalysis fecalysis and xray', function () {
+    $appointment = clinicalAppointment(config('medical.pe_package.pre_employment_services'));
+
+    expect(array_keys(app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment)))
+        ->toBe(['cbc', 'urinalysis', 'fecalysis'])
+        ->and($appointment->isPePackage())->toBeTrue()
         ->and($appointment->requiresXray())->toBeTrue();
 });
 
@@ -219,7 +228,7 @@ test('positive drug test cannot be accidentally completed without verification',
     expect($appointment->fresh()->labResult)->toBeNull();
 });
 
-test('patient cannot download an xray report before doctor verification', function () {
+test('patient cannot download an xray report before radtech verification', function () {
     $appointment = clinicalAppointment(['X-Ray']);
     $radtech = User::factory()->create(['role' => 'radtech']);
     $appointment->xrayReport()->create([
@@ -258,7 +267,7 @@ test('patient cannot access another patients appointment or clinical document by
 });
 
 test('PE laboratory package cannot be finalized with only one required child result', function () {
-    $appointment = clinicalAppointment(['PE']);
+    $appointment = clinicalAppointment(config('medical.pe_package.pre_employment_services'));
     $medtech = User::factory()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), [
         'finalize' => true, 'results' => ['cbc' => cbcPayload()['results']['cbc']],
@@ -267,7 +276,7 @@ test('PE laboratory package cannot be finalized with only one required child res
 });
 
 test('doctor records structured physical findings and final approval locks the encounter', function () {
-    $appointment = clinicalAppointment(['PE']);
+    $appointment = clinicalAppointment(config('medical.pe_package.pre_employment_services'));
     $doctor = User::factory()->create(['role' => 'doctor']);
     $parts = ['head_scalp', 'eyes', 'ears', 'nose_sinuses', 'mouth_throat', 'neck_thyroid', 'chest_breast', 'lungs', 'heart', 'abdomen', 'back', 'anus', 'genitals', 'extremities', 'skin', 'dental'];
     $payload = [

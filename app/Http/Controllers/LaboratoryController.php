@@ -48,7 +48,11 @@ class LaboratoryController extends Controller
             ? ($hasDrugTest ? 'Drug Test result finalized successfully.' : 'Laboratory report finalized and forwarded to the next required stage.')
             : ($hasDrugTest ? 'Drug Test saved as pending.' : 'Laboratory draft saved successfully.'));
 
-        return redirect()->route('medtech.appointments')->with('success', $message);
+        $destination = $appointment->bulk_appointment_id !== null
+            ? route('medtech.onsite-events.show', $appointment->bulk_appointment_id)
+            : route('medtech.appointments');
+
+        return redirect()->to($destination)->with('success', $message);
     }
 
     public function pdf(Request $request, Appointment $appointment, LaboratoryFormDefinition $definitions, ClinicalFormWorkflowService $workflow): HttpResponse

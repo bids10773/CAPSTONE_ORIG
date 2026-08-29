@@ -1,11 +1,7 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import {
-    Calendar,
-    HeartPulse,
-    Users,
-    Activity,
-    ClipboardList,
-} from 'lucide-react';
+import { Calendar, HeartPulse, Users, ClipboardList } from 'lucide-react';
+import { OnsiteOverviewCard } from '@/components/onsite-overview-card';
+import type { OnsiteOverview } from '@/components/onsite-overview-card';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -27,6 +23,7 @@ interface Props {
     todayCount: number;
     totalPatients: number;
     completedPhysicalCount: number;
+    onsiteSummary: OnsiteOverview;
     upcomingAppointments: Appointment[]; // 👈 ADD
 }
 
@@ -36,6 +33,7 @@ export default function DoctorDashboard(props: Props) {
         pendingCount,
         todayCount,
         completedPhysicalCount,
+        onsiteSummary,
         upcomingAppointments,
     } = props;
 
@@ -114,6 +112,11 @@ export default function DoctorDashboard(props: Props) {
                         </p>
                     </div>
                 </div>
+
+                <OnsiteOverviewCard
+                    summary={onsiteSummary}
+                    href="/doctor/onsite-events"
+                />
 
                 {/* MAIN GRID */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

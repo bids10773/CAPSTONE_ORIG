@@ -4,8 +4,10 @@ import {
     Activity,
     ArrowRight,
     Award,
+    BriefcaseMedical,
     Building2,
     CalendarCheck,
+    CalendarPlus,
     Check,
     ChevronDown,
     ChevronLeft,
@@ -13,6 +15,8 @@ import {
     Clock3,
     FileCheck2,
     HeartPulse,
+    Info,
+    LogIn,
     Mail,
     MapPin,
     Menu,
@@ -20,6 +24,7 @@ import {
     ShieldCheck,
     Stethoscope,
     Syringe,
+    MessagesSquare,
     UsersRound,
     X,
 } from 'lucide-react';
@@ -158,13 +163,17 @@ function ContactDetail({
 function Navbar() {
     const [open, setOpen] = useState(false);
     const links = [
-        ['About', '#about'],
-        ['Services', '#services'],
-        ['Corporate Programs', '#corporate'],
-        ['Contact', '#contact'],
+        { name: 'About', href: '#about', icon: Info },
+        { name: 'Services', href: '#services', icon: BriefcaseMedical },
+        {
+            name: 'Corporate Programs',
+            href: '#corporate',
+            icon: Building2,
+        },
+        { name: 'Contact', href: '#contact', icon: MessagesSquare },
     ];
     return (
-        <header className="absolute inset-x-0 top-0 z-50">
+        <header className="sticky inset-x-0 top-0 z-50 border-b border-slate-200/70 bg-white/90 backdrop-blur-md">
             <div className="mx-auto max-w-7xl px-5 py-5 sm:px-7">
                 <nav className="flex items-center justify-between rounded-2xl border border-white/80 bg-white/90 px-4 py-3 shadow-[0_14px_45px_rgba(15,38,60,0.10)] backdrop-blur-lg sm:px-5">
                     <Link
@@ -188,13 +197,14 @@ function Navbar() {
                             </span>
                         </span>
                     </Link>
-                    <div className="hidden items-center gap-7 lg:flex">
-                        {links.map(([name, href]) => (
+                    <div className="hidden items-center gap-1 lg:flex">
+                        {links.map(({ name, href, icon: Icon }) => (
                             <a
                                 key={name}
                                 href={href}
-                                className="relative py-2 text-sm font-semibold text-slate-600 transition-colors after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-moss-600 after:transition-transform after:duration-200 hover:text-moss-700 hover:after:scale-x-100"
+                                className="group inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition-all hover:bg-moss-50 hover:text-moss-800 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
                             >
+                                <Icon className="size-4 text-slate-400 transition-colors group-hover:text-moss-600" />
                                 {name}
                             </a>
                         ))}
@@ -202,14 +212,16 @@ function Navbar() {
                     <div className="hidden items-center gap-3 sm:flex">
                         <Link
                             href="/login"
-                            className="motion-press px-3 py-2 text-sm font-bold text-slate-700 transition hover:text-moss-700"
+                            className="motion-press inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
                         >
+                            <LogIn className="size-4" />
                             Login
                         </Link>
                         <Link
                             href="/register"
-                            className="motion-press rounded-xl bg-moss-800 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-moss-900/10 transition hover:-translate-y-0.5 hover:bg-moss-700"
+                            className="motion-press inline-flex items-center gap-2 rounded-xl bg-moss-800 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-moss-900/10 transition hover:-translate-y-0.5 hover:bg-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:ring-offset-2 focus-visible:outline-none"
                         >
+                            <CalendarPlus className="size-4" />
                             Book a consultation
                         </Link>
                     </div>
@@ -229,20 +241,24 @@ function Navbar() {
                             exit={{ opacity: 0, y: -8 }}
                             className="mt-2 rounded-2xl border border-slate-100 bg-white p-3 shadow-xl sm:hidden"
                         >
-                            {links.map(([name, href]) => (
+                            {links.map(({ name, href, icon: Icon }) => (
                                 <a
                                     onClick={() => setOpen(false)}
                                     key={name}
                                     href={href}
-                                    className="block rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-moss-50 hover:text-moss-800"
                                 >
+                                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-moss-50 text-moss-700">
+                                        <Icon className="size-4" />
+                                    </span>
                                     {name}
                                 </a>
                             ))}
                             <Link
                                 href="/login"
-                                className="mt-1 block rounded-xl bg-moss-800 px-4 py-3 text-center text-sm font-bold text-white"
+                                className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-moss-800 px-4 py-3 text-sm font-bold text-white"
                             >
+                                <LogIn className="size-4" />
                                 Client Login
                             </Link>
                         </motion.div>
@@ -282,9 +298,9 @@ export default function Welcome() {
                     content="Occupational healthcare, medical examinations and corporate wellness programs for modern workforces."
                 />
             </Head>
-            <main className="overflow-hidden bg-white font-sans text-slate-900">
+            <main className="overflow-x-clip bg-white font-sans text-slate-900">
                 <Navbar />
-                <section className="relative isolate bg-[#f4f7f3] pt-32">
+                <section className="relative isolate bg-[#f4f7f3]">
                     <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_82%_20%,rgba(168,195,160,.18),transparent_24rem),radial-gradient(circle_at_14%_85%,rgba(14,116,144,.12),transparent_26rem)]" />
                     <div className="mx-auto grid max-w-7xl gap-12 px-5 pb-14 sm:px-7 lg:grid-cols-[1.04fr_.96fr] lg:items-center lg:gap-10 lg:pb-20">
                         <motion.div
@@ -440,7 +456,7 @@ export default function Welcome() {
                     </div>
                 </section>
 
-                <section id="about" className="py-20 sm:py-28">
+                <section id="about" className="scroll-mt-28 py-20 sm:py-28">
                     <Reveal className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-7 lg:grid-cols-[.82fr_1.18fr] lg:items-center">
                         <div className="group relative overflow-hidden rounded-[1.75rem] bg-moss-50 shadow-xl shadow-moss-900/10">
                             <img
@@ -614,7 +630,10 @@ export default function Welcome() {
                     </Reveal>
                 </section>
 
-                <section id="services" className="bg-moss-800 py-20 sm:py-28">
+                <section
+                    id="services"
+                    className="scroll-mt-28 bg-moss-800 py-20 sm:py-28"
+                >
                     <Reveal className="mx-auto max-w-7xl px-5 sm:px-7">
                         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
                             <div>
@@ -666,7 +685,7 @@ export default function Welcome() {
                     </Reveal>
                 </section>
 
-                <section id="corporate" className="py-20 sm:py-28">
+                <section id="corporate" className="scroll-mt-28 py-20 sm:py-28">
                     <Reveal className="mx-auto max-w-7xl px-5 sm:px-7">
                         <SectionTitle
                             eyebrow="Corporate solutions"
@@ -871,7 +890,7 @@ export default function Welcome() {
 
                 <section
                     id="contact"
-                    className="relative isolate overflow-hidden bg-moss-900 py-20 text-white sm:py-28"
+                    className="relative isolate scroll-mt-28 overflow-hidden bg-moss-900 py-20 text-white sm:py-28"
                     style={{
                         backgroundImage: "url('/images/BGofMaps.png')",
                         backgroundSize: 'cover',

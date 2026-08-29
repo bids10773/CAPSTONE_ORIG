@@ -178,7 +178,7 @@ class OnsiteEventWorkflowService
 
     private function deploymentRole(string $task): string
     {
-        return in_array($task, ['doctor', 'drug_verification', 'xray_verification', 'final_evaluation'], true) ? 'doctor' : $task;
+        return in_array($task, ['doctor', 'drug_verification', 'final_evaluation'], true) ? 'doctor' : $task;
     }
 
     private function requiredRoles(Appointment $employee): array

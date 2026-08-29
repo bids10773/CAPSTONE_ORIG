@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\MedicalExamination;
+use App\Services\OnsiteDashboardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,7 +15,7 @@ class DoctorDashboardController extends Controller
     /**
      * Handle the incoming request.
      */
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, OnsiteDashboardService $onsiteDashboard): Response
     {
         $doctor = $request->user();
 
@@ -71,6 +72,7 @@ class DoctorDashboardController extends Controller
             'upcomingAppointments' => $upcomingAppointments,
             'user' => $doctor,
             'workflowCounts' => $workflowCounts,
+            'onsiteSummary' => $onsiteDashboard->summaryFor($doctor),
         ]);
     }
 }

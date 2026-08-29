@@ -33,6 +33,9 @@ use Inertia\Inertia;
 Route::get('/company-referrals/invitation/{token}', [CompanyReferralController::class, 'invitation'])
     ->middleware(['signed', 'throttle:30,1'])
     ->name('company-referrals.invitation');
+Route::get('/company-referrals/invitation/{token}/download', [CompanyReferralController::class, 'download'])
+    ->middleware(['signed', 'throttle:10,1'])
+    ->name('company-referrals.download');
 
 Route::middleware('auth')->group(function () {
     Route::get('/temporary-password', [TemporaryPasswordController::class, 'edit'])
@@ -118,7 +121,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/final-evaluation/{appointment}', [PhysicalExamController::class, 'final'])->name('final-evaluation');
         Route::post('/final-evaluation/{appointment}', [PhysicalExamController::class, 'finalStore'])->name('final-evaluation.store');
         Route::post('/final-evaluation/{appointment}/drug-test', [\App\Http\Controllers\DoctorDiagnosticResultController::class, 'drugTest'])->name('diagnostics.drug-test.verify');
-        Route::post('/final-evaluation/{appointment}/xray', [\App\Http\Controllers\DoctorDiagnosticResultController::class, 'xray'])->name('diagnostics.xray.verify');
         Route::post('/final-evaluation/{appointment}/release', [PhysicalExamController::class, 'release'])->name('medical-reports.release');
     });
 

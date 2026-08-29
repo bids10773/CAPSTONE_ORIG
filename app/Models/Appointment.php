@@ -60,6 +60,7 @@ class Appointment extends Model
         'type',
         'status',
         'service_types',
+        'examination_purpose',
         'referral_code',
         'notes',
         'batch_id',
@@ -313,7 +314,6 @@ class Appointment extends Model
 
     public function requiresXray(): bool
     {
-        return in_array('X-Ray', $this->service_types ?? [], true)
-            || ($this->isPePackage() && config('medical.pe_package.requires_xray', true));
+        return in_array('X-Ray', $this->service_types ?? [], true);
     }
 }

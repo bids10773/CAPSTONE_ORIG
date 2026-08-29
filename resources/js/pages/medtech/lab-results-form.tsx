@@ -228,12 +228,12 @@ export default function LaboratoryResultsForm({
                                             {field.type === 'select' ? (
                                                 <select
                                                     id={`${sectionKey}-${field.key}`}
-                                                disabled={
-                                                    locked ||
-                                                    (drugVerificationPending &&
-                                                        sectionKey !==
-                                                            'drug_test')
-                                                }
+                                                    disabled={
+                                                        locked ||
+                                                        (drugVerificationPending &&
+                                                            sectionKey !==
+                                                                'drug_test')
+                                                    }
                                                     className={inputClass}
                                                     value={value}
                                                     onChange={(e) =>
@@ -326,13 +326,15 @@ export default function LaboratoryResultsForm({
                             patient workflow.
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <Link
-                                href={`/clinical-forms/${appointment.id}/laboratory.pdf?preview=1`}
-                                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 font-semibold text-slate-700"
-                            >
-                                <Download className="h-4 w-4" />
-                                Preview PDF
-                            </Link>
+                            {!sections.drug_test && (
+                                <Link
+                                    href={`/clinical-forms/${appointment.id}/laboratory.pdf?preview=1`}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 font-semibold text-slate-700"
+                                >
+                                    <Download className="h-4 w-4" />
+                                    Preview PDF
+                                </Link>
+                            )}
                             {!locked && (
                                 <>
                                     <button
@@ -352,8 +354,8 @@ export default function LaboratoryResultsForm({
                                         {drugVerificationPending
                                             ? 'Save Verification Update'
                                             : sections.drug_test
-                                            ? 'Save as Pending'
-                                            : 'Save draft'}
+                                              ? 'Save as Pending'
+                                              : 'Save draft'}
                                     </button>
                                     <button
                                         type="button"
@@ -373,7 +375,8 @@ export default function LaboratoryResultsForm({
                                             ? 'Finalize Drug Test'
                                             : 'Finalize report'}
                                     </button>
-                                    {!drugVerificationPending && sections.drug_test &&
+                                    {!drugVerificationPending &&
+                                        sections.drug_test &&
                                         drugRequiresVerification && (
                                             <button
                                                 type="button"
@@ -392,9 +395,12 @@ export default function LaboratoryResultsForm({
                                         )}
                                     <InputError
                                         message={
-                                            (form.errors as Record<string, string>)[
-                                                'drug_workflow_action'
-                                            ]
+                                            (
+                                                form.errors as Record<
+                                                    string,
+                                                    string
+                                                >
+                                            )['drug_workflow_action']
                                         }
                                     />
                                 </>

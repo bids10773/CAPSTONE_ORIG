@@ -1,8 +1,10 @@
 import { Head, usePage, Link } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
 import { motion } from 'framer-motion';
 import { Users, Clock, CheckCircle } from 'lucide-react';
+import { OnsiteOverviewCard } from '@/components/onsite-overview-card';
+import type { OnsiteOverview } from '@/components/onsite-overview-card';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'RadTech Dashboard', href: '' },
@@ -22,6 +24,7 @@ interface Props {
     completedScans: number;
     pendingScans: number;
     todayScans: number;
+    onsiteSummary: OnsiteOverview;
     pendingAppointments: Appointment[];
 }
 
@@ -29,6 +32,7 @@ export default function RadTechDashboard({
     completedScans = 0,
     pendingScans = 0,
     todayScans = 0,
+    onsiteSummary,
     pendingAppointments = [],
 }: Props) {
     const { auth } = usePage().props as any;
@@ -100,6 +104,11 @@ export default function RadTechDashboard({
                 </div>
 
                 {/* ✅ MAIN GRID (FIXED POSITION) */}
+                <OnsiteOverviewCard
+                    summary={onsiteSummary}
+                    href="/radtech/onsite-events"
+                />
+
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     {/* UPCOMING SCANS */}
                     <div className="rounded-[2rem] border border-white bg-white/60 p-6 shadow-sm backdrop-blur-md lg:col-span-2">
