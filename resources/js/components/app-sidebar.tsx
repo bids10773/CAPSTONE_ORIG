@@ -128,7 +128,11 @@ const navigation: Record<string, Item[]> = {
         },
     ],
     doctor: [
-        { title: 'Overview', href: '/doctor/dashboard', icon: LayoutDashboard },
+        {
+            title: 'Dashboard',
+            href: '/doctor/dashboard',
+            icon: LayoutDashboard,
+        },
         {
             title: 'Appointments',
             href: '/doctor/appointments',

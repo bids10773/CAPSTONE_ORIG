@@ -1094,7 +1094,10 @@ class AppointmentController extends Controller
             ->where('type', '!=', 'company_bulk')
             ->whereHas('user', fn ($user) => $user->where('role', 'patient'))
             ->where(function ($access) use ($request, $role) {
-                $access->whereNull('bulk_appointment_id')
+                $access->where(fn ($regular) => $regular
+                    ->whereNull('bulk_appointment_id')
+                    ->when($role === 'doctor', fn ($appointment) => $appointment
+                        ->where('doctor_id', $request->user()->id)))
                     ->orWhereHas('serviceQueues', fn ($queue) => $queue
                         ->where('service_role', $role)
                         ->where('assigned_staff_id', $request->user()->id)
@@ -1102,11 +1105,12 @@ class AppointmentController extends Controller
             });
 
         if ($role === 'doctor') {
-            $query->where(function ($sub) {
-                $sub->where(fn ($physical) => $physical->whereIn('status', ['accepted', 'arrived'])->whereDoesntHave('physicalExam'))
-                    ->orWhere('status', 'for_final_evaluation')
-                    ->orWhere(fn ($release) => $release->where('status', 'completed')->whereHas('medicalExamination', fn ($exam) => $exam->whereNotNull('finalized_at')->whereNull('released_at')));
-            });
+            $query->whereDate('appointment_date', today())
+                ->where(function ($sub) {
+                    $sub->where(fn ($physical) => $physical->whereIn('status', ['accepted', 'arrived'])->whereDoesntHave('physicalExam'))
+                        ->orWhere('status', 'for_final_evaluation')
+                        ->orWhere(fn ($release) => $release->where('status', 'completed')->whereHas('medicalExamination', fn ($exam) => $exam->whereNotNull('finalized_at')->whereNull('released_at')));
+                });
 
         } elseif ($role === 'medtech') {
             $query->where(function ($work) use ($request) {

@@ -10,6 +10,7 @@ const breadcrumbs: BreadcrumbItem[] = [{ title: 'Doctor Dashboard', href: '' }];
 interface Appointment {
     id: number;
     appointment_date: string;
+    start_time?: string | null;
     status: string;
     service_types: string;
     user: {
@@ -25,6 +26,27 @@ interface Props {
     completedPhysicalCount: number;
     onsiteSummary: OnsiteOverview;
     upcomingAppointments: Appointment[]; // 👈 ADD
+}
+
+function formatAppointmentDate(value: string): string {
+    return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    }).format(new Date(value));
+}
+
+function formatAppointmentTime(value?: string | null): string | null {
+    if (!value) return null;
+
+    const [hours = '0', minutes = '0'] = value.split(':');
+    const date = new Date();
+    date.setHours(Number(hours), Number(minutes), 0, 0);
+
+    return new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+    }).format(date);
 }
 
 export default function DoctorDashboard(props: Props) {
@@ -54,7 +76,7 @@ export default function DoctorDashboard(props: Props) {
                         </span>
                     </h1>
                     <p className="mt-1 text-gray-500">
-                        Here is your medical practice overview for today.
+                        Here is your medical practice dashboard for today.
                     </p>
                 </div>
 
@@ -203,13 +225,20 @@ export default function DoctorDashboard(props: Props) {
                                         {/* RIGHT */}
                                         <div className="text-right">
                                             <p className="font-bold text-gray-900">
-                                                {new Date(
+                                                {formatAppointmentDate(
                                                     apt.appointment_date,
-                                                ).toLocaleTimeString([], {
-                                                    hour: '2-digit',
-                                                    minute: '2-digit',
-                                                })}
+                                                )}
                                             </p>
+
+                                            {formatAppointmentTime(
+                                                apt.start_time,
+                                            ) && (
+                                                <p className="text-xs text-gray-500">
+                                                    {formatAppointmentTime(
+                                                        apt.start_time,
+                                                    )}
+                                                </p>
+                                            )}
 
                                             <span
                                                 className={`rounded-full px-2 py-1 text-xs ${

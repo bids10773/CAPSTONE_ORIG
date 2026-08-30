@@ -173,6 +173,32 @@ test('opening assigned onsite work marks the queue in progress and protects the 
         ->toThrow(\Illuminate\Validation\ValidationException::class);
 });
 
+test('only one department can process an onsite employee at a time', function () {
+    extract(onsiteFixture());
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
+    $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $workflow = app(OnsiteEventWorkflowService::class);
+    $workflow->assignStaff($event, $doctor, 'doctor', 10);
+    $workflow->assignStaff($event, $medtech, 'medtech', 10);
+    $workflow->assignStaff($event, $radtech, 'radtech', 10);
+    $workflow->markArrived($child, $receptionist);
+
+    $workflow->startService($child, 'doctor', $doctor);
+
+    expect(fn () => $workflow->startService($child, 'medtech', $medtech))
+        ->toThrow(\Illuminate\Validation\ValidationException::class)
+        ->and(fn () => $workflow->startService($child, 'radtech', $radtech))
+        ->toThrow(\Illuminate\Validation\ValidationException::class);
+
+    $workflow->completeService($child, 'doctor', $doctor);
+    $workflow->startService($child, 'medtech', $medtech);
+
+    expect($child->serviceQueues()->where('service_role', 'medtech')->value('status'))
+        ->toBe('in_progress');
+});
+
 test('doctor follow-up tasks use doctor deployments and are independently authorized', function () {
     extract(onsiteFixture());
     $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);

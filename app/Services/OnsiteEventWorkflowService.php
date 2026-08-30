@@ -118,16 +118,39 @@ class OnsiteEventWorkflowService
             return;
         }
 
-        $updated = OnsiteServiceQueue::query()
-            ->where('appointment_id', $employee->id)
-            ->where('service_role', $role)
-            ->where('assigned_staff_id', $actor->id)
-            ->whereIn('status', ['assigned', 'in_progress'])
-            ->update(['status' => 'in_progress', 'started_at' => now()]);
+        DB::transaction(function () use ($employee, $role, $actor): void {
+            Appointment::query()->lockForUpdate()->findOrFail($employee->id);
 
-        if ($updated === 0) {
-            throw ValidationException::withMessages(['queue' => 'This employee is not assigned to your onsite queue.']);
-        }
+            $activeService = OnsiteServiceQueue::query()
+                ->where('appointment_id', $employee->id)
+                ->where('service_role', '!=', $role)
+                ->where('status', 'in_progress')
+                ->first();
+
+            if ($activeService) {
+                $department = match ($this->deploymentRole($activeService->service_role)) {
+                    'doctor' => 'Doctor',
+                    'medtech' => 'MedTech',
+                    'radtech' => 'RadTech',
+                    default => 'another department',
+                };
+
+                throw ValidationException::withMessages([
+                    'queue' => "This patient is currently being processed by the {$department}. Complete that service before starting another examination.",
+                ]);
+            }
+
+            $updated = OnsiteServiceQueue::query()
+                ->where('appointment_id', $employee->id)
+                ->where('service_role', $role)
+                ->where('assigned_staff_id', $actor->id)
+                ->whereIn('status', ['assigned', 'in_progress'])
+                ->update(['status' => 'in_progress', 'started_at' => now()]);
+
+            if ($updated === 0) {
+                throw ValidationException::withMessages(['queue' => 'This employee is not assigned to your onsite queue.']);
+            }
+        }, 3);
     }
 
     public function completeService(Appointment $employee, string $role, User $actor): void

@@ -14,6 +14,7 @@ import {
     Search,
     Stethoscope,
     UserRound,
+    VenusAndMars,
     X,
     XCircle,
 } from 'lucide-react';
@@ -881,6 +882,19 @@ export default function AdminAppointmentsIndex() {
                                                   selectedAppointment.user
                                                       .patient_profile
                                                       .civil_status,
+                                              )
+                                            : 'Not provided'
+                                    }
+                                />
+                                <DetailCard
+                                    icon={VenusAndMars}
+                                    label="Sex"
+                                    value={
+                                        selectedAppointment.user.patient_profile
+                                            ?.sex
+                                            ? formatProfileValue(
+                                                  selectedAppointment.user
+                                                      .patient_profile.sex,
                                               )
                                             : 'Not provided'
                                     }
