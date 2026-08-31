@@ -23,6 +23,13 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+import {
+    ChartEmptyState,
+    ChartTooltip,
+    chartAxisProps,
+    chartGridProps,
+    chartLegendProps,
+} from '@/components/analytics/chart-ui';
 import AppLayout from '@/layouts/app-layout';
 import type { DiseaseForecast, ForecastDashboardData } from '@/types/forecast';
 
@@ -109,72 +116,87 @@ function CombinedChart({ disease }: { disease: DiseaseForecast }) {
         ];
     }, [disease]);
 
+    if (!data.length) {
+        return (
+            <ChartEmptyState message="Not enough historical data to generate this forecast." />
+        );
+    }
+
     return (
-        <ResponsiveContainer width="100%" height={340}>
-            <ComposedChart
-                data={data}
-                margin={{ top: 8, right: 10, left: -20, bottom: 0 }}
-            >
-                <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="#e2e8f0"
-                    vertical={false}
-                />
-                <XAxis
-                    dataKey="month"
-                    tickFormatter={monthLabel}
-                    minTickGap={35}
-                    tick={{ fontSize: 11 }}
-                />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip
-                    labelFormatter={(value) => monthLabel(String(value))}
-                    formatter={(value, name) => [
-                        number(Number(value)),
-                        String(name),
-                    ]}
-                />
-                <Legend />
-                <Area
-                    dataKey="upper"
-                    name="95% upper bound"
-                    stroke="none"
-                    fill="#bfdbfe"
-                    fillOpacity={0.45}
-                />
-                <Area
-                    dataKey="lower"
-                    name="95% lower bound"
-                    stroke="none"
-                    fill="#fff"
-                    fillOpacity={1}
-                />
-                <Line
-                    dataKey="actual"
-                    name="Historical cases"
-                    stroke="#237a57"
-                    strokeWidth={2.5}
-                    dot={false}
-                    connectNulls
-                />
-                <Line
-                    dataKey="fitted"
-                    name="Model fit"
-                    stroke="#94a3b8"
-                    strokeDasharray="4 4"
-                    dot={false}
-                />
-                <Line
-                    dataKey="forecast"
-                    name="Forecast"
-                    stroke="#2563eb"
-                    strokeWidth={2.5}
-                    strokeDasharray="7 4"
-                    dot={{ r: 3 }}
-                    connectNulls
-                />
-            </ComposedChart>
-        </ResponsiveContainer>
+        <div className="h-[280px] w-full sm:h-[320px] lg:h-[360px]">
+            <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                    data={data}
+                    margin={{ top: 8, right: 10, left: -20, bottom: 0 }}
+                >
+                    <CartesianGrid {...chartGridProps} />
+                    <XAxis
+                        dataKey="month"
+                        tickFormatter={monthLabel}
+                        minTickGap={35}
+                        {...chartAxisProps}
+                    />
+                    <YAxis
+                        allowDecimals={false}
+                        width={38}
+                        {...chartAxisProps}
+                    />
+                    <Tooltip
+                        content={
+                            <ChartTooltip
+                                labelFormatter={(value) =>
+                                    monthLabel(String(value))
+                                }
+                                valueFormatter={(value) =>
+                                    number(Number(value))
+                                }
+                                unit="cases"
+                            />
+                        }
+                        cursor={{ stroke: '#94a3b8', strokeDasharray: '3 3' }}
+                    />
+                    <Legend {...chartLegendProps} />
+                    <Area
+                        dataKey="upper"
+                        name="95% upper bound"
+                        stroke="none"
+                        fill="#bfdbfe"
+                        fillOpacity={0.45}
+                    />
+                    <Area
+                        dataKey="lower"
+                        name="95% lower bound"
+                        stroke="none"
+                        fill="#fff"
+                        fillOpacity={1}
+                    />
+                    <Line
+                        dataKey="actual"
+                        name="Historical cases"
+                        stroke="#237a57"
+                        strokeWidth={2.5}
+                        dot={false}
+                        connectNulls
+                    />
+                    <Line
+                        dataKey="fitted"
+                        name="Model fit"
+                        stroke="#94a3b8"
+                        strokeDasharray="4 4"
+                        dot={false}
+                    />
+                    <Line
+                        dataKey="forecast"
+                        name="Forecast"
+                        stroke="#2563eb"
+                        strokeWidth={2.5}
+                        strokeDasharray="7 4"
+                        dot={{ r: 3 }}
+                        connectNulls
+                    />
+                </ComposedChart>
+            </ResponsiveContainer>
+        </div>
     );
 }
 
@@ -468,8 +490,7 @@ export default function ForecastDashboard({
                                                 data={selected.seasonal_pattern}
                                             >
                                                 <CartesianGrid
-                                                    strokeDasharray="3 3"
-                                                    vertical={false}
+                                                    {...chartGridProps}
                                                 />
                                                 <XAxis
                                                     dataKey="month_index"
@@ -478,16 +499,29 @@ export default function ForecastDashboard({
                                                             Number(value) - 1
                                                         ]
                                                     }
-                                                    tick={{ fontSize: 10 }}
+                                                    {...chartAxisProps}
                                                 />
-                                                <YAxis
-                                                    tick={{ fontSize: 10 }}
-                                                />
+                                                <YAxis {...chartAxisProps} />
                                                 <Tooltip
-                                                    labelFormatter={(value) =>
-                                                        MONTHS[
-                                                            Number(value) - 1
-                                                        ]
+                                                    content={
+                                                        <ChartTooltip
+                                                            labelFormatter={(
+                                                                value,
+                                                            ) =>
+                                                                MONTHS[
+                                                                    Number(
+                                                                        value,
+                                                                    ) - 1
+                                                                ]
+                                                            }
+                                                            valueFormatter={(
+                                                                value,
+                                                            ) =>
+                                                                Number(
+                                                                    value,
+                                                                ).toFixed(1)
+                                                            }
+                                                        />
                                                     }
                                                 />
                                                 <Line
@@ -518,25 +552,39 @@ export default function ForecastDashboard({
                                     >
                                         <LineChart data={comparison}>
                                             <CartesianGrid
-                                                strokeDasharray="3 3"
-                                                stroke="#e2e8f0"
-                                                vertical={false}
+                                                {...chartGridProps}
                                             />
                                             <XAxis
                                                 dataKey="month"
                                                 tickFormatter={monthLabel}
-                                                tick={{ fontSize: 11 }}
+                                                {...chartAxisProps}
                                             />
                                             <YAxis
                                                 allowDecimals={false}
-                                                tick={{ fontSize: 11 }}
+                                                {...chartAxisProps}
                                             />
                                             <Tooltip
-                                                labelFormatter={(value) =>
-                                                    monthLabel(String(value))
+                                                content={
+                                                    <ChartTooltip
+                                                        labelFormatter={(
+                                                            value,
+                                                        ) =>
+                                                            monthLabel(
+                                                                String(value),
+                                                            )
+                                                        }
+                                                        valueFormatter={(
+                                                            value,
+                                                        ) =>
+                                                            number(
+                                                                Number(value),
+                                                            )
+                                                        }
+                                                        unit="cases"
+                                                    />
                                                 }
                                             />
-                                            <Legend />
+                                            <Legend {...chartLegendProps} />
                                             {data.diseases.map(
                                                 (item, index) => (
                                                     <Line

@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\Auth\PatientProfileCompletionController;
+use App\Http\Controllers\Auth\SocialAuthenticationController;
 use App\Http\Controllers\ClinicalDocumentController;
 use App\Http\Controllers\CompanyBulkMedicalReportController;
 use App\Http\Controllers\CompanyController;
@@ -30,6 +32,22 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+Route::middleware('guest')->group(function () {
+    Route::get('/auth/{provider}/redirect', [SocialAuthenticationController::class, 'redirect'])
+        ->whereIn('provider', ['google', 'facebook'])
+        ->middleware('throttle:20,1')
+        ->name('social.redirect');
+    Route::get('/auth/{provider}/callback', [SocialAuthenticationController::class, 'callback'])
+        ->whereIn('provider', ['google', 'facebook'])
+        ->middleware('throttle:20,1')
+        ->name('social.callback');
+    Route::get('/auth/social/email', [SocialAuthenticationController::class, 'createEmail'])
+        ->name('social.email.create');
+    Route::post('/auth/social/email', [SocialAuthenticationController::class, 'storeEmail'])
+        ->middleware('throttle:6,1')
+        ->name('social.email.store');
+});
+
 Route::get('/company-referrals/invitation/{token}', [CompanyReferralController::class, 'invitation'])
     ->middleware(['signed', 'throttle:30,1'])
     ->name('company-referrals.invitation');
@@ -54,6 +72,11 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/complete-patient-profile', [PatientProfileCompletionController::class, 'edit'])
+        ->name('patient-profile.complete');
+    Route::put('/complete-patient-profile', [PatientProfileCompletionController::class, 'update'])
+        ->middleware('throttle:10,1')
+        ->name('patient-profile.update');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::patch('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('notifications.read');
@@ -66,10 +89,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('api.global-search');
 
     Route::get('/dashboard', PatientDashboardController::class)
-        ->middleware('patient.only')
+        ->middleware(['patient.only', 'profile.complete'])
         ->name('dashboard');
 
-    Route::middleware('role:patient,company')->group(function () {
+    Route::middleware(['role:patient,company', 'profile.complete'])->group(function () {
         Route::get('/appointment', [AppointmentController::class, 'create'])->name('appointment.create');
         Route::get('/appointments', [AppointmentController::class, 'index'])->name('appointments.index');
         Route::get('/appointments/create', [AppointmentController::class, 'create'])->name('appointments.create');

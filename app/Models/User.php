@@ -130,6 +130,31 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(PatientProfile::class);
     }
 
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
+
+    public function hasCompletePatientProfile(): bool
+    {
+        if ($this->role !== 'patient') {
+            return true;
+        }
+
+        $profile = $this->relationLoaded('patientProfile')
+            ? $this->patientProfile
+            : $this->patientProfile()->first();
+
+        return $profile !== null
+            && filled($this->first_name)
+            && filled($this->last_name)
+            && filled($this->contact)
+            && filled($profile->birthdate)
+            && in_array($profile->sex, ['Male', 'Female'], true)
+            && in_array($profile->civil_status, ['Single', 'Married', 'Divorced', 'Widowed'], true)
+            && filled($profile->address);
+    }
+
     /**
      * Get physical exams performed by this doctor.
      */

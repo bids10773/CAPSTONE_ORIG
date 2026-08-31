@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +21,7 @@ class PatientProfile extends Model
         'birthdate',
         'sex',
         'civil_status',
+        'address',
         'employee_number',
     ];
 
@@ -33,6 +35,11 @@ class PatientProfile extends Model
         return [
             'birthdate' => 'date',
         ];
+    }
+
+    protected function age(): Attribute
+    {
+        return Attribute::get(fn (): ?int => $this->birthdate?->age);
     }
 
     /**

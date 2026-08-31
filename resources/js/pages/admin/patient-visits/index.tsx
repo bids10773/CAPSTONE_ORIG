@@ -27,6 +27,14 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+import {
+    ChartCard,
+    ChartEmptyState,
+    ChartTooltip,
+    chartAxisProps,
+    chartGridProps,
+    chartLegendProps,
+} from '@/components/analytics/chart-ui';
 import AppLayout from '@/layouts/app-layout';
 
 type VisitRow = {
@@ -134,16 +142,9 @@ function Panel({
     children: React.ReactNode;
 }) {
     return (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-                <div>
-                    <h2 className="font-bold text-slate-950">{title}</h2>
-                    <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>
-                </div>
-                <DemoLabel />
-            </div>
+        <ChartCard title={title} description={subtitle} action={<DemoLabel />}>
             {children}
-        </section>
+        </ChartCard>
     );
 }
 
@@ -382,65 +383,84 @@ export default function PatientVisitDashboard({
                         title="Historical vs forecast visits"
                         subtitle="Monthly totals with approximate 95% forecast interval"
                     >
-                        <ResponsiveContainer width="100%" height={360}>
-                            <ComposedChart
-                                data={combined}
-                                margin={{ left: -15, right: 10 }}
-                            >
-                                <CartesianGrid
-                                    stroke="#e2e8f0"
-                                    strokeDasharray="3 3"
-                                    vertical={false}
-                                />
-                                <XAxis
-                                    dataKey="month"
-                                    tickFormatter={formatMonth}
-                                    minTickGap={38}
-                                    tick={{ fontSize: 11 }}
-                                />
-                                <YAxis tick={{ fontSize: 11 }} />
-                                <Tooltip
-                                    labelFormatter={(value) =>
-                                        formatMonth(String(value))
-                                    }
-                                    formatter={(value) =>
-                                        formatNumber(Number(value))
-                                    }
-                                />
-                                <Legend />
-                                <Area
-                                    dataKey="upper"
-                                    name="95% upper bound"
-                                    stroke="none"
-                                    fill="#bfdbfe"
-                                    fillOpacity={0.45}
-                                />
-                                <Area
-                                    dataKey="lower"
-                                    name="95% lower bound"
-                                    stroke="none"
-                                    fill="white"
-                                    fillOpacity={1}
-                                />
-                                <Line
-                                    dataKey="historical"
-                                    name="Historical visits"
-                                    stroke="#237a57"
-                                    strokeWidth={2.5}
-                                    dot={false}
-                                    connectNulls
-                                />
-                                <Line
-                                    dataKey="forecast"
-                                    name="Forecast visits"
-                                    stroke="#2563eb"
-                                    strokeWidth={2.5}
-                                    strokeDasharray="7 4"
-                                    dot={{ r: 3 }}
-                                    connectNulls
-                                />
-                            </ComposedChart>
-                        </ResponsiveContainer>
+                        {combined.length ? (
+                            <div className="h-[280px] w-full sm:h-[330px] lg:h-[380px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart
+                                        data={combined}
+                                        margin={{ left: -15, right: 10 }}
+                                    >
+                                        <CartesianGrid {...chartGridProps} />
+                                        <XAxis
+                                            dataKey="month"
+                                            tickFormatter={formatMonth}
+                                            minTickGap={38}
+                                            {...chartAxisProps}
+                                        />
+                                        <YAxis
+                                            allowDecimals={false}
+                                            width={40}
+                                            {...chartAxisProps}
+                                        />
+                                        <Tooltip
+                                            content={
+                                                <ChartTooltip
+                                                    labelFormatter={(value) =>
+                                                        formatMonth(
+                                                            String(value),
+                                                        )
+                                                    }
+                                                    valueFormatter={(value) =>
+                                                        formatNumber(
+                                                            Number(value),
+                                                        )
+                                                    }
+                                                    unit="visits"
+                                                />
+                                            }
+                                            cursor={{
+                                                stroke: '#94a3b8',
+                                                strokeDasharray: '3 3',
+                                            }}
+                                        />
+                                        <Legend {...chartLegendProps} />
+                                        <Area
+                                            dataKey="upper"
+                                            name="95% upper bound"
+                                            stroke="none"
+                                            fill="#bfdbfe"
+                                            fillOpacity={0.45}
+                                        />
+                                        <Area
+                                            dataKey="lower"
+                                            name="95% lower bound"
+                                            stroke="none"
+                                            fill="white"
+                                            fillOpacity={1}
+                                        />
+                                        <Line
+                                            dataKey="historical"
+                                            name="Historical visits"
+                                            stroke="#237a57"
+                                            strokeWidth={2.5}
+                                            dot={false}
+                                            connectNulls
+                                        />
+                                        <Line
+                                            dataKey="forecast"
+                                            name="Forecast visits"
+                                            stroke="#2563eb"
+                                            strokeWidth={2.5}
+                                            strokeDasharray="7 4"
+                                            dot={{ r: 3 }}
+                                            connectNulls
+                                        />
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            </div>
+                        ) : (
+                            <ChartEmptyState message="Not enough historical data to generate this forecast." />
+                        )}
                     </Panel>
 
                     <div className="grid gap-6 xl:grid-cols-2">
@@ -473,11 +493,16 @@ export default function PatientVisitDashboard({
                                         )}
                                     </Pie>
                                     <Tooltip
-                                        formatter={(value) =>
-                                            formatNumber(Number(value))
+                                        content={
+                                            <ChartTooltip
+                                                valueFormatter={(value) =>
+                                                    formatNumber(Number(value))
+                                                }
+                                                unit="visits"
+                                            />
                                         }
                                     />
-                                    <Legend />
+                                    <Legend {...chartLegendProps} />
                                 </PieChart>
                             </ResponsiveContainer>
                         </Panel>
@@ -488,17 +513,22 @@ export default function PatientVisitDashboard({
                         >
                             <ResponsiveContainer width="100%" height={300}>
                                 <BarChart data={data.yearly_comparison}>
-                                    <CartesianGrid
-                                        stroke="#e2e8f0"
-                                        strokeDasharray="3 3"
-                                        vertical={false}
+                                    <CartesianGrid {...chartGridProps} />
+                                    <XAxis dataKey="year" {...chartAxisProps} />
+                                    <YAxis
+                                        allowDecimals={false}
+                                        {...chartAxisProps}
                                     />
-                                    <XAxis dataKey="year" />
-                                    <YAxis />
                                     <Tooltip
-                                        formatter={(value) =>
-                                            formatNumber(Number(value))
+                                        content={
+                                            <ChartTooltip
+                                                valueFormatter={(value) =>
+                                                    formatNumber(Number(value))
+                                                }
+                                                unit="visits"
+                                            />
                                         }
+                                        cursor={{ fill: '#f1f5f9' }}
                                     />
                                     <Bar
                                         dataKey="total_visits"
@@ -518,23 +548,30 @@ export default function PatientVisitDashboard({
                         >
                             <ResponsiveContainer width="100%" height={320}>
                                 <AreaChart data={categoryComparison}>
-                                    <CartesianGrid
-                                        stroke="#e2e8f0"
-                                        strokeDasharray="3 3"
-                                        vertical={false}
-                                    />
+                                    <CartesianGrid {...chartGridProps} />
                                     <XAxis
                                         dataKey="month"
                                         tickFormatter={formatMonth}
-                                        tick={{ fontSize: 11 }}
+                                        {...chartAxisProps}
                                     />
-                                    <YAxis />
+                                    <YAxis
+                                        allowDecimals={false}
+                                        {...chartAxisProps}
+                                    />
                                     <Tooltip
-                                        labelFormatter={(value) =>
-                                            formatMonth(String(value))
+                                        content={
+                                            <ChartTooltip
+                                                labelFormatter={(value) =>
+                                                    formatMonth(String(value))
+                                                }
+                                                valueFormatter={(value) =>
+                                                    formatNumber(Number(value))
+                                                }
+                                                unit="visits"
+                                            />
                                         }
                                     />
-                                    <Legend />
+                                    <Legend {...chartLegendProps} />
                                     {Object.values(data.category_forecasts).map(
                                         (category, index) => (
                                             <Area
@@ -565,23 +602,27 @@ export default function PatientVisitDashboard({
                         >
                             <ResponsiveContainer width="100%" height={320}>
                                 <BarChart data={data.model.seasonal_pattern}>
-                                    <CartesianGrid
-                                        stroke="#e2e8f0"
-                                        strokeDasharray="3 3"
-                                        vertical={false}
-                                    />
+                                    <CartesianGrid {...chartGridProps} />
                                     <XAxis
                                         dataKey="month_index"
                                         tickFormatter={(value) =>
                                             MONTHS[Number(value) - 1]
                                         }
-                                        tick={{ fontSize: 10 }}
+                                        {...chartAxisProps}
                                     />
-                                    <YAxis />
+                                    <YAxis {...chartAxisProps} />
                                     <Tooltip
-                                        labelFormatter={(value) =>
-                                            MONTHS[Number(value) - 1]
+                                        content={
+                                            <ChartTooltip
+                                                labelFormatter={(value) =>
+                                                    MONTHS[Number(value) - 1]
+                                                }
+                                                valueFormatter={(value) =>
+                                                    Number(value).toFixed(1)
+                                                }
+                                            />
                                         }
+                                        cursor={{ fill: '#f1f5f9' }}
                                     />
                                     <Bar
                                         dataKey="effect"

@@ -9,6 +9,22 @@ import {
     FlaskConical,
     Scan,
 } from 'lucide-react';
+import {
+    Bar,
+    BarChart,
+    CartesianGrid,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from 'recharts';
+import {
+    ChartCard,
+    ChartEmptyState,
+    ChartTooltip,
+    chartAxisProps,
+    chartGridProps,
+} from '@/components/analytics/chart-ui';
 import AppLayout from '@/layouts/app-layout';
 
 interface Props {
@@ -120,46 +136,65 @@ export default function AdminAnalytics() {
                 </div>
 
                 {/* Monthly Trends */}
-                <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                    <h3 className="mb-4 text-lg font-semibold text-gray-900">
-                        Monthly Appointment Trends
-                    </h3>
-                    <div className="flex h-48 items-end gap-2">
-                        {(monthlyTrends || []).map(
-                            (trend: any, index: number) => {
-                                const counts = (monthlyTrends || []).map(
-                                    (t: any) => t.count,
-                                );
-                                const maxCount = Math.max(...counts, 1);
-                                const heightPercent =
-                                    maxCount > 0
-                                        ? (trend.count / maxCount) * 100
-                                        : 0;
-                                return (
-                                    <div
-                                        key={index}
-                                        className="flex flex-1 flex-col items-center gap-2"
-                                    >
-                                        <div
-                                            className="w-full rounded-t-md bg-moss-500 transition-all hover:bg-moss-600"
-                                            style={{
-                                                height: `${heightPercent}%`,
-                                                minHeight:
-                                                    trend.count > 0
-                                                        ? '10px'
-                                                        : '0',
-                                            }}
-                                            title={`${trend.count} appointments`}
-                                        />
-                                        <span className="text-xs text-gray-500">
-                                            {trend.month?.substring(0, 3)}
-                                        </span>
-                                    </div>
-                                );
-                            },
-                        )}
-                    </div>
-                </div>
+                <ChartCard
+                    title="Monthly Appointment Volume"
+                    description="Recorded appointments by month for the current reporting period."
+                >
+                    {(monthlyTrends || []).length ? (
+                        <div className="h-[260px] w-full sm:h-[310px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={monthlyTrends}
+                                    margin={{
+                                        top: 8,
+                                        right: 8,
+                                        left: -8,
+                                        bottom: 0,
+                                    }}
+                                >
+                                    <CartesianGrid {...chartGridProps} />
+                                    <XAxis
+                                        dataKey="month"
+                                        tickFormatter={(value) =>
+                                            String(value).substring(0, 3)
+                                        }
+                                        minTickGap={20}
+                                        {...chartAxisProps}
+                                    />
+                                    <YAxis
+                                        allowDecimals={false}
+                                        width={42}
+                                        {...chartAxisProps}
+                                    />
+                                    <Tooltip
+                                        content={
+                                            <ChartTooltip
+                                                valueFormatter={(value) =>
+                                                    Number(
+                                                        value,
+                                                    ).toLocaleString()
+                                                }
+                                                unit="appointments"
+                                            />
+                                        }
+                                        cursor={{ fill: '#f1f5f9' }}
+                                    />
+                                    <Bar
+                                        dataKey="count"
+                                        name="Appointments"
+                                        fill="#237a57"
+                                        radius={[6, 6, 0, 0]}
+                                        maxBarSize={42}
+                                        isAnimationActive
+                                        animationDuration={450}
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <ChartEmptyState />
+                    )}
+                </ChartCard>
 
                 {/* Status & Service Breakdown */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

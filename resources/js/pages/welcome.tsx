@@ -181,7 +181,7 @@ function Navbar() {
                         className="flex items-center gap-3"
                         aria-label="Living Myth Industrial Clinic home"
                     >
-                        <span className="flex h-11 w-[72px] items-center justify-center rounded-xl bg-moss-800 px-1.5 shadow-sm">
+                        <span className="ph flex h-11 w-[72px] items-center justify-center rounded-xl px-1.5">
                             <img
                                 src={logo}
                                 alt="Living Myth Industrial Clinic"

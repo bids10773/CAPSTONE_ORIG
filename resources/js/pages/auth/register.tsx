@@ -19,6 +19,7 @@ import {
     PasswordMatch,
     PasswordRequirements,
 } from '@/components/password-requirements';
+import SocialAuthButtons from '@/components/social-auth-buttons';
 import TextLink from '@/components/text-link';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
@@ -53,6 +54,10 @@ export default function Register() {
                         System.
                     </p>
                 </header>
+
+                <div className="mb-6">
+                    <SocialAuthButtons mode="register" />
+                </div>
 
                 <Form
                     {...store.form()}

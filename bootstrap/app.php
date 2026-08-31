@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'patient.only' => \App\Http\Middleware\PatientOnlyMiddleware::class,
+            'profile.complete' => \App\Http\Middleware\EnsurePatientProfileIsComplete::class,
         ]);
 
     })
