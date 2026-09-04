@@ -7,6 +7,7 @@ import {
     Save,
     ShieldCheck,
 } from 'lucide-react';
+import { useState } from 'react';
 
 import InputError from '@/components/input-error';
 import AppLayout from '@/layouts/app-layout';
@@ -24,6 +25,8 @@ type Field = {
     unit?: string | null;
     normal?: string | null;
     options: string[];
+    validation?: { min: number; max: number; decimals: number } | null;
+    reference?: Record<string, [number | null, number | null]>;
 };
 type Section = { label: string; column: string; fields: Field[] };
 type Props = {
@@ -86,11 +89,95 @@ export default function LaboratoryResultsForm({
     });
     const inputClass =
         'mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15 disabled:bg-slate-100';
-    const update = (section: string, field: string, value: string) =>
+    const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
+    const validateField = (field: Field, value: unknown, required = false) => {
+        const text = String(value ?? '').trim();
+        if (!text) {
+            return required
+                ? 'Complete this result before finalizing the laboratory report.'
+                : '';
+        }
+        if (field.type === 'select' && !field.options.includes(text)) {
+            return 'Select one of the available laboratory result options.';
+        }
+        if (field.type === 'number' && field.validation) {
+            const pattern = new RegExp(
+                `^\\d+(?:\\.\\d{1,${field.validation.decimals}})?$`,
+            );
+            if (!pattern.test(text)) {
+                return `Enter a plain number with no more than ${field.validation.decimals} decimal places.`;
+            }
+            const number = Number(text);
+            if (
+                number < field.validation.min ||
+                number > field.validation.max
+            ) {
+                return `Value must be between ${field.validation.min} and ${field.validation.max}${field.unit ? ` ${field.unit}` : ''}.`;
+            }
+        }
+        if (field.type === 'text' && text.length > 1000) {
+            return 'Result must not exceed 1000 characters.';
+        }
+        return '';
+    };
+    const update = (section: string, field: Field, value: string) => {
         form.setData('results', {
             ...form.data.results,
-            [section]: { ...form.data.results[section], [field]: value },
+            [section]: {
+                ...form.data.results[section],
+                [field.key]: value,
+            },
         });
+        const key = `results.${section}.${field.key}`;
+        if (localErrors[key]) {
+            setLocalErrors((current) => ({
+                ...current,
+                [key]: validateField(field, value),
+            }));
+        }
+    };
+    const validateBeforeSubmit = (finalize: boolean) => {
+        const nextErrors: Record<string, string> = {};
+        Object.entries(sections).forEach(([sectionKey, section]) => {
+            section.fields.forEach((field) => {
+                const key = `results.${sectionKey}.${field.key}`;
+                const message = validateField(
+                    field,
+                    form.data.results[sectionKey]?.[field.key],
+                    finalize,
+                );
+                if (message) nextErrors[key] = message;
+            });
+        });
+        setLocalErrors(nextErrors);
+        return Object.keys(nextErrors).length === 0;
+    };
+    const blurField = (section: string, field: Field, value: unknown) => {
+        const key = `results.${section}.${field.key}`;
+        setLocalErrors((current) => ({
+            ...current,
+            [key]: validateField(field, value),
+        }));
+    };
+    const referenceStatus = (field: Field, value: unknown) => {
+        if (field.type !== 'number' || !field.reference || !field.validation)
+            return null;
+        const text = String(value ?? '').trim();
+        const pattern = new RegExp(
+            `^\\d+(?:\\.\\d{1,${field.validation.decimals}})?$`,
+        );
+        if (!pattern.test(text)) return null;
+        const sex = String(patientSummary.sex ?? '').toLowerCase();
+        const range =
+            (sex.startsWith('m') ? field.reference.male : null) ??
+            (sex.startsWith('f') ? field.reference.female : null) ??
+            field.reference.default;
+        if (!range) return null;
+        const number = Number(text);
+        if (range[0] !== null && number < range[0]) return 'Low';
+        if (range[1] !== null && number > range[1]) return 'High';
+        return 'Within reference';
+    };
     const submit = (
         finalize: boolean,
         drugWorkflowAction:
@@ -98,6 +185,7 @@ export default function LaboratoryResultsForm({
             | 'send_verification'
             | 'update_verification' = 'complete',
     ) => {
+        if (!validateBeforeSubmit(finalize)) return;
         form.transform((data) => ({
             ...data,
             finalize,
@@ -206,6 +294,14 @@ export default function LaboratoryResultsForm({
                                     const error = (
                                         form.errors as Record<string, string>
                                     )[`results.${sectionKey}.${field.key}`];
+                                    const localError =
+                                        localErrors[
+                                            `results.${sectionKey}.${field.key}`
+                                        ];
+                                    const status = referenceStatus(
+                                        field,
+                                        value,
+                                    );
                                     return (
                                         <div key={field.key}>
                                             <label
@@ -239,8 +335,15 @@ export default function LaboratoryResultsForm({
                                                     onChange={(e) =>
                                                         update(
                                                             sectionKey,
-                                                            field.key,
+                                                            field,
                                                             e.target.value,
+                                                        )
+                                                    }
+                                                    onBlur={() =>
+                                                        blurField(
+                                                            sectionKey,
+                                                            field,
+                                                            value,
                                                         )
                                                     }
                                                 >
@@ -268,15 +371,27 @@ export default function LaboratoryResultsForm({
                                                                 sectionKey !==
                                                                     'drug_test')
                                                         }
-                                                        type={field.type}
-                                                        step="any"
+                                                        inputMode={
+                                                            field.type ===
+                                                            'number'
+                                                                ? 'decimal'
+                                                                : undefined
+                                                        }
+                                                        type="text"
                                                         className={`${inputClass} ${field.unit ? 'pr-20' : ''}`}
                                                         value={value}
                                                         onChange={(e) =>
                                                             update(
                                                                 sectionKey,
-                                                                field.key,
+                                                                field,
                                                                 e.target.value,
+                                                            )
+                                                        }
+                                                        onBlur={() =>
+                                                            blurField(
+                                                                sectionKey,
+                                                                field,
+                                                                value,
                                                             )
                                                         }
                                                     />
@@ -287,7 +402,18 @@ export default function LaboratoryResultsForm({
                                                     )}
                                                 </div>
                                             )}
-                                            <InputError message={error} />
+                                            {status &&
+                                                !localError &&
+                                                !error && (
+                                                    <p
+                                                        className={`mt-1 text-xs font-semibold ${status === 'Within reference' ? 'text-emerald-700' : 'text-amber-700'}`}
+                                                    >
+                                                        {status} range
+                                                    </p>
+                                                )}
+                                            <InputError
+                                                message={localError || error}
+                                            />
                                         </div>
                                     );
                                 })}

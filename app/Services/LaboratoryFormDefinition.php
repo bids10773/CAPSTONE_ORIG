@@ -32,26 +32,26 @@ class LaboratoryFormDefinition
     {
         return [
             'cbc' => ['label' => 'Complete Blood Count', 'column' => 'cbc_results', 'services' => ['CBC'], 'fields' => [
-                $this->field('hemoglobin', 'Hemoglobin', 'number', 'g/dL', 'M 13–17; F 12–16'),
-                $this->field('hematocrit', 'Hematocrit', 'number', null, 'M 0.39–0.53; F 0.36–0.46'),
-                $this->field('rbc_count', 'RBC Count', 'number', '×10¹²/L', 'M 4.5–6.2; F 4.2–5.4'),
-                $this->field('wbc_count', 'WBC Count', 'number', '×10⁹/L', '5.0–10.0'),
-                $this->field('segmenters', 'Segmenters', 'number', null, '0.50–0.70'),
-                $this->field('lymphocytes', 'Lymphocytes', 'number', null, '0.20–0.50'),
-                $this->field('monocytes', 'Monocytes', 'number', null, '0.02–0.09'),
-                $this->field('eosinophils', 'Eosinophils', 'number', null, '0.00–0.06'),
-                $this->field('basophils', 'Basophils', 'number', null, '0.00–0.02'),
-                $this->field('stab', 'Stab', 'number', null, '0.02–0.06'),
-                $this->field('meta', 'Meta', 'number', null, '0.00–0.01'),
+                $this->numberField('hemoglobin', 'Hemoglobin', 'g/dL', 'M 13–17; F 12–16', 0, 30, 2, ['male' => [13, 17], 'female' => [12, 16]]),
+                $this->numberField('hematocrit', 'Hematocrit', null, 'M 0.39–0.53; F 0.36–0.46', 0, 1, 3, ['male' => [0.39, 0.53], 'female' => [0.36, 0.46]]),
+                $this->numberField('rbc_count', 'RBC Count', '×10¹²/L', 'M 4.5–6.2; F 4.2–5.4', 0, 20, 2, ['male' => [4.5, 6.2], 'female' => [4.2, 5.4]]),
+                $this->numberField('wbc_count', 'WBC Count', '×10⁹/L', '5.0–10.0', 0, 500, 2, ['default' => [5, 10]]),
+                $this->numberField('segmenters', 'Segmenters', null, '0.50–0.70', 0, 1, 2, ['default' => [0.5, 0.7]]),
+                $this->numberField('lymphocytes', 'Lymphocytes', null, '0.20–0.50', 0, 1, 2, ['default' => [0.2, 0.5]]),
+                $this->numberField('monocytes', 'Monocytes', null, '0.02–0.09', 0, 1, 2, ['default' => [0.02, 0.09]]),
+                $this->numberField('eosinophils', 'Eosinophils', null, '0.00–0.06', 0, 1, 2, ['default' => [0, 0.06]]),
+                $this->numberField('basophils', 'Basophils', null, '0.00–0.02', 0, 1, 2, ['default' => [0, 0.02]]),
+                $this->numberField('stab', 'Stab', null, '0.02–0.06', 0, 1, 2, ['default' => [0.02, 0.06]]),
+                $this->numberField('meta', 'Meta', null, '0.00–0.01', 0, 1, 2, ['default' => [0, 0.01]]),
                 $this->field('differential_others', 'Differential Others'),
-                $this->field('platelet_count', 'Platelet Count', 'number', '×10⁹/L', '150–450'),
+                $this->numberField('platelet_count', 'Platelet Count', '×10⁹/L', '150–450', 0, 2000, 2, ['default' => [150, 450]]),
                 $this->field('verification_note', 'Verification Note'),
             ]],
             'urinalysis' => ['label' => 'Urinalysis', 'column' => 'urinalysis_results', 'services' => ['Urinalysis'], 'fields' => [
                 $this->field('color', 'Color', 'select', null, 'Straw–Amber', ['Straw', 'Yellow', 'Light Yellow', 'Dark Yellow', 'Amber', 'Reddish', 'Other']),
                 $this->field('transparency', 'Transparency', 'select', null, 'Clear', ['Clear', 'Slightly Hazy', 'Hazy', 'Turbid']),
-                $this->field('ph', 'Reaction / pH', 'number', null, '4.5–8.0'),
-                $this->field('specific_gravity', 'Specific Gravity', 'number', null, '1.005–1.025'),
+                $this->numberField('ph', 'Reaction / pH', null, '4.5–8.0', 0, 14, 2, ['default' => [4.5, 8]]),
+                $this->numberField('specific_gravity', 'Specific Gravity', null, '1.005–1.025', 1, 1.1, 3, ['default' => [1.005, 1.025]]),
                 $this->field('glucose', 'Glucose / Sugar', 'select', null, 'Negative', $this->semiQuantitative()),
                 $this->field('albumin', 'Albumin / Protein', 'select', null, 'Negative', $this->semiQuantitative()),
                 $this->field('wbc', 'WBC', 'text', '/HPF', '0–2/HPF'),
@@ -82,11 +82,16 @@ class LaboratoryFormDefinition
                 $this->field('pregnancy_test', 'Urine Pregnancy Test', 'select', null, null, ['Negative', 'Positive']),
             ]],
             'blood_chemistry' => ['label' => 'Blood Chemistry', 'column' => 'blood_chemistry_results', 'services' => ['FBS', 'Blood Chemistry'], 'fields' => [
-                $this->field('fbs', 'FBS', 'number', 'mg/dL', '75–115'), $this->field('cholesterol', 'Cholesterol', 'number', 'mg/dL', '<200'),
-                $this->field('triglycerides', 'Triglycerides', 'number', 'mg/dL', '36–165'), $this->field('hdl', 'HDL', 'number', 'mg/dL', 'M 26–63; F 33–75'),
-                $this->field('ldl', 'LDL', 'number', 'mg/dL', '63–175'), $this->field('bun', 'BUN', 'number', 'mg/dL', '10–50'),
-                $this->field('creatinine', 'Creatinine', 'number', 'mg/dL', '0.7–2.0'), $this->field('sgot', 'SGOT', 'number', 'units/mL', '<40'),
-                $this->field('sgpt', 'SGPT', 'number', 'units/mL', '<45'), $this->field('uric_acid', 'Uric Acid', 'number', 'mg/dL', '3.4–7.0'),
+                $this->numberField('fbs', 'FBS', 'mg/dL', '75–115', 0, 2000, 2, ['default' => [75, 115]]),
+                $this->numberField('cholesterol', 'Cholesterol', 'mg/dL', '<200', 0, 2000, 2, ['default' => [null, 199.99]]),
+                $this->numberField('triglycerides', 'Triglycerides', 'mg/dL', '36–165', 0, 5000, 2, ['default' => [36, 165]]),
+                $this->numberField('hdl', 'HDL', 'mg/dL', 'M 26–63; F 33–75', 0, 500, 2, ['male' => [26, 63], 'female' => [33, 75]]),
+                $this->numberField('ldl', 'LDL', 'mg/dL', '63–175', 0, 2000, 2, ['default' => [63, 175]]),
+                $this->numberField('bun', 'BUN', 'mg/dL', '10–50', 0, 500, 2, ['default' => [10, 50]]),
+                $this->numberField('creatinine', 'Creatinine', 'mg/dL', '0.7–2.0', 0, 100, 3, ['default' => [0.7, 2]]),
+                $this->numberField('sgot', 'SGOT', 'units/mL', '<40', 0, 10000, 2, ['default' => [null, 39.99]]),
+                $this->numberField('sgpt', 'SGPT', 'units/mL', '<45', 0, 10000, 2, ['default' => [null, 44.99]]),
+                $this->numberField('uric_acid', 'Uric Acid', 'mg/dL', '3.4–7.0', 0, 100, 2, ['default' => [3.4, 7]]),
             ]],
             'blood_type' => ['label' => 'Blood Type', 'column' => 'blood_type', 'services' => ['Blood Typing'], 'fields' => [
                 $this->field('blood_type', 'Blood Type', 'select', null, null, ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']),
@@ -94,9 +99,14 @@ class LaboratoryFormDefinition
         ];
     }
 
-    private function field(string $key, string $label, string $type = 'text', ?string $unit = null, ?string $normal = null, array $options = []): array
+    private function field(string $key, string $label, string $type = 'text', ?string $unit = null, ?string $normal = null, array $options = [], ?array $validation = null, array $reference = []): array
     {
-        return compact('key', 'label', 'type', 'unit', 'normal', 'options');
+        return compact('key', 'label', 'type', 'unit', 'normal', 'options', 'validation', 'reference');
+    }
+
+    private function numberField(string $key, string $label, ?string $unit, string $normal, float $min, float $max, int $decimals, array $reference): array
+    {
+        return $this->field($key, $label, 'number', $unit, $normal, [], compact('min', 'max', 'decimals'), $reference);
     }
 
     private function semiQuantitative(): array

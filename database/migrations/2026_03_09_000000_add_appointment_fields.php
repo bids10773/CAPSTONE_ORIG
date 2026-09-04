@@ -11,19 +11,29 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('appointments', function (Blueprint $table) {
-            // Add service type for the appointment
-            $table->json('service_types')->nullable()->after('company_id');
+        if (! Schema::hasColumn('appointments', 'service_types')) {
+            Schema::table('appointments', function (Blueprint $table) {
+                $table->json('service_types')->nullable()->after('company_id');
+            });
+        }
 
-            // Add referral code for company referrals
-            $table->string('referral_code')->nullable()->after('service_type');
+        if (! Schema::hasColumn('appointments', 'referral_code')) {
+            Schema::table('appointments', function (Blueprint $table) {
+                $table->string('referral_code')->nullable()->after('service_types');
+            });
+        }
 
-            // Add notes field
-            $table->text('notes')->nullable()->after('referral_code');
+        if (! Schema::hasColumn('appointments', 'notes')) {
+            Schema::table('appointments', function (Blueprint $table) {
+                $table->text('notes')->nullable()->after('referral_code');
+            });
+        }
 
-            // Add bulk batch identifier for company bulk bookings
-            $table->string('batch_id')->nullable()->after('notes');
-        });
+        if (! Schema::hasColumn('appointments', 'batch_id')) {
+            Schema::table('appointments', function (Blueprint $table) {
+                $table->string('batch_id')->nullable()->after('notes');
+            });
+        }
     }
 
     /**
@@ -31,13 +41,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('appointments', function (Blueprint $table) {
-            $table->dropColumn([
-                'service_type',
-                'referral_code',
-                'notes',
-                'batch_id',
-            ]);
-        });
+        $columns = collect(['service_types', 'referral_code', 'notes', 'batch_id'])
+            ->filter(fn (string $column): bool => Schema::hasColumn('appointments', $column))
+            ->all();
+
+        if ($columns !== []) {
+            Schema::table('appointments', fn (Blueprint $table) => $table->dropColumn($columns));
+        }
     }
 };

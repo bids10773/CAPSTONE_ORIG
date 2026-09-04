@@ -13,6 +13,7 @@ import {
     Weight,
 } from 'lucide-react';
 import type React from 'react';
+import { useState } from 'react';
 import {
     ClinicalSection,
     MedicalMetricCard,
@@ -53,7 +54,19 @@ interface Props {
         summary: string;
     }>;
     submitUrl: string;
+    vitalLimits: Record<string, { min: number; max: number }>;
 }
+
+type VitalField =
+    | 'height'
+    | 'weight'
+    | 'pulse_rate'
+    | 'temperature'
+    | 'systolic_pressure'
+    | 'diastolic_pressure';
+
+const decimalPattern = /^\d+(?:\.\d)?$/;
+const integerPattern = /^\d+$/;
 
 const bodyParts = [
     { label: 'Head and scalp', field: 'head_scalp' },
@@ -102,11 +115,16 @@ export default function PhysicalExamForm({
     medicalExamination,
     childSummaries,
     submitUrl,
+    vitalLimits,
 }: Props) {
+    const [initialSystolic = '', initialDiastolic = ''] = String(
+        physicalExam?.blood_pressure || '',
+    ).split('/');
     const { data, setData, post, processing, errors } = useForm<any>({
         height: physicalExam?.height || '',
         weight: physicalExam?.weight || '',
-        blood_pressure: physicalExam?.blood_pressure || '',
+        systolic_pressure: initialSystolic,
+        diastolic_pressure: initialDiastolic,
         pulse_rate: physicalExam?.pulse_rate || '',
         respiration_rate: physicalExam?.respiration_rate || '',
         temperature: physicalExam?.temperature || '',
@@ -134,6 +152,71 @@ export default function PhysicalExamForm({
             ]),
         ),
     });
+    const [vitalErrors, setVitalErrors] = useState<
+        Partial<Record<VitalField, string>>
+    >({});
+
+    const validateVital = (field: VitalField, value: unknown): string => {
+        const text = String(value ?? '').trim();
+        const label = field.replace('_rate', '').replace('_pressure', '');
+
+        if (!text) {
+            return field.includes('pressure')
+                ? 'Please enter both systolic and diastolic blood pressure.'
+                : `${label.charAt(0).toUpperCase() + label.slice(1)} is required.`;
+        }
+
+        const decimal = ['height', 'weight', 'temperature'].includes(field);
+        if (!(decimal ? decimalPattern : integerPattern).test(text)) {
+            return decimal
+                ? 'Enter a number with no more than one decimal place.'
+                : 'Enter a whole number only.';
+        }
+
+        const valueNumber = Number(text);
+        const { min, max } = vitalLimits[field];
+        if (valueNumber < min || valueNumber > max) {
+            const units: Record<VitalField, string> = {
+                height: 'cm',
+                weight: 'kg',
+                pulse_rate: 'bpm',
+                temperature: '°C',
+                systolic_pressure: 'mm Hg',
+                diastolic_pressure: 'mm Hg',
+            };
+            return `Value must be between ${min} and ${max} ${units[field]}.`;
+        }
+
+        if (
+            field === 'systolic_pressure' &&
+            integerPattern.test(String(data.diastolic_pressure).trim()) &&
+            valueNumber <= Number(data.diastolic_pressure)
+        ) {
+            return 'Systolic pressure must be greater than diastolic pressure.';
+        }
+        if (
+            field === 'diastolic_pressure' &&
+            integerPattern.test(String(data.systolic_pressure).trim()) &&
+            Number(data.systolic_pressure) <= valueNumber
+        ) {
+            return 'Systolic pressure must be greater than diastolic pressure.';
+        }
+
+        return '';
+    };
+
+    const updateVital = (field: VitalField, value: string) => {
+        setData(field, value);
+        if (vitalErrors[field]) {
+            const message = validateVital(field, value);
+            setVitalErrors((current) => ({ ...current, [field]: message }));
+        }
+    };
+
+    const blurVital = (field: VitalField) => {
+        const message = validateVital(field, data[field]);
+        setVitalErrors((current) => ({ ...current, [field]: message }));
+    };
     const height = Number.parseFloat(data.height);
     const weight = Number.parseFloat(data.weight);
     const bmi =
@@ -154,6 +237,24 @@ export default function PhysicalExamForm({
 
     const onSubmit = (event: React.FormEvent) => {
         event.preventDefault();
+        const fields: VitalField[] = [
+            'height',
+            'weight',
+            'pulse_rate',
+            'temperature',
+            'systolic_pressure',
+            'diastolic_pressure',
+        ];
+        const nextErrors = Object.fromEntries(
+            fields.map((field) => [field, validateVital(field, data[field])]),
+        ) as Record<VitalField, string>;
+        setVitalErrors(nextErrors);
+        if (Object.values(nextErrors).some(Boolean)) {
+            document
+                .getElementById('physical-exam-errors')
+                ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
         post(submitUrl, {
             preserveScroll: true,
             onError: () =>
@@ -195,7 +296,8 @@ export default function PhysicalExamForm({
                 ]}
             />
 
-            {Object.keys(errors).length > 0 && (
+            {(Object.keys(errors).length > 0 ||
+                Object.values(vitalErrors).some(Boolean)) && (
                 <div
                     id="physical-exam-errors"
                     role="alert"
@@ -293,11 +395,20 @@ export default function PhysicalExamForm({
                                     value={data.height}
                                     inputMode="decimal"
                                     onChange={(event) =>
-                                        setData('height', event.target.value)
+                                        updateVital(
+                                            'height',
+                                            event.target.value,
+                                        )
                                     }
+                                    onBlur={() => blurVital('height')}
+                                    maxLength={5}
                                     placeholder="e.g. 170"
                                 />
-                                <FieldError message={errors.height} />
+                                <FieldError
+                                    message={
+                                        vitalErrors.height || errors.height
+                                    }
+                                />
                             </MedicalMetricCard>
                             <MedicalMetricCard
                                 icon={Weight}
@@ -308,28 +419,77 @@ export default function PhysicalExamForm({
                                     value={data.weight}
                                     inputMode="decimal"
                                     onChange={(event) =>
-                                        setData('weight', event.target.value)
+                                        updateVital(
+                                            'weight',
+                                            event.target.value,
+                                        )
                                     }
+                                    onBlur={() => blurVital('weight')}
+                                    maxLength={5}
                                     placeholder="e.g. 65"
                                 />
-                                <FieldError message={errors.weight} />
+                                <FieldError
+                                    message={
+                                        vitalErrors.weight || errors.weight
+                                    }
+                                />
                             </MedicalMetricCard>
                             <MedicalMetricCard
                                 icon={HeartPulse}
                                 label="Blood pressure"
-                                unit="mmHg"
+                                unit="mm Hg"
                             >
-                                <Input
-                                    value={data.blood_pressure}
-                                    onChange={(event) =>
-                                        setData(
-                                            'blood_pressure',
-                                            event.target.value,
-                                        )
+                                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                                    <Input
+                                        aria-label="Systolic pressure"
+                                        value={data.systolic_pressure}
+                                        inputMode="numeric"
+                                        onChange={(event) =>
+                                            updateVital(
+                                                'systolic_pressure',
+                                                event.target.value,
+                                            )
+                                        }
+                                        onBlur={() =>
+                                            blurVital('systolic_pressure')
+                                        }
+                                        maxLength={3}
+                                        placeholder="120"
+                                    />
+                                    <span
+                                        aria-hidden="true"
+                                        className="font-semibold text-slate-500"
+                                    >
+                                        /
+                                    </span>
+                                    <Input
+                                        aria-label="Diastolic pressure"
+                                        value={data.diastolic_pressure}
+                                        inputMode="numeric"
+                                        onChange={(event) =>
+                                            updateVital(
+                                                'diastolic_pressure',
+                                                event.target.value,
+                                            )
+                                        }
+                                        onBlur={() =>
+                                            blurVital('diastolic_pressure')
+                                        }
+                                        maxLength={3}
+                                        placeholder="80"
+                                    />
+                                </div>
+                                <p className="text-xs text-slate-500">
+                                    Systolic / Diastolic
+                                </p>
+                                <FieldError
+                                    message={
+                                        vitalErrors.systolic_pressure ||
+                                        vitalErrors.diastolic_pressure ||
+                                        errors.systolic_pressure ||
+                                        errors.diastolic_pressure
                                     }
-                                    placeholder="120/80"
                                 />
-                                <FieldError message={errors.blood_pressure} />
                             </MedicalMetricCard>
                             <MedicalMetricCard
                                 icon={Activity}
@@ -338,15 +498,23 @@ export default function PhysicalExamForm({
                             >
                                 <Input
                                     value={data.pulse_rate}
+                                    inputMode="numeric"
                                     onChange={(event) =>
-                                        setData(
+                                        updateVital(
                                             'pulse_rate',
                                             event.target.value,
                                         )
                                     }
+                                    onBlur={() => blurVital('pulse_rate')}
+                                    maxLength={3}
                                     placeholder="e.g. 72"
                                 />
-                                <FieldError message={errors.pulse_rate} />
+                                <FieldError
+                                    message={
+                                        vitalErrors.pulse_rate ||
+                                        errors.pulse_rate
+                                    }
+                                />
                             </MedicalMetricCard>
                             <MedicalMetricCard
                                 icon={Thermometer}
@@ -355,15 +523,23 @@ export default function PhysicalExamForm({
                             >
                                 <Input
                                     value={data.temperature}
+                                    inputMode="decimal"
                                     onChange={(event) =>
-                                        setData(
+                                        updateVital(
                                             'temperature',
                                             event.target.value,
                                         )
                                     }
+                                    onBlur={() => blurVital('temperature')}
+                                    maxLength={4}
                                     placeholder="e.g. 36.5"
                                 />
-                                <FieldError message={errors.temperature} />
+                                <FieldError
+                                    message={
+                                        vitalErrors.temperature ||
+                                        errors.temperature
+                                    }
+                                />
                             </MedicalMetricCard>
                             <MedicalMetricCard
                                 icon={Activity}

@@ -34,6 +34,7 @@ class PhysicalExamController extends Controller
             'physicalExam' => $appointment->physicalExam,
             'medicalExamination' => $medicalExamination,
             'childSummaries' => $medicalExamination->childSummaries(),
+            'vitalLimits' => config('physical_exam.vital_limits'),
             'locked' => $appointment->medicalExamination?->finalized_at !== null && request()->user()->role !== 'admin',
             'submitUrl' => request()->user()->role === 'admin'
                 ? route('admin.physical-exams.update', $appointment)
@@ -63,9 +64,10 @@ class PhysicalExamController extends Controller
                 'medical_examination_id' => $medicalExamination->id,
                 'doctor_id' => $request->user()->id,
                 ...$request->safe()->only([
-                    'height', 'weight', 'blood_pressure', 'pulse_rate', 'respiration_rate',
+                    'height', 'weight', 'pulse_rate', 'respiration_rate',
                     'temperature', 'visual_acuity', 'hearing', 'remarks',
                 ]),
+                'blood_pressure' => $request->bloodPressure(),
                 ...$findings,
                 'classification' => 'Pending',
                 'is_completed' => true,

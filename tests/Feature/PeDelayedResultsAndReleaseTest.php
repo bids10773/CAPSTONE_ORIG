@@ -25,13 +25,13 @@ function delayedPeAppointment(array $services = ['PE', 'Drug Test']): Appointmen
     ]);
 }
 
-test('PE master creates unique diagnostic children linked by foreign keys', function () {
+test('PE master creates only explicitly selected diagnostic children linked by foreign keys', function () {
     $appointment = delayedPeAppointment();
     $examination = app(MedicalExaminationService::class)->forAppointment($appointment);
 
     expect($examination->appointment_id)->toBe($appointment->id)
         ->and($examination->diagnosticResults()->pluck('service_key')->all())
-        ->toContain('cbc', 'urinalysis', 'fecalysis', 'serology', 'drug_test');
+        ->toBe(['drug_test']);
 
     $this->assertDatabaseCount('medical_examinations', 1);
     $this->assertDatabaseHas('diagnostic_results', [
