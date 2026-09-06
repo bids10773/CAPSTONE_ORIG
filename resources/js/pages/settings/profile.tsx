@@ -77,6 +77,7 @@ export default function Profile({
     const user = auth.user;
     const profile = user.patient_profile;
     const isPatient = user.role === 'patient';
+    const isCompany = user.role === 'company';
     const [editing, setEditing] = useState(false);
     const [editingPassword, setEditingPassword] = useState(false);
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -89,6 +90,7 @@ export default function Profile({
         first_name: user.first_name ?? '',
         middle_name: user.middle_name ?? '',
         last_name: user.last_name ?? '',
+        position: user.position ?? '',
         email: user.email ?? '',
         contact: user.contact ?? '',
         birthdate: profile?.birthdate?.slice(0, 10) ?? '',
@@ -189,6 +191,18 @@ export default function Profile({
                     {!editing ? (
                         <dl className="px-5 sm:px-6">
                             <Detail label="Full Name" value={user.name} />
+                            {isCompany && (
+                                <>
+                                    <Detail
+                                        label="Company"
+                                        value={user.company?.company_name}
+                                    />
+                                    <Detail
+                                        label="Position / Job Title"
+                                        value={user.position}
+                                    />
+                                </>
+                            )}
                             <Detail label="Email Address" value={user.email} />
                             <Detail
                                 label="Contact Number"
@@ -276,6 +290,7 @@ export default function Profile({
                                             )
                                         }
                                         required
+                                        disabled={isCompany}
                                     />
                                 </Field>
                                 <Field
@@ -292,9 +307,36 @@ export default function Profile({
                                                 event.target.value,
                                             )
                                         }
+                                        disabled={isCompany}
                                     />
                                 </Field>
+                                {isCompany && (
+                                    <Field
+                                        label="Position / Job Title"
+                                        error={form.errors.position}
+                                        optional
+                                    >
+                                        <Input
+                                            value={form.data.position}
+                                            maxLength={100}
+                                            onChange={(event) =>
+                                                form.setData(
+                                                    'position',
+                                                    event.target.value,
+                                                )
+                                            }
+                                        />
+                                    </Field>
+                                )}
                             </div>
+
+                            {isCompany && (
+                                <p className="text-xs text-slate-500">
+                                    Company email and contact changes are
+                                    managed by an administrator to keep the
+                                    organization and login records synchronized.
+                                </p>
+                            )}
 
                             {isPatient && (
                                 <div className="grid gap-5 border-t border-slate-100 pt-6 sm:grid-cols-2">

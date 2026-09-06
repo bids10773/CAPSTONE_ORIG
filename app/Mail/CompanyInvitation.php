@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Company;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -18,6 +19,7 @@ class CompanyInvitation extends Mailable
      */
     public function __construct(
         public Company $company,
+        public User $representative,
         public string $tempPassword
     ) {}
 
@@ -41,9 +43,10 @@ class CompanyInvitation extends Mailable
             with: [
                 'company' => $this->company,
                 'companyName' => $this->company->company_name,
+                'representativeName' => $this->representative->name,
                 'loginEmail' => $this->company->email,
                 'temporaryPassword' => $this->tempPassword,
-                'expiresAt' => $this->company->account()->value('temporary_password_expires_at'),
+                'expiresAt' => $this->representative->temporary_password_expires_at,
                 'loginUrl' => route('login'),
             ],
         );

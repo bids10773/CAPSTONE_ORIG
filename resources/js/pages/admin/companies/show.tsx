@@ -9,6 +9,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Details', href: '' },
 ];
 export default function ShowCompany({ company }: any) {
+    const account = company.account?.[0];
     return (
         <>
             <Head title={company.company_name} />
@@ -48,6 +49,16 @@ export default function ShowCompany({ company }: any) {
                         </span>
                     </header>
                     <div className="grid gap-5 p-6 sm:grid-cols-2">
+                        <Info
+                            icon={<Building2 />}
+                            label="Representative"
+                            value={account?.name ?? 'Not provided'}
+                        />
+                        <Info
+                            icon={<Building2 />}
+                            label="Position / job title"
+                            value={account?.position ?? 'Not provided'}
+                        />
                         <Info
                             icon={<Mail />}
                             label="Official email"
@@ -99,7 +110,7 @@ function Info({
 }: {
     icon: React.ReactNode;
     label: string;
-    value: string;
+    value?: string | null;
 }) {
     return (
         <div className="flex gap-3 text-slate-700">
@@ -110,7 +121,7 @@ function Info({
                 <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
                     {label}
                 </p>
-                <p className="mt-1 font-medium">{value}</p>
+                <p className="mt-1 font-medium">{value || 'Not provided'}</p>
             </div>
         </div>
     );

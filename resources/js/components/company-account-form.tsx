@@ -1,5 +1,11 @@
 import { Link, useForm } from '@inertiajs/react';
-import { Building2, LoaderCircle, ShieldCheck, Upload } from 'lucide-react';
+import {
+    Building2,
+    LoaderCircle,
+    ShieldCheck,
+    Upload,
+    UserRound,
+} from 'lucide-react';
 
 import InputError from '@/components/input-error';
 
@@ -12,23 +18,54 @@ type Company = {
     industry_type: string;
     logo_path?: string | null;
     status: 'active' | 'inactive';
+    account?: Array<{
+        first_name: string;
+        middle_name?: string | null;
+        last_name: string;
+        position?: string | null;
+    }>;
 };
+
+type CompanyPrefill = Partial<{
+    company_name: string | null;
+    email: string | null;
+    contact_number: string | null;
+    representative_first_name: string | null;
+    representative_middle_name: string | null;
+    representative_last_name: string | null;
+    representative_position: string | null;
+}>;
 
 export default function CompanyAccountForm({
     company,
     industryTypes,
+    prefill,
+    sourceInquiryId,
 }: {
     company?: Company;
     industryTypes: Record<string, string>;
+    prefill?: CompanyPrefill | null;
+    sourceInquiryId?: number | null;
 }) {
     const editing = Boolean(company);
+    const account = company?.account?.[0];
     const form = useForm({
-        company_name: company?.company_name ?? '',
-        email: company?.email ?? '',
-        contact_number: company?.contact_number ?? '',
+        company_name: company?.company_name ?? prefill?.company_name ?? '',
+        email: company?.email ?? prefill?.email ?? '',
+        contact_number:
+            company?.contact_number ?? prefill?.contact_number ?? '',
         address: company?.address ?? '',
         industry_type: company?.industry_type ?? '',
         status: company?.status ?? 'active',
+        representative_first_name:
+            account?.first_name ?? prefill?.representative_first_name ?? '',
+        representative_middle_name:
+            account?.middle_name ?? prefill?.representative_middle_name ?? '',
+        representative_last_name:
+            account?.last_name ?? prefill?.representative_last_name ?? '',
+        representative_position:
+            account?.position ?? prefill?.representative_position ?? '',
+        source_inquiry_id: sourceInquiryId ?? null,
         logo: null as File | null,
         remove_logo: false,
         _method: editing ? 'put' : 'post',
@@ -70,7 +107,7 @@ export default function CompanyAccountForm({
                         </span>
                         <div>
                             <h2 className="font-semibold text-slate-900">
-                                Essential company information
+                                Company information
                             </h2>
                             <p className="text-sm text-slate-600">
                                 The company email is used for login and all
@@ -233,15 +270,139 @@ export default function CompanyAccountForm({
                     </div>
                 </div>
             </section>
-            {!editing && (
-                <div className="flex gap-3 rounded-xl border border-moss-200 bg-moss-50 p-4 text-sm text-moss-900">
-                    <ShieldCheck className="h-5 w-5 shrink-0" />
-                    <p>
-                        A secure temporary password will be emailed to the
-                        company. It expires after 48 hours and must be changed
-                        on first login.
-                    </p>
+            <section className="overflow-hidden rounded-2xl border border-moss-100 bg-white shadow-sm">
+                <div className="border-b border-moss-100 bg-moss-50/70 px-6 py-5">
+                    <div className="flex items-center gap-3">
+                        <span className="rounded-xl bg-moss-600 p-2 text-white">
+                            <UserRound className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h2 className="font-semibold text-slate-900">
+                                Representative information
+                            </h2>
+                            <p className="text-sm text-slate-600">
+                                This person will use the company portal account.
+                            </p>
+                        </div>
+                    </div>
                 </div>
+                <div className="grid gap-5 p-6 md:grid-cols-2">
+                    <div>
+                        {field(
+                            'representative_first_name',
+                            'Representative first name',
+                        )}
+                        <input
+                            id="representative_first_name"
+                            autoComplete="given-name"
+                            maxLength={100}
+                            className={input}
+                            value={form.data.representative_first_name}
+                            onChange={(e) =>
+                                form.setData(
+                                    'representative_first_name',
+                                    e.target.value,
+                                )
+                            }
+                            aria-invalid={
+                                !!form.errors.representative_first_name
+                            }
+                        />
+                        <InputError
+                            message={form.errors.representative_first_name}
+                        />
+                    </div>
+                    <div>
+                        {field(
+                            'representative_middle_name',
+                            'Representative middle name',
+                            false,
+                        )}
+                        <input
+                            id="representative_middle_name"
+                            autoComplete="additional-name"
+                            maxLength={100}
+                            className={input}
+                            value={form.data.representative_middle_name}
+                            onChange={(e) =>
+                                form.setData(
+                                    'representative_middle_name',
+                                    e.target.value,
+                                )
+                            }
+                            aria-invalid={
+                                !!form.errors.representative_middle_name
+                            }
+                        />
+                        <InputError
+                            message={form.errors.representative_middle_name}
+                        />
+                    </div>
+                    <div>
+                        {field(
+                            'representative_last_name',
+                            'Representative last name',
+                        )}
+                        <input
+                            id="representative_last_name"
+                            autoComplete="family-name"
+                            maxLength={100}
+                            className={input}
+                            value={form.data.representative_last_name}
+                            onChange={(e) =>
+                                form.setData(
+                                    'representative_last_name',
+                                    e.target.value,
+                                )
+                            }
+                            aria-invalid={
+                                !!form.errors.representative_last_name
+                            }
+                        />
+                        <InputError
+                            message={form.errors.representative_last_name}
+                        />
+                    </div>
+                    <div>
+                        {field(
+                            'representative_position',
+                            'Position / job title',
+                            false,
+                        )}
+                        <input
+                            id="representative_position"
+                            autoComplete="organization-title"
+                            maxLength={100}
+                            className={input}
+                            value={form.data.representative_position}
+                            onChange={(e) =>
+                                form.setData(
+                                    'representative_position',
+                                    e.target.value,
+                                )
+                            }
+                            aria-invalid={!!form.errors.representative_position}
+                        />
+                        <InputError
+                            message={form.errors.representative_position}
+                        />
+                    </div>
+                </div>
+            </section>
+            {!editing && (
+                <section className="rounded-2xl border border-moss-200 bg-moss-50 p-5">
+                    <div className="flex gap-3 text-sm text-moss-900">
+                        <ShieldCheck className="h-5 w-5 shrink-0" />
+                        <div>
+                            <h2 className="font-semibold">Account security</h2>
+                            <p className="mt-1">
+                                A secure temporary password will be emailed to
+                                the company. It expires after 48 hours and must
+                                be changed on first login.
+                            </p>
+                        </div>
+                    </div>
+                </section>
             )}
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Link

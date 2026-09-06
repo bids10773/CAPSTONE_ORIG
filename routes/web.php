@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\InquiryController as AdminInquiryController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Auth\PatientProfileCompletionController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\DoctorAvailabilityController;
 use App\Http\Controllers\DoctorDashboardController;
 use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\GlobalSearchController;
+use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\LaboratoryController;
 use App\Http\Controllers\MedTechDashboardController;
 use App\Http\Controllers\NotificationController;
@@ -55,6 +57,11 @@ Route::get('/company-referrals/invitation/{token}/download', [CompanyReferralCon
     ->middleware(['signed', 'throttle:10,1'])
     ->name('company-referrals.download');
 
+Route::get('/inquiries/create', [InquiryController::class, 'create'])->name('inquiries.create');
+Route::post('/inquiries', [InquiryController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('inquiries.store');
+
 Route::middleware('auth')->group(function () {
     Route::get('/temporary-password', [TemporaryPasswordController::class, 'edit'])
         ->name('temporary-password.edit');
@@ -72,6 +79,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/my-inquiries', [InquiryController::class, 'index'])->name('inquiries.index');
     Route::get('/complete-patient-profile', [PatientProfileCompletionController::class, 'edit'])
         ->name('patient-profile.complete');
     Route::put('/complete-patient-profile', [PatientProfileCompletionController::class, 'update'])
@@ -216,7 +224,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::resource('companies', CompanyController::class);
         Route::patch('/companies/{company}/toggle-active', [CompanyController::class, 'toggleActive'])->name('companies.toggle-active');
-        Route::post('/companies/{company}/resend-invitation', [CompanyController::class, 'resendInvitation'])->name('companies.resend-invitation');
+        Route::post('/companies/{company}/resend-invitation', [CompanyController::class, 'resendInvitation'])
+            ->middleware('throttle:6,1')
+            ->name('companies.resend-invitation');
+
+        Route::get('/inquiries', [AdminInquiryController::class, 'index'])->name('inquiries.index');
+        Route::get('/inquiries/{inquiry}', [AdminInquiryController::class, 'show'])->name('inquiries.show');
+        Route::patch('/inquiries/{inquiry}/status', [AdminInquiryController::class, 'updateStatus'])->name('inquiries.status');
+        Route::post('/inquiries/{inquiry}/reply', [AdminInquiryController::class, 'reply'])
+            ->middleware('throttle:6,1')
+            ->name('inquiries.reply');
+        Route::get('/inquiries/{inquiry}/create-company', [AdminInquiryController::class, 'createCompany'])->name('inquiries.create-company');
 
         Route::get('/analytics', [AdminDashboardController::class, 'analytics'])->name('analytics');
         Route::get('/forecast', [ForecastController::class, 'index'])->name('forecast.index');

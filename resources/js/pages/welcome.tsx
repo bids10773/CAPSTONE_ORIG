@@ -918,6 +918,13 @@ export default function Welcome() {
                                 Find us at Serafin Business Center in Banlic,
                                 Cabuyao, Laguna.
                             </p>
+                            <Link
+                                href="/inquiries/create"
+                                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-moss-900 shadow-lg transition hover:bg-moss-50"
+                            >
+                                <MessagesSquare className="size-4" /> Send an
+                                inquiry
+                            </Link>
                         </Reveal>
 
                         <div className="mt-10 grid items-stretch gap-5 lg:grid-cols-[.78fr_1.22fr] lg:gap-7">

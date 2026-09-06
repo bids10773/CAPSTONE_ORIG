@@ -21,7 +21,7 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user()
-                    ? $request->user()->load('patientProfile')
+                    ? $request->user()->load(['patientProfile', 'company:id,company_name,email,contact_number,status'])
                     : null,
             ],
             'notificationCenter' => fn () => $request->user() ? [

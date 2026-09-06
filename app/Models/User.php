@@ -25,6 +25,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'first_name',
         'middle_name',
         'last_name',
+        'position',
         'email',
         'contact',
         'sex',
@@ -133,6 +134,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function socialAccounts(): HasMany
     {
         return $this->hasMany(SocialAccount::class);
+    }
+
+    public function inquiries(): HasMany
+    {
+        return $this->hasMany(Inquiry::class);
     }
 
     public function hasCompletePatientProfile(): bool

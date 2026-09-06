@@ -124,12 +124,15 @@ interface CompanyReferral {
 }
 
 interface DashboardProps {
+    user: {
+        name: string;
+        position?: string | null;
+        email: string;
+    };
     company: {
         id: number;
         company_name: string;
         address?: string | null;
-        representative_name?: string | null;
-        representative_email?: string | null;
     };
     appointments: Appointment[];
     bulkAppointments: BulkAppointment[];
@@ -176,6 +179,7 @@ const statusStyle: Record<PreviewRow['status'], string> = {
 export default function CompanyDashboard() {
     const {
         company,
+        user,
         appointments,
         bulkAppointments,
         stats,
@@ -309,6 +313,10 @@ export default function CompanyDashboard() {
                                         {company.address}
                                     </p>
                                 )}
+                                <p className="mt-3 text-sm font-medium text-slate-700">
+                                    Representative: {user.name}
+                                    {user.position ? ` · ${user.position}` : ''}
+                                </p>
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-2">

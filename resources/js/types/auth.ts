@@ -4,6 +4,7 @@ export interface User {
     first_name: string;
     middle_name?: string;
     last_name: string;
+    position?: string | null;
 
     email: string;
     email_verified_at?: string | null;
@@ -13,6 +14,12 @@ export interface User {
     role?: string;
 
     contact?: string;
+    company?: {
+        id: number;
+        company_name: string;
+        email?: string | null;
+        contact_number?: string | null;
+    } | null;
 
     patient_profile?: {
         birthdate?: string;

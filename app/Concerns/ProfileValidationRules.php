@@ -19,6 +19,7 @@ trait ProfileValidationRules
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
+            'position' => ['nullable', 'string', 'max:100'],
             'email' => $this->emailRules($userId),
             'contact' => ['nullable', 'string', 'max:20', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (filled($value) && PhilippineContactNumber::normalize((string) $value) === null) {

@@ -46,6 +46,9 @@ class ProfileController extends Controller
         $user = $request->user();
         $profileData = collect($validated)->only(['birthdate', 'sex', 'civil_status'])->all();
         $userData = collect($validated)->except(['birthdate', 'sex', 'civil_status'])->all();
+        if ($user->role === 'company') {
+            unset($userData['email'], $userData['contact']);
+        }
         if (array_key_exists('contact', $userData)) {
             $userData['contact'] = PhilippineContactNumber::normalize($userData['contact']) ?? $userData['contact'];
         }

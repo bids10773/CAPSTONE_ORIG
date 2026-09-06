@@ -17,6 +17,7 @@ import {
     UsersRound,
     UserRoundSearch,
     ListOrdered,
+    MessagesSquare,
 } from 'lucide-react';
 import {
     Collapsible,
@@ -89,6 +90,11 @@ const navigation: Record<string, Item[]> = {
                     title: 'Companies',
                     href: '/admin/companies',
                     icon: Building2,
+                },
+                {
+                    title: 'Inquiries',
+                    href: '/admin/inquiries',
+                    icon: MessagesSquare,
                 },
                 {
                     title: 'Doctor availability',
@@ -221,6 +227,7 @@ const navigation: Record<string, Item[]> = {
             icon: LayoutDashboard,
         },
         { title: 'Employee bookings', href: '/appointments', icon: UsersRound },
+        { title: 'Inquiries', href: '/my-inquiries', icon: MessagesSquare },
         { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
     patient: [
@@ -230,6 +237,7 @@ const navigation: Record<string, Item[]> = {
             icon: LayoutDashboard,
         },
         { title: 'Appointments', href: '/appointments', icon: CalendarDays },
+        { title: 'Inquiries', href: '/my-inquiries', icon: MessagesSquare },
         { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
 };

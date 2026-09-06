@@ -32,6 +32,11 @@ class Company extends Model
         return $this->hasMany(CompanyReferral::class);
     }
 
+    public function inquiries(): HasMany
+    {
+        return $this->hasMany(Inquiry::class);
+    }
+
     public function account(): HasMany
     {
         return $this->users()->where('role', 'company');

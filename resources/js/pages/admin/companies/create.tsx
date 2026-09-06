@@ -11,8 +11,12 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 export default function CreateCompany({
     industryTypes,
+    prefill,
+    sourceInquiryId,
 }: {
     industryTypes: Record<string, string>;
+    prefill?: Record<string, string | null> | null;
+    sourceInquiryId?: number | null;
 }) {
     return (
         <>
@@ -37,7 +41,11 @@ export default function CreateCompany({
                         healthcare services and portal access.
                     </p>
                 </div>
-                <CompanyAccountForm industryTypes={industryTypes} />
+                <CompanyAccountForm
+                    industryTypes={industryTypes}
+                    prefill={prefill ?? undefined}
+                    sourceInquiryId={sourceInquiryId}
+                />
             </main>
         </>
     );
