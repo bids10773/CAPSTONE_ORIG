@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 
@@ -101,6 +103,40 @@
     --radius: 0.875rem;
 }
 
+.dark {
+    --background: #0e1711;
+    --foreground: #edf5ee;
+
+    --primary: #88aa82;
+    --primary-foreground: #0e1711;
+
+    --sidebar: #111b14;
+    --sidebar-foreground: #dce8de;
+    --sidebar-primary: #88aa82;
+    --sidebar-primary-foreground: #0e1711;
+    --sidebar-accent: #1c2a20;
+    --sidebar-accent-foreground: #dce8de;
+    --sidebar-border: #29372d;
+
+    --card: #152019;
+    --card-foreground: #edf5ee;
+    --popover: #18241b;
+    --popover-foreground: #edf5ee;
+
+    --secondary: #1c2a20;
+    --secondary-foreground: #c9ddc5;
+    --muted: #1a261d;
+    --muted-foreground: #9aab9e;
+    --accent: #243429;
+    --accent-foreground: #e3ede1;
+
+    --destructive: #ef7777;
+    --destructive-foreground: #ffffff;
+    --border: #2b3b2f;
+    --input: #35483a;
+    --ring: #88aa82;
+}
+
 @layer base {
     * {
         @apply border-border;
@@ -172,6 +208,11 @@
         @apply flex size-10 items-center justify-center rounded-xl text-slate-500 transition-all hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none;
     }
 
+    .dark .topbar-icon:hover {
+        background-color: var(--accent) !important;
+        color: var(--accent-foreground) !important;
+    }
+
     /* Shared enterprise workspace treatment. Existing pages retain their logic
        while receiving one consistent, accessible component language. */
     .app-workspace main {
@@ -236,6 +277,87 @@
     .app-workspace main section,
     .app-workspace main [data-slot='card'] {
         isolation: isolate;
+    }
+
+    .dark .app-workspace .bg-white,
+    .dark .patient-portal .bg-white {
+        background-color: var(--card) !important;
+    }
+
+    .dark .app-workspace .bg-slate-50,
+    .dark .app-workspace .bg-slate-100,
+    .dark .app-workspace .bg-moss-50,
+    .dark .patient-portal .bg-slate-50,
+    .dark .patient-portal .bg-slate-100,
+    .dark .patient-portal .bg-moss-50 {
+        background-color: var(--muted) !important;
+    }
+
+    .dark .app-workspace .text-slate-950,
+    .dark .app-workspace .text-slate-900,
+    .dark .app-workspace .text-slate-800,
+    .dark .patient-portal .text-slate-950,
+    .dark .patient-portal .text-slate-900,
+    .dark .patient-portal .text-slate-800 {
+        color: var(--foreground) !important;
+    }
+
+    .dark .app-workspace .text-slate-700,
+    .dark .app-workspace .text-slate-600,
+    .dark .app-workspace .text-slate-500,
+    .dark .patient-portal .text-slate-700,
+    .dark .patient-portal .text-slate-600,
+    .dark .patient-portal .text-slate-500 {
+        color: var(--muted-foreground) !important;
+    }
+
+    .dark .app-workspace .border-slate-100,
+    .dark .app-workspace .border-slate-200,
+    .dark .app-workspace .border-slate-300,
+    .dark .patient-portal .border-slate-100,
+    .dark .patient-portal .border-slate-200,
+    .dark .patient-portal .border-slate-300 {
+        border-color: var(--border) !important;
+    }
+
+    .dark .app-workspace main input:not([type='checkbox']):not([type='radio']),
+    .dark .app-workspace main select,
+    .dark .app-workspace main textarea,
+    .dark .patient-portal input:not([type='checkbox']):not([type='radio']),
+    .dark .patient-portal select,
+    .dark .patient-portal textarea {
+        border-color: var(--input) !important;
+        background-color: #111b14 !important;
+        color: var(--foreground) !important;
+    }
+
+    .dark .app-workspace main thead {
+        background-color: rgb(21 32 25 / 0.95) !important;
+    }
+
+    .dark .app-workspace main tbody tr:hover {
+        background-color: rgb(36 52 41 / 0.7) !important;
+    }
+
+    .dark .app-workspace [data-sidebar='menu-button']:hover,
+    .dark .app-workspace [data-sidebar='menu-button'][data-active='true'],
+    .dark .app-workspace [data-sidebar='menu-sub-button']:hover,
+    .dark .app-workspace [data-sidebar='menu-sub-button'][data-active='true'] {
+        color: var(--color-moss-200) !important;
+    }
+
+    .dark .app-workspace [data-sidebar='menu-button']:hover .sidebar-icon,
+    .dark
+        .app-workspace
+        [data-sidebar='menu-button'][data-active='true']
+        .sidebar-icon,
+    .dark .app-workspace [data-sidebar='menu-sub-button']:hover .sidebar-icon,
+    .dark
+        .app-workspace
+        [data-sidebar='menu-sub-button'][data-active='true']
+        .sidebar-icon {
+        background-color: #314a36 !important;
+        color: var(--color-moss-200) !important;
     }
 }
 

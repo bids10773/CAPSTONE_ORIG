@@ -1,7 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Calendar, Search, Eye, Stethoscope, Play } from 'lucide-react';
+import { Calendar, Eye, Stethoscope, Play } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Pagination } from '@/components/pagination';
+import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -133,38 +134,39 @@ export default function DoctorAppointmentsIndex(props: Props) {
                 </div>
 
                 {/* Filters */}
-                <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="flex flex-wrap gap-4">
-                        <div className="min-w-[200px] flex-1">
-                            <div className="relative">
-                                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Search patient name..."
-                                    className="w-full rounded-2xl border border-gray-300 bg-white py-2 pr-4 pl-10 text-gray-900 focus:ring-2 focus:ring-moss-500"
-                                />
-                            </div>
-                        </div>
-                        <select
-                            name="status"
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value)}
-                            className="rounded-2xl border border-gray-300 bg-white px-4 py-2 text-gray-900"
-                        >
-                            <option value="">All</option>
-                            <option value="arrived">Arrived</option>
-                            <option value="accepted">Accepted</option>
-                            <option value="for_final_evaluation">
-                                Final Evaluation
-                            </option>
-                            <option value="completed">
-                                Finalized — Awaiting Release
-                            </option>
-                        </select>
-                    </div>
-                </div>
+                <SearchFilterToolbar
+                    className="mb-6"
+                    search={{
+                        value: search,
+                        onChange: (event) => setSearch(event.target.value),
+                        placeholder: 'Search patient name...',
+                        'aria-label': 'Search doctor queue',
+                    }}
+                    onSubmit={(event) => event.preventDefault()}
+                    sections={[
+                        {
+                            label: 'Status',
+                            content: (
+                                <select
+                                    name="status"
+                                    value={status}
+                                    onChange={(e) => setStatus(e.target.value)}
+                                    className="rounded-2xl border border-gray-300 bg-white px-4 py-2 text-gray-900"
+                                >
+                                    <option value="">All</option>
+                                    <option value="arrived">Arrived</option>
+                                    <option value="accepted">Accepted</option>
+                                    <option value="for_final_evaluation">
+                                        Final Evaluation
+                                    </option>
+                                    <option value="completed">
+                                        Finalized — Awaiting Release
+                                    </option>
+                                </select>
+                            ),
+                        },
+                    ]}
+                />
 
                 {/* Table */}
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -286,7 +288,10 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                     (queue) =>
                                                         queue.service_role ===
                                                             'drug_verification' &&
-                                                        ['assigned', 'in_progress'].includes(
+                                                        [
+                                                            'assigned',
+                                                            'in_progress',
+                                                        ].includes(
                                                             queue.status,
                                                         ),
                                                 ) && (

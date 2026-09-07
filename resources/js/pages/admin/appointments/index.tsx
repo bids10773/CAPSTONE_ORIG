@@ -11,7 +11,6 @@ import {
     Eye,
     HeartHandshake,
     Phone,
-    Search,
     Stethoscope,
     UserRound,
     VenusAndMars,
@@ -21,6 +20,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Pagination } from '@/components/pagination';
+import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -268,8 +268,16 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 export default function AdminAppointmentsIndex() {
-    const { appointments, filters, bulkOnly, pendingRequestsCount } =
-        usePage<Props>().props;
+    const {
+        appointments,
+        filters,
+        doctors,
+        companies,
+        statusOptions,
+        typeOptions,
+        bulkOnly,
+        pendingRequestsCount,
+    } = usePage<Props>().props;
     const endpoint = bulkOnly
         ? '/admin/bulk-appointments'
         : '/admin/appointments';
@@ -277,7 +285,6 @@ export default function AdminAppointmentsIndex() {
         useState<Appointment | null>(null);
     const [search, setSearch] = useState(filters.search ?? '');
     const lastServerSearch = useRef(filters.search ?? '');
-    const suppressSearchVisit = useRef(false);
     const [loading, setLoading] = useState(false);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [rejectingAppointment, setRejectingAppointment] =
@@ -301,16 +308,17 @@ export default function AdminAppointmentsIndex() {
     };
 
     useEffect(() => {
-        if (suppressSearchVisit.current) {
-            suppressSearchVisit.current = false;
-            return;
-        }
         if (search === filters.search) return;
         const timeout = window.setTimeout(() => {
             setLoading(true);
             router.get(
                 endpoint,
-                { search, per_page: appointments.per_page },
+                {
+                    ...filters,
+                    search: search || undefined,
+                    per_page: appointments.per_page,
+                    page: 1,
+                },
                 {
                     preserveState: true,
                     preserveScroll: true,
@@ -329,22 +337,6 @@ export default function AdminAppointmentsIndex() {
         lastServerSearch.current = filters.search;
         setSearch(filters.search ?? '');
     }, [filters.search]);
-
-    const clearSearch = () => {
-        if (search !== '') suppressSearchVisit.current = true;
-        setSearch('');
-        setLoading(true);
-        router.get(
-            endpoint,
-            { per_page: appointments.per_page },
-            {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-                onFinish: () => setLoading(false),
-            },
-        );
-    };
 
     const clearFilters = () => {
         setSearch('');
@@ -565,38 +557,201 @@ export default function AdminAppointmentsIndex() {
                     </button>
                 )}
 
-                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-                        <div className="relative min-w-0 flex-1">
-                            <Search className="absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="search"
-                                value={search}
-                                maxLength={100}
-                                onChange={(event) =>
-                                    setSearch(event.target.value)
-                                }
-                                placeholder="Search patient, company, doctor, or referral code..."
-                                className="h-11 w-full rounded-xl border border-slate-200 bg-white pr-11 pl-10 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
-                            />
-                            {search && (
-                                <button
-                                    type="button"
-                                    onClick={clearSearch}
-                                    aria-label="Clear search"
-                                    className="absolute top-1/2 right-3 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                                >
-                                    <X className="size-4" />
-                                </button>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                            Search appointments
-                            {loading && (
-                                <span className="size-3.5 animate-spin rounded-full border-2 border-moss-200 border-t-moss-700" />
-                            )}
-                        </div>
-                    </div>
+                <section className="relative z-20 overflow-visible">
+                    <SearchFilterToolbar
+                        search={{
+                            value: search,
+                            maxLength: 100,
+                            onChange: (event) => setSearch(event.target.value),
+                            placeholder:
+                                'Search patient, company, doctor, or referral code...',
+                            'aria-label': 'Search appointments',
+                        }}
+                        loading={loading}
+                        onSubmit={(event) => event.preventDefault()}
+                        sections={[
+                            {
+                                label: 'Patient / Company',
+                                content: (
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <select
+                                            value={filters.type ?? ''}
+                                            onChange={(event) =>
+                                                visit({
+                                                    type: event.target.value,
+                                                })
+                                            }
+                                            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                        >
+                                            <option value="">
+                                                All appointment types
+                                            </option>
+                                            {Object.entries(typeOptions).map(
+                                                ([value, label]) => (
+                                                    <option
+                                                        key={value}
+                                                        value={value}
+                                                    >
+                                                        {label}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                        <select
+                                            value={filters.company_id ?? ''}
+                                            onChange={(event) =>
+                                                visit({
+                                                    company_id:
+                                                        event.target.value,
+                                                })
+                                            }
+                                            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                        >
+                                            <option value="">
+                                                All companies
+                                            </option>
+                                            {companies.map((company) => (
+                                                <option
+                                                    key={company.id}
+                                                    value={company.id}
+                                                >
+                                                    {company.company_name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                ),
+                            },
+                            {
+                                label: 'Work Info',
+                                content: (
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <select
+                                            value={filters.status ?? ''}
+                                            onChange={(event) =>
+                                                visit({
+                                                    status: event.target.value,
+                                                })
+                                            }
+                                            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                        >
+                                            <option value="">
+                                                All statuses
+                                            </option>
+                                            {statusOptions.map((status) => (
+                                                <option
+                                                    key={status}
+                                                    value={status}
+                                                >
+                                                    {statusLabels[status] ??
+                                                        status.replaceAll(
+                                                            '_',
+                                                            ' ',
+                                                        )}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            value={filters.doctor_id ?? ''}
+                                            onChange={(event) =>
+                                                visit({
+                                                    doctor_id:
+                                                        event.target.value,
+                                                })
+                                            }
+                                            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                        >
+                                            <option value="">
+                                                All doctors
+                                            </option>
+                                            {doctors.map((doctor) => (
+                                                <option
+                                                    key={doctor.id}
+                                                    value={doctor.id}
+                                                >
+                                                    Dr. {fullName(doctor)}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                ),
+                            },
+                            {
+                                label: 'Advanced',
+                                content: (
+                                    <div className="grid gap-3 sm:grid-cols-3">
+                                        <select
+                                            value={filters.date_filter ?? ''}
+                                            onChange={(event) =>
+                                                visit({
+                                                    date_filter:
+                                                        event.target.value,
+                                                })
+                                            }
+                                            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                        >
+                                            <option value="">Any date</option>
+                                            <option value="today">Today</option>
+                                            <option value="upcoming">
+                                                Upcoming
+                                            </option>
+                                            <option value="past">Past</option>
+                                        </select>
+                                        <input
+                                            type="date"
+                                            aria-label="From date"
+                                            value={filters.date_from ?? ''}
+                                            onChange={(event) =>
+                                                visit({
+                                                    date_from:
+                                                        event.target.value,
+                                                })
+                                            }
+                                            className="h-11 rounded-xl border border-slate-300 px-3 text-sm"
+                                        />
+                                        <input
+                                            type="date"
+                                            aria-label="To date"
+                                            value={filters.date_to ?? ''}
+                                            onChange={(event) =>
+                                                visit({
+                                                    date_to: event.target.value,
+                                                })
+                                            }
+                                            className="h-11 rounded-xl border border-slate-300 px-3 text-sm"
+                                        />
+                                    </div>
+                                ),
+                            },
+                            {
+                                label: 'Group By',
+                                content: (
+                                    <select
+                                        value={`${filters.sort ?? 'appointment_date'}:${filters.direction ?? 'desc'}`}
+                                        onChange={(event) => {
+                                            const [sort, direction] =
+                                                event.target.value.split(':');
+                                            visit({ sort, direction });
+                                        }}
+                                        className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                    >
+                                        <option value="appointment_date:desc">
+                                            Newest appointment first
+                                        </option>
+                                        <option value="appointment_date:asc">
+                                            Oldest appointment first
+                                        </option>
+                                        <option value="created_at:desc">
+                                            Recently created
+                                        </option>
+                                        <option value="status:asc">
+                                            Status
+                                        </option>
+                                    </select>
+                                ),
+                            },
+                        ]}
+                    />
 
                     {hasFilters && (
                         <button
@@ -610,7 +765,7 @@ export default function AdminAppointmentsIndex() {
                 </section>
 
                 <section
-                    className={`overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity ${loading ? 'opacity-60' : 'opacity-100'}`}
+                    className={`relative z-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity ${loading ? 'opacity-60' : 'opacity-100'}`}
                     aria-busy={loading}
                 >
                     {appointments.data.length > 0 ? (

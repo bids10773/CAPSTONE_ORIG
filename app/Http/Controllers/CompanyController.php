@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateCompanyRequest;
 use App\Models\Company;
 use App\Models\Inquiry;
 use App\Services\CompanyAccountService;
+use App\Support\SearchTerm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -20,17 +21,19 @@ class CompanyController extends Controller
     public function index(Request $request): Response
     {
         Gate::authorize('viewAny', Company::class);
-        $search = trim((string) $request->get('search', ''));
+        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
+        $likeSearch = SearchTerm::forLike($search);
         $status = (string) $request->get('status', '');
 
         $companies = Company::query()
             ->with(['account:id,company_id,must_change_password'])
             ->withCount('appointments')
             ->when($search, fn ($query) => $query->where(fn ($q) => $q
-                ->where('company_name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")
-                ->orWhere('contact_number', 'like', "%{$search}%")
-                ->orWhere('address', 'like', "%{$search}%")))
+                ->where('company_name', 'like', "%{$likeSearch}%")
+                ->orWhere('email', 'like', "%{$likeSearch}%")
+                ->orWhere('contact_number', 'like', "%{$likeSearch}%")
+                ->orWhere('address', 'like', "%{$likeSearch}%")))
             ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('status', $status))
             ->orderBy('company_name')
             ->paginate($this->perPage($request))

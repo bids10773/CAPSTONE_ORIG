@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Notifications\OnsiteStaffAssigned;
 use App\Services\OnsiteEventWorkflowService;
 use App\Services\OnsiteStaffingRecommendationService;
+use App\Support\SearchTerm;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -45,6 +46,9 @@ class OnsiteEventController extends Controller
 
     public function staffShow(Request $request, Appointment $event): Response
     {
+        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
+        $likeSearch = SearchTerm::forLike($search);
         $role = $this->clinicalRole($request);
         $this->authorizeAssignedClinicalStaff($request, $event, $role);
         $event->load('company:id,company_name,address');
@@ -54,11 +58,10 @@ class OnsiteEventController extends Controller
             ->where('assigned_staff_id', $request->user()->id)
             ->whereIn('service_role', $this->tasksForRole($role))
             ->where('status', '!=', 'removed')
-            ->when($request->string('search')->trim()->isNotEmpty(), function ($query) use ($request) {
-                $search = $request->string('search')->trim()->toString();
+            ->when($search !== '', function ($query) use ($likeSearch) {
                 $query->whereHas('appointment', fn ($appointment) => $appointment
-                    ->whereHas('user', fn ($user) => $user->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"))
-                    ->orWhereHas('patientProfile', fn ($profile) => $profile->where('employee_number', 'like', "%{$search}%")));
+                    ->whereHas('user', fn ($user) => $user->where('first_name', 'like', "%{$likeSearch}%")->orWhere('last_name', 'like', "%{$likeSearch}%"))
+                    ->orWhereHas('patientProfile', fn ($profile) => $profile->where('employee_number', 'like', "%{$likeSearch}%")));
             })
             ->orderByRaw("CASE status WHEN 'in_progress' THEN 0 WHEN 'assigned' THEN 1 WHEN 'waiting' THEN 2 ELSE 3 END")
             ->orderBy('assigned_at')
@@ -69,7 +72,7 @@ class OnsiteEventController extends Controller
             'queues' => $queues,
             'attendance' => $this->attendanceSummary($event),
             'role' => $role,
-            'filters' => ['search' => $request->string('search')->toString()],
+            'filters' => ['search' => $search],
         ]);
     }
 
@@ -91,21 +94,25 @@ class OnsiteEventController extends Controller
 
     public function receptionistShow(Request $request, Appointment $event): Response
     {
+        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
         $this->authorizeAssignedReceptionist($request, $event);
         $event->load(['company:id,company_name,address', 'onsiteStaff' => fn ($query) => $query->where('is_active', true), 'onsiteStaff.user:id,first_name,middle_name,last_name,role']);
-        $employees = $this->employeeQuery($event, $request->string('search')->trim()->toString())
+        $employees = $this->employeeQuery($event, $search)
             ->paginate(25)->withQueryString();
 
         return Inertia::render('receptionist/onsite-events/attendance', [
             'event' => $event,
             'employees' => $employees,
             'attendance' => $this->attendanceSummary($event),
-            'filters' => ['search' => $request->string('search')->toString()],
+            'filters' => ['search' => $search],
         ]);
     }
 
     public function adminShow(Request $request, Appointment $event, OnsiteStaffingRecommendationService $recommendations): Response
     {
+        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
         abort_unless($event->isBulkParent(), 404);
         abort_if($event->onsite_event_status === 'draft', 404);
         $event->load(['company:id,company_name,address', 'onsiteStaff.user:id,first_name,middle_name,last_name,role']);
@@ -120,7 +127,7 @@ class OnsiteEventController extends Controller
                 && ($assignedByRole[$role] ?? 0) < $recommendation['recommended'])
             ->keys()
             ->values();
-        $employees = $this->employeeQuery($event, $request->string('search')->trim()->toString())
+        $employees = $this->employeeQuery($event, $search)
             ->with([
                 'medicalExamination.physicalExam',
                 'medicalExamination.laboratoryResult',
@@ -261,14 +268,16 @@ class OnsiteEventController extends Controller
 
     private function employeeQuery(Appointment $event, string $search)
     {
+        $likeSearch = SearchTerm::forLike($search);
+
         return $event->bulkEmployees()->with([
             'user:id,first_name,middle_name,last_name,company_id',
             'user.patientProfile:id,user_id,employee_number',
             'serviceQueues.assignedStaff:id,first_name,last_name',
-        ])->when($search !== '', function ($query) use ($search) {
-            $terms = preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY);
-            $query->where(function ($outer) use ($search, $terms) {
-                $outer->whereHas('patientProfile', fn ($profile) => $profile->where('employee_number', 'like', "%{$search}%"))
+        ])->when($search !== '', function ($query) use ($likeSearch) {
+            $terms = preg_split('/\s+/', $likeSearch, -1, PREG_SPLIT_NO_EMPTY);
+            $query->where(function ($outer) use ($likeSearch, $terms) {
+                $outer->whereHas('patientProfile', fn ($profile) => $profile->where('employee_number', 'like', "%{$likeSearch}%"))
                     ->orWhereHas('user', function ($user) use ($terms) {
                         foreach ($terms as $term) {
                             $user->where(fn ($name) => $name->where('first_name', 'like', "%{$term}%")

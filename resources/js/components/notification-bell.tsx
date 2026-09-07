@@ -73,7 +73,7 @@ export function NotificationBell() {
                 >
                     <Bell className="size-[18px]" />
                     {center.unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                        <span className="absolute -top-1 -right-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-card">
                             {center.unreadCount > 99
                                 ? '99+'
                                 : center.unreadCount}

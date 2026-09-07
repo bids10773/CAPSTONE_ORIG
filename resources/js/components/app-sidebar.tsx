@@ -1,5 +1,4 @@
 import { Link, usePage } from '@inertiajs/react';
-import { motion } from 'framer-motion';
 import {
     BarChart3,
     ChartSpline,
@@ -18,7 +17,10 @@ import {
     UserRoundSearch,
     ListOrdered,
     MessagesSquare,
+    Lock,
+    Unlock,
 } from 'lucide-react';
+import { useState } from 'react';
 import {
     Collapsible,
     CollapsibleContent,
@@ -38,6 +40,11 @@ import {
     SidebarMenuSubItem,
     useSidebar,
 } from '@/components/ui/sidebar';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import logo from '/public/images/full_logo2.png';
 
 type Item = {
@@ -65,12 +72,12 @@ const navigation: Record<string, Item[]> = {
                     icon: CalendarDays,
                 },
                 {
-                    title: "Today's Appointments",
+                    title: 'Today Appointments',
                     href: '/admin/todays-appointments',
                     icon: CalendarClock,
                 },
                 {
-                    title: 'Bulk requests',
+                    title: 'Bulk Appointment',
                     href: '/admin/bulk-appointments',
                     icon: UsersRound,
                 },
@@ -254,9 +261,10 @@ const roleLabels: Record<string, string> = {
 
 export function AppSidebar({ className }: { auth?: any; className?: string }) {
     const { props, url } = usePage();
-    const { isMobile, setOpenMobile } = useSidebar();
+    const { isMobile, isPinned, setPinned, setOpenMobile } = useSidebar();
     const role = (props.auth as any)?.user?.role || 'patient';
     const items = navigation[role] || navigation.patient;
+    const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
     const home = items[0].href;
     const closeMobileSidebar = () => {
         if (isMobile) setOpenMobile(false);
@@ -265,19 +273,19 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
     return (
         <Sidebar
             collapsible="icon"
-            className={`border-r border-slate-200 bg-white text-slate-700 ${className || ''}`}
+            className={`border-r border-sidebar-border bg-sidebar text-sidebar-foreground ${className || ''}`}
         >
-            <SidebarHeader className="h-[72px] justify-center border-b border-border px-4">
+            <SidebarHeader className="h-[72px] flex-row items-center justify-between border-b border-border px-4 group-data-[collapsible=icon]:px-3">
                 <Link
                     href={home}
                     onClick={closeMobileSidebar}
-                    className="flex items-center gap-3 rounded-xl p-1 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
+                    className="flex min-w-0 items-center gap-3 rounded-xl p-1 group-data-[collapsible=icon]:mx-auto focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
                 >
                     <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-moss-200 bg-moss-100 shadow-sm">
                         <img
                             src={logo}
                             alt="LMIC"
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-contain"
                         />
                     </span>
                     <span className="min-w-0 group-data-[collapsible=icon]:hidden">
@@ -289,6 +297,34 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                         </span>
                     </span>
                 </Link>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            onClick={(event) => {
+                                setPinned((pinned) => !pinned);
+
+                                if (isPinned && event.detail > 0) {
+                                    event.currentTarget.blur();
+                                }
+                            }}
+                            className="hidden size-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition group-data-[collapsible=icon]:hidden hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none md:flex"
+                            aria-label={
+                                isPinned ? 'Unlock sidebar' : 'Lock sidebar'
+                            }
+                            aria-pressed={isPinned}
+                        >
+                            {isPinned ? (
+                                <Unlock className="size-[18px]" />
+                            ) : (
+                                <Lock className="size-[18px]" />
+                            )}
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                        {isPinned ? 'Unlock sidebar' : 'Lock sidebar'}
+                    </TooltipContent>
+                </Tooltip>
             </SidebarHeader>
 
             <SidebarContent className="px-3 py-5 group-data-[collapsible=icon]:px-2">
@@ -296,7 +332,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                     <SidebarGroupLabel className="mb-2 px-3 text-[10px] font-bold tracking-[.16em] text-slate-400 uppercase group-data-[collapsible=icon]:hidden">
                         {roleLabels[role] || roleLabels.patient}
                     </SidebarGroupLabel>
-                    <SidebarMenu className="gap-1">
+                    <SidebarMenu className="gap-2 group-data-[collapsible=icon]:items-center">
                         {items.map((item) => {
                             const childIsActive = item.children?.some(
                                 (child) =>
@@ -315,23 +351,45 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                     <Collapsible
                                         key={item.href}
                                         asChild
-                                        defaultOpen={childIsActive}
+                                        open={hoveredMenu === item.href}
+                                        onOpenChange={(open) => {
+                                            if (isMobile) {
+                                                setHoveredMenu(
+                                                    open ? item.href : null,
+                                                );
+                                            }
+                                        }}
                                         className="group/collapsible"
                                     >
-                                        <SidebarMenuItem>
+                                        <SidebarMenuItem
+                                            onMouseEnter={() =>
+                                                setHoveredMenu(item.href)
+                                            }
+                                            onMouseLeave={() =>
+                                                setHoveredMenu(null)
+                                            }
+                                            onFocus={() =>
+                                                setHoveredMenu(item.href)
+                                            }
+                                            onBlur={(event) => {
+                                                if (
+                                                    !event.currentTarget.contains(
+                                                        event.relatedTarget as Node | null,
+                                                    )
+                                                ) {
+                                                    setHoveredMenu(null);
+                                                }
+                                            }}
+                                        >
                                             <CollapsibleTrigger asChild>
                                                 <SidebarMenuButton
                                                     tooltip={item.title}
                                                     isActive={active}
-                                                    className="relative h-11 rounded-xl px-3 text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-950 data-[active=true]:bg-moss-50 data-[active=true]:font-semibold data-[active=true]:text-moss-700"
+                                                    className="relative h-12 rounded-xl px-3 text-slate-500 transition-all group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-1! hover:bg-transparent hover:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 hover:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:bg-moss-100"
                                                 >
-                                                    {active && (
-                                                        <motion.span
-                                                            layoutId="navigation-marker"
-                                                            className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-moss-600"
-                                                        />
-                                                    )}
-                                                    <Icon className="size-[18px] shrink-0" />
+                                                    <span className="sidebar-icon flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors">
+                                                        <Icon className="size-6" />
+                                                    </span>
                                                     <span className="group-data-[collapsible=icon]:hidden">
                                                         {item.title}
                                                     </span>
@@ -339,7 +397,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                                 </SidebarMenuButton>
                                             </CollapsibleTrigger>
                                             <CollapsibleContent>
-                                                <SidebarMenuSub>
+                                                <SidebarMenuSub className="gap-2">
                                                     {item.children.map(
                                                         (child) => {
                                                             const ChildIcon =
@@ -362,7 +420,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                                                         isActive={
                                                                             isChildActive
                                                                         }
-                                                                        className="h-9 rounded-lg px-2.5 text-xs text-slate-500 data-[active=true]:bg-moss-50 data-[active=true]:font-semibold data-[active=true]:text-moss-700"
+                                                                        className="h-11 rounded-lg px-2.5 text-xs text-slate-500 hover:bg-transparent hover:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 hover:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:bg-moss-100"
                                                                     >
                                                                         <Link
                                                                             href={
@@ -372,7 +430,9 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                                                                 closeMobileSidebar
                                                                             }
                                                                         >
-                                                                            <ChildIcon className="size-3.5" />
+                                                                            <span className="sidebar-icon flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors">
+                                                                                <ChildIcon className="size-5" />
+                                                                            </span>
                                                                             <span>
                                                                                 {
                                                                                     child.title
@@ -397,19 +457,15 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                         asChild
                                         tooltip={item.title}
                                         isActive={active}
-                                        className="relative h-11 rounded-xl px-3 text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-950 data-[active=true]:bg-moss-50 data-[active=true]:font-semibold data-[active=true]:text-moss-700"
+                                        className="relative h-12 rounded-xl px-3 text-slate-500 transition-all group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-1! hover:bg-transparent hover:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 hover:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:bg-moss-100"
                                     >
                                         <Link
                                             href={item.href}
                                             onClick={closeMobileSidebar}
                                         >
-                                            {active && (
-                                                <motion.span
-                                                    layoutId="navigation-marker"
-                                                    className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-moss-600"
-                                                />
-                                            )}
-                                            <Icon className="size-[18px] shrink-0" />
+                                            <span className="sidebar-icon flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors">
+                                                <Icon className="size-6" />
+                                            </span>
                                             <span className="group-data-[collapsible=icon]:hidden">
                                                 {item.title}
                                             </span>

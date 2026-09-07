@@ -2,16 +2,15 @@ import { Head, Link, usePage, router } from '@inertiajs/react';
 import {
     Calendar,
     Plus,
-    Search,
     Eye,
     CheckCircle,
     XCircle,
     Clock,
-    Filter,
     Building2,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Pagination } from '@/components/pagination';
+import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import AppLayout from '@/layouts/app-layout';
 import { appointmentStatusLabel } from '@/lib/appointment-status';
 import { cn } from '@/lib/utils';
@@ -96,14 +95,18 @@ export default function AppointmentsIndex() {
 
     return (
         <>
-            <Head title={isCompanyView ? 'Employee Appointments' : 'Appointments'} />
+            <Head
+                title={isCompanyView ? 'Employee Appointments' : 'Appointments'}
+            />
 
             <div className="mx-auto max-w-7xl space-y-8 p-6 lg:p-8">
                 {/* PAGE HEADER */}
                 <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-                            {isCompanyView ? 'Employee Appointments' : 'Appointments'}
+                            {isCompanyView
+                                ? 'Employee Appointments'
+                                : 'Appointments'}
                         </h1>
                         <p className="mt-1 text-muted-foreground">
                             {isCompanyView
@@ -125,40 +128,25 @@ export default function AppointmentsIndex() {
                 </div>
 
                 {/* SEARCH & FILTERS TOOLBAR */}
-                <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm backdrop-blur-sm">
-                    <div className="flex flex-col gap-4 lg:flex-row">
-                        <div className="group relative flex-1">
-                            <Search
-                                className={cn(
-                                    'absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transition-colors',
-                                    loading
-                                        ? 'text-moss-500'
-                                        : 'text-gray-400 group-focus-within:text-moss-500',
-                                )}
-                            />
-                            <input
-                                type="text"
-                                placeholder="Search by patient name or email..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full rounded-xl border-transparent bg-gray-50 py-2.5 pr-12 pl-10 transition-all focus:border-moss-500 focus:ring-0"
-                            />
-                            {loading && (
-                                <div className="absolute top-1/2 right-3 -translate-y-1/2">
-                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-moss-500 border-t-transparent" />
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex flex-wrap gap-3">
-                            <div className="flex items-center gap-2 rounded-xl border border-transparent bg-gray-50 px-3 focus-within:border-moss-500">
-                                <Filter className="h-4 w-4 text-gray-400" />
+                <SearchFilterToolbar
+                    search={{
+                        placeholder: 'Search by patient name or email...',
+                        value: search,
+                        onChange: (event) => setSearch(event.target.value),
+                        'aria-label': 'Search appointments',
+                    }}
+                    loading={loading}
+                    onSubmit={(event) => event.preventDefault()}
+                    sections={[
+                        {
+                            label: 'Status',
+                            content: (
                                 <select
                                     value={statusFilter}
                                     onChange={(e) =>
                                         setStatusFilter(e.target.value)
                                     }
-                                    className="cursor-pointer border-none bg-transparent py-2.5 text-sm font-medium focus:ring-0"
+                                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
                                 >
                                     <option value="">All Statuses</option>
                                     <option value="pending">Pending</option>
@@ -176,16 +164,17 @@ export default function AppointmentsIndex() {
                                     </option>
                                     <option value="cancelled">Cancelled</option>
                                 </select>
-                            </div>
-
-                            <div className="flex items-center gap-2 rounded-xl border border-transparent bg-gray-50 px-3 focus-within:border-moss-500">
-                                <Building2 className="h-4 w-4 text-gray-400" />
+                            ),
+                        },
+                        {
+                            label: 'Booking Type',
+                            content: (
                                 <select
                                     value={typeFilter}
                                     onChange={(e) =>
                                         setTypeFilter(e.target.value)
                                     }
-                                    className="cursor-pointer border-none bg-transparent py-2.5 text-sm font-medium focus:ring-0"
+                                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
                                 >
                                     <option value="">All Booking Types</option>
                                     <option value="individual">
@@ -200,10 +189,10 @@ export default function AppointmentsIndex() {
                                         </option>
                                     )}
                                 </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                            ),
+                        },
+                    ]}
+                />
 
                 {/* TABLE CONTAINER */}
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -305,7 +294,9 @@ export default function AppointmentsIndex() {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="text-sm font-semibold text-gray-900">
-                                                            {appointment.service_types?.join(', ') ||
+                                                            {appointment.service_types?.join(
+                                                                ', ',
+                                                            ) ||
                                                                 appointment.service_type ||
                                                                 'Medical examination'}
                                                         </div>

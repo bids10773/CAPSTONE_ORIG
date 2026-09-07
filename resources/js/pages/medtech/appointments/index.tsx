@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, Filter, Eye, TestTube, Play } from 'lucide-react';
+import { Eye, TestTube, Play } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
+import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -84,42 +85,41 @@ export default function MedTechAppointmentsIndex({
                 </div>
 
                 {/* Filters */}
-                <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <form method="GET" className="flex flex-wrap gap-4">
+                <SearchFilterToolbar
+                    className="mb-6"
+                    search={{
+                        name: 'search',
+                        defaultValue: filters.search,
+                        placeholder: 'Search patient name...',
+                        'aria-label': 'Search laboratory queue',
+                    }}
+                    hiddenFields={
                         <input
                             type="hidden"
                             name="per_page"
                             value={appointments.per_page}
                         />
-                        <div className="relative min-w-[200px] flex-1">
-                            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                            <input
-                                type="text"
-                                name="search"
-                                defaultValue={filters.search}
-                                placeholder="Search patient name..."
-                                className="w-full rounded-2xl border border-gray-300 bg-white py-2 pr-4 pl-10 text-gray-900 focus:ring-2 focus:ring-moss-500"
-                            />
-                        </div>
-                        <select
-                            name="status"
-                            defaultValue={filters.status || ''}
-                            className="rounded-2xl border border-gray-300 bg-white px-4 py-2 text-gray-900"
-                        >
-                            <option value="">All pending laboratory work</option>
-                            <option value="for_diagnostics">
-                                Waiting for Lab / Verification
-                            </option>
-                        </select>
-                        <button
-                            type="submit"
-                            className="flex items-center gap-2 rounded-2xl bg-moss-600 px-4 py-2 text-white transition-colors hover:bg-moss-700"
-                        >
-                            <Filter className="h-4 w-4" />
-                            Filter
-                        </button>
-                    </form>
-                </div>
+                    }
+                    sections={[
+                        {
+                            label: 'Status',
+                            content: (
+                                <select
+                                    name="status"
+                                    defaultValue={filters.status || ''}
+                                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                >
+                                    <option value="">
+                                        All pending laboratory work
+                                    </option>
+                                    <option value="for_diagnostics">
+                                        Waiting for Lab / Verification
+                                    </option>
+                                </select>
+                            ),
+                        },
+                    ]}
+                />
 
                 {/* Table */}
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -182,20 +182,18 @@ export default function MedTechAppointmentsIndex({
                                             <td className="space-x-2 px-6 py-4 text-right">
                                                 {apt.status ===
                                                     'for_diagnostics' && (
-                                                        <button
-                                                            onClick={() =>
-                                                                startLabTest(
-                                                                    apt.id,
-                                                                )
-                                                            }
-                                                            className="inline-flex items-center gap-1 rounded-xl bg-green-600 px-3 py-1.5 text-sm text-white transition-colors hover:bg-green-700"
-                                                        >
-                                                            <Play className="h-3 w-3 fill-current" />
-                                                            {apt.lab_result
-                                                                ? 'Edit Result'
-                                                                : 'Encode Lab'}
-                                                        </button>
-                                                    )}
+                                                    <button
+                                                        onClick={() =>
+                                                            startLabTest(apt.id)
+                                                        }
+                                                        className="inline-flex items-center gap-1 rounded-xl bg-green-600 px-3 py-1.5 text-sm text-white transition-colors hover:bg-green-700"
+                                                    >
+                                                        <Play className="h-3 w-3 fill-current" />
+                                                        {apt.lab_result
+                                                            ? 'Edit Result'
+                                                            : 'Encode Lab'}
+                                                    </button>
+                                                )}
                                                 <Link
                                                     href={`/appointments/${apt.id}`}
                                                     className="inline-flex items-center p-2 text-gray-400 hover:text-moss-600"

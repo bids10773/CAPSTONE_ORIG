@@ -9,6 +9,7 @@ use App\Models\Appointment;
 use App\Models\User;
 use App\Services\AppointmentSchedulingService;
 use App\Services\WalkInService;
+use App\Support\SearchTerm;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,8 +43,10 @@ class ReceptionistWalkInController extends Controller
         abort_unless($request->user()->can('walkin.view'), 403);
         $this->scheduling->expireLateAppointments();
 
+        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
         $status = $request->string('status')->toString();
-        $search = $request->string('search')->toString();
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
+        $likeSearch = SearchTerm::forLike($search);
         $queuePositions = Appointment::query()
             ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
             ->whereHas('user', fn ($query) => $query->where('role', 'patient'))
@@ -62,9 +65,9 @@ class ReceptionistWalkInController extends Controller
             ->whereDate('appointment_date', today())
             ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->when($search !== '', fn ($query) => $query->whereHas('user', fn ($patient) => $patient
-                ->where('first_name', 'like', "%{$search}%")
-                ->orWhere('last_name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")))
+                ->where('first_name', 'like', "%{$likeSearch}%")
+                ->orWhere('last_name', 'like', "%{$likeSearch}%")
+                ->orWhere('email', 'like', "%{$likeSearch}%")))
             ->orderByRaw("CASE WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type <> 'walk_in' AND status IN ('pending', 'accepted') THEN 2 WHEN type = 'walk_in' THEN 3 ELSE 4 END")
             ->orderByRaw('COALESCE(start_time, arrived_at, created_at)')
             ->orderBy('id')
@@ -129,7 +132,7 @@ class ReceptionistWalkInController extends Controller
 
     public function searchPatients(SearchPatientsRequest $request): JsonResponse
     {
-        $search = $request->validated('q');
+        $search = SearchTerm::forLike($request->validated('q'));
 
         $patients = User::query()
             ->where('role', 'patient')

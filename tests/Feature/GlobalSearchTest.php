@@ -71,3 +71,75 @@ test('global search validates short queries and requires authentication', functi
         ->assertUnprocessable()
         ->assertJsonValidationErrors('q');
 });
+
+test('global search rejects whitespace and treats sql wildcards literally', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $patient = User::factory()->create(['role' => 'patient', 'first_name' => 'WildcardTarget']);
+    searchableAppointment($patient);
+
+    $this->actingAs($admin)
+        ->getJson(route('api.global-search', ['q' => '  ']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('q');
+
+    $this->getJson(route('api.global-search', ['q' => '%%']))
+        ->assertOk()
+        ->assertJsonCount(0, 'groups');
+});
+
+test('company global search is restricted to its own employees and appointments', function () {
+    $ownCompany = Company::create(['company_name' => 'Own Company', 'email' => 'own@company.test', 'status' => 'active']);
+    $otherCompany = Company::create(['company_name' => 'Other Company', 'email' => 'other@company.test', 'status' => 'active']);
+    $companyUser = User::factory()->create(['role' => 'company', 'company_id' => $ownCompany->id]);
+    $ownPatient = User::factory()->create(['role' => 'patient', 'company_id' => $ownCompany->id, 'first_name' => 'ScopedSearch']);
+    $otherPatient = User::factory()->create(['role' => 'patient', 'company_id' => $otherCompany->id, 'first_name' => 'ScopedSearch']);
+    $ownAppointment = searchableAppointment($ownPatient, ['company_id' => $ownCompany->id]);
+    $otherAppointment = searchableAppointment($otherPatient, ['company_id' => $otherCompany->id]);
+
+    $this->actingAs($companyUser)
+        ->getJson(route('api.global-search', ['q' => 'ScopedSearch']))
+        ->assertOk()
+        ->assertJsonFragment(['id' => 'appointment-'.$ownAppointment->id])
+        ->assertJsonFragment(['id' => 'person-'.$ownPatient->id])
+        ->assertJsonMissing(['id' => 'appointment-'.$otherAppointment->id])
+        ->assertJsonMissing(['id' => 'person-'.$otherPatient->id]);
+});
+
+test('unlinked company account cannot search unassigned patient records', function () {
+    $companyUser = User::factory()->create(['role' => 'company', 'company_id' => null]);
+    $patient = User::factory()->create(['role' => 'patient', 'company_id' => null, 'first_name' => 'UnassignedSearch']);
+    searchableAppointment($patient, ['company_id' => null]);
+
+    $this->actingAs($companyUser)
+        ->getJson(route('api.global-search', ['q' => 'UnassignedSearch']))
+        ->assertOk()
+        ->assertJsonCount(0, 'groups');
+});
+
+test('receptionist and diagnostic global searches stay within their workflow scopes', function () {
+    $patient = User::factory()->create(['role' => 'patient', 'first_name' => 'WorkflowSearch']);
+    $today = searchableAppointment($patient, ['appointment_date' => today(), 'status' => 'for_diagnostics']);
+    $future = searchableAppointment($patient, ['appointment_date' => today()->addDay(), 'status' => 'pending']);
+
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $this->actingAs($receptionist)
+        ->getJson(route('api.global-search', ['q' => 'WorkflowSearch']))
+        ->assertOk()
+        ->assertJsonFragment(['id' => 'appointment-'.$today->id])
+        ->assertJsonMissing(['id' => 'appointment-'.$future->id]);
+
+    $medtech = User::factory()->create(['role' => 'medtech']);
+    $this->actingAs($medtech)
+        ->getJson(route('api.global-search', ['q' => 'WorkflowSearch']))
+        ->assertOk()
+        ->assertJsonFragment(['id' => 'appointment-'.$today->id])
+        ->assertJsonMissing(['id' => 'appointment-'.$future->id]);
+
+    $today->update(['status' => 'for_xray']);
+    $radtech = User::factory()->create(['role' => 'radtech']);
+    $this->actingAs($radtech)
+        ->getJson(route('api.global-search', ['q' => 'WorkflowSearch']))
+        ->assertOk()
+        ->assertJsonFragment(['id' => 'appointment-'.$today->id])
+        ->assertJsonMissing(['id' => 'appointment-'.$future->id]);
+});

@@ -4,12 +4,12 @@ import {
     CircleSlash,
     Plus,
     Save,
-    Search,
     Trash2,
     UserRound,
 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
@@ -177,26 +177,35 @@ export default function DoctorAvailability({
                 </div>
 
                 {isAdmin && (
-                    <div className="grid gap-3 rounded-2xl border bg-white p-3 shadow-sm sm:grid-cols-[1fr_180px]">
-                        <div className="relative">
-                            <Search className="absolute top-3 left-3 h-4 w-4 text-slate-400" />
-                            <Input
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Search doctor or specialization"
-                                className="pl-9"
-                            />
-                        </div>
-                        <select
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value)}
-                            className="h-10 rounded-md border bg-white px-3 text-sm"
-                        >
-                            <option value="">All statuses</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
+                    <SearchFilterToolbar
+                        search={{
+                            value: search,
+                            onChange: (event) => setSearch(event.target.value),
+                            placeholder: 'Search doctor or specialization',
+                            'aria-label': 'Search doctors',
+                        }}
+                        onSubmit={(event) => event.preventDefault()}
+                        sections={[
+                            {
+                                label: 'Status',
+                                content: (
+                                    <select
+                                        value={status}
+                                        onChange={(event) =>
+                                            setStatus(event.target.value)
+                                        }
+                                        className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                    >
+                                        <option value="">All statuses</option>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">
+                                            Inactive
+                                        </option>
+                                    </select>
+                                ),
+                            },
+                        ]}
+                    />
                 )}
 
                 <div className="grid gap-6 lg:grid-cols-[280px_1fr]">

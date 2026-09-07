@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
-import { Eye, Filter, Inbox, Search } from 'lucide-react';
+import { Eye, Inbox } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
+import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import AppLayout from '@/layouts/app-layout';
 import type { PaginatedResponse } from '@/types/pagination';
 
@@ -45,47 +46,56 @@ export default function AdminInquiryIndex({
                         inquiries never create accounts automatically.
                     </p>
                 </header>
-                <form
-                    method="GET"
-                    className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_220px_180px_auto]"
-                >
-                    <label className="relative">
-                        <Search className="absolute top-3 left-3 size-4 text-slate-400" />
-                        <input
-                            name="search"
-                            defaultValue={filters.search}
-                            placeholder="Search inquiries"
-                            className="min-h-11 w-full rounded-xl border border-slate-300 pr-3 pl-10"
-                        />
-                    </label>
-                    <select
-                        name="category"
-                        defaultValue={filters.category}
-                        className="min-h-11 rounded-xl border border-slate-300 bg-white px-3"
-                    >
-                        <option value="">All categories</option>
-                        {categories.map((item) => (
-                            <option key={item.value} value={item.value}>
-                                {item.label}
-                            </option>
-                        ))}
-                    </select>
-                    <select
-                        name="status"
-                        defaultValue={filters.status}
-                        className="min-h-11 rounded-xl border border-slate-300 bg-white px-3"
-                    >
-                        <option value="">All statuses</option>
-                        {statuses.map((item) => (
-                            <option key={item.value} value={item.value}>
-                                {item.label}
-                            </option>
-                        ))}
-                    </select>
-                    <button className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-moss-700 px-4 font-semibold text-white">
-                        <Filter className="size-4" /> Filter
-                    </button>
-                </form>
+                <SearchFilterToolbar
+                    search={{
+                        name: 'search',
+                        defaultValue: filters.search,
+                        placeholder: 'Search inquiries',
+                        'aria-label': 'Search inquiries',
+                    }}
+                    sections={[
+                        {
+                            label: 'Category',
+                            content: (
+                                <select
+                                    name="category"
+                                    defaultValue={filters.category}
+                                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                >
+                                    <option value="">All categories</option>
+                                    {categories.map((item) => (
+                                        <option
+                                            key={item.value}
+                                            value={item.value}
+                                        >
+                                            {item.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            ),
+                        },
+                        {
+                            label: 'Status',
+                            content: (
+                                <select
+                                    name="status"
+                                    defaultValue={filters.status}
+                                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                >
+                                    <option value="">All statuses</option>
+                                    {statuses.map((item) => (
+                                        <option
+                                            key={item.value}
+                                            value={item.value}
+                                        >
+                                            {item.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            ),
+                        },
+                    ]}
+                />
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     {inquiries.data.length === 0 ? (
                         <div className="p-12 text-center">

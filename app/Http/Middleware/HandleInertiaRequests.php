@@ -33,7 +33,7 @@ class HandleInertiaRequests extends Middleware
                     'created_at' => $notification->created_at?->toIso8601String(),
                 ])->values(),
             ] : ['unreadCount' => 0, 'latest' => []],
-            'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'sidebarPinned' => $request->cookie('sidebar_pinned') === 'true',
 
             // ✅ Add flash messages
             'flash' => [

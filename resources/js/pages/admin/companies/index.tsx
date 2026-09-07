@@ -1,8 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     Plus,
-    Search,
-    Filter,
     Edit,
     Eye,
     ToggleLeft,
@@ -10,6 +8,7 @@ import {
     CalendarDays,
 } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
+import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -39,50 +38,49 @@ export default function AdminCompaniesIndex() {
 
             <div className="p-6">
                 {/* Filters */}
-                <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                    <form method="GET" className="flex flex-wrap gap-4">
-                        <input
-                            type="hidden"
-                            name="per_page"
-                            value={companies.per_page}
-                        />
-                        <div className="min-w-[200px] flex-1">
-                            <div className="relative">
-                                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="text"
-                                    name="search"
-                                    defaultValue={filters.search}
-                                    placeholder="Search company name..."
-                                    className="w-full rounded-lg border border-gray-300 bg-white py-2 pr-4 pl-10 text-gray-900 placeholder-gray-400 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
-                                />
-                            </div>
-                        </div>
-                        <select
-                            name="status"
-                            defaultValue={filters.status}
-                            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
-                        >
-                            <option value="">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                        <button
-                            type="submit"
-                            className="flex min-h-11 items-center gap-2 rounded-xl bg-moss-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-moss-600 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none"
-                        >
-                            <Filter className="h-4 w-4" />
-                            Filter
-                        </button>
-
-                        <Link
-                            href="/admin/companies/create"
-                            className="inline-flex items-center gap-2 rounded-lg bg-moss-600 px-4 py-2 text-white transition-colors hover:bg-moss-700"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Add Company
-                        </Link>
-                    </form>
+                <div className="mb-6">
+                    <SearchFilterToolbar
+                        search={{
+                            name: 'search',
+                            defaultValue: filters.search,
+                            placeholder: 'Search company name...',
+                            'aria-label': 'Search companies',
+                        }}
+                        hiddenFields={
+                            <input
+                                type="hidden"
+                                name="per_page"
+                                value={companies.per_page}
+                            />
+                        }
+                        sections={[
+                            {
+                                label: 'Status',
+                                content: (
+                                    <select
+                                        name="status"
+                                        defaultValue={filters.status}
+                                        className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                    >
+                                        <option value="">All statuses</option>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">
+                                            Inactive
+                                        </option>
+                                    </select>
+                                ),
+                            },
+                        ]}
+                        actions={
+                            <Link
+                                href="/admin/companies/create"
+                                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-moss-600 px-5 font-semibold text-white transition-colors hover:bg-moss-700"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add Company
+                            </Link>
+                        }
+                    />
                 </div>
 
                 {/* Companies Table */}

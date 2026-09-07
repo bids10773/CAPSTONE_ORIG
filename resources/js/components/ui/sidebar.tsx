@@ -24,7 +24,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
+const SIDEBAR_COOKIE_NAME = "sidebar_pinned"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16.25rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
@@ -35,6 +35,12 @@ type SidebarContext = {
   state: "expanded" | "collapsed"
   open: boolean
   setOpen: (open: boolean) => void
+  isPinned: boolean
+  setPinned: React.Dispatch<React.SetStateAction<boolean>>
+  isHovered: boolean
+  setHovered: (hovered: boolean) => void
+  isFocusWithin: boolean
+  setFocusWithin: (focused: boolean) => void
   openMobile: boolean
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
@@ -53,44 +59,53 @@ function useSidebar() {
 }
 
 function SidebarProvider({
-  defaultOpen = true,
-  open: openProp,
-  onOpenChange: setOpenProp,
+  defaultPinned = false,
+  pinned: pinnedProp,
+  onPinnedChange: setPinnedProp,
   className,
   style,
   children,
   ...props
 }: React.ComponentProps<"div"> & {
-  defaultOpen?: boolean
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
+  defaultPinned?: boolean
+  pinned?: boolean
+  onPinnedChange?: (pinned: boolean) => void
 }) {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
+  const [isHovered, setHovered] = React.useState(false)
+  const [isFocusWithin, setFocusWithin] = React.useState(false)
 
-  // This is the internal state of the sidebar.
-  // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(defaultOpen)
-  const open = openProp ?? _open
-  const setOpen = React.useCallback(
+  // Only the pinned preference is persistent. Hover and keyboard focus are
+  // deliberately temporary so an unpinned sidebar always starts collapsed.
+  const [_isPinned, _setPinned] = React.useState(defaultPinned)
+  const isPinned = pinnedProp ?? _isPinned
+  const setPinned = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
-      const openState = typeof value === "function" ? value(open) : value
-      if (setOpenProp) {
-        setOpenProp(openState)
+      const pinnedState = typeof value === "function" ? value(isPinned) : value
+      if (setPinnedProp) {
+        setPinnedProp(pinnedState)
       } else {
-        _setOpen(openState)
+        _setPinned(pinnedState)
       }
 
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+      document.cookie = `${SIDEBAR_COOKIE_NAME}=${pinnedState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
     },
-    [setOpenProp, open]
+    [isPinned, setPinnedProp]
+  )
+
+  const open = isPinned || isHovered || isFocusWithin
+  const setOpen = React.useCallback(
+    (value: boolean) => setPinned(value),
+    [setPinned]
   )
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
-  }, [isMobile, setOpen, setOpenMobile])
+    return isMobile
+      ? setOpenMobile((mobileOpen) => !mobileOpen)
+      : setPinned((pinned) => !pinned)
+  }, [isMobile, setPinned, setOpenMobile])
 
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
@@ -117,12 +132,30 @@ function SidebarProvider({
       state,
       open,
       setOpen,
+      isPinned,
+      setPinned,
+      isHovered,
+      setHovered,
+      isFocusWithin,
+      setFocusWithin,
       isMobile,
       openMobile,
       setOpenMobile,
       toggleSidebar,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [
+      state,
+      open,
+      setOpen,
+      isPinned,
+      setPinned,
+      isHovered,
+      isFocusWithin,
+      isMobile,
+      openMobile,
+      setOpenMobile,
+      toggleSidebar,
+    ]
   )
 
   return (
@@ -156,13 +189,26 @@ function Sidebar({
   collapsible = "offcanvas",
   className,
   children,
+  onMouseEnter,
+  onMouseLeave,
+  onPointerDownCapture,
+  onFocusCapture,
+  onBlurCapture,
   ...props
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right"
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const {
+    isMobile,
+    state,
+    isPinned,
+    setHovered,
+    setFocusWithin,
+    openMobile,
+    setOpenMobile,
+  } = useSidebar()
 
   if (collapsible === "none") {
     return (
@@ -217,16 +263,18 @@ function Sidebar({
       <div
         className={cn(
           "relative h-svh w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
-          "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
-          variant === "floating" || variant === "inset"
-            ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
-            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)"
+          !isPinned && collapsible === "offcanvas" && "w-0",
+          !isPinned &&
+            collapsible === "icon" &&
+            (variant === "floating" || variant === "inset"
+              ? "w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
+              : "w-(--sidebar-width-icon)")
         )}
       />
       <div
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex",
+          "fixed inset-y-0 z-40 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex",
           side === "left"
             ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
@@ -236,6 +284,30 @@ function Sidebar({
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
           className
         )}
+        onMouseEnter={(event) => {
+          setHovered(true)
+          onMouseEnter?.(event)
+        }}
+        onMouseLeave={(event) => {
+          setHovered(false)
+          onMouseLeave?.(event)
+        }}
+        onPointerDownCapture={(event) => {
+          setFocusWithin(false)
+          onPointerDownCapture?.(event)
+        }}
+        onFocusCapture={(event) => {
+          if ((event.target as HTMLElement).matches(":focus-visible")) {
+            setFocusWithin(true)
+          }
+          onFocusCapture?.(event)
+        }}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setFocusWithin(false)
+          }
+          onBlurCapture?.(event)
+        }}
         {...props}
       >
         <div

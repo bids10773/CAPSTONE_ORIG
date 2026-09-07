@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\Company;
 use App\Models\User;
+use App\Support\SearchTerm;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,10 +14,16 @@ class GlobalSearchController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
+        if (is_string($request->input('q'))) {
+            $request->merge([
+                'q' => SearchTerm::normalize($request->input('q')),
+            ]);
+        }
+
         $validated = $request->validate([
             'q' => ['required', 'string', 'min:2', 'max:100'],
         ]);
-        $term = trim($validated['q']);
+        $term = $validated['q'];
         $user = $request->user();
 
         $groups = collect([
@@ -40,7 +47,9 @@ class GlobalSearchController extends Controller
             'doctor' => $query->where('doctor_id', $user->id),
             'medtech' => $query->whereIn('status', ['for_diagnostics', 'for_final_evaluation', 'completed']),
             'radtech' => $query->whereIn('status', ['for_xray', 'awaiting_xray_result', 'for_final_evaluation', 'completed']),
-            'company' => $query->where('company_id', $user->company_id),
+            'company' => $user->company_id
+                ? $query->where('company_id', $user->company_id)
+                : $query->whereRaw('1 = 0'),
             default => $query->where('user_id', $user->id),
         };
 
@@ -65,7 +74,9 @@ class GlobalSearchController extends Controller
 
         $query = User::query()->select(['id', 'first_name', 'middle_name', 'last_name', 'email', 'role', 'company_id']);
         if ($user->role === 'company') {
-            $query->where('company_id', $user->company_id)->where('role', 'patient');
+            $user->company_id
+                ? $query->where('company_id', $user->company_id)->where('role', 'patient')
+                : $query->whereRaw('1 = 0');
         } elseif ($user->role === 'receptionist') {
             $query->where('role', 'patient');
         } else {
@@ -100,11 +111,12 @@ class GlobalSearchController extends Controller
             return null;
         }
 
+        $likeTerm = SearchTerm::forLike($term);
         $items = Company::query()
             ->select(['id', 'company_name', 'email', 'status'])
             ->where(fn (Builder $query) => $query
-                ->where('company_name', 'like', "%{$term}%")
-                ->orWhere('email', 'like', "%{$term}%"))
+                ->where('company_name', 'like', "%{$likeTerm}%")
+                ->orWhere('email', 'like', "%{$likeTerm}%"))
             ->orderBy('company_name')
             ->limit(6)
             ->get()
@@ -121,22 +133,24 @@ class GlobalSearchController extends Controller
 
     private function matchAppointment(Builder $query, string $term): void
     {
-        $query->where(function (Builder $query) use ($term): void {
+        $likeTerm = SearchTerm::forLike($term);
+        $query->where(function (Builder $query) use ($term, $likeTerm): void {
             $query->when(ctype_digit($term), fn (Builder $query) => $query->orWhereKey((int) $term))
                 ->orWhereHas('user', fn (Builder $patient) => $this->matchUser($patient, $term))
-                ->orWhereHas('company', fn (Builder $company) => $company->where('company_name', 'like', "%{$term}%"))
-                ->orWhere('status', 'like', "%{$term}%")
-                ->orWhere('service_types', 'like', "%{$term}%");
+                ->orWhereHas('company', fn (Builder $company) => $company->where('company_name', 'like', "%{$likeTerm}%"))
+                ->orWhere('status', 'like', "%{$likeTerm}%")
+                ->orWhere('service_types', 'like', "%{$likeTerm}%");
         });
     }
 
     private function matchUser(Builder $query, string $term): void
     {
+        $likeTerm = SearchTerm::forLike($term);
         $query->where(fn (Builder $query) => $query
-            ->where('first_name', 'like', "%{$term}%")
-            ->orWhere('middle_name', 'like', "%{$term}%")
-            ->orWhere('last_name', 'like', "%{$term}%")
-            ->orWhere('email', 'like', "%{$term}%"));
+            ->where('first_name', 'like', "%{$likeTerm}%")
+            ->orWhere('middle_name', 'like', "%{$likeTerm}%")
+            ->orWhere('last_name', 'like', "%{$likeTerm}%")
+            ->orWhere('email', 'like', "%{$likeTerm}%"));
     }
 
     private function appointmentUrl(User $user, Appointment $appointment): string

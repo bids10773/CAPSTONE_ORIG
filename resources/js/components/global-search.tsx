@@ -47,10 +47,17 @@ export function GlobalSearch() {
                 event.preventDefault();
                 setOpen(true);
             }
+            if (event.key === 'Escape' && open) {
+                event.preventDefault();
+                setOpen(false);
+                setQuery('');
+                setGroups([]);
+                setError('');
+            }
         };
         window.addEventListener('keydown', shortcut);
         return () => window.removeEventListener('keydown', shortcut);
-    }, []);
+    }, [open]);
 
     useEffect(() => {
         if (open) inputRef.current?.focus();
@@ -129,14 +136,14 @@ export function GlobalSearch() {
             <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="mx-auto hidden h-10 w-full max-w-md items-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-500 transition hover:border-moss-300 hover:bg-white lg:flex"
+                className="mx-auto hidden h-10 w-full max-w-md items-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-500 transition hover:border-moss-300 hover:bg-white lg:flex dark:hover:bg-card"
                 aria-label="Open global search"
             >
                 <Search className="mr-2.5 size-4" />
                 <span className="truncate">
                     Search patients, appointments, records…
                 </span>
-                <kbd className="ml-auto rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-400">
+                <kbd className="ml-auto rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground">
                     Ctrl K
                 </kbd>
             </button>
@@ -161,7 +168,7 @@ export function GlobalSearch() {
                         role="dialog"
                         aria-modal="true"
                         aria-label="Global search"
-                        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+                        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl"
                     >
                         <div className="flex items-center border-b border-slate-200 px-4">
                             {loading ? (
@@ -185,7 +192,7 @@ export function GlobalSearch() {
                             <button
                                 type="button"
                                 onClick={close}
-                                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-accent"
                                 aria-label="Close search"
                             >
                                 <X className="size-5" />
@@ -234,9 +241,9 @@ export function GlobalSearch() {
                                                     setActiveIndex(index)
                                                 }
                                                 onClick={() => navigate(item)}
-                                                className={`flex w-full items-center gap-3 rounded-xl p-3 text-left ${activeIndex === index ? 'bg-moss-50 ring-1 ring-moss-200' : 'hover:bg-slate-50'}`}
+                                                className={`flex w-full items-center gap-3 rounded-xl p-3 text-left ${activeIndex === index ? 'bg-moss-50 ring-1 ring-moss-200 dark:bg-accent dark:ring-border' : 'hover:bg-slate-50 dark:hover:bg-muted'}`}
                                             >
-                                                <span className="rounded-xl bg-white p-2 text-moss-700 shadow-sm">
+                                                <span className="rounded-xl bg-card p-2 text-moss-700 shadow-sm dark:text-moss-200">
                                                     <Icon className="size-5" />
                                                 </span>
                                                 <span className="min-w-0">

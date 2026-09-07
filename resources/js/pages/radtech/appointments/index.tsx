@@ -1,7 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Calendar, Search, Eye, Image, Play } from 'lucide-react';
+import { Calendar, Eye, Image, Play } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Pagination } from '@/components/pagination';
+import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -47,6 +48,7 @@ interface Props {
 export default function RadTechAppointmentsIndex(props: Props) {
     const { appointments, filters, pageTitle } = props;
     const [search, setSearch] = useState(filters.search || '');
+    const [status, setStatus] = useState(filters.status || '');
 
     const formatDate = (date: string) => {
         return new Date(date).toLocaleDateString('en-US', {
@@ -86,7 +88,7 @@ export default function RadTechAppointmentsIndex(props: Props) {
         const delayDebounce = setTimeout(() => {
             router.get(
                 '/radtech/appointments',
-                { search, per_page: appointments.per_page },
+                { search, status, per_page: appointments.per_page },
                 {
                     preserveState: true,
                     replace: true,
@@ -95,7 +97,7 @@ export default function RadTechAppointmentsIndex(props: Props) {
         }, 500); // ⏱ delay (ms)
 
         return () => clearTimeout(delayDebounce);
-    }, [search, appointments.per_page]);
+    }, [search, status, appointments.per_page]);
 
     const startXray = (appointmentId: number) => {
         router.visit(`/radtech/xrays/${appointmentId}`);
@@ -120,27 +122,37 @@ export default function RadTechAppointmentsIndex(props: Props) {
                 </div>
 
                 {/* Filters */}
-                <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <form method="GET" className="flex flex-wrap gap-4">
-                        <input
-                            type="hidden"
-                            name="per_page"
-                            value={appointments.per_page}
-                        />
-                        <div className="min-w-[200px] flex-1">
-                            <div className="relative">
-                                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="text"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Search patient name..."
-                                    className="w-full rounded-2xl border border-gray-300 bg-white py-2 pr-4 pl-10 text-gray-900 focus:ring-2 focus:ring-moss-500"
-                                />
-                            </div>
-                        </div>
-                    </form>
-                </div>
+                <SearchFilterToolbar
+                    className="mb-6"
+                    search={{
+                        value: search,
+                        onChange: (event) => setSearch(event.target.value),
+                        placeholder: 'Search patient name...',
+                        'aria-label': 'Search X-ray queue',
+                    }}
+                    onSubmit={(event) => event.preventDefault()}
+                    sections={[
+                        {
+                            label: 'Status',
+                            content: (
+                                <select
+                                    value={status}
+                                    onChange={(event) =>
+                                        setStatus(event.target.value)
+                                    }
+                                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                >
+                                    <option value="">
+                                        All pending X-ray work
+                                    </option>
+                                    <option value="for_diagnostics">
+                                        Waiting for X-Ray / Verification
+                                    </option>
+                                </select>
+                            ),
+                        },
+                    ]}
+                />
 
                 {/* Table */}
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -226,20 +238,20 @@ export default function RadTechAppointmentsIndex(props: Props) {
                                                     {/* START BUTTON */}
                                                     {!appointment.xray_report
                                                         ?.is_completed && (
-                                                            <button
-                                                                onClick={() =>
-                                                                    startXray(
-                                                                        appointment.id,
-                                                                    )
-                                                                }
-                                                                className="inline-flex items-center gap-2 rounded-2xl bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 transition-all duration-200 hover:bg-green-200"
-                                                            >
-                                                                <Play className="h-3 w-3" />
-                                                                {appointment.xray_report
-                                                                    ? 'Edit Result'
-                                                                    : 'Start'}
-                                                            </button>
-                                                        )}
+                                                        <button
+                                                            onClick={() =>
+                                                                startXray(
+                                                                    appointment.id,
+                                                                )
+                                                            }
+                                                            className="inline-flex items-center gap-2 rounded-2xl bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 transition-all duration-200 hover:bg-green-200"
+                                                        >
+                                                            <Play className="h-3 w-3" />
+                                                            {appointment.xray_report
+                                                                ? 'Edit Result'
+                                                                : 'Start'}
+                                                        </button>
+                                                    )}
 
                                                     {/* VIEW BUTTON */}
                                                     <Link

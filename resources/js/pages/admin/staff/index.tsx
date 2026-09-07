@@ -1,18 +1,10 @@
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Users,
-    Plus,
-    Search,
-    ToggleLeft,
-    Clock,
-    Filter,
-    RefreshCw,
-} from 'lucide-react';
+import { Users, Plus, ToggleLeft, Clock, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Pagination } from '@/components/pagination';
+import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -87,66 +79,73 @@ export default function StaffIndex() {
                 animate="show"
             >
                 {/* 1. Action Bar (Search & Filter) */}
-                <motion.div
-                    variants={item}
-                    className="flex flex-col items-center gap-3 rounded-xl border border-gray-200 bg-white p-2 pl-4 shadow-sm transition-all hover:shadow-md sm:flex-row"
-                >
-                    <div className="relative w-full flex-1">
-                        <Search className="absolute top-1/2 left-0 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="Search by name, email, or license..."
-                            className="h-10 w-full border-none bg-transparent pl-8 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="flex w-full items-center gap-3 pr-1 sm:w-auto">
-                        <div className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-1.5">
-                            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-                            <select
-                                value={selectedRole}
-                                onChange={(e) =>
-                                    setSelectedRole(e.target.value)
-                                }
-                                className="cursor-pointer bg-transparent text-sm font-medium focus:outline-none"
-                            >
-                                <option value="" className="text-gray-900">
-                                    All Roles
-                                </option>
-                                {Object.entries(roles).map(
-                                    ([value, label]: any) => (
-                                        <option
-                                            key={value}
-                                            value={value}
-                                            className="text-gray-900"
-                                        >
-                                            {label}
+                <motion.div variants={item} className="space-y-3">
+                    <SearchFilterToolbar
+                        search={{
+                            placeholder: 'Search by name, email, or license...',
+                            value: search,
+                            onChange: (event) => setSearch(event.target.value),
+                            'aria-label': 'Search staff',
+                        }}
+                        onSubmit={(event) => event.preventDefault()}
+                        sections={[
+                            {
+                                label: 'Role',
+                                content: (
+                                    <select
+                                        value={selectedRole}
+                                        onChange={(event) =>
+                                            setSelectedRole(event.target.value)
+                                        }
+                                        className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                    >
+                                        <option value="">All roles</option>
+                                        {Object.entries(roles).map(
+                                            ([value, label]: any) => (
+                                                <option
+                                                    key={value}
+                                                    value={value}
+                                                >
+                                                    {label}
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                ),
+                            },
+                            {
+                                label: 'Status',
+                                content: (
+                                    <select
+                                        value={selectedStatus}
+                                        onChange={(event) =>
+                                            setSelectedStatus(
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                    >
+                                        <option value="">All statuses</option>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">
+                                            Inactive
                                         </option>
-                                    ),
-                                )}
-                            </select>
-                        </div>
-                        <select
-                            value={selectedStatus}
-                            onChange={(e) => setSelectedStatus(e.target.value)}
-                            className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium"
-                        >
-                            <option value="">All Statuses</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-
-                        <Link
-                            href="/admin/staff/create"
-                            className="w-full sm:w-auto"
-                        >
-                            <Button className="h-10 w-full gap-2 rounded-lg px-4 font-semibold shadow-sm sm:w-auto">
-                                <Plus className="h-4 w-4" />
-                                Add Staff
-                            </Button>
-                        </Link>
-                    </div>
+                                    </select>
+                                ),
+                            },
+                        ]}
+                        actions={
+                            <Link
+                                href="/admin/staff/create"
+                                className="w-full sm:w-auto"
+                            >
+                                <Button className="h-12 w-full gap-2 rounded-xl px-5 font-semibold shadow-sm sm:w-auto">
+                                    <Plus className="h-4 w-4" />
+                                    Add Staff
+                                </Button>
+                            </Link>
+                        }
+                    />
                     <Pagination pagination={staff} label="staff members" />
                 </motion.div>
 

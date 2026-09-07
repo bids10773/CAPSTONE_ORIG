@@ -8,7 +8,7 @@ type Props = {
 };
 
 export function AppShell({ children, variant = 'header' }: Props) {
-    const isOpen = usePage().props.sidebarOpen;
+    const isPinned = usePage().props.sidebarPinned;
 
     if (variant === 'header') {
         return (
@@ -16,5 +16,7 @@ export function AppShell({ children, variant = 'header' }: Props) {
         );
     }
 
-    return <SidebarProvider defaultOpen={isOpen}>{children}</SidebarProvider>;
+    return (
+        <SidebarProvider defaultPinned={isPinned}>{children}</SidebarProvider>
+    );
 }

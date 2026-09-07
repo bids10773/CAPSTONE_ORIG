@@ -1012,7 +1012,7 @@ export default function CreateAppointment() {
                                     </AnimatePresence>
                                 </div>
 
-                                <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-8">
+                                <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-8 dark:border-border dark:bg-card/95">
                                     <button
                                         type="button"
                                         onClick={() =>
@@ -1023,7 +1023,7 @@ export default function CreateAppointment() {
                                         disabled={
                                             currentStep === 1 || submitting
                                         }
-                                        className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:invisible"
+                                        className="inline-flex h-12 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:invisible dark:border-border dark:text-slate-300 dark:hover:bg-muted"
                                     >
                                         <ArrowLeft className="size-4" /> Back
                                     </button>

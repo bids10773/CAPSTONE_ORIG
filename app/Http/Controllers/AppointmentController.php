@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\AppointmentApprovalService;
 use App\Services\IndividualAppointmentBookingService;
 use App\Services\LaboratoryFormDefinition;
+use App\Support\SearchTerm;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -29,9 +30,11 @@ class AppointmentController extends Controller
      */
     public function index(Request $request): Response
     {
-        $search = $request->get('search', '');
-        $status = $request->get('status', '');
-        $type = $request->get('type', '');
+        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
+        $likeSearch = SearchTerm::forLike($search);
+        $status = (string) $request->get('status', '');
+        $type = (string) $request->get('type', '');
 
         $user = $request->user();
 
@@ -49,7 +52,11 @@ class AppointmentController extends Controller
 
         // If company, show appointments for their employees
         if ($user->role === 'company') {
-            $query->where('company_id', $user->company_id)
+            $query->when(
+                $user->company_id,
+                fn ($query, $companyId) => $query->where('company_id', $companyId),
+                fn ($query) => $query->whereRaw('1 = 0'),
+            )
                 ->whereHas('user', fn ($employee) => $employee->where('role', 'patient'));
         }
 
@@ -58,9 +65,9 @@ class AppointmentController extends Controller
         }
 
         if ($search) {
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%");
+            $query->whereHas('user', function ($q) use ($likeSearch) {
+                $q->where('first_name', 'like', "%{$likeSearch}%")
+                    ->orWhere('last_name', 'like', "%{$likeSearch}%");
             });
         }
 
@@ -505,11 +512,13 @@ class AppointmentController extends Controller
      */
     public function getCompanies(Request $request)
     {
-        $search = $request->get('search', '');
+        $validated = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $search = SearchTerm::normalize((string) ($validated['search'] ?? ''));
+        $likeSearch = SearchTerm::forLike($search);
 
         $companies = Company::where('status', 'active')
-            ->when($search, function ($query) use ($search) {
-                $query->where('company_name', 'like', "%{$search}%");
+            ->when($search, function ($query) use ($likeSearch) {
+                $query->where('company_name', 'like', "%{$likeSearch}%");
             })
             ->orderBy('company_name')
             ->limit(20)
@@ -613,7 +622,8 @@ class AppointmentController extends Controller
     {
         $bulkOnly = $request->routeIs('admin.bulk-appointments.index');
         $filters = $request->validated();
-        $search = trim((string) ($filters['search'] ?? ''));
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
+        $likeSearch = SearchTerm::forLike($search);
         $status = (string) ($filters['status'] ?? '');
         $type = (string) ($filters['type'] ?? '');
         $dateFilter = (string) ($filters['date_filter'] ?? '');
@@ -639,12 +649,12 @@ class AppointmentController extends Controller
         );
 
         if ($search) {
-            $nameTokens = preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [$search];
-            $query->where(function ($query) use ($search, $nameTokens) {
-                $query->whereHas('user', function ($user) use ($search, $nameTokens) {
-                    $user->where(function ($identity) use ($search, $nameTokens) {
-                        $identity->where('email', 'like', "%{$search}%")
-                            ->orWhere('contact', 'like', "%{$search}%")
+            $nameTokens = array_map(SearchTerm::forLike(...), preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [$search]);
+            $query->where(function ($query) use ($search, $likeSearch, $nameTokens) {
+                $query->whereHas('user', function ($user) use ($likeSearch, $nameTokens) {
+                    $user->where(function ($identity) use ($likeSearch, $nameTokens) {
+                        $identity->where('email', 'like', "%{$likeSearch}%")
+                            ->orWhere('contact', 'like', "%{$likeSearch}%")
                             ->orWhere(function ($name) use ($nameTokens) {
                                 foreach ($nameTokens as $token) {
                                     $name->where(function ($part) use ($token) {
@@ -665,9 +675,9 @@ class AppointmentController extends Controller
                             });
                         }
                     })
-                    ->orWhereHas('company', fn ($company) => $company->where('company_name', 'like', "%{$search}%"))
-                    ->orWhere('company_name', 'like', "%{$search}%")
-                    ->orWhere('referral_code', 'like', "%{$search}%")
+                    ->orWhereHas('company', fn ($company) => $company->where('company_name', 'like', "%{$likeSearch}%"))
+                    ->orWhere('company_name', 'like', "%{$likeSearch}%")
+                    ->orWhere('referral_code', 'like', "%{$likeSearch}%")
                     ->when(ctype_digit($search), fn ($appointment) => $appointment->orWhere('appointments.id', (int) $search));
             });
         }
@@ -760,7 +770,8 @@ class AppointmentController extends Controller
      */
     public function today(TodayAppointmentIndexRequest $request): Response
     {
-        $search = trim((string) $request->validated('search', ''));
+        $search = SearchTerm::normalize((string) $request->validated('search', ''));
+        $likeSearch = SearchTerm::forLike($search);
         $today = today();
         $baseQuery = Appointment::query()
             ->whereDate('appointment_date', $today)
@@ -780,11 +791,11 @@ class AppointmentController extends Controller
         ]);
 
         if ($search !== '') {
-            $nameTokens = preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [$search];
-            $query->whereHas('user', function ($patient) use ($search, $nameTokens): void {
-                $patient->where(function ($identity) use ($search, $nameTokens): void {
-                    $identity->where('email', 'like', "%{$search}%")
-                        ->orWhere('contact', 'like', "%{$search}%")
+            $nameTokens = array_map(SearchTerm::forLike(...), preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [$search]);
+            $query->whereHas('user', function ($patient) use ($likeSearch, $nameTokens): void {
+                $patient->where(function ($identity) use ($likeSearch, $nameTokens): void {
+                    $identity->where('email', 'like', "%{$likeSearch}%")
+                        ->orWhere('contact', 'like', "%{$likeSearch}%")
                         ->orWhere(function ($name) use ($nameTokens): void {
                             foreach ($nameTokens as $token) {
                                 $name->where(fn ($part) => $part
@@ -890,15 +901,16 @@ class AppointmentController extends Controller
      */
     public function staffDashboard(Request $request): Response
     {
-
-        $search = $request->get('search', '');
-        $status = $request->get('status', '');
-        $type = $request->get('type', '');
+        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
+        $likeSearch = SearchTerm::forLike($search);
+        $status = (string) $request->get('status', '');
+        $type = (string) $request->get('type', '');
 
         $query = Appointment::with(['user.patientProfile', 'doctor', 'company'])
-            ->when($search, fn ($q) => $q->whereHas('user', fn ($q) => $q->where('first_name', 'like', "%{$search}%")
-                ->orWhere('last_name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")
+            ->when($search, fn ($q) => $q->whereHas('user', fn ($q) => $q->where('first_name', 'like', "%{$likeSearch}%")
+                ->orWhere('last_name', 'like', "%{$likeSearch}%")
+                ->orWhere('email', 'like', "%{$likeSearch}%")
             )
             )
             ->when($status, fn ($q) => $q->where('status', $status))
@@ -1067,12 +1079,15 @@ class AppointmentController extends Controller
      */
     public function searchPatients(Request $request)
     {
+        $validated = $request->validate(['q' => ['required', 'string', 'min:2', 'max:100']]);
+        $search = SearchTerm::forLike($validated['q']);
+
         return response()->json(
             User::where('role', 'patient')
                 ->where('is_active', true)
-                ->where(fn ($q) => $q->where('first_name', 'like', "%{$request->q}%")
-                    ->orWhere('last_name', 'like', "%{$request->q}%")
-                    ->orWhere('email', 'like', "%{$request->q}%")
+                ->where(fn ($q) => $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
                 )
                 ->limit(10)
                 ->get(['id', 'first_name', 'last_name', 'email'])
@@ -1084,11 +1099,13 @@ class AppointmentController extends Controller
      */
     public function staffIndex(Request $request, string $role): Response
     {
-        $search = $request->get('search', '');
-        $status = $request->get('status', '');
+        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
+        $likeSearch = SearchTerm::forLike($search);
+        $status = (string) $request->get('status', '');
         $companyId = $request->integer('company_id') ?: null;
-        $date = $request->get('date', '');
-        $batch = $request->get('batch', '');
+        $date = (string) $request->get('date', '');
+        $batch = (string) $request->get('batch', '');
 
         $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport', 'medicalExamination', 'serviceQueues'])
             ->where('type', '!=', 'company_bulk')
@@ -1140,9 +1157,9 @@ class AppointmentController extends Controller
 
         // Search logic
         if ($search) {
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%");
+            $query->whereHas('user', function ($q) use ($likeSearch) {
+                $q->where('first_name', 'like', "%{$likeSearch}%")
+                    ->orWhere('last_name', 'like', "%{$likeSearch}%");
             });
         }
 

@@ -80,6 +80,8 @@ export default function WalkIns({
     );
     const [patientQuery, setPatientQuery] = useState('');
     const [patients, setPatients] = useState<Patient[]>([]);
+    const [patientSearchError, setPatientSearchError] = useState('');
+    const [patientSearchLoading, setPatientSearchLoading] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(
         null,
     );
@@ -100,11 +102,33 @@ export default function WalkIns({
     });
 
     async function searchPatients() {
-        if (patientQuery.trim().length < 2) return;
-        const response = await axios.get('/receptionist/patients/search', {
-            params: { q: patientQuery },
-        });
-        setPatients(response.data);
+        const query = patientQuery.trim();
+        if (query.length < 2) {
+            setPatients([]);
+            setPatientSearchError('Enter at least two characters.');
+            return;
+        }
+
+        setPatientSearchError('');
+        setPatientSearchLoading(true);
+        try {
+            const response = await axios.get('/receptionist/patients/search', {
+                params: { q: query },
+            });
+            setPatients(response.data);
+            if (response.data.length === 0) {
+                setPatientSearchError(
+                    'No active patients matched your search.',
+                );
+            }
+        } catch {
+            setPatients([]);
+            setPatientSearchError(
+                'Patient search is temporarily unavailable. Please try again.',
+            );
+        } finally {
+            setPatientSearchLoading(false);
+        }
     }
 
     function selectPatient(patient: Patient) {
@@ -217,11 +241,23 @@ export default function WalkIns({
                                     <button
                                         type="button"
                                         onClick={searchPatients}
+                                        disabled={patientSearchLoading}
                                         className="rounded-xl border border-slate-200 px-4"
+                                        aria-label="Search patients"
                                     >
-                                        <Search className="size-4" />
+                                        <Search
+                                            className={`size-4 ${patientSearchLoading ? 'animate-pulse' : ''}`}
+                                        />
                                     </button>
                                 </div>
+                                {patientSearchError && (
+                                    <p
+                                        role="status"
+                                        className="mt-2 text-xs font-medium text-red-600"
+                                    >
+                                        {patientSearchError}
+                                    </p>
+                                )}
                                 {patients.length > 0 && (
                                     <div className="absolute z-10 mt-1 w-full rounded-xl border bg-white p-2 shadow-xl">
                                         {patients.map((patient) => (

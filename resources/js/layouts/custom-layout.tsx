@@ -5,6 +5,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs';
 import { GlobalSearch } from '@/components/global-search';
 import { PageTransition } from '@/components/motion';
 import { NotificationBell } from '@/components/notification-bell';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
@@ -23,7 +24,7 @@ export default function ClinicDashboardLayout({
     children,
     breadcrumbs = [],
 }: AppLayoutProps) {
-    const { auth } = usePage().props as any;
+    const { auth, sidebarPinned } = usePage().props as any;
     const user = auth?.user;
     const fullName =
         user?.name ||
@@ -41,12 +42,15 @@ export default function ClinicDashboardLayout({
     }).format(new Date());
 
     return (
-        <SidebarProvider className="app-workspace min-h-screen bg-background">
+        <SidebarProvider
+            defaultPinned={Boolean(sidebarPinned)}
+            className="app-workspace min-h-screen bg-background"
+        >
             <AppSidebar />
             <SidebarInset className="min-w-0 bg-background">
-                <header className="sticky top-0 z-30 flex h-[72px] shrink-0 items-center border-b border-border bg-white/95 px-4 backdrop-blur-xl sm:px-6">
+                <header className="sticky top-0 z-30 flex h-[72px] shrink-0 items-center border-b border-border bg-card/95 px-4 backdrop-blur-xl sm:px-6">
                     <div className="flex w-full items-center gap-3">
-                        <SidebarTrigger className="size-10 rounded-xl text-slate-500 hover:bg-moss-50 hover:text-moss-700" />
+                        <SidebarTrigger className="size-10 rounded-xl text-slate-500 hover:bg-moss-50 hover:text-moss-700 md:hidden" />
                         <div className="hidden min-w-0 sm:block">
                             <Breadcrumbs breadcrumbs={breadcrumbs} />
                         </div>
@@ -54,10 +58,11 @@ export default function ClinicDashboardLayout({
                         <GlobalSearch />
 
                         <div className="ml-auto flex items-center gap-1.5">
-                            <div className="mr-1 hidden items-center gap-2 rounded-xl bg-moss-50 px-3 py-2 text-xs font-medium text-moss-700 xl:flex">
+                            <div className="mr-1 hidden items-center gap-2 rounded-xl bg-moss-50 px-3 py-2 text-xs font-medium text-moss-700 xl:flex dark:bg-moss-900 dark:text-moss-200">
                                 <CalendarDays className="size-4" />
                                 <time>{currentDate}</time>
                             </div>
+                            <ThemeToggle />
                             <NotificationBell />
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -65,7 +70,7 @@ export default function ClinicDashboardLayout({
                                         type="button"
                                         data-test="navbar-user-menu-button"
                                         aria-label="Open account menu"
-                                        className="ml-1 flex items-center gap-2 rounded-xl border-l border-slate-200 py-1 pr-1 pl-3 text-left transition outline-none hover:bg-moss-50 focus-visible:ring-4 focus-visible:ring-moss-500/15 sm:ml-2 sm:pl-4"
+                                        className="ml-1 flex items-center gap-2 rounded-xl border-l border-slate-200 py-1 pr-1 pl-3 text-left transition outline-none hover:bg-moss-50 focus-visible:ring-4 focus-visible:ring-moss-500/15 data-[state=open]:bg-moss-50 sm:ml-2 sm:pl-4 dark:hover:bg-moss-900 dark:data-[state=open]:bg-moss-900"
                                     >
                                         <Avatar className="size-9">
                                             <AvatarImage

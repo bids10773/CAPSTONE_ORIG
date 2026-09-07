@@ -9,6 +9,7 @@ use App\Http\Requests\ReplyToInquiryRequest;
 use App\Http\Requests\UpdateInquiryStatusRequest;
 use App\Models\Inquiry;
 use App\Services\InquiryService;
+use App\Support\SearchTerm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -26,15 +27,16 @@ class InquiryController extends Controller
             'category' => ['nullable', Rule::enum(InquiryCategory::class)],
             'status' => ['nullable', Rule::enum(InquiryStatus::class)],
         ]);
-        $search = trim((string) ($filters['search'] ?? ''));
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
+        $likeSearch = SearchTerm::forLike($search);
 
         $inquiries = Inquiry::query()
             ->when($search !== '', fn ($query) => $query->where(fn ($nested) => $nested
-                ->where('company_name', 'like', "%{$search}%")
-                ->orWhere('sender_first_name', 'like', "%{$search}%")
-                ->orWhere('sender_last_name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")
-                ->orWhere('subject', 'like', "%{$search}%")))
+                ->where('company_name', 'like', "%{$likeSearch}%")
+                ->orWhere('sender_first_name', 'like', "%{$likeSearch}%")
+                ->orWhere('sender_last_name', 'like', "%{$likeSearch}%")
+                ->orWhere('email', 'like', "%{$likeSearch}%")
+                ->orWhere('subject', 'like', "%{$likeSearch}%")))
             ->when($filters['category'] ?? null, fn ($query, $category) => $query->where('category', $category))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->latest()

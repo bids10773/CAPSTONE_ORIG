@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\User;
+use App\Support\SearchTerm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -19,14 +20,20 @@ class DoctorAvailabilityController extends Controller
     public function adminIndex(Request $request): Response
     {
         $isAdmin = $request->user()->role === 'admin';
-        $search = trim((string) $request->query('search', ''));
-        $status = (string) $request->query('status', '');
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', Rule::in(['active', 'inactive'])],
+            'doctor_id' => ['nullable', 'integer'],
+        ]);
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
+        $likeSearch = SearchTerm::forLike($search);
+        $status = (string) ($filters['status'] ?? '');
         $doctors = User::query()->where('role', 'doctor')
             ->when(! $isAdmin, fn ($q) => $q->whereKey($request->user()->id))
-            ->when($isAdmin && $search !== '', fn ($q) => $q->where(fn ($inner) => $inner->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")->orWhere('specialization', 'like', "%{$search}%")))
+            ->when($isAdmin && $search !== '', fn ($q) => $q->where(fn ($inner) => $inner->where('first_name', 'like', "%{$likeSearch}%")->orWhere('last_name', 'like', "%{$likeSearch}%")->orWhere('specialization', 'like', "%{$likeSearch}%")))
             ->when($isAdmin && in_array($status, ['active', 'inactive'], true), fn ($q) => $q->where('is_active', $status === 'active'))
             ->orderBy('first_name')->get(['id', 'first_name', 'last_name', 'specialization', 'availability', 'is_active']);
-        $selected = $doctors->firstWhere('id', (int) $request->query('doctor_id')) ?? $doctors->first();
+        $selected = $doctors->firstWhere('id', (int) ($filters['doctor_id'] ?? 0)) ?? $doctors->first();
 
         return Inertia::render('admin/doctor-availability/index', [
             'doctors' => $doctors, 'days' => self::DAYS, 'selectedDoctorId' => $selected?->id,

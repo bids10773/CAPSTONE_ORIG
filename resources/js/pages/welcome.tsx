@@ -843,7 +843,10 @@ export default function Welcome() {
                     </Reveal>
                 </section>
 
-                <section className="bg-moss-50 py-20 sm:py-24">
+                <section
+                    id="faq"
+                    className="scroll-mt-28 bg-moss-50 py-20 sm:py-24"
+                >
                     <Reveal className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-7 lg:grid-cols-2">
                         <SectionTitle
                             eyebrow="Frequently asked questions"
@@ -984,16 +987,127 @@ export default function Welcome() {
                         </div>
                     </div>
                 </section>
-                <footer className="bg-moss-800 px-5 pb-7 sm:px-7">
-                    <div className="mx-auto flex max-w-7xl flex-col justify-between gap-3 border-t border-white/10 pt-6 text-xs text-slate-500 sm:flex-row">
-                        <span>
-                            © {new Date().getFullYear()} Living Myth Industrial
-                            Clinic. All rights reserved.
-                        </span>
-                        <span>
-                            Occupational healthcare for safer, stronger
-                            workplaces.
-                        </span>
+                <footer className="bg-moss-800 px-5 py-10 sm:px-7 sm:py-12">
+                    <div className="mx-auto max-w-7xl">
+                        <div className="grid gap-10 lg:grid-cols-[1.55fr_1fr] lg:gap-16">
+                            <div className="max-w-xl">
+                                <Link
+                                    href="/"
+                                    className="inline-flex items-center gap-3 rounded-lg focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
+                                    aria-label="Living Myth Industrial Clinic home"
+                                >
+                                    <span className="flex size-11 items-center justify-center overflow-hidden rounded-xl border border-white/20 bg-white p-1">
+                                        <img
+                                            src={logo}
+                                            alt=""
+                                            className="h-full w-full object-contain"
+                                        />
+                                    </span>
+                                    <span className="text-base font-extrabold tracking-[-.03em] text-white">
+                                        Living Myth Industrial Clinic
+                                    </span>
+                                </Link>
+                                <p className="mt-6 max-w-lg text-sm leading-6 text-white/70">
+                                    Dependable occupational healthcare and
+                                    diagnostics that help businesses build
+                                    safer, healthier workplaces.
+                                </p>
+                                <div className="mt-5 flex items-center gap-2">
+                                    <a
+                                        href="tel:+639228896850"
+                                        aria-label="Call Living Myth Industrial Clinic"
+                                        className="flex size-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white/80 transition hover:border-white/40 hover:bg-white/20 hover:text-white"
+                                    >
+                                        <Phone className="size-4" />
+                                    </a>
+                                    <a
+                                        href="mailto:livingmythindustrialclinic@gmail.com"
+                                        aria-label="Email Living Myth Industrial Clinic"
+                                        className="flex size-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white/80 transition hover:border-white/40 hover:bg-white/20 hover:text-white"
+                                    >
+                                        <Mail className="size-4" />
+                                    </a>
+                                    <a
+                                        href="#contact"
+                                        aria-label="View clinic location"
+                                        className="flex size-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white/80 transition hover:border-white/40 hover:bg-white/20 hover:text-white"
+                                    >
+                                        <MapPin className="size-4" />
+                                    </a>
+                                </div>
+                            </div>
+
+                            <nav
+                                aria-label="Footer quick links"
+                                className="grid grid-cols-2 gap-8 sm:grid-cols-3"
+                            >
+                                <div>
+                                    <p className="text-sm font-bold text-white">
+                                        Explore
+                                    </p>
+                                    <div className="mt-4 flex flex-col gap-3 text-sm text-white/65 [&_a]:transition-colors [&_a:hover]:text-moss-200">
+                                        <a href="#about">About</a>
+                                        <a href="#services">Services</a>
+                                        <a href="#corporate">
+                                            Corporate Programs
+                                        </a>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-white">
+                                        Resources
+                                    </p>
+                                    <div className="mt-4 flex flex-col gap-3 text-sm text-white/65 [&_a]:transition-colors [&_a:hover]:text-moss-200">
+                                        <a href="#contact">Clinic Location</a>
+                                        <Link href="/inquiries/create">
+                                            Send an Inquiry
+                                        </Link>
+                                        <a href="#faq">FAQs</a>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-white">
+                                        Account
+                                    </p>
+                                    <div className="mt-4 flex flex-col gap-3 text-sm text-white/65 [&_a]:transition-colors [&_a:hover]:text-moss-200">
+                                        <Link href="/login">Sign In</Link>
+                                        <Link href="/register">
+                                            Create Account
+                                        </Link>
+                                        <Link href="/appointments/create">
+                                            Book Appointment
+                                        </Link>
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>
+
+                        <div className="mt-9 flex flex-col justify-between gap-4 border-t border-white/15 pt-6 text-xs text-white/55 sm:flex-row sm:items-center">
+                            <span>
+                                © {new Date().getFullYear()} Living Myth
+                                Industrial Clinic. All rights reserved.
+                            </span>
+                            <div className="flex flex-wrap gap-x-6 gap-y-2">
+                                <a
+                                    href="#contact"
+                                    className="underline-offset-4 hover:text-moss-200 hover:underline"
+                                >
+                                    Contact
+                                </a>
+                                <Link
+                                    href="/inquiries/create"
+                                    className="underline-offset-4 hover:text-moss-200 hover:underline"
+                                >
+                                    Inquiries
+                                </Link>
+                                <Link
+                                    href="/login"
+                                    className="underline-offset-4 hover:text-moss-200 hover:underline"
+                                >
+                                    Patient Portal
+                                </Link>
+                            </div>
+                        </div>
                     </div>
                 </footer>
             </main>

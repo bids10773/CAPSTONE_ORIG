@@ -8,6 +8,6 @@ import type { Auth } from './auth';
 export type SharedData = {
     name: string;
     auth: Auth;
-    sidebarOpen: boolean;
+    sidebarPinned: boolean;
     [key: string]: unknown;
 };

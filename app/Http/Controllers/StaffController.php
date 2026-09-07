@@ -6,6 +6,7 @@ use App\Concerns\PasswordValidationRules;
 use App\Models\SecurityAudit;
 use App\Models\User;
 use App\Services\StaffCredentialService;
+use App\Support\SearchTerm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,20 +25,22 @@ class StaffController extends Controller
      */
     public function index(Request $request): Response
     {
-        $search = $request->get('search', '');
-        $role = $request->get('role', '');
-        $status = $request->get('status', '');
+        $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
+        $likeSearch = SearchTerm::forLike($search);
+        $role = (string) $request->get('role', '');
+        $status = (string) $request->get('status', '');
 
         $query = User::query();
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('middle_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('contact_number', 'like', "%{$search}%")
-                    ->orWhere('license_no', 'like', "%{$search}%");
+            $query->where(function ($q) use ($likeSearch) {
+                $q->where('first_name', 'like', "%{$likeSearch}%")
+                    ->orWhere('last_name', 'like', "%{$likeSearch}%")
+                    ->orWhere('middle_name', 'like', "%{$likeSearch}%")
+                    ->orWhere('email', 'like', "%{$likeSearch}%")
+                    ->orWhere('contact', 'like', "%{$likeSearch}%")
+                    ->orWhere('license_no', 'like', "%{$likeSearch}%");
             });
         }
 

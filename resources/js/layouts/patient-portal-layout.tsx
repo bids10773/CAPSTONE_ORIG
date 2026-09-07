@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { NotificationBell } from '@/components/notification-bell';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
@@ -45,8 +46,8 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
             .toUpperCase() || 'PT';
 
     return (
-        <div className="min-h-screen bg-background">
-            <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
+        <div className="patient-portal min-h-screen bg-background text-foreground">
+            <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl">
                 <div className="mx-auto flex h-[72px] max-w-[1500px] items-center gap-3 px-4 sm:px-6 lg:px-8">
                     <Link
                         href="/dashboard"
@@ -106,13 +107,14 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                         )}
                     </button>
 
+                    <ThemeToggle />
                     <NotificationBell />
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <button
                                 type="button"
-                                className="flex shrink-0 items-center gap-2 rounded-xl p-1.5 text-left hover:bg-moss-50 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
+                                className="flex shrink-0 items-center gap-2 rounded-xl p-1.5 text-left hover:bg-moss-50 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none data-[state=open]:bg-moss-50 dark:hover:bg-moss-900 dark:data-[state=open]:bg-moss-900"
                                 aria-label="Open patient account menu"
                             >
                                 <Avatar className="size-9">
