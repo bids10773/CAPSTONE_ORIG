@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Appointment;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -16,13 +15,17 @@ class AdminAppointmentIndexRequest extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
+        $appointmentTypes = $this->routeIs('admin.bulk-appointments.index')
+            ? ['company_bulk']
+            : ['individual', 'company_referral', 'walk_in'];
+
         return [
             'search' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', Rule::in([
                 'pending', 'accepted', 'arrived', 'for_diagnostics', 'for_xray',
                 'for_final_evaluation', 'awaiting_xray_result', 'completed', 'rejected', 'cancelled',
             ])],
-            'type' => ['nullable', Rule::in(array_keys(Appointment::getTypeOptions()))],
+            'type' => ['nullable', Rule::in($appointmentTypes)],
             'date_filter' => ['nullable', Rule::in(['today', 'upcoming', 'past'])],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],

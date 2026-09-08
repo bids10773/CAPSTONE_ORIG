@@ -756,7 +756,11 @@ class AppointmentController extends Controller
                 'rejected',
                 'cancelled',
             ],
-            'typeOptions' => Appointment::getTypeOptions(),
+            'typeOptions' => collect(Appointment::getTypeOptions())
+                ->only($bulkOnly
+                    ? ['company_bulk']
+                    : ['individual', 'company_referral', 'walk_in'])
+                ->all(),
             'bulkOnly' => $bulkOnly,
             'pendingRequestsCount' => Appointment::query()
                 ->where('type', 'individual')

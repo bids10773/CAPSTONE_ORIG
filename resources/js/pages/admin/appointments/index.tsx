@@ -17,7 +17,7 @@ import {
     X,
     XCircle,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
@@ -93,6 +93,21 @@ interface Filters {
     sort: string;
     direction: string;
 }
+
+type FilterKey = keyof Filters;
+
+const normalizeFilters = (filters: Filters): Filters => ({
+    search: filters.search ?? '',
+    status: filters.status ?? '',
+    type: filters.type ?? '',
+    date_filter: filters.date_filter ?? '',
+    date_from: filters.date_from ?? '',
+    date_to: filters.date_to ?? '',
+    doctor_id: filters.doctor_id ?? '',
+    company_id: filters.company_id ?? '',
+    sort: filters.sort ?? 'appointment_date',
+    direction: filters.direction ?? 'desc',
+});
 
 interface OptionRecord {
     id: number;
@@ -283,8 +298,9 @@ export default function AdminAppointmentsIndex() {
         : '/admin/appointments';
     const [selectedAppointment, setSelectedAppointment] =
         useState<Appointment | null>(null);
-    const [search, setSearch] = useState(filters.search ?? '');
-    const lastServerSearch = useRef(filters.search ?? '');
+    const [draftFilters, setDraftFilters] = useState<Filters>(() =>
+        normalizeFilters(filters),
+    );
     const [loading, setLoading] = useState(false);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [rejectingAppointment, setRejectingAppointment] =
@@ -308,38 +324,35 @@ export default function AdminAppointmentsIndex() {
     };
 
     useEffect(() => {
-        if (search === filters.search) return;
-        const timeout = window.setTimeout(() => {
-            setLoading(true);
-            router.get(
-                endpoint,
-                {
-                    ...filters,
-                    search: search || undefined,
-                    per_page: appointments.per_page,
-                    page: 1,
-                },
-                {
-                    preserveState: true,
-                    preserveScroll: true,
-                    replace: true,
-                    onFinish: () => setLoading(false),
-                },
-            );
-        }, 400);
-        return () => window.clearTimeout(timeout);
-        // `visit` intentionally uses the latest server filters after each visit.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [search, filters.search]);
+        setDraftFilters(normalizeFilters(filters));
+    }, [filters]);
 
-    useEffect(() => {
-        if (lastServerSearch.current === filters.search) return;
-        lastServerSearch.current = filters.search;
-        setSearch(filters.search ?? '');
-    }, [filters.search]);
+    const updateDraftFilter = (key: FilterKey, value: string | number) => {
+        setDraftFilters((current) => ({ ...current, [key]: value }));
+    };
+
+    const applyFilters = () => {
+        visit({
+            ...draftFilters,
+            search: draftFilters.search.trim(),
+        });
+    };
 
     const clearFilters = () => {
-        setSearch('');
+        setDraftFilters(
+            normalizeFilters({
+                search: '',
+                status: '',
+                type: '',
+                date_filter: '',
+                date_from: '',
+                date_to: '',
+                doctor_id: '',
+                company_id: '',
+                sort: 'appointment_date',
+                direction: 'desc',
+            }),
+        );
         setLoading(true);
         router.get(
             endpoint,
@@ -351,6 +364,16 @@ export default function AdminAppointmentsIndex() {
                 onFinish: () => setLoading(false),
             },
         );
+    };
+
+    const removeFilter = (key: FilterKey) => {
+        const next = normalizeFilters({
+            ...filters,
+            [key]: key === 'sort' ? 'appointment_date' : '',
+            ...(key === 'sort' ? { direction: 'desc' } : {}),
+        });
+        setDraftFilters(next);
+        visit(next);
     };
 
     const updateStatus = (appointment: Appointment, status: string) => {
@@ -432,9 +455,80 @@ export default function AdminAppointmentsIndex() {
         return missing;
     };
 
-    const hasFilters = Object.entries(filters).some(
-        ([key, value]) => key !== 'direction' && value !== '' && value !== null,
-    );
+    const appliedFilters = normalizeFilters(filters);
+    const appliedFilterChips: Array<{ key: FilterKey; label: string }> = [];
+
+    if (appliedFilters.search) {
+        appliedFilterChips.push({
+            key: 'search',
+            label: `Search: ${appliedFilters.search}`,
+        });
+    }
+    if (appliedFilters.type) {
+        appliedFilterChips.push({
+            key: 'type',
+            label: `Type: ${typeOptions[appliedFilters.type] ?? appliedFilters.type}`,
+        });
+    }
+    if (appliedFilters.company_id) {
+        const company = companies.find(
+            (item) => String(item.id) === String(appliedFilters.company_id),
+        );
+        appliedFilterChips.push({
+            key: 'company_id',
+            label: `Company: ${company?.company_name ?? appliedFilters.company_id}`,
+        });
+    }
+    if (appliedFilters.status) {
+        appliedFilterChips.push({
+            key: 'status',
+            label: `Status: ${statusLabels[appliedFilters.status] ?? appliedFilters.status.replaceAll('_', ' ')}`,
+        });
+    }
+    if (appliedFilters.doctor_id) {
+        const doctor = doctors.find(
+            (item) => String(item.id) === String(appliedFilters.doctor_id),
+        );
+        appliedFilterChips.push({
+            key: 'doctor_id',
+            label: `Doctor: ${doctor ? `Dr. ${fullName(doctor)}` : appliedFilters.doctor_id}`,
+        });
+    }
+    if (appliedFilters.date_filter) {
+        appliedFilterChips.push({
+            key: 'date_filter',
+            label: `Date: ${appliedFilters.date_filter.replaceAll('_', ' ')}`,
+        });
+    }
+    if (appliedFilters.date_from) {
+        appliedFilterChips.push({
+            key: 'date_from',
+            label: `From: ${appliedFilters.date_from}`,
+        });
+    }
+    if (appliedFilters.date_to) {
+        appliedFilterChips.push({
+            key: 'date_to',
+            label: `To: ${appliedFilters.date_to}`,
+        });
+    }
+    if (
+        appliedFilters.sort !== 'appointment_date' ||
+        appliedFilters.direction !== 'desc'
+    ) {
+        const sortLabels: Record<string, string> = {
+            'appointment_date:desc': 'Newest appointment first',
+            'appointment_date:asc': 'Oldest appointment first',
+            'created_at:desc': 'Recently created',
+            'status:asc': 'Status',
+        };
+        appliedFilterChips.push({
+            key: 'sort',
+            label: `Sort: ${sortLabels[`${appliedFilters.sort}:${appliedFilters.direction}`] ?? appliedFilters.sort}`,
+        });
+    }
+
+    const hasFilters = appliedFilterChips.length > 0;
 
     const appointmentActions = (appointment: Appointment) => (
         <DropdownMenu>
@@ -560,50 +654,57 @@ export default function AdminAppointmentsIndex() {
                 <section className="relative z-20 overflow-visible">
                     <SearchFilterToolbar
                         search={{
-                            value: search,
+                            value: draftFilters.search,
                             maxLength: 100,
-                            onChange: (event) => setSearch(event.target.value),
+                            onChange: (event) =>
+                                updateDraftFilter('search', event.target.value),
                             placeholder:
                                 'Search patient, company, doctor, or referral code...',
                             'aria-label': 'Search appointments',
                         }}
                         loading={loading}
-                        onSubmit={(event) => event.preventDefault()}
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            applyFilters();
+                        }}
                         sections={[
                             {
                                 label: 'Patient / Company',
                                 content: (
                                     <div className="grid gap-3 sm:grid-cols-2">
-                                        <select
-                                            value={filters.type ?? ''}
-                                            onChange={(event) =>
-                                                visit({
-                                                    type: event.target.value,
-                                                })
-                                            }
-                                            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
-                                        >
-                                            <option value="">
-                                                All appointment types
-                                            </option>
-                                            {Object.entries(typeOptions).map(
-                                                ([value, label]) => (
+                                        {!bulkOnly && (
+                                            <select
+                                                value={draftFilters.type}
+                                                onChange={(event) =>
+                                                    updateDraftFilter(
+                                                        'type',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                            >
+                                                <option value="">
+                                                    All appointment types
+                                                </option>
+                                                {Object.entries(
+                                                    typeOptions,
+                                                ).map(([value, label]) => (
                                                     <option
                                                         key={value}
                                                         value={value}
                                                     >
                                                         {label}
                                                     </option>
-                                                ),
-                                            )}
-                                        </select>
+                                                ))}
+                                            </select>
+                                        )}
                                         <select
-                                            value={filters.company_id ?? ''}
+                                            value={draftFilters.company_id}
                                             onChange={(event) =>
-                                                visit({
-                                                    company_id:
-                                                        event.target.value,
-                                                })
+                                                updateDraftFilter(
+                                                    'company_id',
+                                                    event.target.value,
+                                                )
                                             }
                                             className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
                                         >
@@ -627,11 +728,12 @@ export default function AdminAppointmentsIndex() {
                                 content: (
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         <select
-                                            value={filters.status ?? ''}
+                                            value={draftFilters.status}
                                             onChange={(event) =>
-                                                visit({
-                                                    status: event.target.value,
-                                                })
+                                                updateDraftFilter(
+                                                    'status',
+                                                    event.target.value,
+                                                )
                                             }
                                             className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
                                         >
@@ -652,12 +754,12 @@ export default function AdminAppointmentsIndex() {
                                             ))}
                                         </select>
                                         <select
-                                            value={filters.doctor_id ?? ''}
+                                            value={draftFilters.doctor_id}
                                             onChange={(event) =>
-                                                visit({
-                                                    doctor_id:
-                                                        event.target.value,
-                                                })
+                                                updateDraftFilter(
+                                                    'doctor_id',
+                                                    event.target.value,
+                                                )
                                             }
                                             className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
                                         >
@@ -681,12 +783,12 @@ export default function AdminAppointmentsIndex() {
                                 content: (
                                     <div className="grid gap-3 sm:grid-cols-3">
                                         <select
-                                            value={filters.date_filter ?? ''}
+                                            value={draftFilters.date_filter}
                                             onChange={(event) =>
-                                                visit({
-                                                    date_filter:
-                                                        event.target.value,
-                                                })
+                                                updateDraftFilter(
+                                                    'date_filter',
+                                                    event.target.value,
+                                                )
                                             }
                                             className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
                                         >
@@ -700,23 +802,24 @@ export default function AdminAppointmentsIndex() {
                                         <input
                                             type="date"
                                             aria-label="From date"
-                                            value={filters.date_from ?? ''}
+                                            value={draftFilters.date_from}
                                             onChange={(event) =>
-                                                visit({
-                                                    date_from:
-                                                        event.target.value,
-                                                })
+                                                updateDraftFilter(
+                                                    'date_from',
+                                                    event.target.value,
+                                                )
                                             }
                                             className="h-11 rounded-xl border border-slate-300 px-3 text-sm"
                                         />
                                         <input
                                             type="date"
                                             aria-label="To date"
-                                            value={filters.date_to ?? ''}
+                                            value={draftFilters.date_to}
                                             onChange={(event) =>
-                                                visit({
-                                                    date_to: event.target.value,
-                                                })
+                                                updateDraftFilter(
+                                                    'date_to',
+                                                    event.target.value,
+                                                )
                                             }
                                             className="h-11 rounded-xl border border-slate-300 px-3 text-sm"
                                         />
@@ -727,11 +830,15 @@ export default function AdminAppointmentsIndex() {
                                 label: 'Group By',
                                 content: (
                                     <select
-                                        value={`${filters.sort ?? 'appointment_date'}:${filters.direction ?? 'desc'}`}
+                                        value={`${draftFilters.sort}:${draftFilters.direction}`}
                                         onChange={(event) => {
                                             const [sort, direction] =
                                                 event.target.value.split(':');
-                                            visit({ sort, direction });
+                                            setDraftFilters((current) => ({
+                                                ...current,
+                                                sort,
+                                                direction,
+                                            }));
                                         }}
                                         className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
                                     >
@@ -754,13 +861,36 @@ export default function AdminAppointmentsIndex() {
                     />
 
                     {hasFilters && (
-                        <button
-                            type="button"
-                            onClick={clearFilters}
-                            className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-moss-700"
-                        >
-                            <X className="size-3.5" /> Clear all filters
-                        </button>
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-slate-600 px-3 py-2 text-xs font-bold text-white">
+                                Filters:
+                            </span>
+                            {appliedFilterChips.map((chip) => (
+                                <span
+                                    key={chip.key}
+                                    className="inline-flex min-h-9 items-center gap-2 rounded-full border border-slate-400 bg-white py-1 pr-1.5 pl-3 text-xs font-semibold text-slate-700 shadow-sm"
+                                >
+                                    <span className="capitalize">
+                                        {chip.label}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeFilter(chip.key)}
+                                        aria-label={`Remove ${chip.label} filter`}
+                                        className="inline-flex size-6 items-center justify-center rounded-full bg-slate-500 text-white transition-colors hover:bg-rose-500"
+                                    >
+                                        <X className="size-3.5" />
+                                    </button>
+                                </span>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={clearFilters}
+                                className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-500 shadow-sm transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+                            >
+                                <X className="size-3.5" /> Clear all
+                            </button>
+                        </div>
                     )}
                 </section>
 
