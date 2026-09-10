@@ -55,7 +55,7 @@ export function OnsiteOverviewCard({
                     </div>
                     <Link
                         href={href}
-                        className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-moss-800 transition hover:-translate-y-0.5 hover:bg-moss-50"
+                        className="preserve-light-action inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-moss-800 transition hover:-translate-y-0.5 hover:bg-moss-50"
                     >
                         Open onsite workspace
                         <ArrowRight className="size-4" />

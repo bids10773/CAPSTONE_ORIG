@@ -47,8 +47,8 @@ export default function AppearanceTabs() {
                         className={cn(
                             'relative rounded-2xl border p-5 text-left transition focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none',
                             active
-                                ? 'border-moss-500 bg-moss-50 ring-1 ring-moss-500/20'
-                                : 'border-border bg-card hover:border-moss-300 hover:bg-moss-50/60',
+                                ? 'border-moss-500 bg-moss-50 ring-1 ring-moss-500/20 dark:bg-accent'
+                                : 'border-border bg-card hover:border-moss-300 hover:bg-moss-50/60 dark:hover:bg-muted',
                         )}
                         aria-pressed={active}
                     >

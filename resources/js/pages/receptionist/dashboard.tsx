@@ -189,7 +189,7 @@ export default function ReceptionistDashboard({
                         </div>
                         <Link
                             href="/receptionist/queue"
-                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-slate-100"
+                            className="preserve-light-action inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-slate-100"
                         >
                             <ListOrdered className="size-4" /> Open queue
                         </Link>

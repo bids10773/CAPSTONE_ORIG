@@ -1,5 +1,6 @@
 import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
+import { cva } from "class-variance-authority"
+import type { VariantProps } from "class-variance-authority"
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -18,17 +19,18 @@ const buttonVariants = cva(
         
         // Glass effect for moss-background panels
         outline:
-          "border border-moss-500 bg-white text-moss-700 hover:bg-moss-50",
+          "border border-moss-500 bg-white text-moss-700 hover:bg-moss-50 dark:bg-card dark:text-moss-200 dark:hover:bg-accent",
         
         // High-contrast white for primary actions on blue backgrounds
         secondary:
-          "bg-moss-50 text-moss-700 shadow-sm hover:bg-moss-100",
+          "bg-moss-50 text-moss-700 shadow-sm hover:bg-moss-100 dark:bg-accent dark:text-moss-200 dark:hover:bg-moss-900",
         
         // Subtle ghosting for less important links
-        ghost: "text-slate-600 hover:bg-moss-50 hover:text-moss-700",
+        ghost:
+          "text-slate-600 hover:bg-moss-50 hover:text-moss-700 dark:text-slate-300 dark:hover:bg-accent dark:hover:text-moss-200",
         
         // Standard link styling
-        link: "text-moss-700 underline-offset-4 hover:underline",
+        link: "text-moss-700 underline-offset-4 hover:underline dark:text-moss-200",
       },
       size: {
         default: "h-11 px-6 py-2",

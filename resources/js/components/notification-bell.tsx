@@ -86,12 +86,12 @@ export function NotificationBell() {
                 sideOffset={10}
                 className="w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-2xl p-0"
             >
-                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-border">
                     <div>
-                        <p className="font-semibold text-slate-900">
+                        <p className="font-semibold text-slate-900 dark:text-foreground">
                             Notifications
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-slate-500 dark:text-muted-foreground">
                             {center.unreadCount} unread
                         </p>
                     </div>
@@ -105,7 +105,7 @@ export function NotificationBell() {
                                     { preserveScroll: true },
                                 )
                             }
-                            className="text-xs font-semibold text-moss-700 hover:text-moss-900"
+                            className="text-xs font-semibold text-moss-700 hover:text-moss-900 dark:text-moss-200 dark:hover:text-moss-100"
                         >
                             Mark all as read
                         </button>
@@ -114,11 +114,11 @@ export function NotificationBell() {
                 <div className="max-h-[28rem] overflow-y-auto">
                     {center.latest.length === 0 ? (
                         <div className="px-6 py-10 text-center">
-                            <Bell className="mx-auto size-7 text-slate-300" />
-                            <p className="mt-3 text-sm font-semibold text-slate-700">
+                            <Bell className="mx-auto size-7 text-slate-300 dark:text-slate-600" />
+                            <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-foreground">
                                 No notifications yet
                             </p>
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 text-xs text-slate-500 dark:text-muted-foreground">
                                 Important appointment and account updates will
                                 appear here.
                             </p>
@@ -129,16 +129,16 @@ export function NotificationBell() {
                                 key={notification.id}
                                 type="button"
                                 onClick={() => visit(notification)}
-                                className={`flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 ${notification.read_at ? 'bg-white' : 'bg-moss-50/70 font-medium'}`}
+                                className={`flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 dark:border-border dark:hover:bg-accent ${notification.read_at ? 'bg-white dark:bg-card' : 'bg-moss-50/70 font-medium dark:bg-muted'}`}
                             >
-                                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-moss-700 shadow-sm">
+                                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-moss-700 shadow-sm dark:bg-accent dark:text-moss-200">
                                     <NotificationIcon
                                         type={notification.type}
                                     />
                                 </span>
                                 <span className="min-w-0 flex-1">
                                     <span className="flex items-start gap-2">
-                                        <span className="text-sm font-semibold text-slate-900">
+                                        <span className="text-sm font-semibold text-slate-900 dark:text-foreground">
                                             {notification.title}
                                         </span>
                                         {!notification.read_at && (
@@ -148,10 +148,10 @@ export function NotificationBell() {
                                             />
                                         )}
                                     </span>
-                                    <span className="mt-0.5 line-clamp-2 block text-xs leading-5 text-slate-600">
+                                    <span className="mt-0.5 line-clamp-2 block text-xs leading-5 text-slate-600 dark:text-muted-foreground">
                                         {notification.message}
                                     </span>
-                                    <span className="mt-1 block text-[11px] text-slate-400">
+                                    <span className="mt-1 block text-[11px] text-slate-400 dark:text-slate-500">
                                         {relativeNotificationTime(
                                             notification.created_at,
                                         )}
@@ -163,7 +163,7 @@ export function NotificationBell() {
                 </div>
                 <Link
                     href="/notifications"
-                    className="block px-4 py-3 text-center text-sm font-semibold text-moss-700 hover:bg-moss-50"
+                    className="block px-4 py-3 text-center text-sm font-semibold text-moss-700 hover:bg-moss-50 dark:text-moss-200 dark:hover:bg-accent"
                 >
                     View All Notifications
                 </Link>

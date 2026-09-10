@@ -58,7 +58,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                             <img
                                 src={logo}
                                 alt="LMIC"
-                                className="size-full object-cover"
+                                className="size-full object-contain p-1"
                             />
                         </span>
                         <span className="hidden leading-tight sm:block">
@@ -96,7 +96,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                     <button
                         type="button"
                         onClick={() => setMobileOpen((open) => !open)}
-                        className="ml-auto rounded-xl p-2 text-slate-600 hover:bg-moss-50 sm:ml-0 xl:hidden"
+                        className="ml-auto rounded-xl p-2 text-slate-600 hover:bg-moss-50 sm:ml-0 xl:hidden dark:text-moss-200"
                         aria-label="Toggle patient navigation"
                         aria-expanded={mobileOpen}
                     >
@@ -114,22 +114,30 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                         <DropdownMenuTrigger asChild>
                             <button
                                 type="button"
-                                className="flex shrink-0 items-center gap-2 rounded-xl p-1.5 text-left hover:bg-moss-50 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none data-[state=open]:bg-moss-50 dark:hover:bg-moss-900 dark:data-[state=open]:bg-moss-900"
+                                className="flex shrink-0 items-center gap-2 rounded-xl p-1.5 text-left text-foreground hover:bg-moss-50 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none data-[state=open]:bg-moss-50 dark:hover:bg-moss-900 dark:data-[state=open]:bg-moss-900"
                                 aria-label="Open patient account menu"
                             >
-                                <Avatar className="size-9">
-                                    <AvatarImage
-                                        src={user?.avatar}
-                                        alt={fullName}
+                                <span className="relative shrink-0">
+                                    <Avatar className="size-9">
+                                        <AvatarImage
+                                            src={user?.avatar}
+                                            alt={fullName}
+                                        />
+                                        <AvatarFallback className="bg-moss-100 text-xs font-bold text-moss-800 dark:bg-moss-900 dark:text-moss-200">
+                                            {initials}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <span
+                                        className="absolute right-0 bottom-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-card"
+                                        role="status"
+                                        aria-label="Online"
+                                        title="Online"
                                     />
-                                    <AvatarFallback className="bg-moss-100 text-xs font-bold text-moss-800">
-                                        {initials}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <span className="hidden max-w-32 truncate text-xs font-bold text-slate-700 md:block">
+                                </span>
+                                <span className="hidden max-w-32 truncate text-xs font-bold text-foreground md:block">
                                     {fullName}
                                 </span>
-                                <ChevronDown className="hidden size-4 text-slate-400 md:block" />
+                                <ChevronDown className="hidden size-4 text-slate-400 md:block dark:text-moss-300" />
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent

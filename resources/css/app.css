@@ -213,6 +213,10 @@
         color: var(--accent-foreground) !important;
     }
 
+    .dark .topbar-icon {
+        color: var(--color-moss-200);
+    }
+
     /* Shared enterprise workspace treatment. Existing pages retain their logic
        while receiving one consistent, accessible component language. */
     .app-workspace main {
@@ -286,37 +290,244 @@
 
     .dark .app-workspace .bg-slate-50,
     .dark .app-workspace .bg-slate-100,
+    .dark .app-workspace .bg-gray-50,
+    .dark .app-workspace .bg-gray-100,
     .dark .app-workspace .bg-moss-50,
+    .dark .app-workspace .bg-moss-100,
     .dark .patient-portal .bg-slate-50,
     .dark .patient-portal .bg-slate-100,
-    .dark .patient-portal .bg-moss-50 {
+    .dark .patient-portal .bg-gray-50,
+    .dark .patient-portal .bg-gray-100,
+    .dark .patient-portal .bg-moss-50,
+    .dark .patient-portal .bg-moss-100 {
+        background-color: var(--muted) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(
+            [class~='bg-gray-50/40'],
+            [class~='bg-gray-50/50'],
+            [class~='bg-slate-50/50'],
+            [class~='bg-slate-50/60'],
+            [class~='bg-slate-50/70'],
+            [class~='bg-slate-50/80'],
+            [class~='bg-slate-50/90'],
+            [class~='bg-slate-100/90'],
+            [class~='bg-moss-50/40'],
+            [class~='bg-moss-50/50'],
+            [class~='bg-moss-50/60'],
+            [class~='bg-moss-50/70'],
+            [class~='bg-moss-100/60']
+        ) {
         background-color: var(--muted) !important;
     }
 
     .dark .app-workspace .text-slate-950,
     .dark .app-workspace .text-slate-900,
     .dark .app-workspace .text-slate-800,
+    .dark .app-workspace .text-gray-950,
+    .dark .app-workspace .text-gray-900,
+    .dark .app-workspace .text-gray-800,
     .dark .patient-portal .text-slate-950,
     .dark .patient-portal .text-slate-900,
-    .dark .patient-portal .text-slate-800 {
+    .dark .patient-portal .text-slate-800,
+    .dark .patient-portal .text-gray-950,
+    .dark .patient-portal .text-gray-900,
+    .dark .patient-portal .text-gray-800 {
         color: var(--foreground) !important;
     }
 
     .dark .app-workspace .text-slate-700,
     .dark .app-workspace .text-slate-600,
     .dark .app-workspace .text-slate-500,
+    .dark .app-workspace .text-gray-700,
+    .dark .app-workspace .text-gray-600,
+    .dark .app-workspace .text-gray-500,
     .dark .patient-portal .text-slate-700,
     .dark .patient-portal .text-slate-600,
-    .dark .patient-portal .text-slate-500 {
+    .dark .patient-portal .text-slate-500,
+    .dark .patient-portal .text-gray-700,
+    .dark .patient-portal .text-gray-600,
+    .dark .patient-portal .text-gray-500 {
         color: var(--muted-foreground) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(
+            .text-moss-950,
+            .text-moss-900,
+            .text-moss-800,
+            .text-moss-700,
+            .text-moss-600,
+            .text-moss-500
+        ) {
+        color: var(--color-moss-200) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(.bg-amber-50, .bg-amber-100, [class~='bg-amber-50/70']) {
+        background-color: rgb(120 53 15 / 0.3) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(
+            .text-amber-700,
+            .text-amber-800,
+            .text-amber-900,
+            .text-amber-950
+        ) {
+        color: rgb(252 211 77) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(.border-amber-100, .border-amber-200) {
+        border-color: rgb(180 83 9 / 0.65) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(.bg-emerald-50, .bg-emerald-100, .bg-green-50, .bg-green-100) {
+        background-color: rgb(6 78 59 / 0.3) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(
+            .text-emerald-700,
+            .text-emerald-800,
+            .text-emerald-900,
+            .text-emerald-950,
+            .text-green-700,
+            .text-green-800,
+            .text-green-900
+        ) {
+        color: rgb(110 231 183) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(.border-emerald-200, .border-emerald-300, .border-green-200) {
+        border-color: rgb(5 150 105 / 0.6) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(.bg-red-50, .bg-red-100, .bg-rose-50) {
+        background-color: rgb(127 29 29 / 0.3) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(.text-red-700, .text-red-800, .text-rose-700, .text-rose-800) {
+        color: rgb(253 164 175) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(.border-red-100, .border-red-200, .border-rose-200) {
+        border-color: rgb(190 24 93 / 0.6) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(.bg-indigo-50, .bg-indigo-100) {
+        background-color: rgb(49 46 129 / 0.3) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(.text-indigo-700, .text-indigo-800) {
+        color: rgb(165 180 252) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(.border-indigo-100, .border-indigo-200) {
+        border-color: rgb(79 70 229 / 0.55) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(
+            .bg-blue-50,
+            .bg-sky-50,
+            .bg-cyan-50,
+            .bg-violet-50,
+            .bg-purple-50
+        ) {
+        background-color: rgb(49 46 129 / 0.28) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(
+            .text-blue-700,
+            .text-blue-900,
+            .text-blue-950,
+            .text-sky-700,
+            .text-sky-800,
+            .text-cyan-700,
+            .text-cyan-800,
+            .text-violet-700,
+            .text-violet-800,
+            .text-purple-700,
+            .text-purple-900
+        ) {
+        color: rgb(165 180 252) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(
+            .border-blue-200,
+            .border-sky-200,
+            .border-cyan-200,
+            .border-violet-200,
+            .border-purple-200
+        ) {
+        border-color: rgb(99 102 241 / 0.55) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(.bg-orange-50, .bg-orange-100, .bg-yellow-100) {
+        background-color: rgb(124 45 18 / 0.3) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(
+            .text-orange-700,
+            .text-orange-900,
+            .text-yellow-700,
+            .text-yellow-800
+        ) {
+        color: rgb(253 186 116) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(.border-orange-200, .border-yellow-200) {
+        border-color: rgb(194 65 12 / 0.6) !important;
     }
 
     .dark .app-workspace .border-slate-100,
     .dark .app-workspace .border-slate-200,
     .dark .app-workspace .border-slate-300,
+    .dark .app-workspace .border-gray-100,
+    .dark .app-workspace .border-gray-200,
+    .dark .app-workspace .border-gray-300,
     .dark .patient-portal .border-slate-100,
     .dark .patient-portal .border-slate-200,
-    .dark .patient-portal .border-slate-300 {
+    .dark .patient-portal .border-slate-300,
+    .dark .patient-portal .border-gray-100,
+    .dark .patient-portal .border-gray-200,
+    .dark .patient-portal .border-gray-300 {
         border-color: var(--border) !important;
     }
 
@@ -331,12 +542,135 @@
         color: var(--foreground) !important;
     }
 
-    .dark .app-workspace main thead {
+    .dark .app-workspace main thead,
+    .dark .patient-portal main thead {
         background-color: rgb(21 32 25 / 0.95) !important;
     }
 
-    .dark .app-workspace main tbody tr:hover {
+    .dark .app-workspace main thead tr,
+    .dark .patient-portal main thead tr {
+        background-color: transparent !important;
+    }
+
+    .dark .app-workspace main thead th,
+    .dark .patient-portal main thead th {
+        color: var(--color-moss-200) !important;
+    }
+
+    .dark .app-workspace main tbody tr:hover,
+    .dark .patient-portal main tbody tr:hover {
         background-color: rgb(36 52 41 / 0.7) !important;
+    }
+
+    /* Keep light-mode utility hovers from flashing bright surfaces in dark mode. */
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-slate-50']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-slate-50/50']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-slate-100']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-slate-200/70']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-gray-50']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-gray-50/80']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-gray-100']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-gray-200']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-moss-50']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-moss-50/30']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-moss-50/40']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-moss-50/50']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-moss-50/60']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-moss-100']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-moss-100/50']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-white']:hover {
+        background-color: var(--accent) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-amber-50']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-amber-100/50']:hover {
+        background-color: rgb(120 53 15 / 0.35) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-emerald-100']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-green-50']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-green-200']:hover {
+        background-color: rgb(6 78 59 / 0.35) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-red-50']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-rose-50']:hover {
+        background-color: rgb(127 29 29 / 0.35) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class*='hover:text-slate-']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class*='hover:text-gray-']:hover {
+        color: var(--foreground) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class*='hover:text-moss-']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        .group:hover
+        [class*='group-hover:text-moss-'] {
+        color: var(--color-moss-200) !important;
+    }
+
+    .dark :is(.app-workspace, .patient-portal) .preserve-light-action {
+        background-color: var(--color-moss-100) !important;
+        color: var(--color-moss-950) !important;
+    }
+
+    .dark :is(.app-workspace, .patient-portal) .preserve-light-action:hover {
+        background-color: var(--color-moss-200) !important;
+        color: var(--color-moss-950) !important;
     }
 
     .dark .app-workspace [data-sidebar='menu-button']:hover,

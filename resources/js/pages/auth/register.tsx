@@ -55,10 +55,6 @@ export default function Register() {
                     </p>
                 </header>
 
-                <div className="mb-6">
-                    <SocialAuthButtons mode="register" />
-                </div>
-
                 <Form
                     {...store.form()}
                     resetOnSuccess={['password', 'password_confirmation']}
@@ -324,6 +320,10 @@ export default function Register() {
                         </>
                     )}
                 </Form>
+
+                <div className="mt-6">
+                    <SocialAuthButtons mode="register" />
+                </div>
 
                 <div className="mt-6 text-center text-sm text-slate-500">
                     Already have an account?{' '}

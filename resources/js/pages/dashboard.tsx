@@ -211,7 +211,7 @@ export default function PatientDashboard() {
                         </div>
                         <Link
                             href="/appointment"
-                            className="inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-moss-900 hover:bg-moss-50"
+                            className="preserve-light-action inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-moss-900 hover:bg-moss-50"
                         >
                             <Plus className="size-4" /> Book appointment
                         </Link>

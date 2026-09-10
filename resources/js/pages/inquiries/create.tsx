@@ -535,7 +535,7 @@ export default function CreateInquiry({
                                 </Link>
                                 <button
                                     disabled={form.processing}
-                                    className="inline-flex min-w-40 items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 font-semibold text-moss-900 shadow-lg transition hover:bg-moss-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="preserve-light-action inline-flex min-w-40 items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 font-semibold text-moss-900 shadow-lg transition hover:bg-moss-50 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {form.processing && (
                                         <LoaderCircle className="size-4 animate-spin" />

@@ -162,8 +162,16 @@ export default function Profile({
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                         <div className="flex items-center gap-4">
-                            <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-moss-100 text-lg font-bold text-moss-800">
-                                {initials}
+                            <div className="relative shrink-0">
+                                <div className="flex size-14 items-center justify-center rounded-2xl bg-moss-100 text-lg font-bold text-moss-800">
+                                    {initials}
+                                </div>
+                                <span
+                                    className="absolute right-0 bottom-0 size-3 rounded-full bg-emerald-500 ring-2 ring-card"
+                                    role="status"
+                                    aria-label="Online"
+                                    title="Online"
+                                />
                             </div>
                             <div>
                                 <h2 className="font-semibold text-slate-950">

@@ -157,7 +157,7 @@ export default function AuthSplitLayout({
                     </div>
                 </section>
 
-                <section className="relative flex min-h-screen items-center justify-center overflow-y-auto px-5 py-8 sm:px-8 lg:px-12">
+                <section className="relative flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto px-5 py-8 sm:px-8 lg:px-12">
                     <div className="absolute top-0 right-0 size-72 translate-x-1/3 -translate-y-1/2 rounded-full bg-moss-100/60 blur-3xl" />
                     <motion.div
                         initial={reduceMotion ? false : { opacity: 0, y: 14 }}
@@ -167,7 +167,7 @@ export default function AuthSplitLayout({
                             delay: reduceMotion ? 0 : 0.08,
                             ease: 'easeOut',
                         }}
-                        className={`relative z-10 w-full ${isRegister ? 'max-w-[720px]' : 'max-w-[480px]'}`}
+                        className={`relative z-10 mx-auto w-full ${isRegister ? 'max-w-[720px]' : 'max-w-[480px]'}`}
                     >
                         <div className="mb-7 flex items-center justify-center gap-3 lg:hidden">
                             <span className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">

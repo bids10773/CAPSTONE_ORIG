@@ -60,9 +60,9 @@ export function Pagination<T>({
     return (
         <nav
             aria-label={`${label} pagination`}
-            className="flex flex-col gap-4 border-t border-slate-200 bg-white px-4 py-4 lg:flex-row lg:items-center lg:justify-between"
+            className="flex flex-col gap-4 border-t border-slate-200 bg-white px-4 py-4 lg:flex-row lg:items-center lg:justify-between dark:border-border dark:bg-card"
         >
-            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-muted-foreground">
                 <span aria-live="polite">
                     Showing{' '}
                     <strong>
@@ -139,7 +139,7 @@ export function Pagination<T>({
                         className={`min-w-9 rounded-lg px-2 py-2 text-sm font-semibold ${
                             link.active
                                 ? 'bg-moss-700 text-white'
-                                : 'border border-slate-200 text-slate-700 hover:bg-moss-50 disabled:opacity-40'
+                                : 'border border-slate-200 text-slate-700 hover:bg-moss-50 disabled:opacity-40 dark:border-border dark:text-slate-300 dark:hover:bg-accent'
                         }`}
                     >
                         {link.label === '...' ? '…' : link.label}
@@ -182,7 +182,7 @@ function PageButton({
             title={label}
             disabled={disabled}
             onClick={onClick}
-            className="rounded-lg border border-slate-200 p-2 text-slate-700 hover:bg-moss-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg border border-slate-200 p-2 text-slate-700 hover:bg-moss-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-border dark:text-slate-300 dark:hover:bg-accent"
         >
             {children}
         </button>

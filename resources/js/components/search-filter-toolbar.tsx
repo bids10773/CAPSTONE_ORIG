@@ -99,7 +99,7 @@ export function SearchFilterToolbar({
                     type="search"
                     {...search}
                     className={cn(
-                        'h-12 w-full rounded-xl border border-slate-200 bg-white pr-4 pl-12 text-sm text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-slate-500 focus:ring-4 focus:ring-slate-200/60',
+                        'h-12 w-full rounded-xl border border-slate-200 bg-white pr-4 pl-12 text-sm text-slate-900 shadow-sm outline-none placeholder:text-slate-400 focus:border-slate-500 focus:ring-4 focus:ring-slate-200/60 dark:border-input dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground dark:focus:border-moss-500 dark:focus:ring-moss-500/10',
                         search.className,
                     )}
                 />
@@ -133,7 +133,7 @@ export function SearchFilterToolbar({
                             'inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border px-5 text-sm font-medium shadow-sm transition-colors',
                             open
                                 ? 'border-slate-600 bg-slate-600 text-white'
-                                : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50',
+                                : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-accent',
                         )}
                     >
                         <ListFilter className="size-5" />
@@ -145,7 +145,7 @@ export function SearchFilterToolbar({
                             <div
                                 role="dialog"
                                 aria-label="Search filters"
-                                className="rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
+                                className="rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-border dark:bg-card"
                             >
                                 <div className="space-y-2">
                                     {sections.map((section, index) => {
@@ -154,7 +154,7 @@ export function SearchFilterToolbar({
                                         return (
                                             <section
                                                 key={section.label}
-                                                className="overflow-hidden rounded-lg bg-slate-100/90"
+                                                className="overflow-hidden rounded-lg bg-slate-100/90 dark:bg-muted"
                                             >
                                                 <button
                                                     type="button"
@@ -162,19 +162,19 @@ export function SearchFilterToolbar({
                                                     onClick={() =>
                                                         toggleSection(index)
                                                     }
-                                                    className="flex min-h-11 w-full items-center justify-between px-3.5 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-slate-200/70"
+                                                    className="flex min-h-11 w-full items-center justify-between px-3.5 py-2.5 text-left text-sm font-semibold text-slate-600 hover:bg-slate-200/70 dark:text-slate-300 dark:hover:bg-accent"
                                                 >
                                                     {section.label}
                                                     <ChevronDown
                                                         className={cn(
-                                                            'size-5 text-slate-800 transition-transform',
+                                                            'size-5 text-slate-800 transition-transform dark:text-slate-300',
                                                             sectionOpen &&
                                                                 'rotate-180',
                                                         )}
                                                     />
                                                 </button>
                                                 {sectionOpen && (
-                                                    <div className="grid gap-2 border-t border-slate-200 bg-white p-3">
+                                                    <div className="grid gap-2 border-t border-slate-200 bg-white p-3 dark:border-border dark:bg-card">
                                                         {section.content}
                                                     </div>
                                                 )}
