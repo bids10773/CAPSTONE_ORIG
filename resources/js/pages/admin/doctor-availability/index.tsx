@@ -155,29 +155,26 @@ export default function DoctorAvailability({
         <>
             <Head title="Doctor Availability" />
             <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
-                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-                    <div>
-                        <p className="text-sm font-semibold text-moss-600">
-                            Management
-                        </p>
-                        <h1 className="text-2xl font-bold text-slate-950">
-                            Doctor availability
+                {!isAdmin && (
+                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                        <h1 className="text-2xl font-semibold tracking-[-.03em] text-slate-950 dark:text-slate-100">
+                            Doctor Availability
                         </h1>
-                        <p className="mt-1 text-sm text-slate-500">
-                            Set recurring clinic periods. Hours are limited to{' '}
-                            {clinicHours.opens_at}–{clinicHours.closes_at}.
-                        </p>
+                        {selected && (
+                            <Button
+                                form="availability-form"
+                                disabled={processing}
+                            >
+                                <Save className="h-4 w-4" />
+                                {processing ? 'Saving…' : 'Save schedule'}
+                            </Button>
+                        )}
                     </div>
-                    {selected && (
-                        <Button form="availability-form" disabled={processing}>
-                            <Save className="h-4 w-4" />
-                            {processing ? 'Saving…' : 'Save schedule'}
-                        </Button>
-                    )}
-                </div>
+                )}
 
                 {isAdmin && (
                     <SearchFilterToolbar
+                        title="Doctor Availability"
                         search={{
                             value: search,
                             onChange: (event) => setSearch(event.target.value),
@@ -205,6 +202,18 @@ export default function DoctorAvailability({
                                 ),
                             },
                         ]}
+                        actions={
+                            selected && (
+                                <Button
+                                    form="availability-form"
+                                    disabled={processing}
+                                    className="h-12"
+                                >
+                                    <Save className="h-4 w-4" />
+                                    {processing ? 'Saving…' : 'Save schedule'}
+                                </Button>
+                            )
+                        }
                     />
                 )}
 

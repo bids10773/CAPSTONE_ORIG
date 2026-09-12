@@ -8,13 +8,15 @@ import {
     CheckCircle2,
     ClipboardCheck,
     Clock3,
-    FileBarChart,
+    ChevronLeft,
+    ChevronRight,
+    EllipsisVertical,
     FlaskConical,
     Stethoscope,
     ShieldAlert,
     UserCog,
-    Users,
 } from 'lucide-react';
+import { useState } from 'react';
 import {
     Bar,
     BarChart,
@@ -35,6 +37,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface AppointmentData {
     id: number;
     appointment_date: string;
+    start_time?: string | null;
     status: string;
     type: string;
     service_type?: string;
@@ -69,18 +72,17 @@ interface DashboardProps {
     recentAppointments?: AppointmentData[];
     recentBulkEmployees?: AppointmentData[];
     todayAppointments?: AppointmentData[];
+    upcomingAppointments?: AppointmentData[];
+    partnerCompanies?: Array<{ id: number; company_name: string }>;
     appointmentsByStatus?: Record<string, number>;
     appointmentsByType?: Record<string, number>;
+    serviceSelections?: Array<{ service: string; count: number }>;
+    examinationPurposes?: Array<{ purpose: string; count: number }>;
     bulkSummary?: {
         events: number;
         employees: number;
         completed: number;
         active: number;
-    };
-    securityAlerts?: {
-        possibleDuplicateAccounts: number;
-        repeatedBookingAttempts: number;
-        highCancellationActivity: number;
     };
     [key: string]: unknown;
 }
@@ -117,6 +119,28 @@ function humanize(value: string): string {
         .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function serviceLabel(service: string): string {
+    const labels: Record<string, string> = {
+        PE: 'Physical Exam',
+        CBC: 'CBC',
+        'X-Ray': 'Chest X-Ray',
+        ECG: 'ECG',
+        FBS: 'Fasting Blood Sugar',
+    };
+
+    return labels[service] ?? service;
+}
+
+function examinationPurposeLabel(purpose: string): string {
+    const labels: Record<string, string> = {
+        pre_employment: 'Pre-employment',
+        annual_pe: 'Annual Physical Exam',
+        medical_clearance: 'Medical Clearance',
+    };
+
+    return labels[purpose] ?? humanize(purpose);
+}
+
 function formatAppointmentDate(date: string): string {
     return new Intl.DateTimeFormat('en-US', {
         month: 'short',
@@ -124,6 +148,49 @@ function formatAppointmentDate(date: string): string {
         hour: 'numeric',
         minute: '2-digit',
     }).format(new Date(date));
+}
+
+function dateKey(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+function dateFromKey(value: string): Date {
+    return new Date(`${value}T00:00:00`);
+}
+
+function addDays(date: Date, days: number): Date {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+
+    return next;
+}
+
+function appointmentDateKey(appointment: AppointmentData): string {
+    return appointment.appointment_date.slice(0, 10);
+}
+
+function formatAppointmentTime(appointment: AppointmentData): string {
+    if (appointment.start_time) {
+        const [hours, minutes] = appointment.start_time
+            .slice(0, 5)
+            .split(':')
+            .map(Number);
+        const time = new Date(2000, 0, 1, hours, minutes);
+
+        return new Intl.DateTimeFormat('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+        }).format(time);
+    }
+
+    return new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+    }).format(new Date(appointment.appointment_date));
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -170,20 +237,166 @@ function SectionHeader({
     );
 }
 
+function UpcomingAppointments({
+    appointments,
+}: {
+    appointments: AppointmentData[];
+}) {
+    const initialDate = appointments[0]
+        ? appointmentDateKey(appointments[0])
+        : dateKey(new Date());
+    const [selectedDate, setSelectedDate] = useState(initialDate);
+    const selected = dateFromKey(selectedDate);
+    const weekStart = addDays(selected, -selected.getDay());
+    const days = Array.from({ length: 7 }, (_, index) =>
+        addDays(weekStart, index),
+    );
+    const selectedAppointments = appointments.filter(
+        (appointment) => appointmentDateKey(appointment) === selectedDate,
+    );
+
+    return (
+        <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-border dark:bg-card">
+            <SectionHeader
+                title="Upcoming Appointments"
+                action={
+                    <Link
+                        href="/admin/appointments?status=accepted"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-moss-700 hover:text-moss-800 dark:text-moss-400"
+                    >
+                        View all <ArrowRight className="size-3.5" />
+                    </Link>
+                }
+            />
+
+            <div className="border-b border-slate-100 px-4 py-3 dark:border-border">
+                <div className="flex items-center justify-between px-1">
+                    <button
+                        type="button"
+                        onClick={() =>
+                            setSelectedDate(dateKey(addDays(selected, -7)))
+                        }
+                        aria-label="Previous week"
+                        className="inline-flex size-8 items-center justify-center text-slate-400 transition-colors hover:text-moss-700"
+                    >
+                        <ChevronLeft className="size-4" />
+                    </button>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        {new Intl.DateTimeFormat('en-US', {
+                            month: 'long',
+                            year: 'numeric',
+                        }).format(selected)}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() =>
+                            setSelectedDate(dateKey(addDays(selected, 7)))
+                        }
+                        aria-label="Next week"
+                        className="inline-flex size-8 items-center justify-center text-slate-400 transition-colors hover:text-moss-700"
+                    >
+                        <ChevronRight className="size-4" />
+                    </button>
+                </div>
+
+                <div className="mt-2 grid grid-cols-7 gap-1.5">
+                    {days.map((day) => {
+                        const key = dateKey(day);
+                        const active = key === selectedDate;
+                        const hasAppointments = appointments.some(
+                            (appointment) =>
+                                appointmentDateKey(appointment) === key,
+                        );
+
+                        return (
+                            <button
+                                key={key}
+                                type="button"
+                                onClick={() => setSelectedDate(key)}
+                                className={`relative rounded-xl px-1 py-2 text-center transition-colors ${
+                                    active
+                                        ? 'bg-moss-600 text-white shadow-sm'
+                                        : 'bg-slate-50 text-slate-600 hover:bg-moss-50 hover:text-moss-700 dark:bg-muted dark:text-slate-300'
+                                }`}
+                            >
+                                <span className="block text-sm font-semibold">
+                                    {day.getDate()}
+                                </span>
+                                <span
+                                    className={`mt-0.5 block text-[10px] ${active ? 'text-moss-50' : 'text-slate-400'}`}
+                                >
+                                    {new Intl.DateTimeFormat('en-US', {
+                                        weekday: 'short',
+                                    }).format(day)}
+                                </span>
+                                {hasAppointments && !active && (
+                                    <span className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-moss-500" />
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="max-h-[340px] overflow-y-auto p-3">
+                {selectedAppointments.length > 0 ? (
+                    <div className="space-y-2">
+                        {selectedAppointments.map((appointment) => (
+                            <Link
+                                key={appointment.id}
+                                href={`/admin/appointments/${appointment.id}`}
+                                className="flex items-center gap-3 rounded-xl bg-slate-50/80 px-3 py-3 transition-colors hover:bg-moss-50 dark:bg-muted/60 dark:hover:bg-moss-900/30"
+                            >
+                                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-moss-100 text-xs font-bold text-moss-700 dark:bg-moss-900 dark:text-moss-300">
+                                    {appointment.user.first_name.charAt(0)}
+                                    {appointment.user.last_name.charAt(0)}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                        {appointment.user.first_name}{' '}
+                                        {appointment.user.last_name}
+                                    </span>
+                                    <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                                        {formatAppointmentTime(appointment)} ·{' '}
+                                        {humanize(appointment.type)}
+                                    </span>
+                                </span>
+                                <span className="shrink-0 text-xs font-semibold text-moss-700 dark:text-moss-400">
+                                    Accepted
+                                </span>
+                                <EllipsisVertical className="size-4 shrink-0 text-slate-400" />
+                            </Link>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex min-h-36 flex-col items-center justify-center px-4 text-center">
+                        <CalendarDays className="size-7 text-slate-300" />
+                        <p className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                            No accepted appointments
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">
+                            Nothing is scheduled for this date.
+                        </p>
+                    </div>
+                )}
+            </div>
+        </article>
+    );
+}
+
 export default function AdminDashboard() {
     const {
         stats = {},
         recentAppointments = [],
         recentBulkEmployees = [],
         todayAppointments = [],
+        upcomingAppointments = [],
+        partnerCompanies = [],
         appointmentsByStatus = {},
         appointmentsByType = {},
+        serviceSelections = [],
+        examinationPurposes = [],
         bulkSummary = { events: 0, employees: 0, completed: 0, active: 0 },
-        securityAlerts = {
-            possibleDuplicateAccounts: 0,
-            repeatedBookingAttempts: 0,
-            highCancellationActivity: 0,
-        },
     } = usePage<DashboardProps>().props;
 
     const count = (value: number | undefined) => Number(value ?? 0);
@@ -200,6 +413,11 @@ export default function AdminDashboard() {
         0,
         totalAppointments - completed - pending - cancelled,
     );
+    const visiblePartnerCompanies = partnerCompanies.slice(0, 3);
+    const remainingPartnerCompanies = Math.max(
+        0,
+        partnerCompanies.length - visiblePartnerCompanies.length,
+    );
 
     const statusData = Object.entries(appointmentsByStatus)
         .map(([status, value]) => ({
@@ -208,6 +426,14 @@ export default function AdminDashboard() {
             count: Number(value),
         }))
         .sort((a, b) => b.count - a.count);
+    const serviceSelectionData = serviceSelections.map((item) => ({
+        ...item,
+        label: serviceLabel(item.service),
+    }));
+    const totalExaminationPurposes = examinationPurposes.reduce(
+        (total, item) => total + item.count,
+        0,
+    );
 
     const attentionItems = [
         {
@@ -238,10 +464,10 @@ export default function AdminDashboard() {
             icon: CalendarDays,
         },
         {
-            label: "Today's bulk employees",
-            value: count(stats.todayBulkEmployees),
-            detail: 'Employees under company bulk events',
-            icon: Users,
+            label: 'Total appointments this month',
+            value: count(stats.monthAppointments),
+            detail: 'Appointments scheduled in the current month',
+            icon: CalendarDays,
         },
         {
             label: 'Pending approval requests',
@@ -252,7 +478,7 @@ export default function AdminDashboard() {
         {
             label: 'Partner companies',
             value: count(stats.totalCompanies),
-            detail: 'Company accounts managed',
+            detail: 'Active partner organizations',
             icon: Building2,
         },
     ];
@@ -265,7 +491,7 @@ export default function AdminDashboard() {
         },
         { label: 'Manage staff', href: '/admin/staff', icon: UserCog },
         { label: 'Companies', href: '/admin/companies', icon: Building2 },
-        { label: 'Reports', href: '/admin/reports', icon: FileBarChart },
+        { label: 'Security', href: '/admin/security', icon: ShieldAlert },
     ];
 
     return (
@@ -273,92 +499,263 @@ export default function AdminDashboard() {
             <Head title="Admin Dashboard" />
 
             <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-                <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                        <p className="text-xs font-semibold tracking-[.14em] text-moss-600 uppercase">
-                            Clinic operations
-                        </p>
-                        <h1 className="mt-1 text-2xl font-semibold tracking-[-.03em] text-slate-950 sm:text-3xl">
-                            Admin Dashboard
-                        </h1>
-                        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                            Monitor appointments, patient activity, service
-                            progress, and clinic performance.
-                        </p>
-                    </div>
-                    <div className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-600 shadow-sm">
-                        <CalendarDays className="size-4 text-moss-600" />
-                        {new Intl.DateTimeFormat('en-US', {
-                            weekday: 'long',
-                            month: 'long',
-                            day: 'numeric',
-                            year: 'numeric',
-                        }).format(new Date())}
-                    </div>
-                </header>
-
-                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {kpis.map(({ label, value, detail, icon: Icon }) => (
+                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                    {kpis.map(({ label, value, detail, icon: Icon }, index) => (
                         <article
                             key={label}
-                            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                            className={`rounded-2xl border p-5 shadow-sm ${
+                                index === 0
+                                    ? 'border-moss-200 bg-moss-50/70 sm:col-span-2 xl:col-span-2'
+                                    : 'border-slate-200 bg-white'
+                            }`}
                         >
                             <div className="flex items-start justify-between gap-4">
                                 <div>
-                                    <p className="text-xs font-medium text-slate-500">
+                                    <p
+                                        className={`font-medium ${
+                                            index === 0
+                                                ? 'text-sm text-moss-800'
+                                                : 'text-xs text-slate-500'
+                                        }`}
+                                    >
                                         {label}
                                     </p>
-                                    <p className="mt-2 text-3xl font-semibold tracking-[-.04em] text-slate-950">
+                                    <p
+                                        className={`mt-2 font-semibold tracking-[-.04em] text-slate-950 ${
+                                            index === 0
+                                                ? 'text-4xl sm:text-5xl'
+                                                : 'text-3xl'
+                                        }`}
+                                    >
                                         {value.toLocaleString()}
                                     </p>
                                 </div>
-                                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-moss-50 text-moss-700">
-                                    <Icon className="size-[18px]" />
+                                <span
+                                    className={`flex shrink-0 items-center justify-center rounded-xl text-moss-700 ${
+                                        index === 0
+                                            ? 'size-12 bg-white shadow-sm'
+                                            : 'size-10 bg-moss-50'
+                                    }`}
+                                >
+                                    <Icon
+                                        className={
+                                            index === 0
+                                                ? 'size-6'
+                                                : 'size-[18px]'
+                                        }
+                                    />
                                 </span>
                             </div>
-                            <p className="mt-4 border-t border-slate-100 pt-3 text-[11px] leading-4 text-slate-400">
-                                {detail}
-                            </p>
+                            {index === 0 && (
+                                <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-moss-700 px-3 py-2 text-xs font-semibold text-white shadow-sm">
+                                    <CalendarDays className="size-4" />
+                                    {new Intl.DateTimeFormat('en-US', {
+                                        weekday: 'long',
+                                        month: 'long',
+                                        day: 'numeric',
+                                        year: 'numeric',
+                                    }).format(new Date())}
+                                </div>
+                            )}
+                            {index === 3 ? (
+                                <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3">
+                                    {visiblePartnerCompanies.length > 0 ? (
+                                        <>
+                                            {visiblePartnerCompanies.map(
+                                                (company) => (
+                                                    <span
+                                                        key={company.id}
+                                                        className="rounded-md bg-moss-100 px-2 py-1 text-[11px] font-semibold text-moss-800 dark:bg-moss-900 dark:text-moss-200"
+                                                    >
+                                                        {company.company_name}
+                                                    </span>
+                                                ),
+                                            )}
+                                            {remainingPartnerCompanies > 0 && (
+                                                <span className="text-[11px] font-semibold text-moss-700">
+                                                    +{remainingPartnerCompanies}{' '}
+                                                    more
+                                                </span>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <span className="text-[11px] text-slate-400">
+                                            No active partner companies
+                                        </span>
+                                    )}
+                                </div>
+                            ) : (
+                                <p
+                                    className={`mt-4 border-t pt-3 text-[11px] leading-4 ${
+                                        index === 0
+                                            ? 'border-moss-200 text-moss-700'
+                                            : 'border-slate-100 text-slate-400'
+                                    }`}
+                                >
+                                    {detail}
+                                </p>
+                            )}
                         </article>
                     ))}
                 </section>
 
-                <section className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
-                    <SectionHeader
-                        title="Booking & Security Alerts"
-                        description="Informational signals for administrator review; accounts are not automatically suspended."
-                    />
-                    <div className="grid gap-3 p-4 sm:grid-cols-3">
-                        {[
-                            [
-                                'Possible Duplicate Accounts',
-                                securityAlerts.possibleDuplicateAccounts,
-                            ],
-                            [
-                                'Repeated Booking Attempts',
-                                securityAlerts.repeatedBookingAttempts,
-                            ],
-                            [
-                                'High Cancellation Activity',
-                                securityAlerts.highCancellationActivity,
-                            ],
-                        ].map(([label, value]) => (
-                            <div
-                                key={String(label)}
-                                className="flex items-center gap-3 rounded-xl bg-amber-50 p-4"
-                            >
-                                <ShieldAlert className="size-5 text-amber-700" />
-                                <div>
-                                    <p className="text-xs text-amber-800">
-                                        {label}
+                <section className="grid gap-6 xl:grid-cols-[minmax(360px,.85fr)_minmax(0,1.35fr)]">
+                    <UpcomingAppointments appointments={upcomingAppointments} />
+
+                    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-border dark:bg-card">
+                        <SectionHeader
+                            title="Most Selected Services"
+                            description="Individual, company-referral, and walk-in appointments"
+                            action={
+                                <Link
+                                    href="/admin/analytics"
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-moss-700 hover:text-moss-800 dark:text-moss-400"
+                                >
+                                    View analytics
+                                    <ArrowRight className="size-3.5" />
+                                </Link>
+                            }
+                        />
+                        <div className="p-4 sm:p-5">
+                            {serviceSelectionData.length > 0 ? (
+                                <div className="h-[270px] w-full">
+                                    <ResponsiveContainer
+                                        width="100%"
+                                        height="100%"
+                                    >
+                                        <BarChart
+                                            data={serviceSelectionData}
+                                            layout="vertical"
+                                            margin={{
+                                                top: 4,
+                                                right: 24,
+                                                bottom: 4,
+                                                left: 8,
+                                            }}
+                                        >
+                                            <CartesianGrid
+                                                horizontal={false}
+                                                stroke="#e2e8f0"
+                                                strokeDasharray="3 3"
+                                            />
+                                            <XAxis
+                                                type="number"
+                                                allowDecimals={false}
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{
+                                                    fill: '#94a3b8',
+                                                    fontSize: 11,
+                                                }}
+                                            />
+                                            <YAxis
+                                                type="category"
+                                                dataKey="label"
+                                                width={132}
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{
+                                                    fill: '#475569',
+                                                    fontSize: 11,
+                                                }}
+                                            />
+                                            <Tooltip
+                                                cursor={{ fill: '#f8fafc' }}
+                                                formatter={(value) => [
+                                                    Number(
+                                                        value,
+                                                    ).toLocaleString(),
+                                                    'Selections',
+                                                ]}
+                                                contentStyle={{
+                                                    border: '1px solid #e2e8f0',
+                                                    borderRadius: 12,
+                                                    boxShadow:
+                                                        '0 8px 24px rgba(15,23,42,.08)',
+                                                }}
+                                            />
+                                            <Bar
+                                                dataKey="count"
+                                                radius={[0, 7, 7, 0]}
+                                                maxBarSize={25}
+                                                fill="#6b8f71"
+                                            />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : (
+                                <div className="flex min-h-[270px] flex-col items-center justify-center text-center">
+                                    <BarChart3 className="size-8 text-slate-300" />
+                                    <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">
+                                        No service selections yet
                                     </p>
-                                    <p className="text-xl font-semibold text-amber-950">
-                                        {Number(value)}
+                                    <p className="mt-1 max-w-xs text-xs text-slate-400">
+                                        Selected services will appear here once
+                                        clinic appointments are recorded.
                                     </p>
                                 </div>
+                            )}
+
+                            <div className="mt-4 border-t border-slate-100 pt-4 dark:border-border">
+                                <div className="flex items-center justify-between gap-3">
+                                    <h3 className="text-xs font-semibold tracking-wide text-slate-700 uppercase dark:text-slate-200">
+                                        Examination Purpose
+                                    </h3>
+                                    <span className="text-[11px] text-slate-400">
+                                        {totalExaminationPurposes.toLocaleString()}{' '}
+                                        recorded
+                                    </span>
+                                </div>
+                                {examinationPurposes.length > 0 ? (
+                                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                                        {examinationPurposes.map((item) => {
+                                            const percentage =
+                                                totalExaminationPurposes > 0
+                                                    ? Math.round(
+                                                          (item.count /
+                                                              totalExaminationPurposes) *
+                                                              100,
+                                                      )
+                                                    : 0;
+
+                                            return (
+                                                <div
+                                                    key={item.purpose}
+                                                    className="rounded-xl bg-moss-50 px-3 py-3 dark:bg-moss-900/30"
+                                                >
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <span className="text-xs font-semibold text-moss-800 dark:text-moss-200">
+                                                            {examinationPurposeLabel(
+                                                                item.purpose,
+                                                            )}
+                                                        </span>
+                                                        <strong className="text-sm text-moss-950 dark:text-moss-100">
+                                                            {item.count.toLocaleString()}
+                                                        </strong>
+                                                    </div>
+                                                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-moss-100 dark:bg-moss-950">
+                                                        <div
+                                                            className="h-full rounded-full bg-moss-600"
+                                                            style={{
+                                                                width: `${percentage}%`,
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <p className="mt-1 text-right text-[10px] text-moss-600 dark:text-moss-400">
+                                                        {percentage}%
+                                                    </p>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="mt-3 text-xs text-slate-400">
+                                        No examination purpose data available.
+                                    </p>
+                                )}
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    </article>
                 </section>
 
                 <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,.75fr)]">

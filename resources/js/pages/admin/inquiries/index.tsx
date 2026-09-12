@@ -34,19 +34,8 @@ export default function AdminInquiryIndex({
         <AppLayout>
             <Head title="Inquiry Management" />
             <main className="space-y-6 p-4 sm:p-6">
-                <header>
-                    <p className="text-sm font-semibold text-moss-700">
-                        Communication
-                    </p>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-950">
-                        Inquiry management
-                    </h1>
-                    <p className="mt-2 text-sm text-slate-600">
-                        Review public and account-holder messages. Company
-                        inquiries never create accounts automatically.
-                    </p>
-                </header>
                 <SearchFilterToolbar
+                    title="Inquiry Management"
                     search={{
                         name: 'search',
                         defaultValue: filters.search,

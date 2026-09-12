@@ -40,6 +40,7 @@ export default function AdminCompaniesIndex() {
                 {/* Filters */}
                 <div className="mb-6">
                     <SearchFilterToolbar
+                        title="Companies"
                         search={{
                             name: 'search',
                             defaultValue: filters.search,

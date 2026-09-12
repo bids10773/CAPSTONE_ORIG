@@ -10,6 +10,6 @@ abstract class Controller
     {
         $perPage = $request->integer('per_page', $default);
 
-        return in_array($perPage, [10, 25, 50, 100], true) ? $perPage : $default;
+        return in_array($perPage, [10, 15, 25, 50, 100], true) ? $perPage : $default;
     }
 }

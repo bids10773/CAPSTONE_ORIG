@@ -20,6 +20,7 @@ import {
     PasswordRequirements,
 } from '@/components/password-requirements';
 import SocialAuthButtons from '@/components/social-auth-buttons';
+import TermsPrivacyContent from '@/components/terms-privacy-content';
 import TextLink from '@/components/text-link';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
@@ -380,28 +381,8 @@ export default function Register() {
                                     <X className="size-5" />
                                 </button>
                             </div>
-                            <div className="max-h-[55vh] space-y-4 overflow-y-auto px-6 py-5 text-sm leading-6 text-slate-600">
-                                <p className="font-semibold text-slate-900">
-                                    Living Myth Industrial Clinic Data Privacy
-                                    Agreement
-                                </p>
-                                <p>
-                                    Your medical and personal information is
-                                    handled in accordance with the Data Privacy
-                                    Act of 2012 (RA 10173).
-                                </p>
-                                <p>
-                                    We collect your name, email, contact number,
-                                    and profile information only for medical
-                                    record verification, patient care, and
-                                    appointment scheduling.
-                                </p>
-                                <p>
-                                    Your data is stored securely, accessed only
-                                    by authorized personnel, and retained only
-                                    as long as necessary for legitimate clinic
-                                    operations.
-                                </p>
+                            <div className="max-h-[60vh] overflow-y-auto px-6 py-5 text-sm leading-6 text-slate-600">
+                                <TermsPrivacyContent />
                             </div>
                             <div className="border-t border-slate-100 bg-slate-50 px-6 py-4">
                                 <button

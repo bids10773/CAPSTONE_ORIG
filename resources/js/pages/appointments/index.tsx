@@ -100,35 +100,11 @@ export default function AppointmentsIndex() {
             />
 
             <div className="mx-auto max-w-7xl space-y-8 p-6 lg:p-8">
-                {/* PAGE HEADER */}
-                <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-                            {isCompanyView
-                                ? 'Employee Appointments'
-                                : 'Appointments'}
-                        </h1>
-                        <p className="mt-1 text-muted-foreground">
-                            {isCompanyView
-                                ? 'Track the appointment and completion status of your company employees.'
-                                : ''}
-                        </p>
-                    </div>
-                    {can?.create && (
-                        <Link
-                            href="/appointments/create"
-                            className="flex items-center gap-2 rounded-xl bg-moss-600 px-5 py-2.5 text-white shadow-sm transition-all hover:bg-moss-700 active:scale-95"
-                        >
-                            <Plus className="h-4 w-4" />
-                            <span className="font-semibold">
-                                New Appointment
-                            </span>
-                        </Link>
-                    )}
-                </div>
-
                 {/* SEARCH & FILTERS TOOLBAR */}
                 <SearchFilterToolbar
+                    title={
+                        isCompanyView ? 'Employee Appointments' : 'Appointments'
+                    }
                     search={{
                         placeholder: 'Search by patient name or email...',
                         value: search,
@@ -192,6 +168,19 @@ export default function AppointmentsIndex() {
                             ),
                         },
                     ]}
+                    actions={
+                        can?.create && (
+                            <Link
+                                href="/appointments/create"
+                                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-moss-600 px-5 text-white shadow-sm transition-all hover:bg-moss-700 active:scale-95 sm:w-auto"
+                            >
+                                <Plus className="h-4 w-4" />
+                                <span className="font-semibold">
+                                    New Appointment
+                                </span>
+                            </Link>
+                        )
+                    }
                 />
 
                 {/* TABLE CONTAINER */}

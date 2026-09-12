@@ -15,6 +15,7 @@ export type SearchFilterSection = {
 };
 
 type Props = {
+    title?: ReactNode;
     search: InputHTMLAttributes<HTMLInputElement>;
     sections?: SearchFilterSection[];
     hiddenFields?: ReactNode;
@@ -27,6 +28,7 @@ type Props = {
 };
 
 export function SearchFilterToolbar({
+    title,
     search,
     sections = [],
     hiddenFields,
@@ -84,13 +86,18 @@ export function SearchFilterToolbar({
                 setOpen(false);
             }}
             className={cn(
-                'relative flex flex-col gap-3 sm:flex-row sm:items-center',
+                'relative flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center',
                 open ? 'z-[100]' : 'z-10',
                 className,
             )}
         >
             {hiddenFields}
-            <label className="relative min-w-0 flex-1">
+            {title && (
+                <h1 className="shrink-0 text-2xl font-semibold tracking-[-.03em] text-slate-950 dark:text-slate-100">
+                    {title}
+                </h1>
+            )}
+            <label className="relative min-w-0 flex-1 sm:min-w-64">
                 <span className="sr-only">
                     {search['aria-label'] ?? 'Search'}
                 </span>

@@ -29,7 +29,7 @@ type PaginationProps<T> = {
     label?: string;
 };
 
-const pageSizes = [10, 25, 50, 100];
+const pageSizes = [10, 15, 25, 50, 100];
 
 export function Pagination<T>({
     pagination,

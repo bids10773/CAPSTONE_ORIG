@@ -81,6 +81,7 @@ export default function StaffIndex() {
                 {/* 1. Action Bar (Search & Filter) */}
                 <motion.div variants={item} className="space-y-3">
                     <SearchFilterToolbar
+                        title="Staff Management"
                         search={{
                             placeholder: 'Search by name, email, or license...',
                             value: search,

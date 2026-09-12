@@ -17,7 +17,7 @@ class TodayAppointmentIndexRequest extends FormRequest
     {
         return [
             'search' => ['nullable', 'string', 'max:100'],
-            'per_page' => ['nullable', 'integer', Rule::in([10, 25, 50, 100])],
+            'per_page' => ['nullable', 'integer', Rule::in([10, 15, 25, 50, 100])],
         ];
     }
 }

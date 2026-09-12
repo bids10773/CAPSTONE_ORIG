@@ -6,7 +6,6 @@ import {
     CalendarDays,
     CalendarClock,
     ChevronDown,
-    ClipboardList,
     FlaskConical,
     LayoutDashboard,
     ScanLine,
@@ -99,6 +98,11 @@ const navigation: Record<string, Item[]> = {
                     icon: Building2,
                 },
                 {
+                    title: 'Patients',
+                    href: '/admin/patients',
+                    icon: UserRoundSearch,
+                },
+                {
                     title: 'Inquiries',
                     href: '/admin/inquiries',
                     icon: MessagesSquare,
@@ -128,16 +132,9 @@ const navigation: Record<string, Item[]> = {
             ],
         },
         {
-            title: 'Reports',
-            href: '/admin/reports',
-            icon: ClipboardList,
-            children: [
-                {
-                    title: 'Reports',
-                    href: '/admin/reports',
-                    icon: ClipboardList,
-                },
-            ],
+            title: 'Security',
+            href: '/admin/security',
+            icon: Lock,
         },
     ],
     doctor: [

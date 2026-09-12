@@ -7,7 +7,7 @@ import {
     CalendarDays,
     CheckCircle2,
     CircleAlert,
-    Ellipsis,
+    EllipsisVertical,
     Eye,
     HeartHandshake,
     Phone,
@@ -36,6 +36,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
 import { appointmentStatusLabels as statusLabels } from '@/lib/appointment-status';
 import type { BreadcrumbItem } from '@/types';
@@ -105,8 +110,8 @@ const normalizeFilters = (filters: Filters): Filters => ({
     date_to: filters.date_to ?? '',
     doctor_id: filters.doctor_id ?? '',
     company_id: filters.company_id ?? '',
-    sort: filters.sort ?? 'appointment_date',
-    direction: filters.direction ?? 'desc',
+    sort: filters.sort || 'created_at',
+    direction: filters.direction || 'desc',
 });
 
 interface OptionRecord {
@@ -146,16 +151,16 @@ interface Props extends PageProps {
 }
 
 const statusStyles: Record<string, string> = {
-    pending: 'border-amber-200 bg-amber-50 text-amber-700',
-    accepted: 'border-indigo-200 bg-indigo-50 text-indigo-700',
-    arrived: 'border-blue-200 bg-blue-50 text-blue-700',
-    for_diagnostics: 'border-cyan-200 bg-cyan-50 text-cyan-700',
-    for_xray: 'border-violet-200 bg-violet-50 text-violet-700',
-    for_final_evaluation: 'border-purple-200 bg-purple-50 text-purple-700',
-    awaiting_xray_result: 'border-amber-200 bg-amber-50 text-amber-700',
-    completed: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    rejected: 'border-rose-200 bg-rose-50 text-rose-700',
-    cancelled: 'border-red-200 bg-red-50 text-red-700',
+    pending: 'text-amber-700 dark:text-amber-400',
+    accepted: 'text-indigo-700 dark:text-indigo-400',
+    arrived: 'text-blue-700 dark:text-blue-400',
+    for_diagnostics: 'text-cyan-700 dark:text-cyan-400',
+    for_xray: 'text-violet-700 dark:text-violet-400',
+    for_final_evaluation: 'text-purple-700 dark:text-purple-400',
+    awaiting_xray_result: 'text-amber-700 dark:text-amber-400',
+    completed: 'text-emerald-700 dark:text-emerald-400',
+    rejected: 'text-rose-700 dark:text-rose-400',
+    cancelled: 'text-red-700 dark:text-red-400',
 };
 
 const typeLabels: Record<string, string> = {
@@ -267,7 +272,7 @@ function isPastAppointment(appointment: Appointment): boolean {
 function StatusBadge({ status }: { status: string }) {
     return (
         <span
-            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap ${statusStyles[status] ?? 'border-slate-200 bg-slate-50 text-slate-600'}`}
+            className={`text-xs font-semibold whitespace-nowrap ${statusStyles[status] ?? 'text-slate-600 dark:text-slate-300'}`}
         >
             {statusLabels[status] ?? status.replaceAll('_', ' ')}
         </span>
@@ -279,6 +284,30 @@ function TypeBadge({ type }: { type: string }) {
         <span className="inline-flex rounded-full border border-moss-200 bg-moss-50 px-2.5 py-1 text-[11px] font-semibold text-moss-700">
             {typeLabels[type] ?? type.replaceAll('_', ' ')}
         </span>
+    );
+}
+
+function TruncatedText({
+    value,
+    className,
+}: {
+    value: string;
+    className?: string;
+}) {
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <span className={`block truncate ${className ?? ''}`}>
+                    {value}
+                </span>
+            </TooltipTrigger>
+            <TooltipContent
+                side="top"
+                className="max-w-xs border border-moss-700 bg-moss-950 text-white shadow-lg [&>svg]:bg-moss-950 [&>svg]:fill-moss-950"
+            >
+                {value}
+            </TooltipContent>
+        </Tooltip>
     );
 }
 
@@ -301,6 +330,7 @@ export default function AdminAppointmentsIndex() {
     const [draftFilters, setDraftFilters] = useState<Filters>(() =>
         normalizeFilters(filters),
     );
+    const [search, setSearch] = useState(filters.search ?? '');
     const [loading, setLoading] = useState(false);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [rejectingAppointment, setRejectingAppointment] =
@@ -309,36 +339,70 @@ export default function AdminAppointmentsIndex() {
     const [rejectionDetails, setRejectionDetails] = useState('');
     const [rejectionError, setRejectionError] = useState('');
 
+    const queryFor = (candidate: Filters) => {
+        const common = {
+            search: candidate.search.trim() || undefined,
+            status: candidate.status || undefined,
+            company_id: candidate.company_id || undefined,
+            per_page: appointments.per_page,
+            page: 1,
+        };
+
+        if (bulkOnly) return common;
+
+        return {
+            ...common,
+            type: candidate.type || undefined,
+            date_filter: candidate.date_filter || undefined,
+            date_from: candidate.date_from || undefined,
+            date_to: candidate.date_to || undefined,
+            doctor_id: candidate.doctor_id || undefined,
+            sort: candidate.sort || undefined,
+            direction: candidate.direction || undefined,
+        };
+    };
+
     const visit = (next: Partial<Filters>) => {
+        const candidate = normalizeFilters({
+            ...draftFilters,
+            ...next,
+        });
+
         setLoading(true);
-        router.get(
-            endpoint,
-            { ...filters, ...next, per_page: appointments.per_page, page: 1 },
-            {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-                onFinish: () => setLoading(false),
-            },
-        );
+        router.get(endpoint, queryFor(candidate), {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            onFinish: () => setLoading(false),
+        });
     };
 
     useEffect(() => {
-        setDraftFilters(normalizeFilters(filters));
-    }, [filters]);
+        const delayDebounceFn = setTimeout(() => {
+            router.get(endpoint, queryFor({ ...draftFilters, search }), {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                onStart: () => setLoading(true),
+                onFinish: () => setLoading(false),
+            });
+        }, 300);
+
+        return () => clearTimeout(delayDebounceFn);
+        // Match Staff Management: search is independent from draft filters.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [search]);
 
     const updateDraftFilter = (key: FilterKey, value: string | number) => {
         setDraftFilters((current) => ({ ...current, [key]: value }));
     };
 
     const applyFilters = () => {
-        visit({
-            ...draftFilters,
-            search: draftFilters.search.trim(),
-        });
+        visit({ ...draftFilters, search });
     };
 
     const clearFilters = () => {
+        setSearch('');
         setDraftFilters(
             normalizeFilters({
                 search: '',
@@ -349,7 +413,7 @@ export default function AdminAppointmentsIndex() {
                 date_to: '',
                 doctor_id: '',
                 company_id: '',
-                sort: 'appointment_date',
+                sort: 'created_at',
                 direction: 'desc',
             }),
         );
@@ -368,10 +432,11 @@ export default function AdminAppointmentsIndex() {
 
     const removeFilter = (key: FilterKey) => {
         const next = normalizeFilters({
-            ...filters,
-            [key]: key === 'sort' ? 'appointment_date' : '',
+            ...draftFilters,
+            [key]: key === 'sort' ? 'created_at' : '',
             ...(key === 'sort' ? { direction: 'desc' } : {}),
         });
+        if (key === 'search') setSearch('');
         setDraftFilters(next);
         visit(next);
     };
@@ -513,7 +578,7 @@ export default function AdminAppointmentsIndex() {
         });
     }
     if (
-        appliedFilters.sort !== 'appointment_date' ||
+        appliedFilters.sort !== 'created_at' ||
         appliedFilters.direction !== 'desc'
     ) {
         const sortLabels: Record<string, string> = {
@@ -536,9 +601,9 @@ export default function AdminAppointmentsIndex() {
                 <button
                     type="button"
                     aria-label={`Actions for ${fullName(appointment.user)}`}
-                    className="flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                    className="inline-flex size-8 items-center justify-center text-slate-400 transition-colors hover:text-moss-700 focus-visible:outline-none"
                 >
-                    <Ellipsis className="size-4" />
+                    <EllipsisVertical className="size-5" />
                 </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -604,30 +669,7 @@ export default function AdminAppointmentsIndex() {
     return (
         <>
             <Head title={bulkOnly ? 'Company Bulk Requests' : 'Appointments'} />
-            <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-                <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                        <p className="text-xs font-semibold tracking-[.14em] text-moss-600 uppercase">
-                            Appointment management
-                        </p>
-                        <h1 className="mt-1 text-2xl font-semibold tracking-[-.03em] text-slate-950 sm:text-3xl">
-                            {bulkOnly
-                                ? 'Company Bulk Requests'
-                                : 'Appointments'}
-                        </h1>
-                        <p className="mt-2 text-sm leading-6 text-slate-500">
-                            {bulkOnly
-                                ? 'Review and coordinate company bulk appointment requests.'
-                                : 'Search, filter, and manage real patient appointments and workflow status.'}
-                        </p>
-                    </div>
-                    <div className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-600 shadow-sm">
-                        <CalendarDays className="size-4 text-moss-600" />
-                        {appointments.total.toLocaleString()}{' '}
-                        {filters.search ? 'matching' : 'total'}
-                    </div>
-                </header>
-
+            <div className="space-y-4 p-3 sm:p-4 lg:p-5">
                 {!bulkOnly && pendingRequestsCount > 0 && (
                     <button
                         type="button"
@@ -653,13 +695,17 @@ export default function AdminAppointmentsIndex() {
 
                 <section className="relative z-20 overflow-visible">
                     <SearchFilterToolbar
+                        title={
+                            bulkOnly ? 'Company Bulk Requests' : 'Appointments'
+                        }
                         search={{
-                            value: draftFilters.search,
+                            name: 'search',
+                            value: search,
                             maxLength: 100,
-                            onChange: (event) =>
-                                updateDraftFilter('search', event.target.value),
-                            placeholder:
-                                'Search patient, company, doctor, or referral code...',
+                            onChange: (event) => setSearch(event.target.value),
+                            placeholder: bulkOnly
+                                ? 'Search company name or status...'
+                                : 'Search patient, company, doctor, or referral code...',
                             'aria-label': 'Search appointments',
                         }}
                         loading={loading}
@@ -669,7 +715,9 @@ export default function AdminAppointmentsIndex() {
                         }}
                         sections={[
                             {
-                                label: 'Patient / Company',
+                                label: bulkOnly
+                                    ? 'Company'
+                                    : 'Appointment Type / Company',
                                 content: (
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         {!bulkOnly && (
@@ -753,28 +801,30 @@ export default function AdminAppointmentsIndex() {
                                                 </option>
                                             ))}
                                         </select>
-                                        <select
-                                            value={draftFilters.doctor_id}
-                                            onChange={(event) =>
-                                                updateDraftFilter(
-                                                    'doctor_id',
-                                                    event.target.value,
-                                                )
-                                            }
-                                            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
-                                        >
-                                            <option value="">
-                                                All doctors
-                                            </option>
-                                            {doctors.map((doctor) => (
-                                                <option
-                                                    key={doctor.id}
-                                                    value={doctor.id}
-                                                >
-                                                    Dr. {fullName(doctor)}
+                                        {!bulkOnly && (
+                                            <select
+                                                value={draftFilters.doctor_id}
+                                                onChange={(event) =>
+                                                    updateDraftFilter(
+                                                        'doctor_id',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                            >
+                                                <option value="">
+                                                    All doctors
                                                 </option>
-                                            ))}
-                                        </select>
+                                                {doctors.map((doctor) => (
+                                                    <option
+                                                        key={doctor.id}
+                                                        value={doctor.id}
+                                                    >
+                                                        Dr. {fullName(doctor)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        )}
                                     </div>
                                 ),
                             },
@@ -857,7 +907,20 @@ export default function AdminAppointmentsIndex() {
                                     </select>
                                 ),
                             },
-                        ]}
+                        ].filter(
+                            (section) =>
+                                !bulkOnly ||
+                                !['Advanced', 'Group By'].includes(
+                                    section.label,
+                                ),
+                        )}
+                        actions={
+                            <div className="inline-flex h-12 w-fit shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs text-slate-600 shadow-sm dark:border-border dark:bg-card dark:text-slate-300">
+                                <CalendarDays className="size-4 text-moss-600" />
+                                {appointments.total.toLocaleString()}{' '}
+                                {filters.search ? 'matching' : 'total'}
+                            </div>
+                        }
                     />
 
                     {hasFilters && (
@@ -895,48 +958,61 @@ export default function AdminAppointmentsIndex() {
                 </section>
 
                 <section
-                    className={`relative z-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity ${loading ? 'opacity-60' : 'opacity-100'}`}
+                    className={`relative z-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-opacity dark:border-border dark:bg-card ${loading ? 'opacity-60' : 'opacity-100'}`}
                     aria-busy={loading}
                 >
                     {appointments.data.length > 0 ? (
                         <>
-                            <div className="hidden overflow-x-auto lg:block">
-                                <table className="w-full min-w-[1100px] text-left">
-                                    <thead className="bg-slate-50/90 text-[11px] font-semibold tracking-[.08em] text-slate-500 uppercase">
+                            <div className="hidden xl:block">
+                                <table className="w-full table-fixed text-left">
+                                    <thead className="border-b border-moss-100 bg-moss-50/90 text-xs font-semibold text-moss-900 dark:border-moss-900 dark:bg-moss-950/40 dark:text-moss-100">
                                         <tr>
-                                            <th className="px-5 py-3.5">
-                                                Patient
+                                            <th className="w-[5%] px-3 py-3">
+                                                ID
                                             </th>
-                                            <th className="px-5 py-3.5">
-                                                Appointment
+                                            <th className="w-[16%] px-3 py-3">
+                                                {bulkOnly
+                                                    ? 'Requester'
+                                                    : 'Patient'}
                                             </th>
-                                            <th className="px-5 py-3.5">
-                                                Type
+                                            <th className="w-[17%] px-3 py-3">
+                                                Contacts
                                             </th>
-                                            <th className="px-5 py-3.5">
-                                                Services
-                                            </th>
-                                            <th className="px-5 py-3.5">
+                                            <th className="w-[14%] px-3 py-3">
                                                 Doctor
                                             </th>
-                                            <th className="px-5 py-3.5">
+                                            <th className="w-[13%] px-3 py-3">
+                                                Company
+                                            </th>
+                                            <th className="w-[10%] px-3 py-3">
+                                                Visit Type
+                                            </th>
+                                            <th className="w-[12%] px-3 py-3">
+                                                Time
+                                            </th>
+                                            <th className="w-[9%] px-3 py-3">
                                                 Status
                                             </th>
-                                            <th className="px-5 py-3.5 text-right">
-                                                Actions
+                                            <th className="w-[4%] px-3 py-3 text-right">
+                                                <span className="sr-only">
+                                                    Actions
+                                                </span>
                                             </th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody className="divide-y divide-slate-100 dark:divide-border">
                                         {appointments.data.map(
                                             (appointment) => (
                                                 <tr
                                                     key={appointment.id}
-                                                    className="hover:bg-moss-50/40"
+                                                    className="text-sm text-slate-700 transition-colors hover:bg-moss-50/50 dark:text-slate-300 dark:hover:bg-moss-900/25"
                                                 >
-                                                    <td className="px-5 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-moss-50 text-xs font-semibold text-moss-700">
+                                                    <td className="px-3 py-2.5 font-medium text-slate-500">
+                                                        #{appointment.id}
+                                                    </td>
+                                                    <td className="min-w-0 px-3 py-2.5">
+                                                        <div className="flex items-center gap-2.5">
+                                                            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-moss-100 text-[11px] font-bold text-moss-700 ring-2 ring-white">
                                                                 {appointment.user.first_name.charAt(
                                                                     0,
                                                                 )}
@@ -945,74 +1021,106 @@ export default function AdminAppointmentsIndex() {
                                                                 )}
                                                             </span>
                                                             <div className="min-w-0">
-                                                                <p className="max-w-48 truncate text-sm font-semibold text-slate-900">
-                                                                    {fullName(
+                                                                <TruncatedText
+                                                                    value={fullName(
                                                                         appointment.user,
                                                                     )}
-                                                                </p>
-                                                                <p className="mt-0.5 max-w-48 truncate text-[11px] text-slate-500">
-                                                                    {appointment.company
-                                                                        ? `Company · ${appointment.company.company_name}`
-                                                                        : typeLabels[
-                                                                                appointment
-                                                                                    .type
-                                                                            ] ===
-                                                                            'Walk-in'
-                                                                          ? 'Walk-in patient'
-                                                                          : 'Individual patient'}
-                                                                </p>
+                                                                    className="font-semibold text-slate-900 dark:text-slate-100"
+                                                                />
+                                                                <TruncatedText
+                                                                    value={
+                                                                        appointment.company
+                                                                            ? `Company · ${appointment.company.company_name}`
+                                                                            : typeLabels[
+                                                                                    appointment
+                                                                                        .type
+                                                                                ] ===
+                                                                                'Walk-in'
+                                                                              ? 'Walk-in patient'
+                                                                              : 'Individual patient'
+                                                                    }
+                                                                    className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400"
+                                                                />
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-5 py-4">
-                                                        <p className="text-sm font-medium text-slate-800">
-                                                            {formatDate(
-                                                                appointment.appointment_date,
-                                                            )}
-                                                        </p>
-                                                        <p className="mt-0.5 text-[11px] text-slate-500">
-                                                            {appointmentTime(
-                                                                appointment,
-                                                            )}
-                                                        </p>
-                                                    </td>
-                                                    <td className="px-5 py-4">
-                                                        <TypeBadge
-                                                            type={
-                                                                appointment.type
+                                                    <td className="min-w-0 px-3 py-2.5">
+                                                        <TruncatedText
+                                                            value={
+                                                                appointment.user
+                                                                    .contact ??
+                                                                'No contact number'
                                                             }
+                                                            className="font-medium text-slate-700 dark:text-slate-200"
+                                                        />
+                                                        <TruncatedText
+                                                            value={
+                                                                appointment.user
+                                                                    .email ??
+                                                                'No email address'
+                                                            }
+                                                            className="mt-0.5 text-xs text-slate-400 dark:text-slate-400"
                                                         />
                                                     </td>
-                                                    <td className="max-w-64 px-5 py-4">
-                                                        <ServiceBadges
-                                                            services={servicesFor(
-                                                                appointment,
-                                                            )}
-                                                        />
-                                                    </td>
-                                                    <td className="px-5 py-4">
+                                                    <td className="min-w-0 px-3 py-2.5">
                                                         {appointment.doctor ? (
-                                                            <div className="flex items-center gap-2 text-sm text-slate-700">
-                                                                <Stethoscope className="size-3.5 text-moss-600" />{' '}
-                                                                Dr.{' '}
-                                                                {fullName(
-                                                                    appointment.doctor,
-                                                                )}
-                                                            </div>
+                                                            <TruncatedText
+                                                                value={`Dr. ${fullName(appointment.doctor)}`}
+                                                                className="font-medium text-slate-700 dark:text-slate-200"
+                                                            />
                                                         ) : (
-                                                            <span className="text-xs text-slate-400">
+                                                            <span className="text-slate-400 dark:text-slate-500">
                                                                 Not assigned
                                                             </span>
                                                         )}
                                                     </td>
-                                                    <td className="px-5 py-4">
+                                                    <td className="min-w-0 px-3 py-2.5">
+                                                        <TruncatedText
+                                                            value={
+                                                                appointment
+                                                                    .company
+                                                                    ?.company_name ??
+                                                                'Not applicable'
+                                                            }
+                                                            className="dark:text-slate-300"
+                                                        />
+                                                    </td>
+                                                    <td className="min-w-0 px-3 py-2.5 font-medium text-slate-700">
+                                                        <TruncatedText
+                                                            value={
+                                                                typeLabels[
+                                                                    appointment
+                                                                        .type
+                                                                ] ??
+                                                                appointment.type.replaceAll(
+                                                                    '_',
+                                                                    ' ',
+                                                                )
+                                                            }
+                                                            className="dark:text-slate-300"
+                                                        />
+                                                    </td>
+                                                    <td className="min-w-0 px-3 py-2.5">
+                                                        <TruncatedText
+                                                            value={appointmentTime(
+                                                                appointment,
+                                                            )}
+                                                            className="font-medium text-slate-800 dark:text-slate-200"
+                                                        />
+                                                        <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+                                                            {formatDate(
+                                                                appointment.appointment_date,
+                                                            )}
+                                                        </p>
+                                                    </td>
+                                                    <td className="px-3 py-2.5">
                                                         <StatusBadge
                                                             status={
                                                                 appointment.status
                                                             }
                                                         />
                                                     </td>
-                                                    <td className="px-5 py-4 text-right">
+                                                    <td className="px-3 py-2.5 text-right">
                                                         {appointmentActions(
                                                             appointment,
                                                         )}
@@ -1024,11 +1132,11 @@ export default function AdminAppointmentsIndex() {
                                 </table>
                             </div>
 
-                            <div className="divide-y divide-slate-100 lg:hidden">
+                            <div className="divide-y divide-slate-100 xl:hidden dark:divide-border">
                                 {appointments.data.map((appointment) => (
                                     <article
                                         key={appointment.id}
-                                        className="p-4 sm:p-5"
+                                        className="p-4 transition-colors hover:bg-moss-50/50 sm:p-5 dark:hover:bg-moss-900/25"
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">

@@ -28,15 +28,21 @@ class AdminDashboardController extends Controller
         $bulkEmployees = fn () => Appointment::query()
             ->where('type', 'company_bulk')
             ->whereNotNull('bulk_appointment_id');
+        $partnerCompanies = Company::query()
+            ->where('status', 'active')
+            ->orderBy('company_name')
+            ->get(['id', 'company_name']);
 
         $stats = [
             'totalStaff' => User::whereIn('role', ['doctor', 'medtech', 'radtech'])->count(),
-            'totalCompanies' => Company::count(),
+            'totalCompanies' => $partnerCompanies->count(),
             'totalPatients' => User::where('role', 'patient')->count(),
             'todayAppointments' => $clinicAppointments()->whereDate('appointment_date', $today)->count(),
             'todayBulkEmployees' => $bulkEmployees()->whereDate('appointment_date', $today)->count(),
             'weekAppointments' => $clinicAppointments()->where('appointment_date', '>=', $thisWeek)->count(),
-            'monthAppointments' => $clinicAppointments()->where('appointment_date', '>=', $thisMonth)->count(),
+            'monthAppointments' => $clinicAppointments()
+                ->whereBetween('appointment_date', [$thisMonth, $thisMonth->copy()->endOfMonth()])
+                ->count(),
             'completedAppointments' => $clinicAppointments()->where('status', 'completed')->count(),
             'pendingAppointments' => $clinicAppointments()->where('status', 'pending')->count(),
             'pendingAppointmentRequests' => Appointment::where('type', 'individual')->where('status', 'pending')->count(),
@@ -73,17 +79,48 @@ class AdminDashboardController extends Controller
             ->limit(10)
             ->get();
 
+        $upcomingAppointments = Appointment::with(['user', 'company'])
+            ->whereIn('type', ['individual', 'walk_in', 'company_referral'])
+            ->where('status', 'accepted')
+            ->whereDate('appointment_date', '>', $today)
+            ->orderBy('appointment_date')
+            ->orderBy('start_time')
+            ->limit(50)
+            ->get();
+
         $appointmentsByStatus = $clinicAppointments()->selectRaw('status, COUNT(*) as count')
             ->groupBy('status')->get()->pluck('count', 'status')->toArray();
 
         $appointmentsByType = $clinicAppointments()->selectRaw('type, COUNT(*) as count')
             ->groupBy('type')->get()->pluck('count', 'type')->toArray();
 
-        $securityAlerts = [
-            'possibleDuplicateAccounts' => SecurityAudit::where('action', 'possible_duplicate_account')->where('status', 'review')->count(),
-            'repeatedBookingAttempts' => SecurityAudit::where('action', 'rapid_booking_attempts')->where('status', 'review')->count(),
-            'highCancellationActivity' => SecurityAudit::where('action', 'repeated_cancellation')->where('status', 'review')->count(),
-        ];
+        $serviceAnalyticsAppointments = Appointment::query()
+            ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
+            ->get(['service_types', 'examination_purpose']);
+
+        $serviceSelections = $serviceAnalyticsAppointments
+            ->flatMap(fn (Appointment $appointment) => $appointment->service_types ?? [])
+            ->filter(fn ($service) => is_string($service) && filled(trim($service)))
+            ->map(fn (string $service) => trim($service))
+            ->countBy()
+            ->sortDesc()
+            ->take(8)
+            ->map(fn (int $count, string $service): array => [
+                'service' => $service,
+                'count' => $count,
+            ])
+            ->values();
+
+        $examinationPurposes = $serviceAnalyticsAppointments
+            ->pluck('examination_purpose')
+            ->filter(fn ($purpose) => is_string($purpose) && filled(trim($purpose)))
+            ->countBy()
+            ->sortDesc()
+            ->map(fn (int $count, string $purpose): array => [
+                'purpose' => $purpose,
+                'count' => $count,
+            ])
+            ->values();
 
         // --- LEVEL 3 MACHINE LEARNING TRENDS ---
         $historicalTrends = [];
@@ -115,8 +152,12 @@ class AdminDashboardController extends Controller
             'recentBulkEmployees' => $recentBulkEmployees,
             'historyAppointments' => $historyAppointments,
             'todayAppointments' => $todayAppointments,
+            'upcomingAppointments' => $upcomingAppointments,
+            'partnerCompanies' => $partnerCompanies,
             'appointmentsByStatus' => $appointmentsByStatus,
             'appointmentsByType' => $appointmentsByType,
+            'serviceSelections' => $serviceSelections,
+            'examinationPurposes' => $examinationPurposes,
             'bulkSummary' => [
                 'events' => Appointment::query()->bulkParents()->count(),
                 'employees' => $bulkEmployees()->count(),
@@ -124,7 +165,17 @@ class AdminDashboardController extends Controller
                 'active' => $bulkEmployees()->whereNotIn('status', ['completed', 'cancelled', 'rejected'])->count(),
             ],
             'monthlyTrends' => $monthlyTrends,
-            'securityAlerts' => $securityAlerts,
+        ]);
+    }
+
+    public function security(): Response
+    {
+        return Inertia::render('admin/reports', [
+            'securityAlerts' => [
+                'possibleDuplicateAccounts' => SecurityAudit::where('action', 'possible_duplicate_account')->where('status', 'review')->count(),
+                'repeatedBookingAttempts' => SecurityAudit::where('action', 'rapid_booking_attempts')->where('status', 'review')->count(),
+                'highCancellationActivity' => SecurityAudit::where('action', 'repeated_cancellation')->where('status', 'review')->count(),
+            ],
         ]);
     }
 

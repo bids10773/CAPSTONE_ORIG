@@ -37,7 +37,7 @@ class AdminAppointmentIndexRequest extends FormRequest
             'company_id' => ['nullable', 'integer', Rule::exists('companies', 'id')],
             'sort' => ['nullable', Rule::in(['appointment_date', 'status', 'created_at'])],
             'direction' => ['nullable', Rule::in(['asc', 'desc'])],
-            'per_page' => ['nullable', 'integer', Rule::in([10, 25, 50, 100])],
+            'per_page' => ['nullable', 'integer', Rule::in([10, 15, 25, 50, 100])],
         ];
     }
 }

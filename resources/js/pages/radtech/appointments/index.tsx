@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Calendar, Eye, Image, Play } from 'lucide-react';
+import { Eye, Image, Play } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
@@ -108,22 +108,10 @@ export default function RadTechAppointmentsIndex(props: Props) {
             <Head title="Rad Tech Queue" />
 
             <div className="clinical-queue mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
-                {/* Header */}
-                <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-                            <Calendar className="h-6 w-6" />
-                            {pageTitle}
-                        </h1>
-                        <p className="mt-1 text-gray-500">
-                            X-Ray requests pending processing
-                        </p>
-                    </div>
-                </div>
-
                 {/* Filters */}
                 <SearchFilterToolbar
                     className="mb-6"
+                    title={pageTitle}
                     search={{
                         value: search,
                         onChange: (event) => setSearch(event.target.value),

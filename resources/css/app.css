@@ -184,6 +184,20 @@
         @apply pr-4 pl-10;
     }
 
+    /* Auth screens stay light even when the application theme is dark. */
+    .auth-shell {
+        color-scheme: light;
+    }
+
+    .auth-shell .auth-input:-webkit-autofill,
+    .auth-shell .auth-input:-webkit-autofill:hover,
+    .auth-shell .auth-input:-webkit-autofill:focus {
+        -webkit-text-fill-color: #0f172a;
+        caret-color: #0f172a;
+        box-shadow: 0 0 0 1000px #ffffff inset;
+        transition: background-color 9999s ease-out 0s;
+    }
+
     .auth-select {
         @apply appearance-none px-3.5 pr-9;
     }

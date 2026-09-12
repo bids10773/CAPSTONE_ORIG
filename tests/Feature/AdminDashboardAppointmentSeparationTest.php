@@ -2,6 +2,7 @@
 
 use App\Models\Appointment;
 use App\Models\Company;
+use App\Models\SecurityAudit;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -13,10 +14,11 @@ test('admin dashboard separates individual and referred patients from company bu
 
     $regular = Appointment::create([
         'user_id' => $patient->id,
-        'appointment_date' => today(),
+        'appointment_date' => today()->addDay(),
         'type' => 'individual',
         'status' => 'accepted',
         'service_types' => ['CBC'],
+        'examination_purpose' => 'annual_pe',
     ]);
     $companyAppointment = Appointment::create([
         'user_id' => $patient->id,
@@ -25,6 +27,7 @@ test('admin dashboard separates individual and referred patients from company bu
         'type' => 'company_referral',
         'status' => 'arrived',
         'service_types' => ['CBC'],
+        'examination_purpose' => 'annual_pe',
     ]);
     $bulkEvent = Appointment::create([
         'user_id' => $companyUser->id,
@@ -54,8 +57,47 @@ test('admin dashboard separates individual and referred patients from company bu
             ->where('recentBulkEmployees.0.id', $bulkEmployee->id)
             ->where('recentBulkEmployees.0.status', 'arrived')
             ->has('recentBulkEmployees', 1)
-            ->where('stats.todayAppointments', 2)
+            ->where('upcomingAppointments.0.id', $regular->id)
+            ->where('upcomingAppointments.0.status', 'accepted')
+            ->has('upcomingAppointments', 1)
+            ->where('partnerCompanies.0.company_name', 'Dashboard Company')
+            ->has('partnerCompanies', 1)
+            ->where('serviceSelections.0.service', 'CBC')
+            ->where('serviceSelections.0.count', 2)
+            ->has('serviceSelections', 1)
+            ->where('examinationPurposes.0.purpose', 'annual_pe')
+            ->where('examinationPurposes.0.count', 2)
+            ->has('examinationPurposes', 1)
+            ->where('stats.todayAppointments', 1)
             ->where('stats.todayBulkEmployees', 1)
             ->where('bulkSummary.events', 1)
             ->where('bulkSummary.employees', 1));
+});
+
+test('admin security page shows booking and security alert counts', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    SecurityAudit::create([
+        'action' => 'possible_duplicate_account',
+        'status' => 'review',
+        'metadata' => [],
+    ]);
+    SecurityAudit::create([
+        'action' => 'rapid_booking_attempts',
+        'status' => 'review',
+        'metadata' => [],
+    ]);
+    SecurityAudit::create([
+        'action' => 'repeated_cancellation',
+        'status' => 'resolved',
+        'metadata' => [],
+    ]);
+
+    $this->actingAs($admin)->get(route('admin.security'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/reports')
+            ->where('securityAlerts.possibleDuplicateAccounts', 1)
+            ->where('securityAlerts.repeatedBookingAttempts', 1)
+            ->where('securityAlerts.highCancellationActivity', 0));
 });

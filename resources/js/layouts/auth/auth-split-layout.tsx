@@ -21,7 +21,7 @@ export default function AuthSplitLayout({
     const dashboardRoute = auth?.user ? '/dashboard' : '/';
 
     return (
-        <main className="auth-shell min-h-screen bg-background text-slate-950">
+        <main className="auth-shell min-h-screen bg-[#f7faf7] text-slate-950">
             <div className="grid min-h-screen lg:grid-cols-[44%_56%]">
                 <section className="auth-visual relative hidden overflow-hidden border-r border-moss-200 bg-moss-50 lg:flex lg:flex-col">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_12%,rgba(168,195,160,.28),transparent_27%),radial-gradient(circle_at_90%_75%,rgba(107,143,113,.42),transparent_38%)]" />
@@ -157,7 +157,7 @@ export default function AuthSplitLayout({
                     </div>
                 </section>
 
-                <section className="relative flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto px-5 py-8 sm:px-8 lg:px-12">
+                <section className="auth-panel-right relative flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto bg-[#f7faf7] px-5 py-8 sm:px-8 lg:px-12">
                     <div className="absolute top-0 right-0 size-72 translate-x-1/3 -translate-y-1/2 rounded-full bg-moss-100/60 blur-3xl" />
                     <motion.div
                         initial={reduceMotion ? false : { opacity: 0, y: 14 }}

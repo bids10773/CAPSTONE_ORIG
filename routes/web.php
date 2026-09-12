@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\InquiryController as AdminInquiryController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminPatientController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Auth\PatientProfileCompletionController;
 use App\Http\Controllers\Auth\SocialAuthenticationController;
@@ -199,6 +200,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');
 
         Route::resource('staff', StaffController::class)->except('show');
+        Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
         Route::patch('/staff/{staff}/toggle-active', [StaffController::class, 'toggleActive'])->name('staff.toggle-active');
         Route::post('/staff/{staff}/signature', [StaffController::class, 'uploadSignature'])->name('staff.signature');
         Route::post('/staff/{staff}/resend-credentials', [StaffController::class, 'resendCredentials'])
@@ -243,7 +245,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/api/forecast/{disease}', [ForecastController::class, 'disease'])->name('forecast.disease');
         Route::get('/patient-visits', [PatientVisitForecastController::class, 'index'])->name('patient-visits.index');
         Route::get('/api/patient-visits', [PatientVisitForecastController::class, 'dashboard'])->name('patient-visits.dashboard');
-        Route::get('/reports', [AdminDashboardController::class, 'reports'])->name('reports');
+        Route::get('/security', [AdminDashboardController::class, 'security'])->name('security');
+        Route::get('/reports', [AdminDashboardController::class, 'security'])->name('reports');
     });
 });
 

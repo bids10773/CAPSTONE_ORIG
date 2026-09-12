@@ -78,6 +78,73 @@ test('admin appointment index searches relationships and applies validated serve
             ->has('appointments.data', 0));
 });
 
+test('admin appointment search accepts the default pagination size', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $patient = User::factory()->create([
+        'role' => 'patient',
+        'first_name' => 'Randolf',
+        'last_name' => 'Santos',
+    ]);
+
+    $appointment = Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => today()->addDay(),
+        'type' => 'individual',
+        'status' => 'pending',
+        'service_types' => ['CBC'],
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.appointments.index', [
+            'search' => 'randolf',
+            'per_page' => 15,
+            'page' => 1,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.search', 'randolf')
+            ->where('appointments.per_page', 15)
+            ->where('appointments.total', 1)
+            ->where('appointments.data.0.id', $appointment->id));
+});
+
+test('bulk request search is limited to company name and status', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $company = Company::create(['company_name' => 'Acme Manufacturing']);
+    $representative = User::factory()->create([
+        'role' => 'company',
+        'company_id' => $company->id,
+        'first_name' => 'RepresentativeOnlyKeyword',
+    ]);
+    $bulk = Appointment::create([
+        'user_id' => $representative->id,
+        'company_id' => $company->id,
+        'appointment_date' => today()->addDay(),
+        'type' => 'company_bulk',
+        'status' => 'accepted',
+        'service_types' => ['PE'],
+    ]);
+
+    foreach (['Acme', 'accepted'] as $search) {
+        $this->actingAs($admin)
+            ->get(route('admin.bulk-appointments.index', ['search' => $search, 'per_page' => 15]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('appointments.total', 1)
+                ->where('appointments.data.0.id', $bulk->id));
+    }
+
+    $this->actingAs($admin)
+        ->get(route('admin.bulk-appointments.index', [
+            'search' => 'RepresentativeOnlyKeyword',
+            'per_page' => 15,
+        ]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('appointments.total', 0)
+            ->has('appointments.data', 0));
+});
+
 test('admin appointment index rejects unsupported workflow filters and sorting', function () {
     $admin = User::factory()->create(['role' => 'admin']);
 

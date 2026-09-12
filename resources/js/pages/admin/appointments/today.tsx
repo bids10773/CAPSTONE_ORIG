@@ -195,13 +195,6 @@ export default function TodayAppointments({
                         <p className="flex items-center gap-2 text-sm font-semibold text-moss-700">
                             <CalendarClock className="size-4" /> {formattedDate}
                         </p>
-                        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
-                            Today's Appointments
-                        </h1>
-                        <p className="mt-2 text-sm text-slate-600">
-                            Manage patients scheduled for today and monitor
-                            their current clinic progress.
-                        </p>
                     </div>
                     <div className="rounded-xl border border-moss-200 bg-moss-50 px-5 py-3">
                         <p className="text-xs font-semibold tracking-wide text-moss-700 uppercase">
@@ -243,11 +236,14 @@ export default function TodayAppointments({
                 </section>
 
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                    <div className="border-b border-slate-200 p-4 sm:p-5">
+                    <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:p-5">
+                        <h1 className="shrink-0 text-2xl font-semibold tracking-[-.03em] text-slate-950 dark:text-slate-100">
+                            Today's Appointments
+                        </h1>
                         <label htmlFor="today-search" className="sr-only">
                             Search today's patients
                         </label>
-                        <div className="relative max-w-xl">
+                        <div className="relative min-w-0 flex-1 sm:min-w-64">
                             <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
                             <input
                                 id="today-search"
