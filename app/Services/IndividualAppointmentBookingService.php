@@ -73,6 +73,18 @@ class IndividualAppointmentBookingService
                 throw ValidationException::withMessages(['start_time' => 'Selected time is outside the doctor\'s availability.']);
             }
 
+            if (app(OnsiteStaffAvailabilityService::class)->doctorHasOnsiteConflict(
+                $doctor->id,
+                $data['appointment_date'],
+                $start->format('H:i'),
+                $end->format('H:i'),
+                true,
+            )) {
+                throw ValidationException::withMessages([
+                    'start_time' => 'The selected doctor is assigned to a company appointment at this time.',
+                ]);
+            }
+
             $overlap = Appointment::query()
                 ->where('doctor_id', $doctor->id)
                 ->whereDate('appointment_date', $data['appointment_date'])

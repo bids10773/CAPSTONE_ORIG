@@ -2,6 +2,7 @@
 
 use App\Models\Appointment;
 use App\Models\Company;
+use App\Models\OnsiteEventStaff;
 use App\Models\User;
 use App\Services\BulkAppointmentEnrollmentService;
 use App\Services\LaboratoryFormDefinition;
@@ -42,7 +43,7 @@ test('company accounts always create company bulk appointments', function () {
     ]);
 });
 
-test('pre employment selects five basics while other bulk services remain optional', function () {
+test('company bulk appointments always use annual examination while selected services remain available', function () {
     $company = Company::create([
         'company_name' => 'Optional Services Company',
         'status' => 'active',
@@ -59,9 +60,8 @@ test('pre employment selects five basics while other bulk services remain option
     ])->assertSessionDoesntHaveErrors();
 
     $standard = Appointment::query()->latest('id')->firstOrFail();
-    expect($standard->service_types)->toBe(['PE', 'CBC', 'Urinalysis', 'Fecalysis', 'X-Ray'])
-        ->and(array_keys(app(LaboratoryFormDefinition::class)->sectionsFor($standard)))
-        ->toBe(['cbc', 'urinalysis', 'fecalysis']);
+    expect($standard->examination_purpose)->toBe('annual_pe')
+        ->and($standard->service_types)->toBe(['PE']);
 
     $this->actingAs($account)->post(route('appointments.store'), [
         'appointment_date' => today()->addDays(2)->toDateString(),
@@ -72,8 +72,9 @@ test('pre employment selects five basics while other bulk services remain option
     ])->assertSessionDoesntHaveErrors();
 
     $withAddOns = Appointment::query()->latest('id')->firstOrFail();
-    expect(array_keys(app(LaboratoryFormDefinition::class)->sectionsFor($withAddOns)))
-        ->toBe(['cbc', 'urinalysis', 'fecalysis', 'drug_test', 'pregnancy']);
+    expect($withAddOns->examination_purpose)->toBe('annual_pe')
+        ->and(array_keys(app(LaboratoryFormDefinition::class)->sectionsFor($withAddOns)))
+        ->toBe(['drug_test', 'pregnancy']);
 });
 
 test('bulk requests have a separate admin approval queue and do not require patient demographics', function () {
@@ -149,11 +150,29 @@ test('admin bulk request queue contains parent events but not enrolled employee 
     ]);
     app(BulkAppointmentEnrollmentService::class)->enroll($parent, $employee);
 
+    $assignedStaff = collect(['doctor', 'receptionist', 'medtech', 'radtech'])
+        ->mapWithKeys(fn (string $role) => [$role => User::factory()->create(['role' => $role])]);
+
+    $assignedStaff->each(fn (User $staff, string $role) => OnsiteEventStaff::create([
+        'bulk_appointment_id' => $parent->id,
+        'user_id' => $staff->id,
+        'service_role' => $role,
+        'queue_capacity' => 10,
+        'is_active' => true,
+    ]));
+
     $this->actingAs($admin)->get(route('admin.bulk-appointments.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->has('appointments.data', 1)
             ->where('appointments.data.0.id', $parent->id)
-            ->where('appointments.data.0.bulk_employees_count', 1));
+            ->where('appointments.data.0.bulk_employees_count', 1)
+            ->has('appointments.data.0.onsite_staff', 4)
+            ->where('appointments.data.0.onsite_staff', fn ($deployments) => collect($deployments)
+                ->pluck('service_role')
+                ->sort()
+                ->values()
+                ->all() === ['doctor', 'medtech', 'radtech', 'receptionist']
+                && collect($deployments)->every(fn ($deployment) => data_get($deployment, 'user.id') === $assignedStaff[data_get($deployment, 'service_role')]->id)));
 
     $this->actingAs($admin)->get(route('admin.onsite-events.show', $parent))
         ->assertInertia(fn (Assert $page) => $page

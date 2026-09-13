@@ -54,6 +54,18 @@ test('company creates a referral linked to an existing patient without duplicati
     Notification::assertSentOnDemand(CompanyMedicalReferralInvitation::class);
 });
 
+test('company referrals cannot use the automatic annual examination purpose', function () {
+    [, $account] = referralCompanyAccount();
+
+    $this->actingAs($account)
+        ->post(route('company.referrals.store'), referralData([
+            'examination_purpose' => 'annual_pe',
+        ]))
+        ->assertSessionHasErrors('examination_purpose');
+
+    expect(CompanyReferral::query()->doesntExist())->toBeTrue();
+});
+
 test('matching patient securely accepts referral and company services override booking input', function () {
     [$company, $account] = referralCompanyAccount();
     $patient = User::factory()->create([

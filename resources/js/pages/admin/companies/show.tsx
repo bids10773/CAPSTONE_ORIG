@@ -13,7 +13,7 @@ export default function ShowCompany({ company }: any) {
     return (
         <>
             <Head title={company.company_name} />
-            <main className="mx-auto max-w-5xl p-4 sm:p-6">
+            <main className="max-w-5xl p-4 sm:p-6">
                 <Link
                     href="/admin/companies"
                     className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-slate-600"

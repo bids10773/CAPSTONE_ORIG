@@ -20,6 +20,7 @@ export interface Doctor {
     last_name: string;
     specialization?: string;
     sex?: 'male' | 'female' | null;
+    date_slot_counts?: Record<string, number>;
 }
 
 export interface DoctorAvailabilityResponse {
@@ -30,4 +31,5 @@ export interface DoctorAvailabilityResponse {
     >;
     availableDates: string[];
     availableTimes: string[];
+    dateSlotCounts: Record<string, number>;
 }

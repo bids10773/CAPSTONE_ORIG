@@ -143,11 +143,13 @@ test('patient sees only doctors with open slots after selecting a date', functio
     $patient = User::factory()->create(['role' => 'patient']);
     $availableDoctor = User::factory()->create([
         'role' => 'doctor',
+        'first_name' => 'Andrea',
         'is_active' => true,
         'availability' => [['day' => 'sat', 'start' => '09:00', 'end' => '10:00']],
     ]);
     $fullDoctor = User::factory()->create([
         'role' => 'doctor',
+        'first_name' => 'Zoe',
         'is_active' => true,
         'availability' => [['day' => 'sat', 'start' => '09:00', 'end' => '10:00']],
     ]);
@@ -171,6 +173,15 @@ test('patient sees only doctors with open slots after selecting a date', functio
         ->assertJsonCount(1)
         ->assertJsonPath('0.id', $availableDoctor->id)
         ->assertJsonPath('0.free_slots', 2);
+
+    $this->actingAs($patient)
+        ->getJson('/api/doctors')
+        ->assertOk()
+        ->assertJsonCount(2)
+        ->assertJsonPath('0.id', $availableDoctor->id)
+        ->assertJsonPath('0.date_slot_counts.2026-08-08', 2)
+        ->assertJsonPath('1.id', $fullDoctor->id)
+        ->assertJsonPath('1.date_slot_counts.2026-08-08', 0);
 });
 
 test('booked times are hidden while cancelled times remain available', function () {
@@ -197,5 +208,6 @@ test('booked times are hidden while cancelled times remain available', function 
     $this->actingAs($patient)
         ->getJson("/api/doctors/{$doctor->id}/availability?date=2026-08-08")
         ->assertOk()
-        ->assertJsonPath('availableTimes', ['09:30']);
+        ->assertJsonPath('availableTimes', ['09:30'])
+        ->assertJsonPath('dateSlotCounts.2026-08-08', 1);
 });

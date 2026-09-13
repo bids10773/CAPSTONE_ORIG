@@ -147,7 +147,6 @@ export default function StaffIndex() {
                             </Link>
                         }
                     />
-                    <Pagination pagination={staff} label="staff members" />
                 </motion.div>
 
                 {/* 2. Symmetrical Table Section */}
@@ -327,6 +326,7 @@ export default function StaffIndex() {
                             </tbody>
                         </table>
                     </div>
+                    <Pagination pagination={staff} label="staff members" />
                 </motion.div>
             </motion.div>
         </>

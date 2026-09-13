@@ -2,9 +2,11 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     AlertCircle,
     ArrowRight,
+    BriefcaseMedical,
     Building2,
     CalendarDays,
     CheckCircle2,
+    ClipboardCheck,
     Clock3,
     Download,
     FileCheck2,
@@ -28,9 +30,12 @@ import AppLayout from '@/layouts/app-layout';
 
 const EXAMINATION_PURPOSES = [
     ['pre_employment', 'Pre-employment'],
-    ['annual_pe', 'Annual PE'],
-    ['medical_clearance', 'Medical Clearance'],
+    ['medical_clearance', 'Medical Certificate'],
 ] as const;
+const EXAMINATION_PURPOSE_ICONS = {
+    pre_employment: BriefcaseMedical,
+    medical_clearance: ClipboardCheck,
+};
 const PRE_EMPLOYMENT_SERVICES = [
     'PE',
     'CBC',
@@ -211,7 +216,7 @@ export default function CompanyDashboard() {
         first_name: '',
         last_name: '',
         email: '',
-        examination_purpose: 'annual_pe',
+        examination_purpose: 'medical_clearance',
         service_types: [] as string[],
     });
 
@@ -529,35 +534,54 @@ export default function CompanyDashboard() {
                                 Medical purpose
                             </p>
                             <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                                {EXAMINATION_PURPOSES.map(([value, label]) => (
-                                    <button
-                                        key={value}
-                                        type="button"
-                                        onClick={() => {
-                                            referralForm.setData((current) => ({
-                                                ...current,
-                                                examination_purpose: value,
-                                                service_types:
-                                                    value === 'pre_employment'
-                                                        ? Array.from(
-                                                              new Set([
-                                                                  ...PRE_EMPLOYMENT_SERVICES,
-                                                                  ...current.service_types,
-                                                              ]),
-                                                          )
-                                                        : current.service_types.filter(
-                                                              (service) =>
-                                                                  !PRE_EMPLOYMENT_SERVICES.includes(
-                                                                      service,
+                                {EXAMINATION_PURPOSES.map(([value, label]) => {
+                                    const Icon =
+                                        EXAMINATION_PURPOSE_ICONS[value];
+                                    const selected =
+                                        referralForm.data
+                                            .examination_purpose === value;
+
+                                    return (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            onClick={() => {
+                                                referralForm.setData(
+                                                    (current) => ({
+                                                        ...current,
+                                                        examination_purpose:
+                                                            value,
+                                                        service_types:
+                                                            value ===
+                                                            'pre_employment'
+                                                                ? Array.from(
+                                                                      new Set([
+                                                                          ...PRE_EMPLOYMENT_SERVICES,
+                                                                          ...current.service_types,
+                                                                      ]),
+                                                                  )
+                                                                : current.service_types.filter(
+                                                                      (
+                                                                          service,
+                                                                      ) =>
+                                                                          !PRE_EMPLOYMENT_SERVICES.includes(
+                                                                              service,
+                                                                          ),
                                                                   ),
-                                                          ),
-                                            }));
-                                        }}
-                                        className={`rounded-xl border px-3 py-3 text-left text-xs font-semibold ${referralForm.data.examination_purpose === value ? 'border-moss-500 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-700'}`}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
+                                                    }),
+                                                );
+                                            }}
+                                            className={`flex items-center gap-2.5 rounded-xl border px-3 py-3 text-left text-xs font-semibold ${selected ? 'border-moss-500 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-700'}`}
+                                        >
+                                            <span
+                                                className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-500'}`}
+                                            >
+                                                <Icon className="size-3.5" />
+                                            </span>
+                                            {label}
+                                        </button>
+                                    );
+                                })}
                             </div>
                             <InputError
                                 message={

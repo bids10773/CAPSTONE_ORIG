@@ -25,6 +25,7 @@ type Patient = {
     contact: string | null;
     created_at: string;
     email_verified_at: string | null;
+    has_account: boolean;
     appointments_count: number;
     is_online: boolean;
     last_active_at: string | null;
@@ -167,28 +168,31 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                     {patients.data.length > 0 ? (
                         <>
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-[1100px] table-fixed text-left text-sm">
+                                <table className="w-full min-w-[1200px] table-fixed text-left text-sm">
                                     <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase dark:border-border dark:bg-muted dark:text-slate-400">
                                         <tr>
                                             <th className="w-[7%] px-4 py-3">
                                                 ID
                                             </th>
-                                            <th className="w-[20%] px-4 py-3">
+                                            <th className="w-[17%] px-4 py-3">
                                                 Patient
                                             </th>
-                                            <th className="w-[21%] px-4 py-3">
+                                            <th className="w-[17%] px-4 py-3">
                                                 Contact
                                             </th>
-                                            <th className="w-[17%] px-4 py-3">
+                                            <th className="w-[14%] px-4 py-3">
                                                 Personal Details
                                             </th>
-                                            <th className="w-[18%] px-4 py-3">
+                                            <th className="w-[13%] px-4 py-3">
                                                 Address
                                             </th>
-                                            <th className="w-[8%] px-4 py-3 text-center">
+                                            <th className="w-[11%] px-4 py-3 text-center whitespace-nowrap">
                                                 Appointments
                                             </th>
-                                            <th className="w-[9%] px-4 py-3">
+                                            <th className="w-[10%] px-4 py-3 whitespace-nowrap">
+                                                Account
+                                            </th>
+                                            <th className="w-[11%] px-4 py-3 whitespace-nowrap">
                                                 Presence
                                             </th>
                                         </tr>
@@ -278,6 +282,19 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                                     <span className="inline-flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-100">
                                                         <CalendarDays className="size-4 text-moss-600" />
                                                         {patient.appointments_count.toLocaleString()}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span
+                                                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${
+                                                            patient.has_account
+                                                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                                                                : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                                                        }`}
+                                                    >
+                                                        {patient.has_account
+                                                            ? 'Has account'
+                                                            : 'No account'}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">

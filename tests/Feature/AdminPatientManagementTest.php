@@ -17,6 +17,7 @@ test('admin can view patient details and current presence', function () {
         'role' => 'patient',
         'first_name' => 'Offline',
         'last_name' => 'Patient',
+        'password' => null,
     ]);
 
     PatientProfile::create([
@@ -45,9 +46,11 @@ test('admin can view patient details and current presence', function () {
             ->has('patients.data', 2)
             ->where('patients.data.0.id', $onlinePatient->id)
             ->where('patients.data.0.is_online', true)
+            ->where('patients.data.0.has_account', true)
             ->where('patients.data.0.contact', '09171234567')
             ->where('patients.data.0.profile.address', 'Quezon City')
             ->where('patients.data.1.id', $offlinePatient->id)
+            ->where('patients.data.1.has_account', false)
             ->where('patients.data.1.is_online', false));
 });
 

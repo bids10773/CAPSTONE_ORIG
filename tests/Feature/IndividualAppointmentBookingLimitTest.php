@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Appointment;
+use App\Models\Company;
+use App\Models\OnsiteEventStaff;
 use App\Models\SecurityAudit;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -65,6 +67,71 @@ test('patient can book first appointment and another date when only one is activ
     postIndividual($this, $patient, $doctor, '2026-08-19')->assertSessionDoesntHaveErrors();
 
     expect(Appointment::where('user_id', $patient->id)->count())->toBe(2);
+});
+
+test('individual appointments cannot use the annual examination purpose', function () {
+    $patient = bookingPatient();
+    $doctor = bookingDoctor();
+
+    $this->actingAs($patient)->post(route('appointments.store'), [
+        'type' => 'individual',
+        'doctor_id' => $doctor->id,
+        'appointment_date' => '2026-08-18',
+        'start_time' => '08:00',
+        'examination_purpose' => 'annual_pe',
+        'service_types' => ['CBC'],
+    ])->assertSessionHasErrors([
+        'examination_purpose' => 'Individual appointments may use Pre-employment or Medical Certificate only.',
+    ]);
+
+    expect(Appointment::query()->where('user_id', $patient->id)->doesntExist())
+        ->toBeTrue();
+});
+
+test('company event doctor assignments block normal appointment slots', function () {
+    $patient = bookingPatient();
+    $doctor = bookingDoctor();
+    $company = Company::create([
+        'company_name' => 'Reserved Clinic Day Company',
+        'status' => 'active',
+    ]);
+    $representative = User::factory()->create([
+        'role' => 'company',
+        'company_id' => $company->id,
+    ]);
+    $event = Appointment::create([
+        'user_id' => $representative->id,
+        'company_id' => $company->id,
+        'appointment_date' => '2026-08-18',
+        'start_time' => '08:00',
+        'end_time' => '17:00',
+        'type' => 'company_bulk',
+        'status' => 'accepted',
+        'service_types' => ['PE'],
+    ]);
+    OnsiteEventStaff::create([
+        'bulk_appointment_id' => $event->id,
+        'user_id' => $doctor->id,
+        'service_role' => 'doctor',
+        'queue_capacity' => 10,
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($patient)
+        ->getJson("/api/doctors/{$doctor->id}/availability?date=2026-08-18")
+        ->assertOk()
+        ->assertJsonPath('availableTimes', [])
+        ->assertJsonPath('dateSlotCounts.2026-08-18', 0);
+
+    postIndividual($this, $patient, $doctor, '2026-08-18')
+        ->assertSessionHasErrors([
+            'start_time' => 'The selected doctor is assigned to a company appointment at this time.',
+        ]);
+
+    expect(Appointment::query()
+        ->where('user_id', $patient->id)
+        ->where('type', 'individual')
+        ->doesntExist())->toBeTrue();
 });
 
 test('same date is blocked through the direct post endpoint and audited', function () {

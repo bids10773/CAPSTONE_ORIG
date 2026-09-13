@@ -108,6 +108,7 @@ interface AvailabilityResponse {
     slots: Record<string, unknown>;
     availableDates: string[];
     availableTimes: string[];
+    dateSlotCounts: Record<string, number>;
 }
 
 type BookingErrors = Record<string, string | undefined>;
@@ -142,9 +143,14 @@ const TYPE_DETAILS: Record<
 const SERVICE_ICONS = [HeartPulse, FileHeart, Stethoscope, ClipboardCheck];
 const EXAMINATION_PURPOSES = [
     ['pre_employment', 'Pre-employment'],
-    ['annual_pe', 'Annual PE'],
-    ['medical_clearance', 'Medical Clearance'],
+    ['annual_pe', 'Annual Examination'],
+    ['medical_clearance', 'Medical Certificate'],
 ] as const;
+const EXAMINATION_PURPOSE_ICONS: Record<string, LucideIcon> = {
+    pre_employment: BriefcaseMedical,
+    annual_pe: CalendarDays,
+    medical_clearance: ClipboardCheck,
+};
 
 const INITIAL_DATA: BookingData = {
     company_referral_id: '',
@@ -328,14 +334,22 @@ export default function CreateAppointment() {
                   ...draft,
                   type: 'company_bulk',
                   company_id: String(auth.user.company_id ?? ''),
-                  examination_purpose: draft.examination_purpose || 'annual_pe',
+                  examination_purpose: 'annual_pe',
               }
-            : draft;
+            : {
+                  ...draft,
+                  examination_purpose:
+                      draft.examination_purpose === 'annual_pe'
+                          ? ''
+                          : draft.examination_purpose,
+              };
     });
     const [doctors, setDoctors] = useState<Doctor[]>([]);
     const [availability, setAvailability] =
         useState<AvailabilityResponse | null>(null);
-    const [loadingDoctors, setLoadingDoctors] = useState(false);
+    const [loadingDoctors, setLoadingDoctors] = useState(() =>
+        ['individual', 'company_referral'].includes(formData.type),
+    );
     const [loadingAvailability, setLoadingAvailability] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState<BookingErrors>({});
@@ -402,6 +416,20 @@ export default function CreateAppointment() {
             return slot > today;
         },
     );
+    const combinedSlotCounts = useMemo(
+        () =>
+            doctors.reduce<Record<string, number>>((counts, doctor) => {
+                Object.entries(doctor.date_slot_counts ?? {}).forEach(
+                    ([date, count]) => {
+                        counts[date] = (counts[date] ?? 0) + count;
+                    },
+                );
+                return counts;
+            }, {}),
+        [doctors],
+    );
+    const calendarSlotCounts =
+        selectedDoctor?.date_slot_counts ?? combinedSlotCounts;
 
     useEffect(() => {
         const timeout = window.setTimeout(
@@ -422,21 +450,15 @@ export default function CreateAppointment() {
     }, [formData.doctor_id, formData.service_types.length]);
 
     useEffect(() => {
-        if (
-            !formData.appointment_date ||
-            !['individual', 'company_referral'].includes(formData.type)
-        ) {
+        if (!['individual', 'company_referral'].includes(formData.type)) {
             return;
         }
 
         const controller = new AbortController();
-        fetch(
-            `/api/available-doctors?date=${encodeURIComponent(formData.appointment_date)}`,
-            {
-                signal: controller.signal,
-                headers: { Accept: 'application/json' },
-            },
-        )
+        fetch('/api/doctors', {
+            signal: controller.signal,
+            headers: { Accept: 'application/json' },
+        })
             .then(async (response) => {
                 const data = (await response.json()) as unknown;
                 if (!response.ok) {
@@ -473,7 +495,7 @@ export default function CreateAppointment() {
                 if (!controller.signal.aborted) setLoadingDoctors(false);
             });
         return () => controller.abort();
-    }, [formData.appointment_date, formData.type]);
+    }, [formData.type]);
 
     useEffect(() => {
         if (!formData.doctor_id || !formData.appointment_date) {
@@ -670,24 +692,11 @@ export default function CreateAppointment() {
                 ]}
             >
                 <div className="min-h-full bg-background text-slate-900">
-                    <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10">
-                        <div className="mb-7 lg:max-w-3xl">
-                            <p className="text-xs font-bold tracking-[.16em] text-moss-600 uppercase">
-                                Online scheduling
-                            </p>
-                            <h1 className="mt-2 text-3xl font-semibold tracking-[-.04em] sm:text-4xl">
-                                Book your clinic visit
-                            </h1>
-                            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-                                Choose your care, find a convenient schedule,
-                                and review everything before confirming.
-                            </p>
-                        </div>
-
-                        <Progress currentStep={currentStep} />
+                    <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6">
+                        <BookingIntro className="mb-5 lg:hidden" />
 
                         {draftRestored && (
-                            <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-moss-100 bg-moss-50 px-4 py-3 text-xs text-moss-700">
+                            <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-moss-100 bg-moss-50 px-4 py-3 text-xs text-moss-700 lg:hidden">
                                 <span className="flex items-center gap-2">
                                     <Info className="size-4 shrink-0" /> Your
                                     saved booking draft has been restored.
@@ -698,64 +707,6 @@ export default function CreateAppointment() {
                                 >
                                     Dismiss
                                 </button>
-                            </div>
-                        )}
-
-                        {!isCompanyAccount && (
-                            <div className="mb-5 grid gap-4 lg:grid-cols-2">
-                                <section className="rounded-xl border border-moss-100 bg-moss-50 p-4 text-sm text-moss-800">
-                                    <p className="font-semibold">
-                                        Appointment Policy
-                                    </p>
-                                    <p className="mt-1 text-xs leading-5">
-                                        You may schedule only one appointment
-                                        per date and maintain up to two active
-                                        upcoming appointments at a time.
-                                    </p>
-                                </section>
-                                <section className="rounded-xl border border-slate-200 bg-white p-4">
-                                    <p className="text-sm font-semibold text-slate-800">
-                                        Your Upcoming Appointments
-                                    </p>
-                                    {bookingPolicy.upcomingAppointments
-                                        .length ? (
-                                        <div className="mt-2 space-y-2">
-                                            {bookingPolicy.upcomingAppointments.map(
-                                                (appointment) => (
-                                                    <div
-                                                        key={appointment.id}
-                                                        className="flex items-center justify-between gap-3 text-xs text-slate-600"
-                                                    >
-                                                        <span>
-                                                            {formatDate(
-                                                                appointment.appointment_date.slice(
-                                                                    0,
-                                                                    10,
-                                                                ),
-                                                                {
-                                                                    month: 'short',
-                                                                    day: 'numeric',
-                                                                    year: 'numeric',
-                                                                },
-                                                            )}{' '}
-                                                            ·{' '}
-                                                            {formatTime(
-                                                                appointment.start_time,
-                                                            )}
-                                                        </span>
-                                                        <span className="capitalize">
-                                                            {appointment.status}
-                                                        </span>
-                                                    </div>
-                                                ),
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <p className="mt-1 text-xs text-slate-500">
-                                            No active upcoming appointments.
-                                        </p>
-                                    )}
-                                </section>
                             </div>
                         )}
 
@@ -772,30 +723,35 @@ export default function CreateAppointment() {
 
                         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
                             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_60px_-40px_rgba(15,43,75,.35)]">
-                                <div className="border-b border-slate-100 px-5 py-5 sm:px-8">
-                                    <p className="text-xs font-semibold text-moss-600">
-                                        Step {currentStep} of 4
-                                    </p>
-                                    <h2 className="mt-1 text-xl font-semibold tracking-[-.025em]">
-                                        {currentStep === 1 &&
-                                            'What care do you need?'}
-                                        {currentStep === 2 &&
-                                            'Choose a date and time'}
-                                        {currentStep === 3 &&
-                                            'Confirm your information'}
-                                        {currentStep === 4 &&
-                                            'Review your appointment'}
-                                    </h2>
-                                    <p className="mt-1 text-sm text-slate-500">
-                                        {currentStep === 1 &&
-                                            'Select a visit type and the services you need.'}
-                                        {currentStep === 2 &&
-                                            'Only currently available schedules are shown.'}
-                                        {currentStep === 3 &&
-                                            'We use the verified information saved in your profile.'}
-                                        {currentStep === 4 &&
-                                            'Check the details below before submitting your request.'}
-                                    </p>
+                                <div className="grid min-w-0 gap-6 border-b border-slate-100 px-5 py-5 sm:px-8 lg:grid-cols-[minmax(230px,0.7fr)_minmax(0,1.3fr)] lg:items-center">
+                                    <div>
+                                        <p className="text-xs font-semibold text-moss-600">
+                                            Step {currentStep} of 4
+                                        </p>
+                                        <h2 className="mt-1 text-xl font-semibold tracking-[-.025em]">
+                                            {currentStep === 1 &&
+                                                'What care do you need?'}
+                                            {currentStep === 2 &&
+                                                'Choose a date and time'}
+                                            {currentStep === 3 &&
+                                                'Confirm your information'}
+                                            {currentStep === 4 &&
+                                                'Review your appointment'}
+                                        </h2>
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            {currentStep === 1 &&
+                                                'Select a visit type and the services you need.'}
+                                            {currentStep === 2 &&
+                                                'Only currently available schedules are shown.'}
+                                            {currentStep === 3 &&
+                                                'We use the verified information saved in your profile.'}
+                                            {currentStep === 4 &&
+                                                'Check the details below before submitting your request.'}
+                                        </p>
+                                    </div>
+                                    <div className="min-w-0 [&>nav]:mb-0 [&>nav]:w-full">
+                                        <Progress currentStep={currentStep} />
+                                    </div>
                                 </div>
 
                                 <div className="p-5 sm:p-8">
@@ -839,6 +795,12 @@ export default function CreateAppointment() {
                                                     }
                                                     onType={(type) => {
                                                         if (referral) return;
+                                                        setLoadingDoctors(
+                                                            [
+                                                                'individual',
+                                                                'company_referral',
+                                                            ].includes(type),
+                                                        );
                                                         update('type', type);
                                                         update(
                                                             'company_id',
@@ -913,6 +875,9 @@ export default function CreateAppointment() {
                                                     doctors={doctors}
                                                     doctor={selectedDoctor}
                                                     times={availableTimes}
+                                                    slotCounts={
+                                                        calendarSlotCounts
+                                                    }
                                                     selectedDate={
                                                         formData.appointment_date
                                                     }
@@ -936,19 +901,17 @@ export default function CreateAppointment() {
                                                         referral?.valid_until
                                                     }
                                                     onDate={(date) => {
-                                                        setDoctors([]);
                                                         setAvailability(null);
-                                                        setLoadingDoctors(
-                                                            Boolean(date),
-                                                        );
                                                         setLoadingAvailability(
-                                                            false,
+                                                            Boolean(
+                                                                date &&
+                                                                formData.doctor_id,
+                                                            ),
                                                         );
                                                         update(
                                                             'appointment_date',
                                                             date,
                                                         );
-                                                        update('doctor_id', '');
                                                         update(
                                                             'start_time',
                                                             '',
@@ -957,7 +920,9 @@ export default function CreateAppointment() {
                                                     onDoctor={(doctorId) => {
                                                         setAvailability(null);
                                                         setLoadingAvailability(
-                                                            true,
+                                                            Boolean(
+                                                                formData.appointment_date,
+                                                            ),
                                                         );
                                                         update(
                                                             'doctor_id',
@@ -1059,11 +1024,31 @@ export default function CreateAppointment() {
                                 </div>
                             </section>
 
-                            <BookingSummary
-                                formData={formData}
-                                doctor={selectedDoctor}
-                                appointmentTypes={appointmentTypes}
-                            />
+                            <div className="sticky top-24 z-20 hidden max-h-[calc(100vh-7.5rem)] space-y-4 self-start overflow-y-auto pb-1 lg:block">
+                                <BookingIntro />
+                                {draftRestored && (
+                                    <div className="rounded-xl border border-moss-100 bg-moss-50 p-4 text-xs text-moss-700">
+                                        <span className="flex items-start gap-2 leading-5">
+                                            <Info className="mt-0.5 size-4 shrink-0" />
+                                            Your saved booking draft has been
+                                            restored.
+                                        </span>
+                                        <button
+                                            onClick={() =>
+                                                setDraftRestored(false)
+                                            }
+                                            className="mt-2 ml-6 font-semibold"
+                                        >
+                                            Dismiss
+                                        </button>
+                                    </div>
+                                )}
+                                <BookingSummary
+                                    formData={formData}
+                                    doctor={selectedDoctor}
+                                    appointmentTypes={appointmentTypes}
+                                />
+                            </div>
                         </div>
                     </main>
                 </div>
@@ -1072,13 +1057,32 @@ export default function CreateAppointment() {
     );
 }
 
+function BookingIntro({ className = '' }: { className?: string }) {
+    return (
+        <section
+            className={`relative overflow-hidden rounded-2xl border border-moss-100 bg-moss-50/70 px-5 py-4 shadow-[0_16px_45px_-34px_rgba(15,43,75,.35)] ${className}`}
+        >
+            <div className="absolute -top-12 -right-12 size-28 rounded-full bg-moss-100/70" />
+            <div className="relative">
+                <p className="text-[11px] font-bold tracking-[.16em] text-moss-600 uppercase">
+                    Online scheduling
+                </p>
+                <h1 className="mt-1 text-xl font-semibold tracking-[-.035em] text-slate-950 sm:text-2xl">
+                    Book your clinic visit
+                </h1>
+                <p className="mt-1.5 text-sm leading-5 text-slate-600">
+                    Choose your care, find a convenient schedule, and review
+                    everything before confirming.
+                </p>
+            </div>
+        </section>
+    );
+}
+
 function Progress({ currentStep }: { currentStep: number }) {
     return (
-        <nav
-            aria-label="Booking progress"
-            className="mb-7 overflow-x-auto pb-1"
-        >
-            <ol className="flex min-w-[570px] items-center">
+        <nav aria-label="Booking progress" className="mb-7 w-full pb-1">
+            <ol className="grid w-full grid-cols-5 items-start">
                 {STEPS.map((item, index) => {
                     const step = index + 1;
                     const complete = step < currentStep;
@@ -1086,12 +1090,17 @@ function Progress({ currentStep }: { currentStep: number }) {
                     return (
                         <li
                             key={item.title}
-                            className={`flex items-center ${index < STEPS.length - 1 ? 'flex-1' : ''}`}
+                            className="relative flex min-w-0 flex-col items-center text-center"
                             aria-current={active ? 'step' : undefined}
                         >
-                            <div className="flex items-center gap-2.5">
+                            {index < STEPS.length - 1 && (
                                 <span
-                                    className={`flex size-9 items-center justify-center rounded-full text-xs font-bold transition ${complete ? 'bg-moss-500 text-white' : active ? 'bg-moss-600 text-white ring-4 ring-moss-100' : 'border border-slate-200 bg-white text-slate-400'}`}
+                                    className={`absolute top-[18px] left-[calc(50%+1.25rem)] h-px w-[calc(100%-2.5rem)] ${complete ? 'bg-moss-400 dark:bg-moss-600' : 'bg-slate-200 dark:bg-slate-700'}`}
+                                />
+                            )}
+                            <div className="relative z-10 flex min-w-0 flex-col items-center gap-2">
+                                <span
+                                    className={`flex size-9 items-center justify-center rounded-full text-xs font-bold transition ${complete ? 'bg-moss-500 text-white' : active ? 'bg-moss-600 text-white ring-4 ring-moss-100 dark:ring-moss-900' : 'border border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-card'}`}
                                 >
                                     {complete ? (
                                         <Check className="size-4" />
@@ -1100,16 +1109,11 @@ function Progress({ currentStep }: { currentStep: number }) {
                                     )}
                                 </span>
                                 <span
-                                    className={`text-xs font-semibold ${active ? 'text-slate-900' : complete ? 'text-moss-700' : 'text-slate-400'}`}
+                                    className={`w-full text-[10px] font-semibold sm:text-xs ${active ? 'text-slate-900' : complete ? 'text-moss-700' : 'text-slate-400'}`}
                                 >
                                     {item.short}
                                 </span>
                             </div>
-                            {index < STEPS.length - 1 && (
-                                <span
-                                    className={`mx-3 h-px flex-1 ${complete ? 'bg-moss-400' : 'bg-slate-200'}`}
-                                />
-                            )}
                         </li>
                     );
                 })}
@@ -1159,6 +1163,14 @@ function VisitStep({
     onCompanySelect,
     onCompanyFocus,
 }: VisitStepProps) {
+    const examinationPurposes = EXAMINATION_PURPOSES.filter(([value]) =>
+        isCompanyAccount
+            ? value === 'annual_pe'
+            : referral
+              ? value === formData.examination_purpose
+              : value !== 'annual_pe',
+    );
+
     return (
         <div className="space-y-8">
             {referral && (
@@ -1176,58 +1188,99 @@ function VisitStep({
                     </p>
                 </div>
             )}
-            <FieldGroup
-                title="Visit type"
-                description="How will this appointment be arranged?"
-            >
-                {isCompanyAccount ? (
-                    <div className="rounded-2xl border border-moss-200 bg-moss-50 p-4">
-                        <p className="text-sm font-semibold text-moss-900">
-                            Company bulk booking
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-moss-700">
-                            This booking is automatically linked to your company
-                            account. No company selection is required.
-                        </p>
-                    </div>
-                ) : (
-                    <div className="grid gap-3 sm:grid-cols-3">
-                        {appointmentTypes.map(([value, label]) => {
-                            const detail =
-                                TYPE_DETAILS[value] ?? TYPE_DETAILS.individual;
-                            const Icon = detail.icon;
-                            const selected = formData.type === value;
+            <div className="grid items-start gap-8 lg:grid-cols-2">
+                <FieldGroup
+                    title="Visit type"
+                    description="How will this appointment be arranged?"
+                >
+                    {isCompanyAccount ? (
+                        <div className="rounded-2xl border border-moss-200 bg-moss-50 p-4">
+                            <p className="text-sm font-semibold text-moss-900">
+                                Company bulk booking
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-moss-700">
+                                This booking is automatically linked to your
+                                company account. No company selection is
+                                required.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="grid gap-3">
+                            {appointmentTypes.map(([value, label]) => {
+                                const detail =
+                                    TYPE_DETAILS[value] ??
+                                    TYPE_DETAILS.individual;
+                                const Icon = detail.icon;
+                                const selected = formData.type === value;
+                                return (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        onClick={() => onType(value)}
+                                        disabled={!!referral}
+                                        aria-pressed={selected}
+                                        className={`relative min-h-36 rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50 shadow-sm' : 'border-slate-200 bg-white hover:border-moss-200'}`}
+                                    >
+                                        {selected && (
+                                            <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-moss-600 text-white">
+                                                <Check className="size-3" />
+                                            </span>
+                                        )}
+                                        <span
+                                            className={`flex size-10 items-center justify-center rounded-xl ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-500'}`}
+                                        >
+                                            <Icon className="size-5" />
+                                        </span>
+                                        <span className="mt-3 block text-sm font-semibold text-slate-900">
+                                            {label}
+                                        </span>
+                                        <span className="mt-1 block text-xs leading-5 text-slate-500">
+                                            {detail.description}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                </FieldGroup>
+
+                <FieldGroup
+                    title="Examination purpose"
+                    description={
+                        isCompanyAccount
+                            ? 'Company bulk appointments use Annual Examination automatically.'
+                            : referral
+                              ? 'This purpose was specified by the referring company.'
+                              : 'Choose why this medical examination is being requested.'
+                    }
+                >
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                        {examinationPurposes.map(([value, label]) => {
+                            const selected =
+                                formData.examination_purpose === value;
+                            const Icon = EXAMINATION_PURPOSE_ICONS[value];
                             return (
                                 <button
                                     key={value}
                                     type="button"
-                                    onClick={() => onType(value)}
-                                    disabled={!!referral}
+                                    onClick={() => onPurpose(value)}
+                                    disabled={isCompanyAccount || !!referral}
                                     aria-pressed={selected}
-                                    className={`relative min-h-36 rounded-2xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50 shadow-sm' : 'border-slate-200 bg-white hover:border-moss-200'}`}
+                                    className={`flex min-h-12 items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-semibold transition focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-700 hover:border-moss-300'}`}
                                 >
-                                    {selected && (
-                                        <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-moss-600 text-white">
-                                            <Check className="size-3" />
-                                        </span>
-                                    )}
                                     <span
-                                        className={`flex size-10 items-center justify-center rounded-xl ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-500'}`}
+                                        className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-500'}`}
                                     >
-                                        <Icon className="size-5" />
+                                        <Icon className="size-4" />
                                     </span>
-                                    <span className="mt-3 block text-sm font-semibold text-slate-900">
-                                        {label}
-                                    </span>
-                                    <span className="mt-1 block text-xs leading-5 text-slate-500">
-                                        {detail.description}
-                                    </span>
+                                    {label}
                                 </button>
                             );
                         })}
                     </div>
-                )}
-            </FieldGroup>
+                    <InlineError message={errors.examination_purpose} />
+                </FieldGroup>
+            </div>
 
             {needsCompany && !isCompanyAccount && (
                 <FieldGroup
@@ -1277,30 +1330,6 @@ function VisitStep({
                     <InlineError message={errors.company_id} />
                 </FieldGroup>
             )}
-
-            <FieldGroup
-                title="Examination purpose"
-                description="Choose why this medical examination is being requested."
-            >
-                <div className="grid gap-3 sm:grid-cols-3">
-                    {EXAMINATION_PURPOSES.map(([value, label]) => {
-                        const selected = formData.examination_purpose === value;
-                        return (
-                            <button
-                                key={value}
-                                type="button"
-                                onClick={() => onPurpose(value)}
-                                disabled={!!referral}
-                                aria-pressed={selected}
-                                className={`min-h-12 rounded-xl border px-4 py-3 text-left text-sm font-semibold transition focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-700 hover:border-moss-300'}`}
-                            >
-                                {label}
-                            </button>
-                        );
-                    })}
-                </div>
-                <InlineError message={errors.examination_purpose} />
-            </FieldGroup>
 
             <FieldGroup
                 title="Medical services"
@@ -1363,6 +1392,7 @@ interface ScheduleStepProps {
     doctors: Doctor[];
     doctor?: Doctor;
     times: string[];
+    slotCounts: Record<string, number>;
     selectedDate: string;
     selectedTime: string;
     loading: boolean;
@@ -1379,6 +1409,7 @@ function ScheduleStep({
     doctors,
     doctor,
     times,
+    slotCounts,
     selectedDate,
     selectedTime,
     loading,
@@ -1417,119 +1448,156 @@ function ScheduleStep({
 
     return (
         <div className="space-y-8">
-            <FieldGroup
-                title="Appointment date"
-                description="Choose a date first to see doctors with open appointments."
-            >
-                <AppointmentDateInput
-                    min={today}
-                    max={latestDate}
-                    value={selectedDate}
-                    error={errors.appointment_date}
-                    onChange={onDate}
-                />
-            </FieldGroup>
-
-            {selectedDate && (
-                <FieldGroup
-                    title="Available doctors"
-                    description={`Doctors with open time slots on ${formatDate(selectedDate, { month: 'long', day: 'numeric' })}.`}
-                >
-                    {loadingDoctors ? (
-                        <LoadingState label="Finding available doctors…" />
-                    ) : errors.doctors ? (
-                        <InlineError message={errors.doctors} />
-                    ) : doctors.length ? (
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            {doctors.map((availableDoctor) => {
-                                const selected =
-                                    doctor?.id === availableDoctor.id;
-                                const initials = `${availableDoctor.first_name[0] ?? ''}${availableDoctor.last_name[0] ?? ''}`;
-                                return (
-                                    <button
-                                        key={availableDoctor.id}
-                                        type="button"
-                                        onClick={() =>
-                                            onDoctor(String(availableDoctor.id))
-                                        }
-                                        aria-pressed={selected}
-                                        className={`flex min-h-20 items-center gap-3 rounded-xl border p-3.5 text-left transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
-                                    >
-                                        <span
-                                            className={`flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-bold ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-600'}`}
-                                        >
-                                            {initials}
-                                        </span>
-                                        <span className="min-w-0 flex-1">
-                                            <span className="block truncate text-sm font-semibold">
-                                                Dr. {availableDoctor.first_name}{' '}
-                                                {availableDoctor.last_name}
-                                            </span>
-                                            <span className="mt-0.5 block truncate text-xs text-slate-500">
-                                                {availableDoctor.specialization ||
-                                                    'Clinic physician'}
-                                            </span>
-                                            <span className="mt-1 block text-[11px] text-slate-500">
-                                                {formatDoctorSex(
-                                                    availableDoctor.sex,
-                                                )}
-                                            </span>
-                                        </span>
-                                        {selected && (
-                                            <CheckCircle2 className="size-5 shrink-0 text-moss-600" />
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <EmptyAvailability message="No doctors have open slots on this date. Please choose another date." />
-                    )}
-                    <InlineError message={errors.doctor_id} />
-                </FieldGroup>
-            )}
-
-            {doctor &&
-                (loading ? (
-                    <LoadingState label="Checking the latest availability…" />
-                ) : errors.availability ? (
-                    <InlineError message={errors.availability} />
-                ) : (
+            <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
+                <div className="order-2">
                     <FieldGroup
-                        title="Available times"
-                        description={`${times.length} slot${times.length === 1 ? '' : 's'} remaining on ${formatDate(selectedDate, { month: 'long', day: 'numeric' })}.`}
+                        title="Appointment date"
+                        description={
+                            doctor
+                                ? `Showing availability for Dr. ${doctor.first_name} ${doctor.last_name}.`
+                                : 'Choose a date to see its combined availability across all doctors.'
+                        }
                     >
-                        {times.length ? (
-                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                                {times.map((time) => {
-                                    const selected = selectedTime === time;
+                        <AppointmentDateInput
+                            min={today}
+                            max={latestDate}
+                            value={selectedDate}
+                            error={errors.appointment_date}
+                            onChange={onDate}
+                            slotCounts={slotCounts}
+                            slotCountContext={
+                                doctor
+                                    ? `with Dr. ${doctor.first_name} ${doctor.last_name}`
+                                    : 'across all doctors'
+                            }
+                            loadingSlotCounts={loadingDoctors}
+                        />
+                    </FieldGroup>
+                </div>
+
+                <div className="order-1">
+                    <FieldGroup
+                        title="Available doctors"
+                        description={
+                            selectedDate
+                                ? `All active doctors are shown. Slot counts are for ${formatDate(selectedDate, { month: 'long', day: 'numeric' })}.`
+                                : 'Select a doctor to show only their availability on the calendar.'
+                        }
+                    >
+                        {loadingDoctors ? (
+                            <LoadingState label="Finding available doctors…" />
+                        ) : errors.doctors ? (
+                            <InlineError message={errors.doctors} />
+                        ) : doctors.length ? (
+                            <div className="grid gap-3">
+                                {doctors.map((availableDoctor) => {
+                                    const selected =
+                                        doctor?.id === availableDoctor.id;
+                                    const initials = `${availableDoctor.first_name[0] ?? ''}${availableDoctor.last_name[0] ?? ''}`;
+                                    const slotsOnSelectedDate = selectedDate
+                                        ? (availableDoctor.date_slot_counts?.[
+                                              selectedDate
+                                          ] ?? 0)
+                                        : null;
+                                    const availabilityLabel =
+                                        slotsOnSelectedDate === null
+                                            ? formatDoctorSex(
+                                                  availableDoctor.sex,
+                                              )
+                                            : `${slotsOnSelectedDate} slot${slotsOnSelectedDate === 1 ? '' : 's'} available`;
                                     return (
                                         <button
-                                            key={time}
+                                            key={availableDoctor.id}
                                             type="button"
-                                            onClick={() => onTime(time)}
+                                            onClick={() =>
+                                                onDoctor(
+                                                    String(availableDoctor.id),
+                                                )
+                                            }
                                             aria-pressed={selected}
-                                            className={`min-h-16 rounded-xl border px-3 py-2 text-center transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-600 bg-moss-600 text-white' : 'border-slate-200'}`}
+                                            className={`flex min-h-20 items-center gap-3 rounded-xl border p-3.5 text-left transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
                                         >
-                                            <span className="block text-sm font-semibold">
-                                                {formatTime(time)}
-                                            </span>
                                             <span
-                                                className={`mt-0.5 block text-[10px] ${selected ? 'text-moss-100' : 'text-slate-400'}`}
+                                                className={`flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-bold ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-600'}`}
                                             >
-                                                until{' '}
-                                                {formatTime(add30Minutes(time))}
+                                                {initials}
                                             </span>
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-sm font-semibold">
+                                                    Dr.{' '}
+                                                    {availableDoctor.first_name}{' '}
+                                                    {availableDoctor.last_name}
+                                                </span>
+                                                <span className="mt-0.5 block truncate text-xs text-slate-500">
+                                                    {availableDoctor.specialization ||
+                                                        'Clinic physician'}
+                                                </span>
+                                                <span className="mt-1 block text-[11px] text-slate-500">
+                                                    {availabilityLabel}
+                                                </span>
+                                            </span>
+                                            {selected && (
+                                                <CheckCircle2 className="size-5 shrink-0 text-moss-600" />
+                                            )}
                                         </button>
                                     );
                                 })}
                             </div>
                         ) : (
-                            <EmptyAvailability message="No time slots remain for this date. Please choose another date." />
+                            <EmptyAvailability message="No active doctors are currently available for online booking." />
                         )}
-                        <InlineError message={errors.start_time} />
+                        <InlineError message={errors.doctor_id} />
                     </FieldGroup>
-                ))}
+                </div>
+
+                <div className="order-3 lg:col-span-2 lg:col-start-1">
+                    {doctor &&
+                        selectedDate &&
+                        (loading ? (
+                            <LoadingState label="Checking the latest availability…" />
+                        ) : errors.availability ? (
+                            <InlineError message={errors.availability} />
+                        ) : (
+                            <FieldGroup
+                                title="Available times"
+                                description={`${times.length} slot${times.length === 1 ? '' : 's'} remaining on ${formatDate(selectedDate, { month: 'long', day: 'numeric' })}.`}
+                            >
+                                {times.length ? (
+                                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                                        {times.map((time) => {
+                                            const selected =
+                                                selectedTime === time;
+                                            return (
+                                                <button
+                                                    key={time}
+                                                    type="button"
+                                                    onClick={() => onTime(time)}
+                                                    aria-pressed={selected}
+                                                    className={`min-h-12 rounded-xl border px-2.5 py-2 text-center transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-600 bg-moss-600 text-white' : 'border-slate-200'}`}
+                                                >
+                                                    <span className="block text-sm font-semibold">
+                                                        {formatTime(time)}
+                                                    </span>
+                                                    <span
+                                                        className={`mt-0.5 block text-[10px] ${selected ? 'text-moss-100' : 'text-slate-400'}`}
+                                                    >
+                                                        until{' '}
+                                                        {formatTime(
+                                                            add30Minutes(time),
+                                                        )}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <EmptyAvailability message="No time slots remain for this date. Please choose another date." />
+                                )}
+                                <InlineError message={errors.start_time} />
+                            </FieldGroup>
+                        ))}
+                </div>
+            </div>
         </div>
     );
 }
@@ -1995,16 +2063,16 @@ function BookingSummary({
     appointmentTypes,
 }: BookingSummaryProps) {
     return (
-        <aside className="sticky top-6 hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_16px_50px_-38px_rgba(15,43,75,.4)] lg:block">
-            <p className="text-xs font-bold tracking-[.14em] text-slate-400 uppercase">
+        <aside className="rounded-2xl border border-slate-200 bg-white/95 p-5 text-slate-900 shadow-[0_22px_55px_-28px_rgba(15,43,75,.38)] ring-1 ring-slate-900/5 backdrop-blur dark:border-border dark:bg-card/95 dark:text-slate-100 dark:ring-white/10">
+            <p className="text-xs font-bold tracking-[.14em] text-slate-400 uppercase dark:text-slate-400">
                 Your appointment
             </p>
             <div className="mt-4 flex items-center gap-3">
-                <span className="flex size-11 items-center justify-center rounded-xl bg-moss-50 text-moss-600">
+                <span className="flex size-11 items-center justify-center rounded-xl bg-moss-50 text-moss-600 dark:bg-moss-900/60 dark:text-moss-200">
                     <CalendarDays className="size-5" />
                 </span>
                 <div>
-                    <p className="text-sm font-semibold">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                         {appointmentTypes[formData.type] ||
                             'Clinic appointment'}
                     </p>
@@ -2015,7 +2083,7 @@ function BookingSummary({
                     </p>
                 </div>
             </div>
-            <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
+            <div className="mt-5 space-y-3 border-t border-slate-100 pt-4 dark:border-border">
                 <SummaryLine
                     icon={Stethoscope}
                     label={
@@ -2059,8 +2127,10 @@ function BookingSummary({
                     active
                 />
             </div>
-            <div className="mt-5 rounded-xl bg-slate-50 p-3.5 text-[11px] leading-5 text-slate-500">
-                <strong className="text-slate-700">Arrival guidance:</strong>{' '}
+            <div className="mt-5 rounded-xl bg-slate-50 p-3.5 text-[11px] leading-5 text-slate-500 dark:bg-muted/70 dark:text-slate-300">
+                <strong className="text-slate-700 dark:text-slate-100">
+                    Arrival guidance:
+                </strong>{' '}
                 Please arrive 15 minutes before your scheduled time for
                 check-in. Your online slot is reserved until 10 minutes after
                 the scheduled time. If you have not checked in by then, it may
@@ -2081,7 +2151,7 @@ function SummaryLine({
 }) {
     return (
         <div
-            className={`flex items-center gap-2.5 text-xs ${active ? 'text-slate-700' : 'text-slate-400'}`}
+            className={`flex items-center gap-2.5 text-xs ${active ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}
         >
             <Icon className="size-4 shrink-0" />
             <span>{label}</span>

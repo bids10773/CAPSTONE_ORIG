@@ -94,6 +94,19 @@ function dateDetails(value: string) {
     };
 }
 
+function appointmentTime(value?: string | null) {
+    if (!value) return 'Time pending';
+    const match = value.match(/(\d{2}):(\d{2})/);
+    if (!match) return value;
+
+    const date = new Date();
+    date.setHours(Number(match[1]), Number(match[2]), 0, 0);
+    return date.toLocaleTimeString('en-PH', {
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+}
+
 function nextAction(appointment?: Appointment) {
     if (!appointment)
         return 'Book an appointment whenever you need clinic services.';
@@ -216,6 +229,83 @@ export default function PatientDashboard() {
                             <Plus className="size-4" /> Book appointment
                         </Link>
                     </div>
+                </section>
+
+                <section className="grid gap-4 lg:grid-cols-2">
+                    <article className="rounded-2xl border border-moss-100 bg-moss-50/70 p-5 sm:p-6">
+                        <div className="flex items-start gap-3">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-moss-700 shadow-sm">
+                                <CalendarDays className="size-5" />
+                            </span>
+                            <div>
+                                <h2 className="font-black text-slate-950">
+                                    Appointment Policy
+                                </h2>
+                                <p className="mt-1 text-sm leading-6 text-slate-600">
+                                    You may schedule only one appointment per
+                                    date and maintain up to two active upcoming
+                                    appointments at a time.
+                                </p>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                        <div className="flex items-center justify-between gap-4">
+                            <h2 className="font-black text-slate-950">
+                                Your Upcoming Appointments
+                            </h2>
+                            <Link
+                                href="/appointments"
+                                className="shrink-0 text-xs font-bold text-moss-700 hover:text-moss-800"
+                            >
+                                View all
+                            </Link>
+                        </div>
+                        {upcomingAppointments.length ? (
+                            <div className="mt-3 divide-y divide-slate-100">
+                                {upcomingAppointments
+                                    .slice(0, 2)
+                                    .map((appointment) => (
+                                        <Link
+                                            key={appointment.id}
+                                            href={`/appointments/${appointment.id}`}
+                                            className="flex items-center justify-between gap-4 py-2.5 text-sm first:pt-0 last:pb-0"
+                                        >
+                                            <span className="min-w-0">
+                                                <span className="block font-bold text-slate-800">
+                                                    {
+                                                        dateDetails(
+                                                            appointment.appointment_date,
+                                                        ).short
+                                                    }
+                                                </span>
+                                                <span className="block text-xs text-slate-500">
+                                                    {appointmentTime(
+                                                        appointment.start_time,
+                                                    )}
+                                                </span>
+                                            </span>
+                                            <span
+                                                className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold ${statusTone[appointment.status]}`}
+                                            >
+                                                {statusLabels[
+                                                    appointment.status
+                                                ] ??
+                                                    appointment.status.replaceAll(
+                                                        '_',
+                                                        ' ',
+                                                    )}
+                                            </span>
+                                        </Link>
+                                    ))}
+                            </div>
+                        ) : (
+                            <p className="mt-2 text-sm text-slate-500">
+                                No active upcoming appointments.
+                            </p>
+                        )}
+                    </article>
                 </section>
 
                 <section className="grid gap-6 lg:grid-cols-[1.25fr_.75fr]">

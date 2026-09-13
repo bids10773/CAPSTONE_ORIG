@@ -98,7 +98,7 @@ export default function CompanyAccountForm({
     );
 
     return (
-        <form onSubmit={submit} className="space-y-6" noValidate>
+        <form onSubmit={submit} className="min-w-0 space-y-6" noValidate>
             <section className="overflow-hidden rounded-2xl border border-moss-100 bg-white shadow-sm">
                 <div className="border-b border-moss-100 bg-moss-50/70 px-6 py-5">
                     <div className="flex items-center gap-3">
@@ -116,7 +116,7 @@ export default function CompanyAccountForm({
                         </div>
                     </div>
                 </div>
-                <div className="grid gap-5 p-6 md:grid-cols-2">
+                <div className="grid min-w-0 gap-5 p-6 md:grid-cols-2 [&>*]:min-w-0">
                     <div>
                         {field('company_name', 'Company name')}
                         <input
@@ -286,7 +286,7 @@ export default function CompanyAccountForm({
                         </div>
                     </div>
                 </div>
-                <div className="grid gap-5 p-6 md:grid-cols-2">
+                <div className="grid min-w-0 gap-5 p-6 md:grid-cols-2 [&>*]:min-w-0">
                     <div>
                         {field(
                             'representative_first_name',

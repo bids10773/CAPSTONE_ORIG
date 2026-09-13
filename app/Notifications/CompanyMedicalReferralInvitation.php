@@ -30,7 +30,12 @@ class CompanyMedicalReferralInvitation extends Notification
                 'employeeName' => $this->referral->first_name,
                 'companyName' => $this->referral->company->company_name,
                 'referralNumber' => $this->referral->referral_number,
-                'examinationPurpose' => $this->referral->examination_purpose,
+                'examinationPurpose' => match ($this->referral->examination_purpose) {
+                    'pre_employment' => 'Pre-employment',
+                    'medical_clearance' => 'Medical Certificate',
+                    'annual_pe' => 'Annual Examination',
+                    default => str($this->referral->examination_purpose)->replace('_', ' ')->title(),
+                },
                 'validUntil' => $this->referral->valid_until,
                 'url' => $url,
             ]);

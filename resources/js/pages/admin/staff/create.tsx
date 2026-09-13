@@ -1,7 +1,7 @@
 import { Head, usePage, Link, router } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import {
-    ArrowLeft,
+    ChevronLeft,
     Save,
     Lock,
     User,
@@ -84,26 +84,28 @@ export default function CreateStaff() {
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mx-auto max-w-4xl p-6"
+                className="w-full max-w-7xl p-6"
             >
                 {/* Header Section */}
                 <div className="mb-8 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/admin/staff"
-                            className="rounded-full border border-gray-200 bg-white p-2 shadow-sm transition-colors hover:bg-gray-50"
-                        >
-                            <ArrowLeft className="h-4 w-4 text-gray-600" />
-                        </Link>
-                        <div>
-                            <h1 className="text-xl font-bold text-gray-900">
-                                Add New Staff
-                            </h1>
-                            <p className="text-sm text-muted-foreground">
-                                Register a new medical or administrative
-                                professional.
-                            </p>
-                        </div>
+                    <Link
+                        href="/admin/staff"
+                        className="relative inline-flex h-12 w-36 items-center justify-center rounded-full border border-gray-200 bg-white px-5 text-base font-semibold text-gray-600 shadow-sm transition-colors hover:border-moss-200 hover:bg-moss-50 hover:text-moss-700"
+                    >
+                        <ChevronLeft
+                            className="absolute left-4 h-7 w-7"
+                            strokeWidth={2.25}
+                        />
+                        Back
+                    </Link>
+                    <div className="ml-6 text-right">
+                        <h1 className="text-xl font-bold text-gray-900">
+                            Add New Staff
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            Register a new medical or administrative
+                            professional.
+                        </p>
                     </div>
                 </div>
 

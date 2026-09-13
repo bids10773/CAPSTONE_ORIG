@@ -26,6 +26,27 @@ interface Company {
     industry_type: string;
     created_at: string;
     appointments_count: number;
+    account: Array<{
+        id: number;
+        first_name: string;
+        middle_name: string | null;
+        last_name: string;
+        position: string | null;
+    }>;
+}
+
+function representativeName(company: Company): string {
+    const representative = company.account[0];
+
+    return representative
+        ? [
+              representative.first_name,
+              representative.middle_name,
+              representative.last_name,
+          ]
+              .filter(Boolean)
+              .join(' ')
+        : 'Not assigned';
 }
 
 export default function AdminCompaniesIndex() {
@@ -94,6 +115,9 @@ export default function AdminCompaniesIndex() {
                                         Company Name
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                        Representative
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                                         Email / Contact
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
@@ -118,6 +142,22 @@ export default function AdminCompaniesIndex() {
                                                 <p className="font-medium text-gray-900">
                                                     {company.company_name}
                                                 </p>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <p className="font-medium text-gray-800">
+                                                    {representativeName(
+                                                        company,
+                                                    )}
+                                                </p>
+                                                {company.account[0]
+                                                    ?.position && (
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        {
+                                                            company.account[0]
+                                                                .position
+                                                        }
+                                                    </p>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <p className="text-gray-600">
@@ -206,7 +246,7 @@ export default function AdminCompaniesIndex() {
                                 ) : (
                                     <tr>
                                         <td
-                                            colSpan={5}
+                                            colSpan={6}
                                             className="px-6 py-12 text-center text-gray-500"
                                         >
                                             No companies found

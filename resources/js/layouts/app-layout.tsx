@@ -1,5 +1,5 @@
-import { router, usePage } from '@inertiajs/react';
-import { useEffect, useRef } from 'react';
+import { usePage } from '@inertiajs/react';
+import { useEffect } from 'react';
 import { toast } from 'sonner';
 import ClinicDashboardLayout from '@/layouts/custom-layout';
 import PatientPortalLayout from '@/layouts/patient-portal-layout';
@@ -39,15 +39,10 @@ export default function AppLayout({
     breadcrumbs = [],
 }: AppLayoutProps) {
     const { auth, flash, errors } = usePage().props as any;
-    const initialMessages = useRef<ToastProps>({ flash, errors });
 
     useEffect(() => {
-        showToastMessages(initialMessages.current);
-
-        return router.on('success', (event) => {
-            showToastMessages(event.detail.page.props as ToastProps);
-        });
-    }, []);
+        showToastMessages({ flash, errors });
+    }, [flash, errors]);
 
     if (auth?.user?.role === 'patient') {
         return <PatientPortalLayout>{children}</PatientPortalLayout>;

@@ -27,7 +27,7 @@ class CompanyController extends Controller
         $status = (string) $request->get('status', '');
 
         $companies = Company::query()
-            ->with(['account:id,company_id,must_change_password'])
+            ->with(['account:id,company_id,first_name,middle_name,last_name,position,must_change_password'])
             ->withCount('appointments')
             ->when($search, fn ($query) => $query->where(fn ($q) => $q
                 ->where('company_name', 'like', "%{$likeSearch}%")

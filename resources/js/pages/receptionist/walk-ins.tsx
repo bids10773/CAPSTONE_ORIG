@@ -1,6 +1,16 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import axios from 'axios';
-import { Check, History, Printer, Search, UserPlus, Users } from 'lucide-react';
+import {
+    BriefcaseMedical,
+    CalendarDays,
+    Check,
+    ClipboardCheck,
+    History,
+    Printer,
+    Search,
+    UserPlus,
+    Users,
+} from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import BirthdateInput from '@/components/birthdate-input';
@@ -15,6 +25,12 @@ type Patient = {
     last_name: string;
     email?: string;
     contact?: string;
+};
+
+const EXAMINATION_PURPOSE_ICONS = {
+    pre_employment: BriefcaseMedical,
+    annual_pe: CalendarDays,
+    medical_clearance: ClipboardCheck,
 };
 type WalkIn = {
     id: number;
@@ -436,10 +452,17 @@ export default function WalkIns({
                                 {[
                                     ['pre_employment', 'Pre-employment'],
                                     ['annual_pe', 'Annual PE'],
-                                    ['medical_clearance', 'Medical Clearance'],
+                                    [
+                                        'medical_clearance',
+                                        'Medical Certificate',
+                                    ],
                                 ].map(([value, label]) => {
                                     const selected =
                                         form.data.examination_purpose === value;
+                                    const Icon =
+                                        EXAMINATION_PURPOSE_ICONS[
+                                            value as keyof typeof EXAMINATION_PURPOSE_ICONS
+                                        ];
                                     return (
                                         <button
                                             key={value}
@@ -472,8 +495,13 @@ export default function WalkIns({
                                                               ),
                                                 }));
                                             }}
-                                            className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold ${selected ? 'border-moss-600 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-600'}`}
+                                            className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-semibold ${selected ? 'border-moss-600 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-600'}`}
                                         >
+                                            <span
+                                                className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-500'}`}
+                                            >
+                                                <Icon className="size-4" />
+                                            </span>
                                             {label}
                                         </button>
                                     );

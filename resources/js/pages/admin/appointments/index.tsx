@@ -65,6 +65,15 @@ interface Person {
     patient_profile?: PatientProfile | null;
 }
 
+type AssignedStaffRole = 'doctor' | 'receptionist' | 'medtech' | 'radtech';
+
+interface AssignedStaff {
+    id: number;
+    service_role: AssignedStaffRole;
+    is_active: boolean;
+    user: Person;
+}
+
 interface Appointment {
     id: number;
     appointment_date: string;
@@ -84,6 +93,7 @@ interface Appointment {
     user: Person;
     company: { id: number; company_name: string } | null;
     doctor: Person | null;
+    onsite_staff?: AssignedStaff[];
 }
 
 interface Filters {
@@ -174,6 +184,32 @@ function fullName(person: Person): string {
     return [person.first_name, person.middle_name, person.last_name]
         .filter(Boolean)
         .join(' ');
+}
+
+const assignedStaffRoles: Array<{
+    role: AssignedStaffRole;
+    label: string;
+    shortLabel: string;
+}> = [
+    { role: 'doctor', label: 'Doctor', shortLabel: 'Doctor' },
+    { role: 'receptionist', label: 'Receptionist', shortLabel: 'Recep.' },
+    { role: 'medtech', label: 'Medtech', shortLabel: 'Medtech' },
+    { role: 'radtech', label: 'Radtech', shortLabel: 'Radtech' },
+];
+
+function assignedStaffNames(
+    appointment: Appointment,
+    role: AssignedStaffRole,
+): string {
+    const names = (appointment.onsite_staff ?? [])
+        .filter((assignment) => assignment.service_role === role)
+        .map((assignment) =>
+            role === 'doctor'
+                ? `Dr. ${fullName(assignment.user)}`
+                : fullName(assignment.user),
+        );
+
+    return names.length > 0 ? names.join(', ') : 'Not assigned';
 }
 
 function servicesFor(appointment: Appointment): string[] {
@@ -979,7 +1015,9 @@ export default function AdminAppointmentsIndex() {
                                                 Contacts
                                             </th>
                                             <th className="w-[14%] px-3 py-3">
-                                                Doctor
+                                                {bulkOnly
+                                                    ? 'Assigned Staff'
+                                                    : 'Doctor'}
                                             </th>
                                             <th className="w-[13%] px-3 py-3">
                                                 Company
@@ -1063,7 +1101,14 @@ export default function AdminAppointmentsIndex() {
                                                         />
                                                     </td>
                                                     <td className="min-w-0 px-3 py-2.5">
-                                                        {appointment.doctor ? (
+                                                        {bulkOnly ? (
+                                                            <AssignedStaffSummary
+                                                                appointment={
+                                                                    appointment
+                                                                }
+                                                                compact
+                                                            />
+                                                        ) : appointment.doctor ? (
                                                             <TruncatedText
                                                                 value={`Dr. ${fullName(appointment.doctor)}`}
                                                                 className="font-medium text-slate-700 dark:text-slate-200"
@@ -1170,18 +1215,26 @@ export default function AdminAppointmentsIndex() {
                                                 )}
                                             />
                                         </div>
-                                        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
-                                            <span>
-                                                {appointment.company
-                                                    ?.company_name ??
-                                                    'Individual patient'}
-                                            </span>
-                                            <span>
-                                                {appointment.doctor
-                                                    ? `Dr. ${fullName(appointment.doctor)}`
-                                                    : 'Doctor not assigned'}
-                                            </span>
-                                        </div>
+                                        {bulkOnly ? (
+                                            <div className="mt-4 border-t border-slate-100 pt-3">
+                                                <AssignedStaffSummary
+                                                    appointment={appointment}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
+                                                <span>
+                                                    {appointment.company
+                                                        ?.company_name ??
+                                                        'Individual patient'}
+                                                </span>
+                                                <span>
+                                                    {appointment.doctor
+                                                        ? `Dr. ${fullName(appointment.doctor)}`
+                                                        : 'Doctor not assigned'}
+                                                </span>
+                                            </div>
+                                        )}
                                     </article>
                                 ))}
                             </div>
@@ -1332,17 +1385,46 @@ export default function AdminAppointmentsIndex() {
                                             : undefined
                                     }
                                 />
-                                <DetailCard
-                                    icon={Stethoscope}
-                                    label="Assigned doctor"
-                                    value={
-                                        selectedAppointment.doctor
-                                            ? `Dr. ${fullName(selectedAppointment.doctor)}`
-                                            : 'Not assigned'
-                                    }
-                                />
+                                {!bulkOnly && (
+                                    <DetailCard
+                                        icon={Stethoscope}
+                                        label="Assigned doctor"
+                                        value={
+                                            selectedAppointment.doctor
+                                                ? `Dr. ${fullName(selectedAppointment.doctor)}`
+                                                : 'Not assigned'
+                                        }
+                                    />
+                                )}
                             </div>
                         </section>
+
+                        {bulkOnly && (
+                            <section>
+                                <p className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                                    Assigned staff
+                                </p>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    {assignedStaffRoles.map(
+                                        ({ role, label }) => (
+                                            <DetailCard
+                                                key={role}
+                                                icon={
+                                                    role === 'doctor'
+                                                        ? Stethoscope
+                                                        : UserRound
+                                                }
+                                                label={label}
+                                                value={assignedStaffNames(
+                                                    selectedAppointment,
+                                                    role,
+                                                )}
+                                            />
+                                        ),
+                                    )}
+                                </div>
+                            </section>
+                        )}
 
                         <div className="rounded-xl border border-slate-200 p-4">
                             <div className="flex flex-wrap items-center gap-2">
@@ -1587,6 +1669,75 @@ export default function AdminAppointmentsIndex() {
                 </DialogContent>
             </Dialog>
         </>
+    );
+}
+
+function AssignedStaffSummary({
+    appointment,
+}: {
+    appointment: Appointment;
+    compact?: boolean;
+}) {
+    const assignments = assignedStaffRoles.flatMap(({ role, label }) =>
+        (appointment.onsite_staff ?? [])
+            .filter((assignment) => assignment.service_role === role)
+            .map((assignment) => ({
+                id: assignment.id,
+                role: label,
+                name:
+                    role === 'doctor'
+                        ? `Dr. ${fullName(assignment.user)}`
+                        : fullName(assignment.user),
+            })),
+    );
+
+    if (assignments.length === 0) {
+        return <span className="text-xs text-slate-400">Not assigned</span>;
+    }
+
+    const first = assignments[0];
+    const remaining = assignments.length - 1;
+
+    return (
+        <div className="flex min-w-0 items-center gap-1.5 text-xs">
+            <span className="min-w-0 truncate font-medium text-slate-700 dark:text-slate-200">
+                <span className="font-semibold text-slate-500">
+                    {first.role}:{' '}
+                </span>
+                {first.name}
+            </span>
+            {remaining > 0 && (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            className="shrink-0 rounded-full bg-moss-100 px-2 py-0.5 text-[10px] font-bold text-moss-700 hover:bg-moss-200 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
+                            aria-label={`Show all ${assignments.length} assigned staff`}
+                        >
+                            +{remaining} more
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                        side="top"
+                        className="max-w-sm border border-moss-700 bg-moss-950 text-white shadow-lg [&>svg]:bg-moss-950 [&>svg]:fill-moss-950"
+                    >
+                        <p className="mb-1.5 text-xs font-semibold">
+                            Assigned staff
+                        </p>
+                        <div className="space-y-1">
+                            {assignments.map((assignment) => (
+                                <p key={assignment.id} className="text-xs">
+                                    <span className="font-semibold">
+                                        {assignment.role}:
+                                    </span>{' '}
+                                    {assignment.name}
+                                </p>
+                            ))}
+                        </div>
+                    </TooltipContent>
+                </Tooltip>
+            )}
+        </div>
     );
 }
 

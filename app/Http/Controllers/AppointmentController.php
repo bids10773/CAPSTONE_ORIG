@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\AppointmentApprovalService;
 use App\Services\IndividualAppointmentBookingService;
 use App\Services\LaboratoryFormDefinition;
+use App\Services\OnsiteStaffAvailabilityService;
 use App\Support\SearchTerm;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -209,7 +210,7 @@ class AppointmentController extends Controller
                 'company_name' => $company->company_name,
                 'doctor_id' => null,
                 'start_time' => null,
-                'examination_purpose' => $request->input('examination_purpose', 'annual_pe'),
+                'examination_purpose' => 'annual_pe',
             ]);
         }
 
@@ -245,6 +246,13 @@ class AppointmentController extends Controller
         $validator = Validator::make($request->all(), $rules);
 
         $validator->after(function ($validator) use ($request): void {
+            if ($request->type === 'individual' && $request->examination_purpose === 'annual_pe') {
+                $validator->errors()->add(
+                    'examination_purpose',
+                    'Individual appointments may use Pre-employment or Medical Certificate only.'
+                );
+            }
+
             if ($request->type !== 'company_bulk') {
                 return;
             }
@@ -304,6 +312,17 @@ class AppointmentController extends Controller
             $withinAvailability = $dayPeriods->contains(fn ($period) => $startTime->format('H:i') >= $period['start'] && $endTime->format('H:i') <= $period['end']);
             if (! $withinAvailability) {
                 return back()->withErrors(['start_time' => 'Selected time outside doctor\'s availability.'])->withInput();
+            }
+
+            if (app(OnsiteStaffAvailabilityService::class)->doctorHasOnsiteConflict(
+                $doctor->id,
+                $data['appointment_date'],
+                $startTime->format('H:i'),
+                $endTime->format('H:i'),
+            )) {
+                return back()->withErrors([
+                    'start_time' => 'The selected doctor is assigned to a company appointment at this time.',
+                ])->withInput();
             }
 
             $overlap = Appointment::where('doctor_id', $doctor->id)
@@ -535,7 +554,12 @@ class AppointmentController extends Controller
         $doctors = User::where('role', 'doctor')
             ->where('is_active', true)
             ->orderBy('first_name')
-            ->get(['id', 'first_name', 'last_name', 'specialization', 'sex']);
+            ->get(['id', 'first_name', 'last_name', 'specialization', 'sex', 'availability']);
+
+        $doctors->each(function (User $doctor): void {
+            $doctor->date_slot_counts = $this->availableSlotCounts($doctor);
+            $doctor->makeHidden('availability');
+        });
 
         return response()->json($doctors);
     }
@@ -552,17 +576,12 @@ class AppointmentController extends Controller
         $slots = $periods->groupBy('day');
 
         $date = $request->get('date');
-        $availableDates = [];
-
-        // Next 30 days available dates
-        $startDate = now();
-        for ($i = 0; $i < 30; $i++) {
-            $checkDate = $startDate->copy()->addDays($i);
-            $dayKey = strtolower($checkDate->format('D'));
-            if ($slots->has($dayKey)) {
-                $availableDates[] = $checkDate->format('Y-m-d');
-            }
-        }
+        $dateSlotCounts = $this->availableSlotCounts($doctor);
+        $availableDates = collect($dateSlotCounts)
+            ->filter(fn (int $count) => $count > 0)
+            ->keys()
+            ->values()
+            ->all();
 
         $availableTimes = [];
         if ($date) {
@@ -579,7 +598,67 @@ class AppointmentController extends Controller
             'slots' => $slots->map(fn ($items) => $items->values())->toArray(),
             'availableDates' => $availableDates,
             'availableTimes' => $availableTimes,
+            'dateSlotCounts' => $dateSlotCounts,
         ]);
+    }
+
+    /** @return array<string, int> */
+    private function availableSlotCounts(User $doctor): array
+    {
+        $startDate = today();
+        $endDate = today()->addDays(29);
+        $periodsByDay = collect($doctor->availability ?? [])->groupBy('day');
+        $clinicBookings = Appointment::query()
+            ->where('doctor_id', $doctor->id)
+            ->whereBetween('appointment_date', [$startDate, $endDate->copy()->endOfDay()])
+            ->whereNotIn('status', ['cancelled', 'rejected'])
+            ->get(['appointment_date', 'start_time', 'end_time']);
+        $companyBookings = Appointment::query()
+            ->bulkParents()
+            ->whereBetween('appointment_date', [$startDate, $endDate->copy()->endOfDay()])
+            ->whereNotIn('status', ['cancelled', 'rejected', 'completed'])
+            ->whereHas('onsiteStaff', fn ($query) => $query
+                ->where('user_id', $doctor->id)
+                ->where('service_role', 'doctor')
+                ->where('is_active', true))
+            ->get(['appointment_date', 'start_time', 'end_time']);
+        $bookingsByDate = $clinicBookings
+            ->concat($companyBookings)
+            ->groupBy(fn (Appointment $appointment) => $appointment->appointment_date->format('Y-m-d'));
+
+        $counts = [];
+        for ($offset = 0; $offset < 30; $offset++) {
+            $date = $startDate->copy()->addDays($offset);
+            $dateKey = $date->format('Y-m-d');
+            $dayPeriods = $periodsByDay->get(strtolower($date->format('D')), collect());
+            $bookings = $bookingsByDate->get($dateKey, collect());
+            $count = 0;
+
+            foreach ($dayPeriods as $period) {
+                $current = new \DateTime($period['start']);
+                $end = new \DateTime($period['end']);
+
+                while ($current < $end) {
+                    $slotStart = $current->format('H:i');
+                    $slotEnd = (clone $current)->add(new \DateInterval('PT30M'))->format('H:i');
+                    $isPast = $date->isToday() && $slotStart <= now()->format('H:i');
+                    $overlaps = $bookings->contains(fn (Appointment $booking) => $booking->start_time !== null
+                        && $booking->end_time !== null
+                        && $booking->start_time->format('H:i') < $slotEnd
+                        && $booking->end_time->format('H:i') > $slotStart);
+
+                    if (! $isPast && ! $overlaps) {
+                        $count++;
+                    }
+
+                    $current->add(new \DateInterval('PT30M'));
+                }
+            }
+
+            $counts[$dateKey] = $count;
+        }
+
+        return $counts;
     }
 
     /**
@@ -590,20 +669,30 @@ class AppointmentController extends Controller
         $times = [];
         $current = new \DateTime($start);
         $endTime = new \DateTime($end);
+        $clinicBookings = Appointment::query()
+            ->where('doctor_id', $doctorId)
+            ->whereDate('appointment_date', $date)
+            ->whereNotIn('status', ['cancelled', 'rejected'])
+            ->get(['start_time', 'end_time']);
+        $companyBookings = Appointment::query()
+            ->bulkParents()
+            ->whereDate('appointment_date', $date)
+            ->whereNotIn('status', ['cancelled', 'rejected', 'completed'])
+            ->whereHas('onsiteStaff', fn ($query) => $query
+                ->where('user_id', $doctorId)
+                ->where('service_role', 'doctor')
+                ->where('is_active', true))
+            ->get(['start_time', 'end_time']);
+        $bookings = $clinicBookings->concat($companyBookings);
 
         while ($current < $endTime) {
             $startStr = $current->format('H:i');
             $endStr = (clone $current)->add(new \DateInterval('PT30M'))->format('H:i');
 
-            // Check overlap with booked appointments
-            $overlap = Appointment::where('doctor_id', $doctorId)
-                ->whereDate('appointment_date', $date)
-                ->whereNotIn('status', ['cancelled', 'rejected'])
-                ->where(function ($q) use ($startStr, $endStr) {
-                    $q->where('start_time', '<', $endStr)
-                        ->where('end_time', '>', $startStr);
-                })
-                ->exists();
+            $overlap = $bookings->contains(fn (Appointment $booking) => $booking->start_time !== null
+                && $booking->end_time !== null
+                && $booking->start_time->format('H:i') < $endStr
+                && $booking->end_time->format('H:i') > $startStr);
 
             if (! $overlap) {
                 $times[] = $startStr;
@@ -634,7 +723,17 @@ class AppointmentController extends Controller
         $sort = (string) ($filters['sort'] ?? '');
         $direction = (string) ($filters['direction'] ?? 'asc');
 
-        $query = Appointment::with(['user.patientProfile', 'company', 'doctor']);
+        $relations = ['user.patientProfile', 'company', 'doctor'];
+
+        if ($bulkOnly) {
+            $relations['onsiteStaff'] = fn ($query) => $query
+                ->where('is_active', true)
+                ->orderBy('service_role')
+                ->orderBy('id');
+            $relations[] = 'onsiteStaff.user:id,first_name,middle_name,last_name,role';
+        }
+
+        $query = Appointment::with($relations);
 
         $query->when(
             $bulkOnly,
@@ -1015,6 +1114,17 @@ class AppointmentController extends Controller
             $start = new \DateTime($validated['appointment_date'].' '.$validated['start_time']);
             $end = (clone $start)->add(new \DateInterval('PT30M'));
 
+            if (app(OnsiteStaffAvailabilityService::class)->doctorHasOnsiteConflict(
+                (int) $validated['doctor_id'],
+                $validated['appointment_date'],
+                $start->format('H:i'),
+                $end->format('H:i'),
+            )) {
+                return back()->withErrors([
+                    'start_time' => 'The selected doctor is assigned to a company appointment at this time.',
+                ])->withInput();
+            }
+
             Appointment::create([
                 'user_id' => $user->id,
                 'doctor_id' => $validated['doctor_id'],
@@ -1077,6 +1187,17 @@ class AppointmentController extends Controller
 
         $start = new \DateTime($validated['appointment_date'].' '.$validated['start_time']);
         $end = (clone $start)->add(new \DateInterval('PT30M'));
+
+        if (app(OnsiteStaffAvailabilityService::class)->doctorHasOnsiteConflict(
+            (int) $validated['doctor_id'],
+            $validated['appointment_date'],
+            $start->format('H:i'),
+            $end->format('H:i'),
+        )) {
+            return back()->withErrors([
+                'start_time' => 'The selected doctor is assigned to a company appointment at this time.',
+            ])->withInput();
+        }
 
         $appointment->update([
             ...$validated,

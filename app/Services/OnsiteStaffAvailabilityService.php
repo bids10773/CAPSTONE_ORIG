@@ -8,6 +8,27 @@ use App\Models\User;
 
 class OnsiteStaffAvailabilityService
 {
+    public function doctorHasOnsiteConflict(
+        int $doctorId,
+        mixed $date,
+        string $start,
+        string $end,
+        bool $lockForUpdate = false,
+    ): bool {
+        return Appointment::query()
+            ->bulkParents()
+            ->whereDate('appointment_date', $date)
+            ->whereNotIn('status', ['cancelled', 'rejected', 'completed'])
+            ->where('start_time', '<', $end)
+            ->where('end_time', '>', $start)
+            ->whereHas('onsiteStaff', fn ($query) => $query
+                ->where('user_id', $doctorId)
+                ->where('service_role', 'doctor')
+                ->where('is_active', true))
+            ->when($lockForUpdate, fn ($query) => $query->lockForUpdate())
+            ->exists();
+    }
+
     public function conflictReason(Appointment $event, User $staff): ?string
     {
         if (! $event->start_time || ! $event->end_time) {

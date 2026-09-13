@@ -33,7 +33,7 @@
     <table>
         <tr><td>Referred employee</td><td>{{ trim($referral->first_name.' '.$referral->middle_name.' '.$referral->last_name) }}</td></tr>
         <tr><td>Referring company</td><td>{{ $referral->company->company_name }}</td></tr>
-        <tr><td>Medical purpose</td><td>{{ str($referral->examination_purpose)->replace('_', ' ')->title() }}</td></tr>
+        <tr><td>Medical purpose</td><td>{{ match ($referral->examination_purpose) { 'pre_employment' => 'Pre-employment', 'medical_clearance' => 'Medical Certificate', 'annual_pe' => 'Annual Examination', default => str($referral->examination_purpose)->replace('_', ' ')->title() } }}</td></tr>
         <tr><td>Valid until</td><td>{{ $referral->valid_until->format('F j, Y') }}</td></tr>
         <tr><td>Status</td><td>{{ str($referral->status)->replace('_', ' ')->title() }}</td></tr>
     </table>

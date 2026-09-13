@@ -7,6 +7,7 @@ use App\Models\SecurityAudit;
 use App\Models\User;
 use App\Services\BulkAppointmentEnrollmentService;
 use App\Services\OnsiteEventWorkflowService;
+use Illuminate\Validation\ValidationException;
 
 function onsiteFixture(): array
 {
@@ -18,6 +19,29 @@ function onsiteFixture(): array
 
     return compact('company', 'event', 'employee', 'child');
 }
+
+test('a doctor with a normal appointment cannot be assigned to an overlapping company event', function () {
+    extract(onsiteFixture());
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $patient = User::factory()->create(['role' => 'patient']);
+    Appointment::create([
+        'user_id' => $patient->id,
+        'doctor_id' => $doctor->id,
+        'appointment_date' => $event->appointment_date,
+        'start_time' => '09:00',
+        'end_time' => '09:30',
+        'type' => 'individual',
+        'status' => 'pending',
+        'service_types' => ['PE'],
+    ]);
+
+    expect(fn () => app(OnsiteEventWorkflowService::class)
+        ->assignStaff($event, $doctor, 'doctor', 10))
+        ->toThrow(ValidationException::class, 'conflicting clinic appointment');
+
+    expect($event->onsiteStaff()->where('user_id', $doctor->id)->doesntExist())
+        ->toBeTrue();
+});
 
 test('only arrived onsite employees enter independent medical queues', function () {
     extract(onsiteFixture());

@@ -135,7 +135,7 @@ function examinationPurposeLabel(purpose: string): string {
     const labels: Record<string, string> = {
         pre_employment: 'Pre-employment',
         annual_pe: 'Annual Physical Exam',
-        medical_clearance: 'Medical Clearance',
+        medical_clearance: 'Medical Certificate',
     };
 
     return labels[purpose] ?? humanize(purpose);

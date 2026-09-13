@@ -14,7 +14,7 @@ export default function EditCompany({ company, industryTypes }: any) {
     return (
         <>
             <Head title={`Edit ${company.company_name}`} />
-            <main className="mx-auto max-w-5xl p-4 sm:p-6">
+            <main className="max-w-5xl p-4 sm:p-6">
                 <Link
                     href="/admin/companies"
                     className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-moss-700"

@@ -39,6 +39,7 @@ class AdminPatientController extends Controller
             )
             ->select('users.*')
             ->addSelect('patient_sessions.last_activity')
+            ->withExists('socialAccounts')
             ->withCount('appointments')
             ->when($search !== '', function ($query) use ($search): void {
                 foreach (preg_split('/\s+/', $search) ?: [] as $term) {
@@ -82,6 +83,7 @@ class AdminPatientController extends Controller
                     'contact' => $patient->contact,
                     'created_at' => $patient->created_at,
                     'email_verified_at' => $patient->email_verified_at,
+                    'has_account' => $patient->password !== null || $patient->social_accounts_exists,
                     'appointments_count' => $patient->appointments_count,
                     'is_online' => $lastActivity !== null && (int) $lastActivity >= $onlineThreshold,
                     'last_active_at' => $lastActivity !== null

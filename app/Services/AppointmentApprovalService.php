@@ -5,8 +5,8 @@ namespace App\Services;
 use App\Models\Appointment;
 use App\Models\SecurityAudit;
 use App\Models\User;
-use App\Notifications\AppointmentConfirmed;
 use App\Notifications\AppointmentAssigned;
+use App\Notifications\AppointmentConfirmed;
 use App\Notifications\AppointmentRejected;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +55,18 @@ class AppointmentApprovalService
                 ->contains(fn ($period) => $start >= $period['start'] && $end <= $period['end']);
             if (! $withinAvailability) {
                 throw ValidationException::withMessages(['start_time' => 'The selected time is no longer within the doctor\'s availability.']);
+            }
+
+            if (app(OnsiteStaffAvailabilityService::class)->doctorHasOnsiteConflict(
+                $doctor->id,
+                $locked->appointment_date,
+                $start,
+                $end,
+                true,
+            )) {
+                throw ValidationException::withMessages([
+                    'start_time' => 'The doctor is assigned to a company appointment at this time.',
+                ]);
             }
 
             $conflict = Appointment::query()

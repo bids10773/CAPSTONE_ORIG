@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Inertia\Testing\AssertableInertia as Assert;
 
 function companyPayload(array $overrides = []): array
 {
@@ -63,6 +64,31 @@ test('representative middle name and position are optional without affecting ful
         ->and($account->middle_name)->toBeNull()
         ->and($account->position)->toBeNull()
         ->and($account->role)->toBe('company');
+});
+
+test('company management lists the company representative and position', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $company = Company::create(companyPayload());
+    $representative = User::factory()->create([
+        'role' => 'company',
+        'company_id' => $company->id,
+        'first_name' => 'Maria',
+        'middle_name' => 'Santos',
+        'last_name' => 'Reyes',
+        'position' => 'HR Officer',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.companies.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/companies/index')
+            ->has('companies.data', 1)
+            ->where('companies.data.0.account.0.id', $representative->id)
+            ->where('companies.data.0.account.0.first_name', 'Maria')
+            ->where('companies.data.0.account.0.middle_name', 'Santos')
+            ->where('companies.data.0.account.0.last_name', 'Reyes')
+            ->where('companies.data.0.account.0.position', 'HR Officer'));
 });
 
 test('representative first and last names are required with readable errors', function () {
