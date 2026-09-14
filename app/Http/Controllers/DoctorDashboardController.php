@@ -48,7 +48,11 @@ class DoctorDashboardController extends Controller
             ->count();
 
         $upcomingAppointments = $doctorQueue()
-            ->with(['user', 'medicalExamination:id,appointment_id,status'])
+            ->with([
+                'user:id,first_name,middle_name,last_name,email,contact',
+                'user.patientProfile:user_id,birthdate,sex,civil_status',
+                'medicalExamination:id,appointment_id,status',
+            ])
             ->where(function ($query): void {
                 $query->whereIn('status', ['accepted', 'arrived', 'for_final_evaluation'])
                     ->orWhere(function ($completed): void {

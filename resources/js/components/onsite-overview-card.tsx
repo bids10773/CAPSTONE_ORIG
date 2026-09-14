@@ -33,7 +33,7 @@ export function OnsiteOverviewCard({
     const reduceMotion = useReducedMotion();
 
     return (
-        <section className="overflow-hidden rounded-[2rem] border border-moss-200/70 bg-white shadow-[0_18px_50px_-34px_rgba(48,63,52,.45)]">
+        <section className="overflow-hidden rounded-[2rem] border border-moss-200/70 bg-white shadow-[0_7px_22px_-18px_rgba(48,63,52,.24)]">
             <div className="relative overflow-hidden bg-moss-800 px-6 py-6 text-white sm:px-8">
                 <div className="absolute -top-16 right-8 size-40 rounded-full bg-white/10 blur-2xl" />
                 <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">

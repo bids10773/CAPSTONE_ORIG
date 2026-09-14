@@ -60,6 +60,15 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Quiet elevation system: borders provide structure, shadows add only depth. */
+    --shadow-2xs: 0 1px 1px rgb(15 23 42 / 0.025);
+    --shadow-xs: 0 1px 2px rgb(15 23 42 / 0.035);
+    --shadow-sm: 0 2px 6px -3px rgb(15 23 42 / 0.1);
+    --shadow-md: 0 5px 14px -8px rgb(15 23 42 / 0.14);
+    --shadow-lg: 0 8px 22px -13px rgb(15 23 42 / 0.16);
+    --shadow-xl: 0 12px 30px -20px rgb(15 23 42 / 0.18);
+    --shadow-2xl: 0 18px 44px -28px rgb(15 23 42 / 0.22);
 }
 
 :root {
