@@ -14,6 +14,7 @@ return [
         'opens_at' => '08:00',
         'closes_at' => '17:00',
         'slot_minutes' => 30,
+        'working_days' => ['mon', 'tue', 'wed', 'thu', 'fri'],
     ],
     'pe_package' => [
         'pre_employment_services' => [

@@ -47,8 +47,6 @@ const weekDays = [
     { key: 'wed', label: 'Wed' },
     { key: 'thu', label: 'Thu' },
     { key: 'fri', label: 'Fri' },
-    { key: 'sat', label: 'Sat' },
-    { key: 'sun', label: 'Sun' },
 ];
 
 interface Props {
@@ -168,18 +166,18 @@ export default function DoctorDashboard(props: Props) {
                                             Weekly availability
                                         </p>
                                         <p className="mt-0.5 text-xs text-moss-200/80">
-                                            Your recurring clinic schedule
+                                            Monday–Friday · Closed weekends
                                         </p>
                                     </div>
                                     <Link
-                                        href="/doctor/availability"
+                                        href="/doctor/doctor-availability"
                                         className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-moss-800 transition hover:bg-moss-50"
                                     >
                                         Edit
                                     </Link>
                                 </div>
 
-                                <div className="grid grid-cols-7 gap-1.5">
+                                <div className="grid grid-cols-5 gap-1.5">
                                     {weekDays.map((day) => {
                                         const slots = availability.filter(
                                             (slot) => slot.day === day.key,
@@ -256,13 +254,13 @@ export default function DoctorDashboard(props: Props) {
 
                 {/* SUPPORTING STATS */}
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-                    {/* Pending */}
+                    {/* Awaiting examination */}
                     <div className="rounded-[2rem] border border-white bg-white/60 p-6 shadow-sm backdrop-blur-md transition-all hover:shadow-xl hover:shadow-moss-500/5">
                         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
                             <HeartPulse size={24} />
                         </div>
                         <p className="text-sm font-medium text-gray-500">
-                            Pending Consultations
+                            Patients Awaiting Examination
                         </p>
                         <p className="mt-1 text-2xl font-bold text-gray-900">
                             {pendingCount}
@@ -290,7 +288,7 @@ export default function DoctorDashboard(props: Props) {
                                     Quick action
                                 </p>
                                 <h2 className="mt-2 text-xl font-bold">
-                                    Patient consultations
+                                    Patient examinations
                                 </h2>
                             </div>
                             <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/10 text-moss-100">
@@ -301,7 +299,7 @@ export default function DoctorDashboard(props: Props) {
                             href="/doctor/appointments"
                             className="mt-6 flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-bold text-moss-800 transition hover:-translate-y-0.5 hover:bg-moss-50"
                         >
-                            Start consultation
+                            Review patients
                             <ArrowRight className="size-4" />
                         </Link>
                     </div>

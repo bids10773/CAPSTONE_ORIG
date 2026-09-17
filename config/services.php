@@ -47,4 +47,15 @@ return [
         'redirect' => env('FACEBOOK_REDIRECT_URI'),
     ],
 
+    'lmic_ml' => [
+        'url' => env('LMIC_ML_URL', 'http://127.0.0.1:8001'),
+    ],
+
+    'open_meteo' => [
+        'forecast_url' => env('OPEN_METEO_FORECAST_URL', 'https://api.open-meteo.com/v1/forecast'),
+        'archive_url' => env('OPEN_METEO_ARCHIVE_URL', 'https://archive-api.open-meteo.com/v1/archive'),
+        'latitude' => 14.2106,
+        'longitude' => 121.1638,
+    ],
+
 ];

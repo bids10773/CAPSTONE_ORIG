@@ -69,6 +69,17 @@ test('patient can book first appointment and another date when only one is activ
     expect(Appointment::where('user_id', $patient->id)->count())->toBe(2);
 });
 
+test('patient cannot book a weekend appointment', function () {
+    $patient = bookingPatient();
+    $doctor = bookingDoctor();
+
+    postIndividual($this, $patient, $doctor, '2026-08-22')
+        ->assertSessionHasErrors('appointment_date');
+
+    expect(Appointment::query()->where('user_id', $patient->id)->doesntExist())
+        ->toBeTrue();
+});
+
 test('individual appointments cannot use the annual examination purpose', function () {
     $patient = bookingPatient();
     $doctor = bookingDoctor();

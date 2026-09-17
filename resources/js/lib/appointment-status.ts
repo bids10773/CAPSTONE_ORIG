@@ -17,3 +17,15 @@ export const appointmentStatusLabels: Record<string, string> = {
 export function appointmentStatusLabel(status: string): string {
     return appointmentStatusLabels[status] ?? status.replaceAll('_', ' ');
 }
+
+const examinationPurposeLabels: Record<string, string> = {
+    pre_employment: 'Pre-employment',
+    annual_pe: 'Annual Physical Exam',
+    medical_clearance: 'Medical Certificate',
+};
+
+export function examinationPurposeLabel(purpose?: string | null): string {
+    return purpose
+        ? (examinationPurposeLabels[purpose] ?? purpose.replaceAll('_', ' '))
+        : 'Not specified';
+}

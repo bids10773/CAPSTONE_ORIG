@@ -2,7 +2,6 @@ import { Head, router, useForm } from '@inertiajs/react';
 import axios from 'axios';
 import {
     BriefcaseMedical,
-    CalendarDays,
     Check,
     ClipboardCheck,
     History,
@@ -26,10 +25,10 @@ type Patient = {
     email?: string;
     contact?: string;
 };
+type AvailableDoctor = { id: number; name: string; slots: string[] };
 
 const EXAMINATION_PURPOSE_ICONS = {
     pre_employment: BriefcaseMedical,
-    annual_pe: CalendarDays,
     medical_clearance: ClipboardCheck,
 };
 type WalkIn = {
@@ -54,6 +53,7 @@ type WalkIn = {
     grace_ends_at?: string;
     notes?: string;
     user: Patient;
+    doctor?: { id: number; first_name: string; last_name: string } | null;
 };
 
 const statusLabels = {
@@ -85,11 +85,15 @@ export default function WalkIns({
     serviceTypes,
     filters,
     mode,
+    clinicClosed,
+    availableDoctors,
 }: {
     walkIns: PaginatedResponse<WalkIn>;
     serviceTypes: Record<string, string>;
     filters: { status: string; search: string };
     mode: 'queue' | 'patients';
+    clinicClosed: boolean;
+    availableDoctors: AvailableDoctor[];
 }) {
     const [showRegistration, setShowRegistration] = useState(
         mode !== 'patients',
@@ -101,6 +105,14 @@ export default function WalkIns({
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(
         null,
     );
+    const [assigningWalkInId, setAssigningWalkInId] = useState<number | null>(
+        null,
+    );
+    const [assignmentDoctorId, setAssignmentDoctorId] = useState<number | null>(
+        null,
+    );
+    const [assignmentTime, setAssignmentTime] = useState('');
+    const [assignmentError, setAssignmentError] = useState('');
     const form = useForm({
         patient_type: 'existing',
         user_id: null as number | null,
@@ -114,8 +126,16 @@ export default function WalkIns({
         civil_status: '',
         examination_purpose: '',
         service_types: [] as string[],
+        doctor_id: null as number | null,
+        start_time: '',
         notes: '',
     });
+    const selectedDoctor = availableDoctors.find(
+        (doctor) => doctor.id === form.data.doctor_id,
+    );
+    const assignmentDoctor = availableDoctors.find(
+        (doctor) => doctor.id === assignmentDoctorId,
+    );
 
     async function searchPatients() {
         const query = patientQuery.trim();
@@ -171,6 +191,29 @@ export default function WalkIns({
         );
     }
 
+    function assignDoctor(walkIn: WalkIn) {
+        if (!assignmentDoctorId || !assignmentTime) return;
+        setAssignmentError('');
+        router.patch(
+            `/receptionist/walk-ins/${walkIn.id}/doctor`,
+            { doctor_id: assignmentDoctorId, start_time: assignmentTime },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setAssigningWalkInId(null);
+                    setAssignmentDoctorId(null);
+                    setAssignmentTime('');
+                },
+                onError: (errors) =>
+                    setAssignmentError(
+                        errors.start_time ||
+                            errors.doctor_id ||
+                            'Unable to assign this walk-in.',
+                    ),
+            },
+        );
+    }
+
     function filter(status = '', search = filters.search) {
         router.get(
             '/receptionist/queue',
@@ -206,13 +249,21 @@ export default function WalkIns({
                     </div>
                     <button
                         onClick={() => setShowRegistration(!showRegistration)}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-moss-700 px-5 py-3 text-sm font-semibold text-white hover:bg-moss-800"
+                        disabled={clinicClosed}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-moss-700 px-5 py-3 text-sm font-semibold text-white hover:bg-moss-800 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                         <UserPlus className="size-4" /> New walk-in
                     </button>
                 </header>
 
-                {showRegistration && (
+                {clinicClosed && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800">
+                        The clinic is closed on Saturday and Sunday. Walk-in
+                        registration resumes Monday.
+                    </div>
+                )}
+
+                {showRegistration && !clinicClosed && (
                     <form
                         onSubmit={submit}
                         className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
@@ -448,10 +499,9 @@ export default function WalkIns({
                             <p className="text-sm font-semibold text-slate-700">
                                 Examination purpose
                             </p>
-                            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
                                 {[
                                     ['pre_employment', 'Pre-employment'],
-                                    ['annual_pe', 'Annual PE'],
                                     [
                                         'medical_clearance',
                                         'Medical Certificate',
@@ -561,6 +611,76 @@ export default function WalkIns({
                                 )}
                             </div>
                         </div>
+                        <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <h3 className="text-sm font-semibold text-slate-800">
+                                Doctor and free slot today (optional)
+                            </h3>
+                            <p className="mt-1 text-xs text-slate-600">
+                                Online appointments stay reserved. Choose a free
+                                30-minute slot, or leave this walk-in waiting in
+                                the queue.
+                            </p>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                <label className="text-xs font-medium text-slate-600">
+                                    Doctor
+                                    <select
+                                        value={form.data.doctor_id ?? ''}
+                                        onChange={(event) =>
+                                            form.setData((current) => ({
+                                                ...current,
+                                                doctor_id: event.target.value
+                                                    ? Number(event.target.value)
+                                                    : null,
+                                                start_time: '',
+                                            }))
+                                        }
+                                        className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3"
+                                    >
+                                        <option value="">
+                                            Wait for a free doctor
+                                        </option>
+                                        {availableDoctors.map((doctor) => (
+                                            <option
+                                                key={doctor.id}
+                                                value={doctor.id}
+                                            >
+                                                {doctor.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="text-xs font-medium text-slate-600">
+                                    Time
+                                    <select
+                                        value={form.data.start_time}
+                                        disabled={!selectedDoctor}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                'start_time',
+                                                event.target.value,
+                                            )
+                                        }
+                                        className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 disabled:bg-slate-100"
+                                    >
+                                        <option value="">
+                                            Select a free time
+                                        </option>
+                                        {selectedDoctor?.slots.map((slot) => (
+                                            <option key={slot} value={slot}>
+                                                {slot}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                            </div>
+                            {availableDoctors.length === 0 && (
+                                <p className="mt-2 text-xs text-amber-800">
+                                    No doctor has a free slot remaining today.
+                                    The patient can still join the waiting
+                                    queue.
+                                </p>
+                            )}
+                        </div>
                         <textarea
                             value={form.data.notes}
                             onChange={(e) =>
@@ -592,7 +712,9 @@ export default function WalkIns({
                                 !form.data.examination_purpose ||
                                 form.data.service_types.length === 0 ||
                                 (form.data.patient_type === 'existing' &&
-                                    !form.data.user_id)
+                                    !form.data.user_id) ||
+                                (form.data.doctor_id !== null &&
+                                    !form.data.start_time)
                             }
                             className="mt-5 rounded-xl bg-moss-700 px-5 py-3 text-sm font-semibold text-white disabled:opacity-40"
                         >
@@ -652,6 +774,13 @@ export default function WalkIns({
                                                 walkIn.user.contact ||
                                                 'Walk-in patient'}
                                         </p>
+                                        {walkIn.doctor && walkIn.start_time && (
+                                            <p className="mt-1 text-xs font-semibold text-slate-700">
+                                                Dr. {walkIn.doctor.first_name}{' '}
+                                                {walkIn.doctor.last_name} ·{' '}
+                                                {walkIn.start_time.slice(0, 5)}
+                                            </p>
+                                        )}
                                         <span className="mt-1 inline-flex rounded-full bg-moss-50 px-2 py-1 text-[11px] font-bold text-moss-700">
                                             {
                                                 arrivalLabels[
@@ -671,8 +800,147 @@ export default function WalkIns({
                                                 </span>
                                             ),
                                         )}
+                                        {walkIn.type === 'walk_in' &&
+                                            !walkIn.doctor &&
+                                            !walkIn.start_time &&
+                                            assigningWalkInId === walkIn.id && (
+                                                <div className="mt-2 w-full space-y-2">
+                                                    <select
+                                                        aria-label="Doctor for walk-in"
+                                                        value={
+                                                            assignmentDoctorId ??
+                                                            ''
+                                                        }
+                                                        onChange={(event) => {
+                                                            setAssignmentDoctorId(
+                                                                event.target
+                                                                    .value
+                                                                    ? Number(
+                                                                          event
+                                                                              .target
+                                                                              .value,
+                                                                      )
+                                                                    : null,
+                                                            );
+                                                            setAssignmentTime(
+                                                                '',
+                                                            );
+                                                        }}
+                                                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs"
+                                                    >
+                                                        <option value="">
+                                                            Choose doctor
+                                                        </option>
+                                                        {availableDoctors.map(
+                                                            (doctor) => (
+                                                                <option
+                                                                    key={
+                                                                        doctor.id
+                                                                    }
+                                                                    value={
+                                                                        doctor.id
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        doctor.name
+                                                                    }
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                    <select
+                                                        aria-label="Free time for walk-in"
+                                                        value={assignmentTime}
+                                                        disabled={
+                                                            !assignmentDoctor
+                                                        }
+                                                        onChange={(event) =>
+                                                            setAssignmentTime(
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs disabled:bg-slate-100"
+                                                    >
+                                                        <option value="">
+                                                            Choose free time
+                                                        </option>
+                                                        {assignmentDoctor?.slots.map(
+                                                            (slot) => (
+                                                                <option
+                                                                    key={slot}
+                                                                    value={slot}
+                                                                >
+                                                                    {slot}
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                    {assignmentError && (
+                                                        <p
+                                                            role="alert"
+                                                            className="text-xs text-rose-700"
+                                                        >
+                                                            {assignmentError}
+                                                        </p>
+                                                    )}
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            disabled={
+                                                                !assignmentDoctorId ||
+                                                                !assignmentTime
+                                                            }
+                                                            onClick={() =>
+                                                                assignDoctor(
+                                                                    walkIn,
+                                                                )
+                                                            }
+                                                            className="rounded-lg bg-moss-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+                                                        >
+                                                            Assign free slot
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                setAssigningWalkInId(
+                                                                    null,
+                                                                )
+                                                            }
+                                                            className="text-xs text-slate-600"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        {walkIn.type === 'walk_in' &&
+                                            !walkIn.doctor &&
+                                            !walkIn.start_time &&
+                                            assigningWalkInId !== walkIn.id && (
+                                                <button
+                                                    type="button"
+                                                    disabled={
+                                                        availableDoctors.length ===
+                                                        0
+                                                    }
+                                                    onClick={() => {
+                                                        setAssigningWalkInId(
+                                                            walkIn.id,
+                                                        );
+                                                        setAssignmentDoctorId(
+                                                            null,
+                                                        );
+                                                        setAssignmentTime('');
+                                                        setAssignmentError('');
+                                                    }}
+                                                    className="rounded-xl border border-moss-300 px-3 py-2 text-xs font-bold text-moss-800 disabled:opacity-40"
+                                                >
+                                                    Assign doctor
+                                                </button>
+                                            )}
                                         {walkIn.type !== 'walk_in' &&
                                             ['pending', 'accepted'].includes(
                                                 walkIn.status,

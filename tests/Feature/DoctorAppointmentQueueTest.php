@@ -16,13 +16,14 @@ function doctorQueueAppointment(User $patient, User $doctor, array $overrides = 
     ], $overrides));
 }
 
-test('doctor queue only shows appointments assigned to the doctor for today', function () {
+test('doctor queue shows assigned appointments from today onward and marks their editability', function () {
     $doctor = User::factory()->create(['role' => 'doctor']);
     $otherDoctor = User::factory()->create(['role' => 'doctor']);
     $patient = User::factory()->create(['role' => 'patient']);
 
     $today = doctorQueueAppointment($patient, $doctor);
-    doctorQueueAppointment($patient, $doctor, ['appointment_date' => today()->addDay()]);
+    $upcoming = doctorQueueAppointment($patient, $doctor, ['appointment_date' => today()->addDay()]);
+    doctorQueueAppointment($patient, $doctor, ['appointment_date' => today()->subDay()]);
     doctorQueueAppointment($patient, $otherDoctor);
 
     $this->actingAs($doctor)
@@ -30,6 +31,30 @@ test('doctor queue only shows appointments assigned to the doctor for today', fu
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('doctor/appointments/index')
-            ->has('appointments.data', 1)
-            ->where('appointments.data.0.id', $today->id));
+            ->has('appointments.data', 2)
+            ->where('appointments.data.0.id', $today->id)
+            ->where('appointments.data.0.is_scheduled_today', true)
+            ->where('appointments.data.1.id', $upcoming->id)
+            ->where('appointments.data.1.is_scheduled_today', false));
+});
+
+test('doctor cannot edit a physical examination before its scheduled date', function () {
+    $doctor = User::factory()->create(['role' => 'doctor']);
+    $patient = User::factory()->create(['role' => 'patient']);
+    $today = doctorQueueAppointment($patient, $doctor);
+    $upcoming = doctorQueueAppointment($patient, $doctor, ['appointment_date' => today()->addDay()]);
+
+    expect($doctor->can('updatePhysicalExam', $today))->toBeTrue()
+        ->and($doctor->can('updatePhysicalExam', $upcoming))->toBeFalse();
+
+    $this->actingAs($doctor)
+        ->get(route('doctor.appointments.show', $upcoming))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('appointments/show')
+            ->where('appointment.id', $upcoming->id));
+
+    $this->actingAs($doctor)
+        ->get(route('doctor.physical-exams.create', $upcoming))
+        ->assertForbidden();
 });

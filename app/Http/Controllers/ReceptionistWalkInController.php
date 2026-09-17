@@ -8,11 +8,13 @@ use App\Http\Requests\UpdateWalkInStatusRequest;
 use App\Models\Appointment;
 use App\Models\User;
 use App\Services\AppointmentSchedulingService;
+use App\Services\WalkInDoctorSlotService;
 use App\Services\WalkInService;
 use App\Support\SearchTerm;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,6 +23,7 @@ class ReceptionistWalkInController extends Controller
     public function __construct(
         private readonly WalkInService $walkIns,
         private readonly AppointmentSchedulingService $scheduling,
+        private readonly WalkInDoctorSlotService $doctorSlots,
     ) {}
 
     public function index(Request $request): Response
@@ -59,7 +62,7 @@ class ReceptionistWalkInController extends Controller
             ->map(fn ($appointments) => $appointments->pluck('id')->flip());
 
         $walkIns = Appointment::query()
-            ->with('user.patientProfile')
+            ->with(['user.patientProfile', 'doctor:id,first_name,last_name'])
             ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
             ->whereHas('user', fn ($query) => $query->where('role', 'patient'))
             ->whereDate('appointment_date', today())
@@ -89,6 +92,8 @@ class ReceptionistWalkInController extends Controller
             'serviceTypes' => Appointment::getServiceTypeOptions(),
             'filters' => compact('status', 'search'),
             'mode' => $mode,
+            'clinicClosed' => today()->isWeekend(),
+            'availableDoctors' => $this->doctorSlots->availableDoctors(),
         ]);
     }
 
@@ -128,6 +133,19 @@ class ReceptionistWalkInController extends Controller
         $this->scheduling->checkIn($appointment, $request->user());
 
         return back()->with('success', 'Online appointment patient marked as arrived.');
+    }
+
+    public function assignDoctor(Request $request, Appointment $appointment): RedirectResponse
+    {
+        abort_unless($request->user()->can('walkin.create'), 403);
+        $data = $request->validate([
+            'doctor_id' => ['required', 'integer', Rule::exists(User::class, 'id')->where('role', 'doctor')->where('is_active', true)],
+            'start_time' => ['required', 'date_format:H:i'],
+        ]);
+
+        $this->walkIns->assignDoctor($appointment, (int) $data['doctor_id'], $data['start_time']);
+
+        return back()->with('success', 'Walk-in assigned to a free doctor slot.');
     }
 
     public function searchPatients(SearchPatientsRequest $request): JsonResponse

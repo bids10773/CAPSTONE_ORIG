@@ -1,5 +1,5 @@
 export interface AvailabilitySlot {
-    day: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+    day: 'mon' | 'tue' | 'wed' | 'thu' | 'fri';
     start: string; // '09:00'
     end: string; // '17:00'
 }
@@ -25,10 +25,7 @@ export interface Doctor {
 
 export interface DoctorAvailabilityResponse {
     doctor: Doctor;
-    slots: Record<
-        'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun',
-        AvailabilitySlot
-    >;
+    slots: Record<'mon' | 'tue' | 'wed' | 'thu' | 'fri', AvailabilitySlot>;
     availableDates: string[];
     availableTimes: string[];
     dateSlotCounts: Record<string, number>;

@@ -39,6 +39,9 @@ class AppointmentApprovalService
             }
 
             $scheduledAt = Carbon::parse($locked->appointment_date->toDateString().' '.$locked->start_time->format('H:i:s'));
+            if ($scheduledAt->isWeekend()) {
+                throw ValidationException::withMessages(['appointment_date' => 'Appointments are available Monday through Friday only because the clinic is closed on weekends.']);
+            }
             if ($scheduledAt->isPast()) {
                 throw ValidationException::withMessages(['appointment' => 'A past appointment time cannot be accepted.']);
             }

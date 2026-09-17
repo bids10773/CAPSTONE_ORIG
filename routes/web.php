@@ -131,6 +131,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', ReceptionistDashboardController::class)->name('dashboard');
         Route::get('/walk-ins', [ReceptionistWalkInController::class, 'index'])->name('walk-ins.index');
         Route::post('/walk-ins', [ReceptionistWalkInController::class, 'store'])->name('walk-ins.store');
+        Route::patch('/walk-ins/{appointment}/doctor', [ReceptionistWalkInController::class, 'assignDoctor'])->name('walk-ins.doctor');
         Route::patch('/walk-ins/{appointment}/status', [ReceptionistWalkInController::class, 'updateStatus'])->name('walk-ins.status');
         Route::get('/queue', [ReceptionistWalkInController::class, 'queue'])->name('queue.index');
         Route::get('/patients', [ReceptionistWalkInController::class, 'patients'])->name('patients.index');
@@ -146,8 +147,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/onsite-events/{event}/queue', [OnsiteEventController::class, 'myQueue'])->name('onsite-events.queue');
         Route::get('/dashboard', DoctorDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor')->name('appointments');
+        Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
         Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
-        Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');
+        Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'doctorSubmit'])->name('doctor-availability.update');
         Route::get('/physical-exam-form/{appointment}', [PhysicalExamController::class, 'create'])->name('physical-exams.create');
         Route::post('/physical-exam-form/{appointment}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
         Route::get('/final-evaluation/{appointment}', [PhysicalExamController::class, 'final'])->name('final-evaluation');
@@ -198,6 +200,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
         Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
         Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'adminUpdate'])->name('doctor-availability.update');
+        Route::patch('/doctor-availability-requests/{availabilityChangeRequest}/approve', [DoctorAvailabilityController::class, 'approve'])->name('doctor-availability-requests.approve');
+        Route::patch('/doctor-availability-requests/{availabilityChangeRequest}/reject', [DoctorAvailabilityController::class, 'reject'])->name('doctor-availability-requests.reject');
 
         Route::resource('staff', StaffController::class)->except('show');
         Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
@@ -240,9 +244,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/analytics', [AdminDashboardController::class, 'analytics'])->name('analytics');
         Route::get('/forecast', [ForecastController::class, 'index'])->name('forecast.index');
-        Route::get('/api/forecast', [ForecastController::class, 'dashboard'])->name('forecast.dashboard');
-        Route::get('/api/forecast/history', [ForecastController::class, 'history'])->name('forecast.history');
-        Route::get('/api/forecast/{disease}', [ForecastController::class, 'disease'])->name('forecast.disease');
+        Route::get('/api/forecast/monthly', [ForecastController::class, 'monthly'])->name('forecast.monthly');
+        Route::get('/api/forecast/resources', [ForecastController::class, 'resources'])->name('forecast.resources');
+        Route::get('/api/forecast/weather', [ForecastController::class, 'weather'])->name('forecast.weather');
+        Route::get('/api/forecast/weather-scenario', [ForecastController::class, 'weatherScenario'])->name('forecast.weather-scenario');
         Route::get('/patient-visits', [PatientVisitForecastController::class, 'index'])->name('patient-visits.index');
         Route::get('/api/patient-visits', [PatientVisitForecastController::class, 'dashboard'])->name('patient-visits.dashboard');
         Route::get('/security', [AdminDashboardController::class, 'security'])->name('security');

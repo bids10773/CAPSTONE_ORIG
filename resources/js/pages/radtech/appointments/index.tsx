@@ -5,6 +5,7 @@ import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
+import { examinationPurposeLabel } from '@/lib/appointment-status';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -16,6 +17,7 @@ interface Appointment {
     appointment_date: string;
     status: string;
     type: string;
+    examination_purpose?: string | null;
     service_types: string;
     user: {
         first_name: string;
@@ -59,19 +61,6 @@ export default function RadTechAppointmentsIndex(props: Props) {
             hour: '2-digit',
             minute: '2-digit',
         });
-    };
-
-    const getTypeLabel = (type: string) => {
-        switch (type) {
-            case 'individual':
-                return 'Individual';
-            case 'company_referral':
-                return 'Company Referral';
-            case 'company_bulk':
-                return 'Bulk Booking';
-            default:
-                return type;
-        }
     };
 
     const formatService = (service: any) => {
@@ -144,8 +133,8 @@ export default function RadTechAppointmentsIndex(props: Props) {
 
                 {/* Table */}
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
+                    <div className="overflow-hidden">
+                        <table className="w-full table-fixed">
                             <thead className="border-b border-gray-200 bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
@@ -155,13 +144,7 @@ export default function RadTechAppointmentsIndex(props: Props) {
                                         Date & Time
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                        Service
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                        Type
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                        Company
+                                        Services / Purpose
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                                         Status
@@ -191,21 +174,38 @@ export default function RadTechAppointmentsIndex(props: Props) {
                                                 </p>
                                             </td>
                                             <td className="px-6 py-4 text-gray-900">
-                                                {formatDate(
-                                                    appointment.appointment_date,
-                                                )}
+                                                <span
+                                                    className="block truncate whitespace-nowrap"
+                                                    title={formatDate(
+                                                        appointment.appointment_date,
+                                                    )}
+                                                >
+                                                    {formatDate(
+                                                        appointment.appointment_date,
+                                                    )}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4 text-gray-900">
-                                                {formatService(
-                                                    appointment.service_types,
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-600">
-                                                {getTypeLabel(appointment.type)}
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-600">
-                                                {appointment.company
-                                                    ?.company_name || 'N/A'}
+                                                <span
+                                                    className="block truncate"
+                                                    title={formatService(
+                                                        appointment.service_types,
+                                                    )}
+                                                >
+                                                    {formatService(
+                                                        appointment.service_types,
+                                                    )}
+                                                </span>
+                                                <span
+                                                    className="mt-1 block truncate text-xs text-moss-700"
+                                                    title={examinationPurposeLabel(
+                                                        appointment.examination_purpose,
+                                                    )}
+                                                >
+                                                    {examinationPurposeLabel(
+                                                        appointment.examination_purpose,
+                                                    )}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 {appointment.xray_report ? (
@@ -255,7 +255,7 @@ export default function RadTechAppointmentsIndex(props: Props) {
                                 ) : (
                                     <tr>
                                         <td
-                                            colSpan={7}
+                                            colSpan={5}
                                             className="px-6 py-12 text-center text-gray-500"
                                         >
                                             <Image className="mx-auto mb-4 h-12 w-12 text-gray-400" />

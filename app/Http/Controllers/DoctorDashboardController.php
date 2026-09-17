@@ -24,7 +24,13 @@ class DoctorDashboardController extends Controller
         });
 
         $pendingCount = $doctorQueue()
-            ->whereIn('status', ['accepted', 'for_final_evaluation'])
+            ->whereDate('appointment_date', today())
+            ->where(function ($query): void {
+                $query->where(fn ($physical) => $physical
+                    ->whereIn('status', ['accepted', 'arrived'])
+                    ->whereDoesntHave('physicalExam'))
+                    ->orWhere('status', 'for_final_evaluation');
+            })
             ->count();
         $workflowCounts = MedicalExamination::query()
             ->where(function ($query) use ($doctor) {

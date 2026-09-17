@@ -35,6 +35,8 @@ function validationMessage(parts: DateParts, min?: string, max?: string) {
     if (min && value < min) return 'Appointment date cannot be in the past.';
     if (max && value > max)
         return 'Appointment date is outside the available booking period.';
+    if (candidate.getUTCDay() === 0 || candidate.getUTCDay() === 6)
+        return 'Appointments are available Monday through Friday only.';
 }
 
 type Props = {
@@ -296,8 +298,11 @@ export default function AppointmentDateInput({
                                 const outsideRange =
                                     (!!min && key < min) ||
                                     (!!max && key > max);
+                                const weekend =
+                                    date.getDay() === 0 || date.getDay() === 6;
                                 const unavailable =
                                     outsideRange ||
+                                    weekend ||
                                     (!loadingSlotCounts && count === 0);
                                 const selected = key === value;
 
@@ -318,7 +323,7 @@ export default function AppointmentDateInput({
                                         <span className="text-xs font-semibold">
                                             {date.getDate()}
                                         </span>
-                                        {!outsideRange && (
+                                        {!outsideRange && !weekend && (
                                             <span
                                                 className={`mt-0.5 text-[8px] leading-none ${selected ? 'text-moss-100' : count > 0 ? 'text-moss-600' : 'text-slate-300'}`}
                                             >

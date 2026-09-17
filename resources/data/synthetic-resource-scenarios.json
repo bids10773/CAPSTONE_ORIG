@@ -1,0 +1,242 @@
+[
+  {
+    "Forecast_Month": "2026-10",
+    "Supply_Item": "EDTA collection tubes",
+    "Opening_Stock": 8,
+    "Safety_Stock": 5,
+    "Unit": "tubes",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-10",
+    "Supply_Item": "Serum collection tubes",
+    "Opening_Stock": 5,
+    "Safety_Stock": 3,
+    "Unit": "tubes",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-10",
+    "Supply_Item": "Disposable face masks",
+    "Opening_Stock": 12,
+    "Safety_Stock": 10,
+    "Unit": "masks",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-10",
+    "Supply_Item": "Sterile specimen containers",
+    "Opening_Stock": 5,
+    "Safety_Stock": 3,
+    "Unit": "containers",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-10",
+    "Supply_Item": "Examination gloves (pairs)",
+    "Opening_Stock": 8,
+    "Safety_Stock": 5,
+    "Unit": "pairs",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-10",
+    "Supply_Item": "Instant cold packs",
+    "Opening_Stock": 3,
+    "Safety_Stock": 2,
+    "Unit": "packs",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-10",
+    "Supply_Item": "Specimen transport bags",
+    "Opening_Stock": 5,
+    "Safety_Stock": 3,
+    "Unit": "bags",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-10",
+    "Supply_Item": "Disposable examination tissues",
+    "Opening_Stock": 5,
+    "Safety_Stock": 3,
+    "Unit": "tissues",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-11",
+    "Supply_Item": "EDTA collection tubes",
+    "Opening_Stock": 11,
+    "Safety_Stock": 5,
+    "Unit": "tubes",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-11",
+    "Supply_Item": "Serum collection tubes",
+    "Opening_Stock": 7,
+    "Safety_Stock": 3,
+    "Unit": "tubes",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-11",
+    "Supply_Item": "Disposable face masks",
+    "Opening_Stock": 18,
+    "Safety_Stock": 10,
+    "Unit": "masks",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-11",
+    "Supply_Item": "Sterile specimen containers",
+    "Opening_Stock": 7,
+    "Safety_Stock": 3,
+    "Unit": "containers",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-11",
+    "Supply_Item": "Examination gloves (pairs)",
+    "Opening_Stock": 11,
+    "Safety_Stock": 5,
+    "Unit": "pairs",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-11",
+    "Supply_Item": "Instant cold packs",
+    "Opening_Stock": 4,
+    "Safety_Stock": 2,
+    "Unit": "packs",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-11",
+    "Supply_Item": "Specimen transport bags",
+    "Opening_Stock": 7,
+    "Safety_Stock": 3,
+    "Unit": "bags",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-11",
+    "Supply_Item": "Disposable examination tissues",
+    "Opening_Stock": 7,
+    "Safety_Stock": 3,
+    "Unit": "tissues",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-12",
+    "Supply_Item": "EDTA collection tubes",
+    "Opening_Stock": 14,
+    "Safety_Stock": 5,
+    "Unit": "tubes",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-12",
+    "Supply_Item": "Serum collection tubes",
+    "Opening_Stock": 9,
+    "Safety_Stock": 3,
+    "Unit": "tubes",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-12",
+    "Supply_Item": "Disposable face masks",
+    "Opening_Stock": 24,
+    "Safety_Stock": 10,
+    "Unit": "masks",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-12",
+    "Supply_Item": "Sterile specimen containers",
+    "Opening_Stock": 9,
+    "Safety_Stock": 3,
+    "Unit": "containers",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-12",
+    "Supply_Item": "Examination gloves (pairs)",
+    "Opening_Stock": 14,
+    "Safety_Stock": 5,
+    "Unit": "pairs",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-12",
+    "Supply_Item": "Instant cold packs",
+    "Opening_Stock": 5,
+    "Safety_Stock": 2,
+    "Unit": "packs",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-12",
+    "Supply_Item": "Specimen transport bags",
+    "Opening_Stock": 9,
+    "Safety_Stock": 3,
+    "Unit": "bags",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  },
+  {
+    "Forecast_Month": "2026-12",
+    "Supply_Item": "Disposable examination tissues",
+    "Opening_Stock": 9,
+    "Safety_Stock": 3,
+    "Unit": "tissues",
+    "Data_Type": "Synthetic Simulation",
+    "Clinic_Approved": "No",
+    "Scenario_Note": "Independent hypothetical month-specific opening stock and safety stock for capstone demonstration; not measured LMIC inventory."
+  }
+]

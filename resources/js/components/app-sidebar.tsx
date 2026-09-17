@@ -125,7 +125,7 @@ const navigation: Record<string, Item[]> = {
                     icon: BarChart3,
                 },
                 {
-                    title: 'Disease analytics',
+                    title: 'Disease simulation',
                     href: '/admin/forecast',
                     icon: ChartSpline,
                 },
@@ -155,7 +155,7 @@ const navigation: Record<string, Item[]> = {
         },
         {
             title: 'Availability',
-            href: '/doctor/availability',
+            href: '/doctor/doctor-availability',
             icon: Stethoscope,
         },
         { title: 'Settings', href: '/settings/profile', icon: Settings },

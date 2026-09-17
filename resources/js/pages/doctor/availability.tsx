@@ -26,7 +26,7 @@ export default function DoctorAvailability(props: Props) {
         availability: props.availability,
     });
 
-    const dayOrder = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    const dayOrder = ['mon', 'tue', 'wed', 'thu', 'fri'];
 
     const updateSlot = (day: string, field: 'start' | 'end', value: string) => {
         setData(
@@ -73,8 +73,8 @@ export default function DoctorAvailability(props: Props) {
                             Set Your Availability
                         </h1>
                         <p className="text-gray-500">
-                            Manage your weekly schedule. Patients can book
-                            within these times.
+                            Manage your Monday to Friday schedule. The clinic is
+                            closed on weekends.
                         </p>
                     </div>
                 </div>

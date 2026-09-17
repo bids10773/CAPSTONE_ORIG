@@ -1,12 +1,19 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import {
     Activity,
     CheckCircle2,
     CircleX,
+    ClipboardList,
     Clock3,
     ListOrdered,
     Users,
 } from 'lucide-react';
+import {
+    StaffDashboardAction,
+    StaffDashboardHero,
+    StaffDashboardList,
+    StaffDashboardStat,
+} from '@/components/staff-dashboard';
 import AppLayout from '@/layouts/app-layout';
 
 type Metrics = {
@@ -29,39 +36,6 @@ type OnlineQueueItem = {
     type: 'individual' | 'company_referral';
 };
 
-const cards = [
-    {
-        key: 'total',
-        label: "Today's walk-ins",
-        icon: Users,
-        tone: 'bg-sky-50 text-sky-700',
-    },
-    {
-        key: 'waiting',
-        label: 'Waiting patients',
-        icon: Clock3,
-        tone: 'bg-amber-50 text-amber-700',
-    },
-    {
-        key: 'processing',
-        label: 'Currently processing',
-        icon: Activity,
-        tone: 'bg-violet-50 text-violet-700',
-    },
-    {
-        key: 'completed',
-        label: 'Completed today',
-        icon: CheckCircle2,
-        tone: 'bg-emerald-50 text-emerald-700',
-    },
-    {
-        key: 'cancelled',
-        label: 'Cancelled today',
-        icon: CircleX,
-        tone: 'bg-rose-50 text-rose-700',
-    },
-] as const;
-
 export default function ReceptionistDashboard({
     metrics,
     onlineQueue,
@@ -74,127 +48,105 @@ export default function ReceptionistDashboard({
     return (
         <>
             <Head title="Receptionist Dashboard" />
-            <div className="space-y-7 p-6 lg:p-8">
-                <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-                    <div>
-                        <p className="text-sm font-semibold text-moss-700">
-                            Front desk · {new Date().toLocaleDateString()}
-                        </p>
-                        <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950">
-                            Good day, {auth.user.first_name}
-                        </h1>
-                        <p className="mt-2 text-sm text-slate-500">
-                            Manage today’s walk-in queue from one focused
-                            workspace.
-                        </p>
-                    </div>
-                    <Link
-                        href="/receptionist/walk-ins"
-                        className="rounded-xl bg-moss-700 px-5 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-moss-800"
-                    >
-                        Register walk-in
-                    </Link>
-                </header>
+            <div className="min-h-screen space-y-6 bg-gray-50 p-6">
+                <StaffDashboardHero
+                    role="Receptionist"
+                    name={auth?.user?.name ?? 'Receptionist'}
+                    description="Keep today's online appointments and walk-in queue moving."
+                    icon={ClipboardList}
+                    action={{
+                        label: 'Register walk-in',
+                        href: '/receptionist/walk-ins',
+                    }}
+                    todayLabel={
+                        metrics.total === 1 ? 'walk-in today' : 'walk-ins today'
+                    }
+                    todayValue={metrics.total}
+                />
 
-                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                    {cards.map(({ key, label, icon: Icon, tone }) => (
-                        <div
-                            key={key}
-                            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-                        >
-                            <span
-                                className={`inline-flex rounded-xl p-2.5 ${tone}`}
-                            >
-                                <Icon className="size-5" />
-                            </span>
-                            <p className="mt-5 text-3xl font-bold text-slate-950">
-                                {metrics[key]}
-                            </p>
-                            <p className="mt-1 text-sm text-slate-500">
-                                {label}
-                            </p>
-                        </div>
-                    ))}
+                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                    <StaffDashboardStat
+                        label="Waiting walk-ins"
+                        value={metrics.waiting}
+                        icon={Clock3}
+                        iconClassName="bg-amber-50 text-amber-700"
+                    />
+                    <StaffDashboardStat
+                        label="Currently processing"
+                        value={metrics.processing}
+                        icon={Activity}
+                        iconClassName="bg-violet-50 text-violet-700"
+                    />
+                    <StaffDashboardAction
+                        title="Patient queue"
+                        href="/receptionist/queue"
+                        label="Open queue"
+                        icon={ListOrdered}
+                    />
+                    <StaffDashboardStat
+                        label="Completed walk-ins today"
+                        value={metrics.completed}
+                        icon={CheckCircle2}
+                        iconClassName="bg-emerald-50 text-emerald-700"
+                    />
+                    <StaffDashboardStat
+                        label="Cancelled walk-ins today"
+                        value={metrics.cancelled}
+                        icon={CircleX}
+                        iconClassName="bg-rose-50 text-rose-700"
+                    />
+                    <StaffDashboardStat
+                        label="Active online appointments"
+                        value={metrics.online}
+                        icon={Users}
+                    />
+                </div>
+
+                <section className="rounded-[2rem] border border-moss-200 bg-moss-50 p-6 dark:border-moss-700 dark:bg-moss-950/40">
+                    <p className="text-xs font-extrabold tracking-[0.14em] text-moss-700 uppercase dark:text-moss-200">
+                        Current queue number
+                    </p>
+                    <p className="mt-2 text-4xl font-black text-moss-900 dark:text-white">
+                        {metrics.currentQueueNumber ?? 'None waiting'}
+                    </p>
                 </section>
 
-                <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-                    <div className="flex flex-col justify-between gap-2 border-b border-slate-200 p-6 sm:flex-row sm:items-center">
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-950">
-                                Today&apos;s online queue
-                            </h2>
-                            <p className="mt-1 text-sm text-slate-500">
-                                Individual and company-referral appointments
-                                scheduled online for today.
-                            </p>
-                        </div>
-                        <span className="w-fit rounded-full bg-moss-100 px-3 py-1 text-sm font-bold text-moss-800">
-                            {metrics.online} waiting
-                        </span>
-                    </div>
-
+                <StaffDashboardList
+                    title="Today's online queue"
+                    href="/receptionist/queue"
+                >
                     {onlineQueue.length === 0 ? (
-                        <div className="p-10 text-center text-sm text-slate-500">
+                        <p className="rounded-2xl bg-gray-50/50 p-4 text-sm text-slate-500">
                             No active online appointments scheduled for today.
-                        </div>
+                        </p>
                     ) : (
-                        <div className="divide-y divide-slate-100">
-                            {onlineQueue.map((item) => (
-                                <article
-                                    key={item.id}
-                                    className="grid gap-4 p-5 sm:grid-cols-[100px_minmax(0,1fr)_150px_130px] sm:items-center"
-                                >
-                                    <strong className="text-lg text-moss-800">
-                                        {item.queue_number}
-                                    </strong>
-                                    <div className="min-w-0">
-                                        <p className="truncate font-bold text-slate-950">
-                                            {item.patient_name}
-                                        </p>
-                                        <p className="mt-1 truncate text-sm text-slate-500">
-                                            {item.services.join(', ') ||
-                                                'No service listed'}
-                                        </p>
-                                    </div>
-                                    <div className="text-sm">
-                                        <p className="font-semibold text-slate-800">
-                                            {item.start_time ?? 'Time pending'}
-                                        </p>
-                                        <p className="text-slate-500 capitalize">
-                                            {item.type.replaceAll('_', ' ')}
-                                        </p>
-                                    </div>
-                                    <span className="w-fit rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 capitalize">
-                                        {item.status.replaceAll('_', ' ')}
-                                    </span>
-                                </article>
-                            ))}
-                        </div>
+                        onlineQueue.map((item) => (
+                            <article
+                                key={item.id}
+                                className="grid gap-3 rounded-2xl border border-transparent bg-gray-50/50 p-4 sm:grid-cols-[80px_minmax(0,1fr)_120px_110px] sm:items-center"
+                            >
+                                <strong className="text-moss-800 dark:text-moss-200">
+                                    {item.queue_number}
+                                </strong>
+                                <div className="min-w-0">
+                                    <p className="truncate font-bold text-slate-900 dark:text-white">
+                                        {item.patient_name}
+                                    </p>
+                                    <p className="truncate text-xs text-slate-500">
+                                        {item.services.join(', ') ||
+                                            'No service listed'}
+                                    </p>
+                                </div>
+                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    {item.start_time ?? 'Time pending'}
+                                </span>
+                                <span className="w-fit rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 capitalize">
+                                    {item.status.replaceAll('_', ' ')}
+                                </span>
+                            </article>
+                        ))
                     )}
-                </section>
-
-                <section className="rounded-3xl bg-slate-950 p-7 text-white shadow-xl">
-                    <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
-                        <div>
-                            <p className="text-xs font-bold tracking-[.16em] text-moss-300 uppercase">
-                                Current queue number
-                            </p>
-                            <p className="mt-2 text-5xl font-black tracking-tight">
-                                {metrics.currentQueueNumber ?? '—'}
-                            </p>
-                            <p className="mt-2 text-sm text-slate-400">
-                                Processing is prioritized, followed by the next
-                                waiting patient.
-                            </p>
-                        </div>
-                        <Link
-                            href="/receptionist/queue"
-                            className="preserve-light-action inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-slate-100"
-                        >
-                            <ListOrdered className="size-4" /> Open queue
-                        </Link>
-                    </div>
-                </section>
+                </StaffDashboardList>
             </div>
         </>
     );

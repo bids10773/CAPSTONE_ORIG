@@ -1,10 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Calendar, Eye, Stethoscope, Play } from 'lucide-react';
+import { Calendar, Eye, LockKeyhole, Stethoscope, Play } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
+import { examinationPurposeLabel } from '@/lib/appointment-status';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -19,7 +20,9 @@ interface Appointment {
     appointment_date: string;
     status: string;
     type: string;
+    examination_purpose?: string | null;
     service_types: string;
+    is_scheduled_today: boolean;
     user: {
         first_name: string;
         last_name: string;
@@ -98,19 +101,6 @@ export default function DoctorAppointmentsIndex(props: Props) {
         });
     };
 
-    const getTypeLabel = (type: string) => {
-        switch (type) {
-            case 'individual':
-                return 'Individual';
-            case 'company_referral':
-                return 'Company Referral';
-            case 'company_bulk':
-                return 'Bulk Booking';
-            default:
-                return type;
-        }
-    };
-
     const startExam = (appointmentId: number) => {
         router.visit(`/doctor/physical-exam-form/${appointmentId}`);
     };
@@ -158,29 +148,23 @@ export default function DoctorAppointmentsIndex(props: Props) {
 
                 {/* Table */}
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
+                    <div className="overflow-hidden">
+                        <table className="w-full table-fixed">
                             <thead className="border-b border-gray-200 bg-gray-50">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                    <th className="w-[24%] px-4 py-3 text-left text-xs font-medium tracking-wider whitespace-nowrap text-gray-500 uppercase">
                                         Patient
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                    <th className="w-[19%] px-4 py-3 text-left text-xs font-medium tracking-wider whitespace-nowrap text-gray-500 uppercase">
                                         Date & Time
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                        Service
+                                    <th className="w-[25%] px-4 py-3 text-left text-xs font-medium tracking-wider whitespace-nowrap text-gray-500 uppercase">
+                                        Services / Purpose
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                        Type
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
-                                        Company
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                    <th className="w-[14%] px-4 py-3 text-left text-xs font-medium tracking-wider whitespace-nowrap text-gray-500 uppercase">
                                         Status
                                     </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
+                                    <th className="w-[18%] px-4 py-3 text-right text-xs font-medium tracking-wider whitespace-nowrap text-gray-500 uppercase">
                                         Actions
                                     </th>
                                 </tr>
@@ -192,43 +176,65 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                             key={appointment.id}
                                             className="hover:bg-gray-50"
                                         >
-                                            <td className="px-6 py-4">
-                                                <p className="font-medium text-gray-900">
+                                            <td className="px-4 py-3">
+                                                <p className="truncate font-medium text-gray-900">
                                                     {
                                                         appointment.user
                                                             .first_name
                                                     }{' '}
                                                     {appointment.user.last_name}
                                                 </p>
-                                                <p className="text-sm text-gray-500">
+                                                <p
+                                                    className="truncate text-sm text-gray-500"
+                                                    title={
+                                                        appointment.user.email
+                                                    }
+                                                >
                                                     {appointment.user.email}
                                                 </p>
                                             </td>
-                                            <td className="px-6 py-4 text-gray-900">
-                                                {formatDate(
-                                                    appointment.appointment_date,
-                                                )}
+                                            <td className="px-4 py-3 text-gray-900">
+                                                <span
+                                                    className="block truncate whitespace-nowrap"
+                                                    title={formatDate(
+                                                        appointment.appointment_date,
+                                                    )}
+                                                >
+                                                    {formatDate(
+                                                        appointment.appointment_date,
+                                                    )}
+                                                </span>
                                             </td>
-                                            <td className="px-6 py-4 text-gray-900">
-                                                {formatService(
-                                                    appointment.service_types,
-                                                )}
+                                            <td className="px-4 py-3 text-gray-900">
+                                                <span
+                                                    className="block truncate"
+                                                    title={formatService(
+                                                        appointment.service_types,
+                                                    )}
+                                                >
+                                                    {formatService(
+                                                        appointment.service_types,
+                                                    )}
+                                                </span>
+                                                <span
+                                                    className="mt-1 block truncate text-xs text-moss-700"
+                                                    title={examinationPurposeLabel(
+                                                        appointment.examination_purpose,
+                                                    )}
+                                                >
+                                                    {examinationPurposeLabel(
+                                                        appointment.examination_purpose,
+                                                    )}
+                                                </span>
                                             </td>
-                                            <td className="px-6 py-4 text-gray-600">
-                                                {getTypeLabel(appointment.type)}
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-600">
-                                                {appointment.company
-                                                    ?.company_name || '-'}
-                                            </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-4 py-3">
                                                 <StatusBadge
                                                     status={appointment.status}
                                                 />
                                             </td>
-                                            <td className="space-x-2 px-6 py-4 text-right whitespace-nowrap">
+                                            <td className="space-x-1 px-4 py-3 text-right whitespace-nowrap">
                                                 <Link
-                                                    href={`/appointments/${appointment.id}`}
+                                                    href={`/doctor/appointments/${appointment.id}`}
                                                     className="inline-flex items-center rounded-2xl p-2 text-gray-400 hover:bg-gray-100 hover:text-moss-600"
                                                     title="View Details"
                                                 >
@@ -242,6 +248,7 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                 ].includes(
                                                     appointment.status.toLowerCase(),
                                                 ) &&
+                                                    appointment.is_scheduled_today &&
                                                     !appointment.physical_exam
                                                         ?.id && (
                                                         <button
@@ -255,6 +262,27 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                         >
                                                             <Play className="h-4 w-4" />
                                                         </button>
+                                                    )}
+
+                                                {[
+                                                    'accepted',
+                                                    'arrived',
+                                                ].includes(
+                                                    appointment.status.toLowerCase(),
+                                                ) &&
+                                                    !appointment.is_scheduled_today && (
+                                                        <span
+                                                            className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-500"
+                                                            title="The physical examination becomes available on the scheduled date"
+                                                        >
+                                                            <LockKeyhole className="h-3.5 w-3.5" />
+                                                            <span className="hidden 2xl:inline">
+                                                                Available on{' '}
+                                                                {formatDate(
+                                                                    appointment.appointment_date,
+                                                                )}
+                                                            </span>
+                                                        </span>
                                                     )}
 
                                                 {/* ✅ FINAL EVALUATION */}
@@ -321,7 +349,7 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                 ) : (
                                     <tr>
                                         <td
-                                            colSpan={7}
+                                            colSpan={5}
                                             className="px-6 py-12 text-center text-gray-500"
                                         >
                                             <Calendar className="mx-auto mb-4 h-12 w-12 text-gray-400" />

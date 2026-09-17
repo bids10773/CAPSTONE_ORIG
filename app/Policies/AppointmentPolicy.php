@@ -10,7 +10,10 @@ class AppointmentPolicy
     public function view(User $user, Appointment $appointment): bool
     {
         return $user->role === 'admin'
-            || ($user->role === 'patient' && $appointment->user_id === $user->id);
+            || ($user->role === 'patient' && $appointment->user_id === $user->id)
+            || ($user->role === 'doctor'
+                && $appointment->bulk_appointment_id === null
+                && $appointment->doctor_id === $user->id);
     }
 
     public function viewClinicalForms(User $user, Appointment $appointment): bool
@@ -38,40 +41,37 @@ class AppointmentPolicy
             ?->firstWhere('service_key', 'drug_test');
         $isVerificationUpdate = in_array($drugVerification?->status, ['verifying', 'awaiting_official_result', 'official_result_received'], true);
 
-        return $user->role === 'admin'
-            || ($user->role === 'medtech'
-                && $this->eligibleOnsiteStaff($user, $appointment, 'medtech')
-                && $appointment->status !== 'completed'
-                && app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment) !== []
-                && (! $isVerificationUpdate
-                    || $appointment->bulk_appointment_id !== null
-                    || $appointment->labResult?->encoded_by === $user->id));
+        return $user->role === 'medtech'
+            && $this->eligibleOnsiteStaff($user, $appointment, 'medtech')
+            && $appointment->status !== 'completed'
+            && app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment) !== []
+            && (! $isVerificationUpdate
+                || $appointment->bulk_appointment_id !== null
+                || $appointment->labResult?->encoded_by === $user->id);
     }
 
     public function updatePhysicalExam(User $user, Appointment $appointment): bool
     {
-        return $user->role === 'admin'
-            || ($user->role === 'doctor'
-                && $this->eligibleOnsiteStaff($user, $appointment, 'doctor')
-                && $appointment->status !== 'completed'
-                && in_array('PE', $appointment->service_types ?? [], true)
-                && ($appointment->doctor_id === null || $appointment->doctor_id === $user->id));
+        return $user->role === 'doctor'
+            && $this->eligibleOnsiteStaff($user, $appointment, 'doctor')
+            && ($appointment->appointment_date?->isToday() ?? false)
+            && $appointment->status !== 'completed'
+            && in_array('PE', $appointment->service_types ?? [], true)
+            && ($appointment->doctor_id === null || $appointment->doctor_id === $user->id);
     }
 
     public function updateXray(User $user, Appointment $appointment): bool
     {
-        return $user->role === 'admin'
-            || ($user->role === 'radtech'
-                && $this->eligibleOnsiteStaff($user, $appointment, 'radtech')
-                && $appointment->status !== 'completed'
-                && $appointment->requiresXray());
+        return $user->role === 'radtech'
+            && $this->eligibleOnsiteStaff($user, $appointment, 'radtech')
+            && $appointment->status !== 'completed'
+            && $appointment->requiresXray();
     }
 
     public function finalizeMedicalEvaluation(User $user, Appointment $appointment): bool
     {
-        return $user->role === 'admin'
-            || ($user->role === 'doctor'
-                && $this->eligibleOnsiteStaff($user, $appointment, 'final_evaluation'));
+        return $user->role === 'doctor'
+            && $this->eligibleOnsiteStaff($user, $appointment, 'final_evaluation');
     }
 
     private function eligibleOnsiteStaff(User $user, Appointment $appointment, string $role): bool
@@ -97,20 +97,20 @@ class AppointmentPolicy
 
     public function verifyDiagnosticResults(User $user, Appointment $appointment): bool
     {
-        return in_array($user->role, ['doctor', 'admin'], true)
-            && ($user->role === 'admin' || ($appointment->bulk_appointment_id === null
+        return $user->role === 'doctor'
+            && ($appointment->bulk_appointment_id === null
                 ? ($appointment->doctor_id === null || $appointment->doctor_id === $user->id)
-                : $this->hasAnyAssignedTask($user, $appointment, ['drug_verification'])));
+                : $this->hasAnyAssignedTask($user, $appointment, ['drug_verification']));
     }
 
     public function releaseMedicalReport(User $user, Appointment $appointment): bool
     {
-        return in_array($user->role, ['doctor', 'admin'], true)
+        return $user->role === 'doctor'
             && $appointment->medicalExamination?->finalized_at !== null
             && $appointment->medicalExamination?->released_at === null
-            && ($user->role === 'admin' || ($appointment->bulk_appointment_id === null
+            && ($appointment->bulk_appointment_id === null
                 ? ($appointment->doctor_id === null || $appointment->doctor_id === $user->id)
-                : $appointment->medicalExamination?->finalized_by === $user->id));
+                : $appointment->medicalExamination?->finalized_by === $user->id);
     }
 
     private function hasAnyAssignedTask(User $user, Appointment $appointment, array $tasks): bool

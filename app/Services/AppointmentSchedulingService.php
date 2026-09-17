@@ -155,11 +155,14 @@ class AppointmentSchedulingService
         if ($appointment->auto_cancelled_at !== null) {
             return 'auto_cancelled';
         }
+        if ($appointment->type === 'walk_in' && $appointment->released_from_appointment_id !== null) {
+            return 'assigned_released_slot';
+        }
         if ($appointment->arrived_at !== null) {
             return 'arrived';
         }
         if ($appointment->type === 'walk_in') {
-            return $appointment->released_from_appointment_id ? 'assigned_released_slot' : 'waiting';
+            return 'waiting';
         }
 
         $graceEndsAt = $this->graceEndsAt($appointment);
@@ -197,6 +200,7 @@ class AppointmentSchedulingService
             ->whereIn('status', ['pending', 'arrived'])
             ->whereNotNull('arrived_at')
             ->whereNull('released_from_appointment_id')
+            ->whereNull('start_time')
             ->orderBy('arrived_at')
             ->orderBy('id')
             ->lockForUpdate()
@@ -204,6 +208,7 @@ class AppointmentSchedulingService
 
         if ($walkIn !== null) {
             $walkIn->update([
+                'doctor_id' => $appointment->doctor_id,
                 'start_time' => $appointment->start_time,
                 'end_time' => $appointment->end_time,
                 'released_from_appointment_id' => $appointment->id,

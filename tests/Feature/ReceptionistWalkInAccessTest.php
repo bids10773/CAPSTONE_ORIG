@@ -114,7 +114,7 @@ test('receptionist can register a new patient and create a walk-in appointment',
             'birthdate' => '1995-05-10',
             'sex' => 'Female',
             'civil_status' => 'Single',
-            'examination_purpose' => 'annual_pe',
+            'examination_purpose' => 'pre_employment',
             'service_types' => ['PE', 'CBC'],
             'notes' => 'Walk-in registration',
         ])
@@ -128,6 +128,24 @@ test('receptionist can register a new patient and create a walk-in appointment',
         'user_id' => $patient->id,
         'type' => 'walk_in',
         'status' => 'pending',
+    ]);
+});
+
+test('receptionist cannot register an annual exam as a walk in', function () {
+    $patient = User::factory()->create(['role' => 'patient']);
+
+    $this->actingAs(receptionist())
+        ->post(route('receptionist.walk-ins.store'), [
+            'patient_type' => 'existing',
+            'user_id' => $patient->id,
+            'examination_purpose' => 'annual_pe',
+            'service_types' => ['PE'],
+        ])
+        ->assertSessionHasErrors('examination_purpose');
+
+    $this->assertDatabaseMissing('appointments', [
+        'user_id' => $patient->id,
+        'type' => 'walk_in',
     ]);
 });
 
@@ -154,6 +172,108 @@ test('receptionist can find and queue an existing patient', function () {
         ->assertRedirect();
 
     $this->assertDatabaseHas('appointments', [
+        'user_id' => $patient->id,
+        'type' => 'walk_in',
+    ]);
+});
+
+test('receptionist assigns a doctor only in a free slot that does not overlap an online appointment', function () {
+    $this->travelTo('2026-09-18 08:15:00');
+    $doctor = User::factory()->create([
+        'role' => 'doctor',
+        'availability' => [['day' => 'fri', 'start' => '08:00', 'end' => '11:00']],
+    ]);
+    $patient = User::factory()->create(['role' => 'patient']);
+    $onlinePatient = User::factory()->create(['role' => 'patient']);
+    Appointment::create([
+        'user_id' => $onlinePatient->id,
+        'doctor_id' => $doctor->id,
+        'appointment_date' => today(),
+        'start_time' => '09:00',
+        'end_time' => '09:30',
+        'type' => 'individual',
+        'status' => 'accepted',
+        'service_types' => ['PE'],
+    ]);
+
+    $this->actingAs(receptionist())->get(route('receptionist.walk-ins.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('availableDoctors.0.id', $doctor->id)
+            ->where('availableDoctors.0.slots', fn ($slots): bool => $slots->contains('08:30') && ! $slots->contains('09:00')));
+
+    $registration = [
+        'patient_type' => 'existing',
+        'user_id' => $patient->id,
+        'examination_purpose' => 'medical_clearance',
+        'service_types' => ['PE'],
+        'doctor_id' => $doctor->id,
+    ];
+    $this->post(route('receptionist.walk-ins.store'), [...$registration, 'start_time' => '09:00'])
+        ->assertSessionHasErrors('start_time');
+    $this->assertDatabaseMissing('appointments', ['user_id' => $patient->id, 'type' => 'walk_in']);
+
+    $this->post(route('receptionist.walk-ins.store'), [...$registration, 'start_time' => '08:30'])
+        ->assertRedirect();
+    $walkIn = Appointment::query()->where('user_id', $patient->id)->where('type', 'walk_in')->firstOrFail();
+    expect($walkIn->doctor_id)->toBe($doctor->id)
+        ->and($walkIn->start_time->format('H:i'))->toBe('08:30')
+        ->and($walkIn->end_time->format('H:i'))->toBe('09:00');
+
+    $this->post(route('receptionist.walk-ins.store'), [...$registration, 'start_time' => '08:30'])
+        ->assertSessionHasErrors('start_time');
+    expect(Appointment::query()->where('type', 'walk_in')->where('doctor_id', $doctor->id)->count())->toBe(1);
+});
+
+test('receptionist can later assign a waiting walk-in without taking an online slot', function () {
+    $this->travelTo('2026-09-18 08:15:00');
+    $staff = receptionist();
+    $doctor = User::factory()->create([
+        'role' => 'doctor',
+        'availability' => [['day' => 'fri', 'start' => '08:00', 'end' => '10:00']],
+    ]);
+    $patient = User::factory()->create(['role' => 'patient']);
+    $walkIn = Appointment::create([
+        'user_id' => $patient->id, 'appointment_date' => today(),
+        'type' => 'walk_in', 'status' => 'pending', 'arrived_at' => now(),
+        'service_types' => ['PE'],
+    ]);
+    Appointment::create([
+        'user_id' => User::factory()->create(['role' => 'patient'])->id,
+        'doctor_id' => $doctor->id, 'appointment_date' => today(),
+        'start_time' => '09:00', 'end_time' => '09:30',
+        'type' => 'individual', 'status' => 'accepted', 'service_types' => ['PE'],
+    ]);
+
+    $this->actingAs($staff)->patch(route('receptionist.walk-ins.doctor', $walkIn), [
+        'doctor_id' => $doctor->id, 'start_time' => '09:00',
+    ])->assertSessionHasErrors('start_time');
+    expect($walkIn->refresh()->doctor_id)->toBeNull();
+
+    $this->actingAs($staff)->patch(route('receptionist.walk-ins.doctor', $walkIn), [
+        'doctor_id' => $doctor->id, 'start_time' => '08:30',
+    ])->assertRedirect();
+    expect($walkIn->refresh()->doctor_id)->toBe($doctor->id)
+        ->and($walkIn->start_time->format('H:i'))->toBe('08:30');
+
+    $this->actingAs($staff)->patch(route('receptionist.walk-ins.doctor', $walkIn), [
+        'doctor_id' => $doctor->id, 'start_time' => '09:30',
+    ])->assertSessionHasErrors('doctor_id');
+});
+
+test('receptionist cannot register walk ins while the clinic is closed on weekends', function () {
+    $this->travelTo('2026-09-19 09:00:00');
+    $patient = User::factory()->create(['role' => 'patient']);
+
+    $this->actingAs(receptionist())
+        ->post(route('receptionist.walk-ins.store'), [
+            'patient_type' => 'existing',
+            'user_id' => $patient->id,
+            'examination_purpose' => 'medical_clearance',
+            'service_types' => ['X-Ray'],
+        ])
+        ->assertSessionHasErrors('appointment_date');
+
+    $this->assertDatabaseMissing('appointments', [
         'user_id' => $patient->id,
         'type' => 'walk_in',
     ]);

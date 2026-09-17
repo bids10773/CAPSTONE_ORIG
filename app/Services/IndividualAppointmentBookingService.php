@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\MedicalHistory;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -18,6 +19,12 @@ class IndividualAppointmentBookingService
     /** @param array<string, mixed> $data */
     public function create(User $user, array $data, Request $request): Appointment
     {
+        if (Carbon::parse($data['appointment_date'])->isWeekend()) {
+            throw ValidationException::withMessages([
+                'appointment_date' => 'Appointments are available Monday through Friday only because the clinic is closed on weekends.',
+            ]);
+        }
+
         $result = DB::transaction(function () use ($user, $data): Appointment|array {
             User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 

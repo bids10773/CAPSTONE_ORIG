@@ -138,6 +138,19 @@ export default function AdminCreateAppointment() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const selectedDate = formData.appointment_date
+            ? new Date(formData.appointment_date)
+            : null;
+        if (
+            selectedDate &&
+            (selectedDate.getDay() === 0 || selectedDate.getDay() === 6)
+        ) {
+            setErrors({
+                appointment_date:
+                    'Appointments are available Monday through Friday only.',
+            });
+            return;
+        }
         setIsSubmitting(true);
         setErrors({});
 
@@ -576,6 +589,7 @@ export default function AdminCreateAppointment() {
                                 </label>
                                 <input
                                     type="datetime-local"
+                                    min={new Date().toISOString().slice(0, 16)}
                                     name="appointment_date"
                                     value={formData.appointment_date}
                                     onChange={handleChange}
@@ -586,6 +600,10 @@ export default function AdminCreateAppointment() {
                                         {errors.appointment_date}
                                     </p>
                                 )}
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Clinic scheduling is available Monday
+                                    through Friday only.
+                                </p>
                             </div>
                         </div>
 

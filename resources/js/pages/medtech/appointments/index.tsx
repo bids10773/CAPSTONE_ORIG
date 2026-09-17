@@ -4,6 +4,7 @@ import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
+import { examinationPurposeLabel } from '@/lib/appointment-status';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -16,6 +17,7 @@ interface Appointment {
     appointment_date: string;
     status: string;
     type: string;
+    examination_purpose?: string | null;
     service_type: string;
     user: {
         first_name: string;
@@ -112,8 +114,8 @@ export default function MedTechAppointmentsIndex({
 
                 {/* Table */}
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
+                    <div className="overflow-hidden">
+                        <table className="w-full table-fixed">
                             <thead className="border-b border-gray-200 bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -123,7 +125,7 @@ export default function MedTechAppointmentsIndex({
                                         Date
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                        Service
+                                        Services / Purpose
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                                         Status
@@ -150,12 +152,34 @@ export default function MedTechAppointmentsIndex({
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-900">
-                                                {formatDate(
-                                                    apt.appointment_date,
-                                                )}
+                                                <span
+                                                    className="block truncate whitespace-nowrap"
+                                                    title={formatDate(
+                                                        apt.appointment_date,
+                                                    )}
+                                                >
+                                                    {formatDate(
+                                                        apt.appointment_date,
+                                                    )}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-900">
-                                                {apt.service_type}
+                                                <span
+                                                    className="block truncate"
+                                                    title={apt.service_type}
+                                                >
+                                                    {apt.service_type}
+                                                </span>
+                                                <span
+                                                    className="mt-1 block truncate text-xs text-moss-700"
+                                                    title={examinationPurposeLabel(
+                                                        apt.examination_purpose,
+                                                    )}
+                                                >
+                                                    {examinationPurposeLabel(
+                                                        apt.examination_purpose,
+                                                    )}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 {apt.lab_result ? (

@@ -12,7 +12,14 @@ const pages = import.meta.glob('./pages/**/*.tsx');
 createInertiaApp({
     // Template: "Page Title - LMIC" or just "LMIC" if no title is set
     title: (title) => `${title} - LMIC`,
-    resolve: (name) => resolvePageComponent(`./pages/${name}.tsx`, pages),
+    resolve: (name) => {
+        const normalizedName = name
+            .replaceAll('\\', '/')
+            .replace(/\/?\.tsx$/, '')
+            .replace(/\/+$/, '');
+
+        return resolvePageComponent(`./pages/${normalizedName}.tsx`, pages);
+    },
     setup({ el, App, props }) {
         const root = createRoot(el);
         const pageProps = props.initialPage.props as {

@@ -120,8 +120,8 @@ test('rejecting a request releases its slot for another patient', function () {
 test('an appointment in the past cannot be confirmed', function () {
     $admin = approvalUser('admin');
     $doctor = approvalDoctor();
-    $doctor->update(['availability' => [['day' => 'sun', 'start' => '07:00', 'end' => '12:00']]]);
-    $appointment = pendingRequest(approvalUser('patient'), $doctor, ['appointment_date' => '2026-08-16']);
+    $doctor->update(['availability' => [['day' => 'fri', 'start' => '07:00', 'end' => '12:00']]]);
+    $appointment = pendingRequest(approvalUser('patient'), $doctor, ['appointment_date' => '2026-08-14']);
 
     $this->actingAs($admin)->patch(route('admin.appointments.approve', $appointment))->assertSessionHasErrors('appointment');
     expect($appointment->refresh()->status)->toBe('pending');

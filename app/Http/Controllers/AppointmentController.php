@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\CompanyReferral;
 use App\Models\MedicalHistory;
 use App\Models\User;
+use App\Rules\Weekday;
 use App\Services\AppointmentApprovalService;
 use App\Services\IndividualAppointmentBookingService;
 use App\Services\LaboratoryFormDefinition;
@@ -220,7 +221,7 @@ class AppointmentController extends Controller
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
             'company_id' => ['nullable', 'exists:companies,id'],
             'company_name' => ['nullable', 'string', 'max:255'],
-            'appointment_date' => ['required', 'date', 'after_or_equal:today'],
+            'appointment_date' => ['required', 'date', 'after_or_equal:today', new Weekday],
             'examination_purpose' => ['nullable', 'string', Rule::in(['pre_employment', 'annual_pe', 'medical_clearance'])],
             'service_types' => ['required', 'array'],
             'service_types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(Appointment::getServiceTypeOptions()))],
@@ -403,7 +404,7 @@ class AppointmentController extends Controller
     /**
      * Display the specified appointment.
      */
-    public function show(Appointment $appointment, LaboratoryFormDefinition $definitions): Response
+    public function show(Request $request, Appointment $appointment, LaboratoryFormDefinition $definitions): Response
     {
         Gate::authorize('view', $appointment);
 
@@ -415,9 +416,15 @@ class AppointmentController extends Controller
             'labResult',
             'xrayReport',
         ]);
+        $appointment->user?->patientProfile?->append('age');
 
         return Inertia::render('appointments/show', [
             'appointment' => $appointment,
+            'appointmentsIndexUrl' => match ($request->user()->role) {
+                'admin' => '/admin/appointments',
+                'doctor' => '/doctor/appointments',
+                default => '/appointments',
+            },
             'laboratorySections' => collect($definitions->sectionsFor($appointment))
                 ->map(fn (array $section): array => [
                     'label' => $section['label'],
@@ -500,7 +507,7 @@ class AppointmentController extends Controller
     public function availableDoctors(Request $request)
     {
         $validated = $request->validate([
-            'date' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:'.today()->addDays(30)->format('Y-m-d')],
+            'date' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:'.today()->addDays(30)->format('Y-m-d'), new Weekday],
         ]);
         $date = $validated['date'];
         $dayKey = strtolower(date('D', strtotime($date)));
@@ -569,13 +576,19 @@ class AppointmentController extends Controller
      */
     public function getDoctorAvailability(Request $request, $doctorId)
     {
+        $validated = $request->validate([
+            'date' => ['nullable', 'date', 'after_or_equal:today', new Weekday],
+        ]);
         $doctor = User::where('role', 'doctor')->where('is_active', true)->findOrFail($doctorId);
 
-        $availability = $doctor->availability ?? [];
+        $availability = collect($doctor->availability ?? [])
+            ->whereIn('day', ['mon', 'tue', 'wed', 'thu', 'fri'])
+            ->values()
+            ->all();
         $periods = collect($availability);
         $slots = $periods->groupBy('day');
 
-        $date = $request->get('date');
+        $date = $validated['date'] ?? null;
         $dateSlotCounts = $this->availableSlotCounts($doctor);
         $availableDates = collect($dateSlotCounts)
             ->filter(fn (int $count) => $count > 0)
@@ -607,7 +620,9 @@ class AppointmentController extends Controller
     {
         $startDate = today();
         $endDate = today()->addDays(29);
-        $periodsByDay = collect($doctor->availability ?? [])->groupBy('day');
+        $periodsByDay = collect($doctor->availability ?? [])
+            ->whereIn('day', ['mon', 'tue', 'wed', 'thu', 'fri'])
+            ->groupBy('day');
         $clinicBookings = Appointment::query()
             ->where('doctor_id', $doctor->id)
             ->whereBetween('appointment_date', [$startDate, $endDate->copy()->endOfDay()])
@@ -980,7 +995,7 @@ class AppointmentController extends Controller
             'patient_id' => ['required', 'exists:users,id'],
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
             'company_id' => ['nullable', 'exists:companies,id'],
-            'appointment_date' => ['required', 'date'],
+            'appointment_date' => ['required', 'date', new Weekday],
             'service_type' => ['required', 'string'],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
@@ -1072,7 +1087,7 @@ class AppointmentController extends Controller
 
                 // Appointment fields
                 'doctor_id' => ['required', 'exists:users,id'],
-                'appointment_date' => ['required', 'date', 'after_or_equal:today'],
+                'appointment_date' => ['required', 'date', 'after_or_equal:today', new Weekday],
                 'start_time' => ['required', 'date_format:H:i'],
                 'service_types' => ['required', 'array', 'min:1'],
                 'notes' => ['nullable', 'string', 'max:500'],
@@ -1179,7 +1194,7 @@ class AppointmentController extends Controller
     {
         $validated = $request->validate([
             'doctor_id' => ['required', 'exists:users,id'],
-            'appointment_date' => ['required', 'date'],
+            'appointment_date' => ['required', 'date', new Weekday],
             'start_time' => ['required', 'date_format:H:i'],
             'service_types' => ['required', 'array', 'min:1'],
             'notes' => ['nullable', 'string', 'max:500'],
@@ -1256,12 +1271,14 @@ class AppointmentController extends Controller
             });
 
         if ($role === 'doctor') {
-            $query->whereDate('appointment_date', today())
-                ->where(function ($sub) {
-                    $sub->where(fn ($physical) => $physical->whereIn('status', ['accepted', 'arrived'])->whereDoesntHave('physicalExam'))
-                        ->orWhere('status', 'for_final_evaluation')
-                        ->orWhere(fn ($release) => $release->where('status', 'completed')->whereHas('medicalExamination', fn ($exam) => $exam->whereNotNull('finalized_at')->whereNull('released_at')));
-                });
+            $query->where(function ($sub) {
+                $sub->where(fn ($physical) => $physical
+                    ->whereDate('appointment_date', '>=', today())
+                    ->whereIn('status', ['accepted', 'arrived'])
+                    ->whereDoesntHave('physicalExam'))
+                    ->orWhere('status', 'for_final_evaluation')
+                    ->orWhere(fn ($release) => $release->where('status', 'completed')->whereHas('medicalExamination', fn ($exam) => $exam->whereNotNull('finalized_at')->whereNull('released_at')));
+            });
 
         } elseif ($role === 'medtech') {
             $query->where(function ($work) use ($request) {
@@ -1297,7 +1314,18 @@ class AppointmentController extends Controller
             });
         }
 
-        $appointments = $query->orderBy('updated_at', 'desc')->paginate($this->perPage($request))->withQueryString();
+        if ($role === 'doctor') {
+            $query->orderBy('appointment_date')->orderBy('start_time');
+        } else {
+            $query->orderBy('updated_at', 'desc');
+        }
+
+        $appointments = $query->paginate($this->perPage($request))->withQueryString();
+        $appointments->through(function (Appointment $appointment): Appointment {
+            $appointment->setAttribute('is_scheduled_today', $appointment->appointment_date?->isToday() ?? false);
+
+            return $appointment;
+        });
 
         // Map the role to the correct Inertia page path based on your routes
         $pagePath = match ($role) {

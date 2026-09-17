@@ -42,7 +42,10 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
-import { appointmentStatusLabels as statusLabels } from '@/lib/appointment-status';
+import {
+    appointmentStatusLabels as statusLabels,
+    examinationPurposeLabel,
+} from '@/lib/appointment-status';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -81,6 +84,7 @@ interface Appointment {
     end_time: string | null;
     status: string;
     type: string;
+    examination_purpose?: string | null;
     service_types: string[] | string | null;
     referral_code?: string | null;
     notes?: string | null;
@@ -1023,7 +1027,7 @@ export default function AdminAppointmentsIndex() {
                                                 Company
                                             </th>
                                             <th className="w-[10%] px-3 py-3">
-                                                Visit Type
+                                                Visit / Purpose
                                             </th>
                                             <th className="w-[12%] px-3 py-3">
                                                 Time
@@ -1144,6 +1148,12 @@ export default function AdminAppointmentsIndex() {
                                                             }
                                                             className="dark:text-slate-300"
                                                         />
+                                                        <TruncatedText
+                                                            value={examinationPurposeLabel(
+                                                                appointment.examination_purpose,
+                                                            )}
+                                                            className="mt-0.5 text-xs text-moss-700 dark:text-moss-300"
+                                                        />
                                                     </td>
                                                     <td className="min-w-0 px-3 py-2.5">
                                                         <TruncatedText
@@ -1204,6 +1214,16 @@ export default function AdminAppointmentsIndex() {
                                             <TypeBadge
                                                 type={appointment.type}
                                             />
+                                            <span
+                                                className="inline-block max-w-44 truncate rounded-full border border-moss-200 bg-moss-50 px-2.5 py-1 text-xs font-semibold text-moss-700 dark:border-moss-800 dark:bg-moss-950/40 dark:text-moss-300"
+                                                title={examinationPurposeLabel(
+                                                    appointment.examination_purpose,
+                                                )}
+                                            >
+                                                {examinationPurposeLabel(
+                                                    appointment.examination_purpose,
+                                                )}
+                                            </span>
                                             <StatusBadge
                                                 status={appointment.status}
                                             />

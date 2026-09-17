@@ -47,3 +47,39 @@ test('doctor dashboard exposes appointment details for the upcoming appointment 
             ->where('upcomingAppointments.0.user.patient_profile.sex', 'Male')
             ->where('upcomingAppointments.0.user.patient_profile.civil_status', 'Single'));
 });
+
+test('patients awaiting examination count matches todays actionable doctor queue', function () {
+    $doctor = User::factory()->create(['role' => 'doctor']);
+    $patient = User::factory()->create(['role' => 'patient']);
+
+    foreach ([today()->subDay(), today()->addDay()] as $date) {
+        Appointment::create([
+            'user_id' => $patient->id,
+            'doctor_id' => $doctor->id,
+            'appointment_date' => $date,
+            'start_time' => '08:00',
+            'end_time' => '08:30',
+            'type' => 'individual',
+            'status' => 'accepted',
+            'service_types' => ['PE'],
+        ]);
+    }
+
+    Appointment::create([
+        'user_id' => $patient->id,
+        'doctor_id' => $doctor->id,
+        'appointment_date' => today(),
+        'start_time' => '09:00',
+        'end_time' => '09:30',
+        'type' => 'individual',
+        'status' => 'arrived',
+        'service_types' => ['PE'],
+    ]);
+
+    $this->actingAs($doctor)
+        ->get(route('doctor.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('doctor/dashboard')
+            ->where('pendingCount', 1));
+});

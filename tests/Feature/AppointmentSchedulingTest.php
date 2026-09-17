@@ -3,6 +3,7 @@
 use App\Models\Appointment;
 use App\Models\User;
 use App\Services\AppointmentSchedulingService;
+use App\Services\WalkInDoctorSlotService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -58,7 +59,8 @@ test('online patient can check in before and exactly at the grace deadline', fun
 test('scheduler cancels only after grace and reassigns the slot to the earliest arrived walk in', function () {
     $later = waitingWalkIn('2026-08-07 08:50:00');
     $earlier = waitingWalkIn('2026-08-07 08:40:00');
-    $online = scheduledPatient();
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $online = scheduledPatient(['doctor_id' => $doctor->id]);
     $service = app(AppointmentSchedulingService::class);
 
     expect($service->expireLateAppointments(Carbon::parse('2026-08-07 09:10:00')))->toBe(0);
@@ -70,6 +72,7 @@ test('scheduler cancels only after grace and reassigns the slot to the earliest 
         ->cancellation_reason->toContain('10-minute');
     expect($earlier->refresh())
         ->released_from_appointment_id->toBe($online->id)
+        ->doctor_id->toBe($doctor->id)
         ->start_time->format('H:i')->toBe('09:00');
     expect($later->refresh()->released_from_appointment_id)->toBeNull();
 });
@@ -139,36 +142,36 @@ test('scheduler safely releases a late slot when no walk in is waiting', functio
         ->and($online->refresh()->replacementWalkIn)->toBeNull();
 });
 
-test('patient sees only doctors with open slots after selecting a date', function () {
+test('patient sees only doctors with open slots after selecting a weekday', function () {
     $patient = User::factory()->create(['role' => 'patient']);
     $availableDoctor = User::factory()->create([
         'role' => 'doctor',
         'first_name' => 'Andrea',
         'is_active' => true,
-        'availability' => [['day' => 'sat', 'start' => '09:00', 'end' => '10:00']],
+        'availability' => [['day' => 'mon', 'start' => '09:00', 'end' => '10:00']],
     ]);
     $fullDoctor = User::factory()->create([
         'role' => 'doctor',
         'first_name' => 'Zoe',
         'is_active' => true,
-        'availability' => [['day' => 'sat', 'start' => '09:00', 'end' => '10:00']],
+        'availability' => [['day' => 'mon', 'start' => '09:00', 'end' => '10:00']],
     ]);
 
     scheduledPatient([
         'doctor_id' => $fullDoctor->id,
-        'appointment_date' => '2026-08-08',
+        'appointment_date' => '2026-08-10',
         'status' => 'pending',
     ]);
     scheduledPatient([
         'doctor_id' => $fullDoctor->id,
-        'appointment_date' => '2026-08-08',
+        'appointment_date' => '2026-08-10',
         'start_time' => '09:30',
         'end_time' => '10:00',
         'status' => 'accepted',
     ]);
 
     $this->actingAs($patient)
-        ->getJson('/api/available-doctors?date=2026-08-08')
+        ->getJson('/api/available-doctors?date=2026-08-10')
         ->assertOk()
         ->assertJsonCount(1)
         ->assertJsonPath('0.id', $availableDoctor->id)
@@ -179,9 +182,9 @@ test('patient sees only doctors with open slots after selecting a date', functio
         ->assertOk()
         ->assertJsonCount(2)
         ->assertJsonPath('0.id', $availableDoctor->id)
-        ->assertJsonPath('0.date_slot_counts.2026-08-08', 2)
+        ->assertJsonPath('0.date_slot_counts.2026-08-10', 2)
         ->assertJsonPath('1.id', $fullDoctor->id)
-        ->assertJsonPath('1.date_slot_counts.2026-08-08', 0);
+        ->assertJsonPath('1.date_slot_counts.2026-08-10', 0);
 });
 
 test('booked times are hidden while cancelled times remain available', function () {
@@ -189,25 +192,60 @@ test('booked times are hidden while cancelled times remain available', function 
     $doctor = User::factory()->create([
         'role' => 'doctor',
         'is_active' => true,
-        'availability' => [['day' => 'sat', 'start' => '09:00', 'end' => '10:00']],
+        'availability' => [['day' => 'mon', 'start' => '09:00', 'end' => '10:00']],
     ]);
 
     scheduledPatient([
         'doctor_id' => $doctor->id,
-        'appointment_date' => '2026-08-08',
+        'appointment_date' => '2026-08-10',
         'status' => 'for_diagnostics',
     ]);
     scheduledPatient([
         'doctor_id' => $doctor->id,
-        'appointment_date' => '2026-08-08',
+        'appointment_date' => '2026-08-10',
         'start_time' => '09:30',
         'end_time' => '10:00',
         'status' => 'cancelled',
     ]);
 
     $this->actingAs($patient)
-        ->getJson("/api/doctors/{$doctor->id}/availability?date=2026-08-08")
+        ->getJson("/api/doctors/{$doctor->id}/availability?date=2026-08-10")
         ->assertOk()
         ->assertJsonPath('availableTimes', ['09:30'])
-        ->assertJsonPath('dateSlotCounts.2026-08-08', 1);
+        ->assertJsonPath('dateSlotCounts.2026-08-10', 1);
+});
+
+test('a cancelled online appointment opens its future slot for a walk in', function () {
+    $doctor = User::factory()->create([
+        'role' => 'doctor',
+        'is_active' => true,
+        'availability' => [['day' => 'fri', 'start' => '09:00', 'end' => '10:00']],
+    ]);
+    $online = scheduledPatient([
+        'doctor_id' => $doctor->id,
+        'start_time' => '09:30',
+        'end_time' => '10:00',
+    ]);
+    $slots = app(WalkInDoctorSlotService::class);
+
+    expect($slots->availableSlots($doctor))->not->toContain('09:30');
+
+    $online->update(['status' => 'cancelled']);
+
+    expect($slots->availableSlots($doctor))->toContain('09:30');
+});
+
+test('weekend dates are rejected by every patient availability endpoint', function () {
+    $patient = User::factory()->create(['role' => 'patient']);
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+
+    $this->actingAs($patient)
+        ->getJson('/api/available-doctors?date=2026-08-08')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('date');
+
+    $this->actingAs($patient)
+        ->getJson("/api/doctors/{$doctor->id}/availability?date=2026-08-08")
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('date');
 });

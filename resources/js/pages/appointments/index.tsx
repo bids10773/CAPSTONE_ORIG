@@ -12,7 +12,10 @@ import { useState, useEffect } from 'react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import AppLayout from '@/layouts/app-layout';
-import { appointmentStatusLabel } from '@/lib/appointment-status';
+import {
+    appointmentStatusLabel,
+    examinationPurposeLabel,
+} from '@/lib/appointment-status';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
@@ -23,6 +26,7 @@ interface AppointmentData {
     appointment_date: string;
     type: string;
     status: string;
+    examination_purpose?: string | null;
     service_type?: string;
     service_types?: string[];
     referral_code: string | null;
@@ -196,7 +200,7 @@ export default function AppointmentsIndex() {
                                         Date & Time
                                     </th>
                                     <th className="px-6 py-4 text-xs font-bold tracking-wider text-gray-500 uppercase">
-                                        Service / Type
+                                        Service / Purpose
                                     </th>
                                     <th className="px-6 py-4 text-xs font-bold tracking-wider text-gray-500 uppercase">
                                         Status
@@ -293,6 +297,16 @@ export default function AppointmentsIndex() {
                                                             {appointment.type.replace(
                                                                 '_',
                                                                 ' ',
+                                                            )}
+                                                        </div>
+                                                        <div
+                                                            className="mt-1 max-w-44 truncate text-xs font-medium text-moss-700"
+                                                            title={examinationPurposeLabel(
+                                                                appointment.examination_purpose,
+                                                            )}
+                                                        >
+                                                            {examinationPurposeLabel(
+                                                                appointment.examination_purpose,
                                                             )}
                                                         </div>
                                                         {appointment.company && (

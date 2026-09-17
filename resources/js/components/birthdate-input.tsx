@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import type { FocusEvent } from 'react';
 import InputError from '@/components/input-error';
 
 type DateParts = { day: string; month: string; year: string };
@@ -72,6 +73,7 @@ export interface BirthdateInputProps {
     name?: string;
     error?: string;
     required?: boolean;
+    validateRequiredOnBlur?: boolean;
     minimumAge?: number;
     onChange?: (value: string) => void;
 }
@@ -81,6 +83,7 @@ export default function BirthdateInput({
     name = 'birthdate',
     error,
     required = false,
+    validateRequiredOnBlur = false,
     minimumAge,
     onChange,
 }: BirthdateInputProps) {
@@ -89,6 +92,7 @@ export default function BirthdateInput({
     const monthRef = useRef<HTMLInputElement>(null);
     const yearRef = useRef<HTMLInputElement>(null);
     const dayRef = useRef<HTMLInputElement>(null);
+    const groupRef = useRef<HTMLDivElement>(null);
     const baseId = useId();
     const errorId = `${baseId}-error`;
     const helpId = `${baseId}-help`;
@@ -129,8 +133,14 @@ export default function BirthdateInput({
             yearRef.current?.focus();
     }
 
-    function validateVisibleValue() {
-        if (parts.day || parts.month || parts.year) {
+    function validateVisibleValue(event: FocusEvent<HTMLDivElement>) {
+        if (
+            event.relatedTarget instanceof Node &&
+            groupRef.current?.contains(event.relatedTarget)
+        ) {
+            return;
+        }
+        if (parts.day || parts.month || parts.year || validateRequiredOnBlur) {
             setLocalError(validationMessage(parts, minimumAge));
         }
     }
@@ -162,7 +172,7 @@ export default function BirthdateInput({
     ];
 
     return (
-        <div>
+        <div ref={groupRef} onBlur={validateVisibleValue}>
             <input type="hidden" name={name} value={combined} />
             <div className="grid grid-cols-3 gap-2.5">
                 {fields.map((field) => (
@@ -195,7 +205,6 @@ export default function BirthdateInput({
                             onChange={(event) =>
                                 update(field.key, event.target.value)
                             }
-                            onBlur={validateVisibleValue}
                             onInvalid={() =>
                                 setLocalError(
                                     validationMessage(parts, minimumAge),
