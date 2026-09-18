@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Appointment;
 use App\Models\MedicalHistory;
 use App\Models\User;
+use App\Support\ClinicHours;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,12 @@ class IndividualAppointmentBookingService
     /** @param array<string, mixed> $data */
     public function create(User $user, array $data, Request $request): Appointment
     {
+        if (! ClinicHours::isBookableDate($data['appointment_date'])) {
+            throw ValidationException::withMessages([
+                'appointment_date' => 'This date is no longer available. Please choose another day.',
+            ]);
+        }
+
         if (Carbon::parse($data['appointment_date'])->isWeekend()) {
             throw ValidationException::withMessages([
                 'appointment_date' => 'Appointments are available Monday through Friday only because the clinic is closed on weekends.',
@@ -73,6 +80,10 @@ class IndividualAppointmentBookingService
 
             $start = new \DateTime($data['appointment_date'].' '.$data['start_time']);
             $end = (clone $start)->add(new \DateInterval('PT30M'));
+            if ($data['appointment_date'] === ClinicHours::today()
+                && $start->format('H:i') <= ClinicHours::now()->format('H:i')) {
+                throw ValidationException::withMessages(['start_time' => 'This time has already passed. Please choose another slot.']);
+            }
             $day = strtolower($start->format('D'));
             $withinAvailability = collect($doctor->availability ?? [])->where('day', $day)
                 ->contains(fn ($period) => $start->format('H:i') >= $period['start'] && $end->format('H:i') <= $period['end']);

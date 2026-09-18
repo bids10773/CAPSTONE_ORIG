@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
     Activity,
@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Reveal, StaggerGroup, StaggerItem } from '@/components/motion';
+import { useClinicHours, type ClinicHoursSettings } from '@/lib/clinic-hours';
 import logo from '/resources/images/full_logo2.png';
 
 const services = [
@@ -270,6 +271,9 @@ function Navbar() {
 }
 
 export default function Welcome() {
+    const { clinicHours } = usePage<{ clinicHours: ClinicHoursSettings }>()
+        .props;
+    const { isOpen } = useClinicHours(clinicHours);
     const [faq, setFaq] = useState<number | null>(0);
     const [galleryIndex, setGalleryIndex] = useState(0);
     const reduceMotion = useReducedMotion();
@@ -435,9 +439,17 @@ export default function Welcome() {
                                     </span>
                                 </div>
                             </div>
-                            <div className="absolute top-4 right-4 rounded-xl bg-moss-800/90 px-3 py-2 text-xs font-bold text-white backdrop-blur">
-                                <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-moss-400" />
-                                Clinic open today
+                            <div
+                                className="absolute top-4 right-4 rounded-xl bg-moss-800/90 px-3 py-2 text-xs font-bold text-white backdrop-blur"
+                                role="status"
+                                aria-live="polite"
+                            >
+                                <span
+                                    className={`mr-1.5 inline-block h-2 w-2 rounded-full ${isOpen ? 'bg-emerald-400' : 'bg-rose-400'}`}
+                                />
+                                {isOpen
+                                    ? 'Clinic open now'
+                                    : 'Clinic closed now'}
                             </div>
                         </motion.div>
                     </div>

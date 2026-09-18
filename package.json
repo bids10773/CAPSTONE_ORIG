@@ -3,6 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "api": ".\\ml_api\\.venv\\Scripts\\uvicorn.exe ml_api.main:app --port 8001",
         "build": "vite build",
         "build:ssr": "vite build && vite build --ssr",
         "dev": "vite",

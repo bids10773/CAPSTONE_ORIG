@@ -22,7 +22,10 @@ import {
     BarChart,
     CartesianGrid,
     Cell,
+    Pie,
+    PieChart,
     ResponsiveContainer,
+    Sector,
     Tooltip,
     XAxis,
     YAxis,
@@ -75,7 +78,6 @@ interface DashboardProps {
     upcomingAppointments?: AppointmentData[];
     partnerCompanies?: Array<{ id: number; company_name: string }>;
     appointmentsByStatus?: Record<string, number>;
-    appointmentsByType?: Record<string, number>;
     serviceSelections?: Array<{ service: string; count: number }>;
     examinationPurposes?: Array<{ purpose: string; count: number }>;
     bulkSummary?: {
@@ -393,11 +395,11 @@ export default function AdminDashboard() {
         upcomingAppointments = [],
         partnerCompanies = [],
         appointmentsByStatus = {},
-        appointmentsByType = {},
         serviceSelections = [],
         examinationPurposes = [],
         bulkSummary = { events: 0, employees: 0, completed: 0, active: 0 },
     } = usePage<DashboardProps>().props;
+    const [hoveredStatus, setHoveredStatus] = useState<string | null>(null);
 
     const count = (value: number | undefined) => Number(value ?? 0);
     const statusCount = (status: string) =>
@@ -425,7 +427,14 @@ export default function AdminDashboard() {
             label: statusLabels[status] ?? humanize(status),
             count: Number(value),
         }))
+        .filter((item) => item.count > 0)
         .sort((a, b) => b.count - a.count);
+    const highlightedStatus =
+        statusData.find((item) => item.status === hoveredStatus) ??
+        statusData[0];
+    const highlightedPercentage = highlightedStatus
+        ? Math.round((highlightedStatus.count / totalAppointments) * 100)
+        : 0;
     const serviceSelectionData = serviceSelections.map((item) => ({
         ...item,
         label: serviceLabel(item.service),
@@ -775,80 +784,114 @@ export default function AdminDashboard() {
                         />
                         <div className="p-4 sm:p-5">
                             {statusData.length > 0 ? (
-                                <div className="h-[310px] w-full">
-                                    <ResponsiveContainer
-                                        width="100%"
-                                        height="100%"
-                                    >
-                                        <BarChart
-                                            data={statusData}
-                                            layout="vertical"
-                                            margin={{
-                                                top: 4,
-                                                right: 16,
-                                                bottom: 4,
-                                                left: 8,
-                                            }}
+                                <div className="flex flex-col items-center gap-4 sm:flex-row">
+                                    <div className="relative h-[260px] w-full max-w-[280px] shrink-0 sm:w-[260px]">
+                                        <ResponsiveContainer
+                                            width="100%"
+                                            height="100%"
                                         >
-                                            <CartesianGrid
-                                                horizontal={false}
-                                                stroke="#e2e8f0"
-                                                strokeDasharray="3 3"
-                                            />
-                                            <XAxis
-                                                type="number"
-                                                allowDecimals={false}
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{
-                                                    fill: '#94a3b8',
-                                                    fontSize: 11,
+                                            <PieChart>
+                                                <Pie
+                                                    data={statusData}
+                                                    dataKey="count"
+                                                    nameKey="label"
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={70}
+                                                    outerRadius={105}
+                                                    paddingAngle={2}
+                                                    stroke="#fff"
+                                                    strokeWidth={2}
+                                                    activeShape={(props) => (
+                                                        <Sector
+                                                            {...props}
+                                                            outerRadius={
+                                                                props.outerRadius +
+                                                                8
+                                                            }
+                                                            stroke="#1f2937"
+                                                            strokeWidth={3}
+                                                        />
+                                                    )}
+                                                    onMouseEnter={(_, index) =>
+                                                        setHoveredStatus(
+                                                            statusData[index]
+                                                                .status,
+                                                        )
+                                                    }
+                                                    onMouseLeave={() =>
+                                                        setHoveredStatus(null)
+                                                    }
+                                                >
+                                                    {statusData.map((entry) => (
+                                                        <Cell
+                                                            key={entry.status}
+                                                            fill={
+                                                                statusColors[
+                                                                    entry.status
+                                                                ] ?? '#6b8f71'
+                                                            }
+                                                        />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip
+                                                    formatter={(value) => [
+                                                        Number(
+                                                            value,
+                                                        ).toLocaleString(),
+                                                        'Appointments',
+                                                    ]}
+                                                    contentStyle={{
+                                                        border: '1px solid #e2e8f0',
+                                                        borderRadius: 12,
+                                                        boxShadow:
+                                                            '0 8px 24px rgba(15,23,42,.08)',
+                                                    }}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 text-center">
+                                            <span
+                                                className="text-3xl font-bold"
+                                                style={{
+                                                    color:
+                                                        statusColors[
+                                                            highlightedStatus
+                                                                .status
+                                                        ] ?? '#6b8f71',
                                                 }}
-                                            />
-                                            <YAxis
-                                                type="category"
-                                                dataKey="label"
-                                                width={112}
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{
-                                                    fill: '#475569',
-                                                    fontSize: 11,
-                                                }}
-                                            />
-                                            <Tooltip
-                                                cursor={{ fill: '#f8fafc' }}
-                                                formatter={(value) => [
-                                                    Number(
-                                                        value,
-                                                    ).toLocaleString(),
-                                                    'Appointments',
-                                                ]}
-                                                contentStyle={{
-                                                    border: '1px solid #e2e8f0',
-                                                    borderRadius: 12,
-                                                    boxShadow:
-                                                        '0 8px 24px rgba(15,23,42,.08)',
-                                                }}
-                                            />
-                                            <Bar
-                                                dataKey="count"
-                                                radius={[0, 6, 6, 0]}
-                                                maxBarSize={22}
                                             >
-                                                {statusData.map((entry) => (
-                                                    <Cell
-                                                        key={entry.status}
-                                                        fill={
+                                                {highlightedPercentage}%
+                                            </span>
+                                            <span className="max-w-[120px] text-xs font-medium text-slate-600 dark:text-slate-300">
+                                                {highlightedStatus.label}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <ul className="grid w-full grid-cols-1 gap-x-4 gap-y-2 text-xs sm:grid-cols-2">
+                                        {statusData.map((entry) => (
+                                            <li
+                                                key={entry.status}
+                                                className="flex items-center gap-2"
+                                            >
+                                                <span
+                                                    className="size-2.5 shrink-0 rounded-full"
+                                                    style={{
+                                                        backgroundColor:
                                                             statusColors[
                                                                 entry.status
-                                                            ] ?? '#6b8f71'
-                                                        }
-                                                    />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                                                            ] ?? '#6b8f71',
+                                                    }}
+                                                />
+                                                <span className="min-w-0 flex-1 text-slate-600 dark:text-slate-300">
+                                                    {entry.label}
+                                                </span>
+                                                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                                                    {entry.count.toLocaleString()}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
                                 </div>
                             ) : (
                                 <div className="flex min-h-64 flex-col items-center justify-center text-center">
@@ -951,7 +994,7 @@ export default function AdminDashboard() {
                 <section className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,.8fr)]">
                     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                         <SectionHeader
-                            title="Today's Individual, Online & Referred Patients"
+                            title="Today's Individual, Walk-in and Referred Patients"
                             description={`${count(stats.todayAppointments)} appointment${count(stats.todayAppointments) === 1 ? '' : 's'} scheduled today`}
                             action={
                                 <Link
@@ -1091,7 +1134,7 @@ export default function AdminDashboard() {
                 <section className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
                     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                         <SectionHeader
-                            title="Individual, Online & Referred"
+                            title="Individual, Walk-in and Referred"
                             description="Active clinic and company-referral patients; bulk employees are excluded"
                         />
                         <div className="divide-y divide-slate-100">
@@ -1225,35 +1268,19 @@ export default function AdminDashboard() {
                             </span>
                             <div>
                                 <h2 className="text-sm font-semibold text-slate-900">
-                                    Clinic Appointment Type Mix
+                                    Company Bulk
                                 </h2>
                                 <p className="mt-1 text-xs text-slate-500">
-                                    Individual, walk-in/online and company
-                                    referrals only
+                                    Bulk events and employee progress
                                 </p>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            {Object.entries(appointmentsByType).length > 0 ? (
-                                Object.entries(appointmentsByType).map(
-                                    ([type, value]) => (
-                                        <span
-                                            key={type}
-                                            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600"
-                                        >
-                                            {humanize(type)}
-                                            <strong className="text-slate-900">
-                                                {Number(value).toLocaleString()}
-                                            </strong>
-                                        </span>
-                                    ),
-                                )
-                            ) : (
-                                <span className="text-xs text-slate-400">
-                                    No appointment type data available.
-                                </span>
-                            )}
-                        </div>
+                        <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+                            Bulk events
+                            <strong className="text-slate-900">
+                                {bulkSummary.events.toLocaleString()}
+                            </strong>
+                        </span>
                     </div>
                     <div className="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-3">
                         <div className="rounded-xl border border-moss-200 bg-moss-50 p-4">

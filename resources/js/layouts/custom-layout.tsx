@@ -2,6 +2,7 @@ import { usePage } from '@inertiajs/react';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Breadcrumbs } from '@/components/breadcrumbs';
+import { ClinicStatus } from '@/components/clinic-status';
 import { GlobalSearch } from '@/components/global-search';
 import { PageTransition } from '@/components/motion';
 import { NotificationBell } from '@/components/notification-bell';
@@ -58,6 +59,7 @@ export default function ClinicDashboardLayout({
                         <GlobalSearch />
 
                         <div className="ml-auto flex items-center gap-1.5">
+                            <ClinicStatus />
                             <div className="mr-1 hidden items-center gap-2 rounded-xl bg-moss-50 px-3 py-2 text-xs font-medium text-moss-700 xl:flex dark:bg-moss-900 dark:text-moss-200">
                                 <CalendarDays className="size-4" />
                                 <time>{currentDate}</time>

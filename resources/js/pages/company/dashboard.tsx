@@ -294,92 +294,107 @@ export default function CompanyDashboard() {
     return (
         <AppLayout>
             <Head title="Company Dashboard" />
-            <main className="space-y-6 pb-10">
-                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                    <div className="flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="flex items-start gap-4">
-                            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-moss-600 text-white shadow-lg shadow-moss-600/20">
-                                <Building2 className="size-6" />
+            <main className="min-h-screen space-y-6 bg-gray-50 p-4 pb-10 sm:p-6 lg:p-8 dark:bg-background">
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+                    <section className="relative flex min-h-64 flex-col justify-between overflow-hidden rounded-[2rem] bg-moss-800 p-7 text-white shadow-[0_10px_30px_-24px_rgba(48,63,52,.45)] sm:p-9">
+                        <div className="absolute -top-20 -right-16 size-64 rounded-full bg-white/10 blur-3xl" />
+                        <div className="absolute -bottom-24 left-1/3 size-48 rounded-full bg-moss-400/20 blur-3xl" />
+                        <div className="relative">
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold tracking-[0.16em] text-moss-100 uppercase">
+                                <Building2 className="size-3.5" /> Company
+                                dashboard
                             </span>
-                            <div>
-                                <p className="text-xs font-bold tracking-[.15em] text-moss-600 uppercase">
-                                    Company healthcare portal
-                                </p>
-                                <h1 className="mt-1 text-2xl font-semibold tracking-[-.03em] text-slate-950 sm:text-3xl">
-                                    {company.company_name}
-                                </h1>
-                                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                                    Manage your employee registry, spreadsheet
-                                    uploads, and clinic appointments in one
-                                    secure workspace.
-                                </p>
-                                {company.address && (
-                                    <p className="mt-2 text-xs text-slate-400">
-                                        {company.address}
-                                    </p>
-                                )}
-                                <p className="mt-3 text-sm font-medium text-slate-700">
-                                    Representative: {user.name}
-                                    {user.position ? ` · ${user.position}` : ''}
-                                </p>
+                            <p className="mt-8 text-sm font-semibold text-moss-200">
+                                Welcome back
+                            </p>
+                            <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
+                                {company.company_name}
+                            </h1>
+                            <p className="mt-3 max-w-xl text-sm text-moss-100/85">
+                                Manage employee appointments, bulk events, and
+                                referrals.
+                            </p>
+                            <p className="mt-3 text-xs text-moss-100/70">
+                                {user.name}
+                                {user.position ? ` · ${user.position}` : ''}
+                                {company.address ? ` · ${company.address}` : ''}
+                            </p>
+                        </div>
+                        <Link
+                            href="/appointments/create"
+                            className="relative mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-moss-800 transition hover:bg-moss-50"
+                        >
+                            Book bulk appointment{' '}
+                            <ArrowRight className="size-4" />
+                        </Link>
+                    </section>
+
+                    <section className="relative overflow-hidden rounded-[2rem] border border-moss-200 bg-gradient-to-br from-moss-50 via-white to-emerald-50 p-7 shadow-[0_8px_24px_-20px_rgba(47,107,74,.3)] sm:p-8 dark:border-moss-700 dark:from-moss-950 dark:via-card dark:to-emerald-950/40">
+                        <div className="absolute -top-10 -right-8 size-36 rounded-full bg-moss-200/45 blur-2xl dark:bg-moss-500/10" />
+                        <div className="relative">
+                            <span className="text-sm font-extrabold tracking-[0.14em] text-moss-700 uppercase dark:text-moss-200">
+                                Quick actions
+                            </span>
+                            <p className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                                Manage referrals and employee records.
+                            </p>
+                            <div className="mt-6 space-y-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsReferralOpen(true)}
+                                    className="flex w-full items-center gap-3 rounded-xl border border-moss-200 bg-white px-4 py-3 text-left text-sm font-semibold text-moss-900 transition hover:bg-moss-50 dark:border-moss-700 dark:bg-card dark:text-moss-100"
+                                >
+                                    <Plus className="size-4" /> Create employee
+                                    referral
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsUploadOpen(true)}
+                                    className="flex w-full items-center gap-3 rounded-xl border border-moss-200 bg-white px-4 py-3 text-left text-sm font-semibold text-moss-900 transition hover:bg-moss-50 dark:border-moss-700 dark:bg-card dark:text-moss-100"
+                                >
+                                    <UploadCloud className="size-4" /> Upload
+                                    employee Excel file
+                                </button>
+                                <a
+                                    href="/company/employees/import/template"
+                                    className="flex w-full items-center gap-3 rounded-xl border border-moss-200 bg-white px-4 py-3 text-sm font-semibold text-moss-900 transition hover:bg-moss-50 dark:border-moss-700 dark:bg-card dark:text-moss-100"
+                                >
+                                    <Download className="size-4" /> Download
+                                    template
+                                </a>
                             </div>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setIsReferralOpen(true)}
-                                className="h-11 rounded-xl px-4"
-                            >
-                                <Plus className="mr-2 size-4" /> Create employee
-                                referral
-                            </Button>
-                            <a
-                                href="/company/employees/import/template"
-                                className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                            >
-                                <Download className="size-4" /> Download
-                                template
-                            </a>
-                            <Button
-                                type="button"
-                                onClick={() => setIsUploadOpen(true)}
-                                className="h-11 rounded-xl bg-moss-600 px-4 hover:bg-moss-700"
-                            >
-                                <UploadCloud className="mr-2 size-4" /> Upload
-                                employee Excel file
-                            </Button>
-                        </div>
-                    </div>
-                    <div className="grid border-t border-slate-100 bg-slate-50/70 sm:grid-cols-2 lg:grid-cols-4">
-                        <Stat
-                            label="Total employees"
-                            value={employeeStats.total}
-                            icon={Users}
-                            tone="blue"
-                        />
-                        <Stat
-                            label="Active records"
-                            value={employeeStats.active}
-                            icon={UserCheck}
-                            tone="green"
-                        />
-                        <Stat
-                            label="Pre-registered"
-                            value={employeeStats.preregistered}
-                            icon={Clock3}
-                            tone="amber"
-                        />
-                        <Stat
-                            label="Rejected rows"
-                            value={employeeStats.rejected}
-                            icon={XCircle}
-                            tone="red"
-                        />
-                    </div>
+                    </section>
+                </div>
+
+                <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <Stat
+                        label="Total employees"
+                        value={employeeStats.total}
+                        icon={Users}
+                        tone="blue"
+                    />
+                    <Stat
+                        label="Active records"
+                        value={employeeStats.active}
+                        icon={UserCheck}
+                        tone="green"
+                    />
+                    <Stat
+                        label="Pre-registered"
+                        value={employeeStats.preregistered}
+                        icon={Clock3}
+                        tone="amber"
+                    />
+                    <Stat
+                        label="Rejected rows"
+                        value={employeeStats.rejected}
+                        icon={XCircle}
+                        tone="red"
+                    />
                 </section>
 
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h2 className="font-semibold text-slate-950">
@@ -476,7 +491,7 @@ export default function CompanyDashboard() {
                 </section>
 
                 {isReferralOpen && (
-                    <section className="rounded-2xl border border-moss-200 bg-white p-5 shadow-sm sm:p-6">
+                    <section className="rounded-[2rem] border border-moss-200 bg-white p-5 shadow-sm sm:p-6">
                         <div className="flex items-center justify-between">
                             <div>
                                 <h2 className="font-semibold">
@@ -667,7 +682,7 @@ export default function CompanyDashboard() {
                 {isUploadOpen && (
                     <section
                         aria-labelledby="upload-title"
-                        className="overflow-hidden rounded-2xl border border-moss-100 bg-white shadow-[0_18px_50px_-36px_rgba(37,99,235,.45)]"
+                        className="overflow-hidden rounded-[2rem] border border-moss-100 bg-white shadow-[0_18px_50px_-36px_rgba(37,99,235,.45)]"
                     >
                         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
                             <div>
@@ -847,7 +862,7 @@ export default function CompanyDashboard() {
                 )}
 
                 <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,.8fr)]">
-                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                    <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                         <h2 className="flex items-center gap-2 font-semibold">
                             <FileSpreadsheet className="size-4 text-moss-600" />{' '}
                             Bulk medical reports
@@ -902,7 +917,7 @@ export default function CompanyDashboard() {
                         </div>
                     </section>
 
-                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                    <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                         <div className="mb-5 flex items-center justify-between">
                             <div>
                                 <h2 className="flex items-center gap-2 font-semibold">
@@ -979,7 +994,7 @@ export default function CompanyDashboard() {
                         )}
                     </section>
 
-                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                    <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                         <div className="mb-5 flex items-center justify-between">
                             <div>
                                 <h2 className="flex items-center gap-2 font-semibold">
@@ -993,13 +1008,13 @@ export default function CompanyDashboard() {
                             </div>
                             <div className="flex items-center gap-3">
                                 <Link
-                                    href="/company/appointments/create"
+                                    href="/appointments/create"
                                     className="text-xs font-semibold text-moss-600 hover:text-moss-700"
                                 >
                                     Create
                                 </Link>
                                 <Link
-                                    href="/company/appointments"
+                                    href="/appointments"
                                     className="text-xs font-semibold text-moss-600 hover:text-moss-700"
                                 >
                                     View all
@@ -1066,18 +1081,18 @@ function Stat({
         red: 'bg-red-100 text-red-700',
     };
     return (
-        <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:border-r sm:border-b-0 sm:last:border-r-0">
+        <div className="rounded-[2rem] border border-white bg-white/60 p-6 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-card/70">
             <span
-                className={`flex size-9 items-center justify-center rounded-xl ${tones[tone]}`}
+                className={`grid size-12 place-items-center rounded-2xl ${tones[tone]}`}
             >
-                <Icon className="size-4" />
+                <Icon className="size-6" />
             </span>
-            <div>
-                <p className="text-xl font-semibold tracking-tight text-slate-900">
-                    {value}
-                </p>
-                <p className="text-[11px] text-slate-500">{label}</p>
-            </div>
+            <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">
+                {label}
+            </p>
+            <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+                {value}
+            </p>
         </div>
     );
 }

@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
 
 type DateParts = { day: string; month: string; year: string };
@@ -69,6 +69,7 @@ export default function AppointmentDateInput({
     loadingSlotCounts = false,
 }: Props) {
     const [parts, setParts] = useState(() => partsFromValue(value));
+    useEffect(() => setParts(partsFromValue(value)), [value]);
     const [visibleMonth, setVisibleMonth] = useState(() => {
         const initial = value || min;
         return initial

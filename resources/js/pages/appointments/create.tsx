@@ -27,6 +27,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import AppointmentDateInput from '@/components/appointment-date-input';
 import AppLayout from '@/layouts/app-layout';
+import { useClinicHours, type ClinicHoursSettings } from '@/lib/clinic-hours';
 import type { Doctor } from '@/types/availability';
 
 interface Company {
@@ -68,6 +69,7 @@ interface AppointmentUser {
 }
 
 interface AppointmentPageProps {
+    clinicHours: ClinicHoursSettings;
     companies?: Company[];
     serviceTypes?: Record<string, string>;
     appointmentTypes?: Record<string, string>;
@@ -304,6 +306,7 @@ export default function CreateAppointment() {
             optionalBulkServices: [],
         },
         auth,
+        clinicHours,
         referral = null,
         bookingPolicy = {
             maximumUpcoming: 2,
@@ -311,6 +314,11 @@ export default function CreateAppointment() {
             upcomingAppointments: [],
         },
     } = usePage<AppointmentPageProps>().props;
+    const {
+        today: clinicToday,
+        time: clinicTime,
+        minDate,
+    } = useClinicHours(clinicHours);
     const storageKey = `appointment-draft-${auth.user.id}`;
     const isCompanyAccount = auth.user.role === 'company';
 
@@ -403,17 +411,9 @@ export default function CreateAppointment() {
     const availableTimes = (availability?.availableTimes ?? []).filter(
         (time) => {
             if (!formData.appointment_date) return true;
-            const today = new Date();
-            if (
-                new Date(
-                    `${formData.appointment_date}T00:00:00`,
-                ).toDateString() !== today.toDateString()
-            )
-                return true;
-            const [hour, minute] = time.split(':').map(Number);
-            const slot = new Date();
-            slot.setHours(hour, minute, 0, 0);
-            return slot > today;
+            return (
+                formData.appointment_date !== clinicToday || time > clinicTime
+            );
         },
     );
     const combinedSlotCounts = useMemo(
@@ -438,6 +438,22 @@ export default function CreateAppointment() {
         );
         return () => window.clearTimeout(timeout);
     }, [formData, storageKey]);
+
+    useEffect(() => {
+        if (formData.appointment_date && formData.appointment_date < minDate) {
+            setFormData((current) => ({
+                ...current,
+                appointment_date: '',
+                start_time: '',
+            }));
+            setAvailability(null);
+            setErrors((current) => ({
+                ...current,
+                appointment_date:
+                    'This date is no longer available. Please choose another day.',
+            }));
+        }
+    }, [formData.appointment_date, minDate]);
 
     useEffect(() => {
         const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
@@ -582,6 +598,9 @@ export default function CreateAppointment() {
         if (currentStep === 2) {
             if (!formData.appointment_date)
                 nextErrors.appointment_date = 'Choose a date.';
+            else if (formData.appointment_date < minDate)
+                nextErrors.appointment_date =
+                    'This date is no longer available. Please choose another day.';
             if (
                 formData.type === 'individual' &&
                 bookingPolicy.bookedDates.includes(formData.appointment_date)
@@ -636,6 +655,14 @@ export default function CreateAppointment() {
 
     const submit = () => {
         if (submitting) return;
+        if (formData.appointment_date < minDate) {
+            setErrors({
+                appointment_date:
+                    'This date is no longer available. Please choose another day.',
+            });
+            setCurrentStep(2);
+            return;
+        }
         setSubmitting(true);
         setErrors({});
         router.post(
@@ -872,6 +899,7 @@ export default function CreateAppointment() {
                                             )}
                                             {currentStep === 2 && (
                                                 <ScheduleStep
+                                                    minDate={minDate}
                                                     doctors={doctors}
                                                     doctor={selectedDoctor}
                                                     times={availableTimes}
@@ -1389,6 +1417,7 @@ function VisitStep({
 }
 
 interface ScheduleStepProps {
+    minDate: string;
     doctors: Doctor[];
     doctor?: Doctor;
     times: string[];
@@ -1406,6 +1435,7 @@ interface ScheduleStepProps {
 }
 
 function ScheduleStep({
+    minDate,
     doctors,
     doctor,
     times,
@@ -1421,7 +1451,7 @@ function ScheduleStep({
     onDoctor,
     onTime,
 }: ScheduleStepProps) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = minDate;
     const maxDate = new Date();
     maxDate.setDate(maxDate.getDate() + 29);
     const schedulingLimit = maxDate.toISOString().slice(0, 10);

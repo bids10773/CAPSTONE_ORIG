@@ -1,7 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowRight, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { Pagination } from '@/components/pagination';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+import type { PaginatedResponse } from '@/types/pagination';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Security', href: '/admin/security' },
@@ -13,7 +15,31 @@ type Props = {
         repeatedBookingAttempts: number;
         highCancellationActivity: number;
     };
+    securityLogs: PaginatedResponse<SecurityLog>;
 };
+
+type SecurityLog = {
+    id: number;
+    action: string;
+    status: string;
+    actor: string;
+    target: string | null;
+    created_at: string;
+};
+
+const statusStyles: Record<string, string> = {
+    success:
+        'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
+    review: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300',
+    blocked: 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300',
+    failure: 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300',
+};
+
+function formatAction(action: string): string {
+    return action
+        .replaceAll('_', ' ')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
 const signals = [
     {
@@ -34,7 +60,7 @@ const signals = [
     },
 ];
 
-export default function AdminSecurity({ securityAlerts }: Props) {
+export default function AdminSecurity({ securityAlerts, securityLogs }: Props) {
     const totalAlerts = Object.values(securityAlerts).reduce(
         (total, value) => total + Number(value),
         0,
@@ -107,6 +133,98 @@ export default function AdminSecurity({ securityAlerts }: Props) {
                             <ArrowRight className="size-4" />
                         </Link>
                     </div>
+                </section>
+
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-border dark:bg-card">
+                    <div className="border-b border-slate-200 px-5 py-4 dark:border-border">
+                        <h2 className="font-semibold text-slate-900 dark:text-slate-100">
+                            Security Logs
+                        </h2>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            Recorded security and account activity, newest
+                            first.
+                        </p>
+                    </div>
+                    {securityLogs.data.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[760px] text-left text-sm">
+                                <thead className="bg-slate-50 text-xs text-slate-500 uppercase dark:bg-slate-900/50 dark:text-slate-400">
+                                    <tr>
+                                        <th
+                                            scope="col"
+                                            className="px-5 py-3 font-semibold"
+                                        >
+                                            Time
+                                        </th>
+                                        <th
+                                            scope="col"
+                                            className="px-5 py-3 font-semibold"
+                                        >
+                                            Event
+                                        </th>
+                                        <th
+                                            scope="col"
+                                            className="px-5 py-3 font-semibold"
+                                        >
+                                            Actor
+                                        </th>
+                                        <th
+                                            scope="col"
+                                            className="px-5 py-3 font-semibold"
+                                        >
+                                            Target
+                                        </th>
+                                        <th
+                                            scope="col"
+                                            className="px-5 py-3 font-semibold"
+                                        >
+                                            Outcome
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-border">
+                                    {securityLogs.data.map((log) => (
+                                        <tr
+                                            key={log.id}
+                                            className="text-slate-700 dark:text-slate-300"
+                                        >
+                                            <td className="px-5 py-4 text-xs whitespace-nowrap text-slate-500 dark:text-slate-400">
+                                                <time dateTime={log.created_at}>
+                                                    {new Date(
+                                                        log.created_at,
+                                                    ).toLocaleString()}
+                                                </time>
+                                            </td>
+                                            <td className="px-5 py-4 font-medium text-slate-900 dark:text-slate-100">
+                                                {formatAction(log.action)}
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                {log.actor}
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                {log.target ?? '—'}
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <span
+                                                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[log.status] ?? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+                                                >
+                                                    {formatAction(log.status)}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <p className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
+                            No security activity has been recorded yet.
+                        </p>
+                    )}
+                    <Pagination
+                        pagination={securityLogs}
+                        label="security logs"
+                    />
                 </section>
             </main>
         </AppLayout>

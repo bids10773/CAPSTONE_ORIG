@@ -95,9 +95,7 @@ export default function WalkIns({
     clinicClosed: boolean;
     availableDoctors: AvailableDoctor[];
 }) {
-    const [showRegistration, setShowRegistration] = useState(
-        mode !== 'patients',
-    );
+    const [showRegistration, setShowRegistration] = useState(false);
     const [patientQuery, setPatientQuery] = useState('');
     const [patients, setPatients] = useState<Patient[]>([]);
     const [patientSearchError, setPatientSearchError] = useState('');
@@ -232,27 +230,37 @@ export default function WalkIns({
 
     return (
         <>
-            <Head title="Walk-in Patients" />
-            <div className="space-y-6 p-6 lg:p-8">
-                <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <Head
+                title={
+                    mode === 'queue' ? 'Queue Management' : 'Walk-in Patients'
+                }
+            />
+            <div className="mx-auto max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+                <header className="flex flex-col justify-between gap-5 rounded-2xl border border-moss-200 bg-gradient-to-r from-moss-50 to-white p-6 shadow-sm sm:flex-row sm:items-center dark:border-border dark:from-moss-950 dark:to-card">
                     <div>
-                        <p className="text-sm font-semibold text-moss-700">
+                        <p className="text-xs font-semibold tracking-widest text-moss-700 uppercase">
                             Reception desk
                         </p>
-                        <h1 className="text-3xl font-bold tracking-tight text-slate-950">
-                            Today’s walk-in patients
+                        <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl dark:text-slate-100">
+                            {mode === 'queue'
+                                ? 'Queue Management'
+                                : 'Today’s patients'}
                         </h1>
-                        <p className="mt-1 text-sm text-slate-500">
-                            Register patients, assign services, and move the
-                            queue forward.
+                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                            Track today’s patients and assign care from one
+                            place.
                         </p>
                     </div>
                     <button
+                        type="button"
                         onClick={() => setShowRegistration(!showRegistration)}
                         disabled={clinicClosed}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-moss-700 px-5 py-3 text-sm font-semibold text-white hover:bg-moss-800 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-expanded={showRegistration}
+                        aria-controls="walk-in-registration"
+                        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-moss-700 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-moss-800 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                        <UserPlus className="size-4" /> New walk-in
+                        <UserPlus className="size-4" />
+                        {showRegistration ? 'Close form' : 'New walk-in'}
                     </button>
                 </header>
 
@@ -265,8 +273,9 @@ export default function WalkIns({
 
                 {showRegistration && !clinicClosed && (
                     <form
+                        id="walk-in-registration"
                         onSubmit={submit}
-                        className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+                        className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-border dark:bg-card"
                     >
                         <div className="mb-5 flex gap-2">
                             {(['existing', 'new'] as const).map((kind) => (
@@ -724,8 +733,26 @@ export default function WalkIns({
                 )}
 
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                    <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex gap-2">
+                    <div className="border-b border-slate-100 p-5">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-900">
+                                    Today’s queue
+                                </h2>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Manage active patients and review today’s
+                                    history
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => window.print()}
+                                className="inline-flex items-center gap-2 self-start rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                            >
+                                <Printer className="size-4" /> Print queue
+                            </button>
+                        </div>
+                        <div className="mt-4 flex max-w-full gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1">
                             {[
                                 ['', 'All'],
                                 ['pending', 'Waiting'],
@@ -734,37 +761,32 @@ export default function WalkIns({
                                 ['cancelled', 'Cancelled'],
                             ].map(([value, label]) => (
                                 <button
+                                    type="button"
                                     key={value}
                                     onClick={() => filter(value)}
-                                    className={`rounded-lg px-3 py-2 text-xs font-semibold ${filters.status === value ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600'}`}
+                                    className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${filters.status === value ? 'bg-white text-moss-800 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}
                                 >
                                     {label}
                                 </button>
                             ))}
                         </div>
-                        <button
-                            onClick={() => window.print()}
-                            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600"
-                        >
-                            <Printer className="size-4" /> Print queue
-                        </button>
                     </div>
-                    {activeQueue.length === 0 ? (
+                    {activeQueue.length === 0 && queueHistory.length === 0 ? (
                         <div className="p-12 text-center text-slate-500">
                             <Users className="mx-auto mb-3 size-8 text-slate-300" />
-                            No active patients found for today.
+                            No patients found for this filter.
                         </div>
-                    ) : (
-                        <div className="divide-y divide-slate-100">
+                    ) : activeQueue.length > 0 ? (
+                        <div className="grid gap-4 bg-slate-50/60 p-4 lg:grid-cols-2">
                             {activeQueue.map((walkIn) => (
                                 <article
                                     key={walkIn.id}
-                                    className="grid gap-4 p-5 md:grid-cols-[90px_1fr_1fr_auto] md:items-center"
+                                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                                 >
-                                    <div className="text-2xl font-black text-slate-900">
+                                    <div className="flex h-12 min-w-16 items-center justify-center rounded-xl bg-moss-50 px-2 text-lg font-black text-moss-800">
                                         {walkIn.queue_number}
                                     </div>
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="font-semibold text-slate-900">
                                             {walkIn.user.first_name}{' '}
                                             {walkIn.user.last_name}
@@ -789,7 +811,7 @@ export default function WalkIns({
                                             }
                                         </span>
                                     </div>
-                                    <div className="flex flex-wrap gap-1">
+                                    <div className="col-span-2 flex flex-wrap gap-1 border-t border-slate-100 pt-4">
                                         {walkIn.service_types?.map(
                                             (service) => (
                                                 <span
@@ -915,7 +937,7 @@ export default function WalkIns({
                                                 </div>
                                             )}
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="col-span-2 flex flex-wrap items-center gap-2">
                                         {walkIn.type === 'walk_in' &&
                                             !walkIn.doctor &&
                                             !walkIn.start_time &&
@@ -965,10 +987,8 @@ export default function WalkIns({
                                 </article>
                             ))}
                         </div>
-                    )}
-                    <Pagination pagination={walkIns} label="appointments" />
+                    ) : null}
                 </section>
-
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div className="flex items-center gap-2 border-b border-slate-100 p-5">
                         <History className="size-5 text-slate-500" />
@@ -1008,6 +1028,9 @@ export default function WalkIns({
                         </div>
                     )}
                 </section>
+                <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+                    <Pagination pagination={walkIns} label="appointments" />
+                </div>
             </div>
         </>
     );

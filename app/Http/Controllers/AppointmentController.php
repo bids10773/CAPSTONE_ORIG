@@ -15,6 +15,7 @@ use App\Services\IndividualAppointmentBookingService;
 use App\Services\LaboratoryFormDefinition;
 use App\Services\OnsiteStaffAvailabilityService;
 use App\Support\SearchTerm;
+use App\Support\ClinicHours;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -141,6 +142,7 @@ class AppointmentController extends Controller
         }
 
         return Inertia::render('appointments/create', [
+            'clinicHours' => ClinicHours::publicSettings(),
             'companies' => $companies,
             'serviceTypes' => Appointment::getServiceTypeOptions(),
             'pePackage' => [
@@ -221,7 +223,7 @@ class AppointmentController extends Controller
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
             'company_id' => ['nullable', 'exists:companies,id'],
             'company_name' => ['nullable', 'string', 'max:255'],
-            'appointment_date' => ['required', 'date', 'after_or_equal:today', new Weekday],
+            'appointment_date' => ['required', 'date', 'after_or_equal:'.ClinicHours::today(), new Weekday],
             'examination_purpose' => ['nullable', 'string', Rule::in(['pre_employment', 'annual_pe', 'medical_clearance'])],
             'service_types' => ['required', 'array'],
             'service_types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(Appointment::getServiceTypeOptions()))],
@@ -247,6 +249,9 @@ class AppointmentController extends Controller
         $validator = Validator::make($request->all(), $rules);
 
         $validator->after(function ($validator) use ($request): void {
+            if ($request->filled('appointment_date') && ! ClinicHours::isBookableDate($request->input('appointment_date'))) {
+                $validator->errors()->add('appointment_date', 'This date is no longer available. Please choose another day.');
+            }
             if ($request->type === 'individual' && $request->examination_purpose === 'annual_pe') {
                 $validator->errors()->add(
                     'examination_purpose',
@@ -618,8 +623,8 @@ class AppointmentController extends Controller
     /** @return array<string, int> */
     private function availableSlotCounts(User $doctor): array
     {
-        $startDate = today();
-        $endDate = today()->addDays(29);
+        $startDate = ClinicHours::now()->startOfDay();
+        $endDate = $startDate->copy()->addDays(29);
         $periodsByDay = collect($doctor->availability ?? [])
             ->whereIn('day', ['mon', 'tue', 'wed', 'thu', 'fri'])
             ->groupBy('day');
@@ -645,6 +650,10 @@ class AppointmentController extends Controller
         for ($offset = 0; $offset < 30; $offset++) {
             $date = $startDate->copy()->addDays($offset);
             $dateKey = $date->format('Y-m-d');
+            if (! ClinicHours::isBookableDate($dateKey)) {
+                $counts[$dateKey] = 0;
+                continue;
+            }
             $dayPeriods = $periodsByDay->get(strtolower($date->format('D')), collect());
             $bookings = $bookingsByDate->get($dateKey, collect());
             $count = 0;
@@ -656,7 +665,8 @@ class AppointmentController extends Controller
                 while ($current < $end) {
                     $slotStart = $current->format('H:i');
                     $slotEnd = (clone $current)->add(new \DateInterval('PT30M'))->format('H:i');
-                    $isPast = $date->isToday() && $slotStart <= now()->format('H:i');
+                    $isPast = $date->format('Y-m-d') === ClinicHours::today()
+                        && ($slotStart <= ClinicHours::now()->format('H:i') || ! ClinicHours::isBookableDate($dateKey));
                     $overlaps = $bookings->contains(fn (Appointment $booking) => $booking->start_time !== null
                         && $booking->end_time !== null
                         && $booking->start_time->format('H:i') < $slotEnd
@@ -703,6 +713,11 @@ class AppointmentController extends Controller
         while ($current < $endTime) {
             $startStr = $current->format('H:i');
             $endStr = (clone $current)->add(new \DateInterval('PT30M'))->format('H:i');
+            if (! ClinicHours::isBookableDate($date)
+                || ($date === ClinicHours::today() && $startStr <= ClinicHours::now()->format('H:i'))) {
+                $current->add(new \DateInterval('PT30M'));
+                continue;
+            }
 
             $overlap = $bookings->contains(fn (Appointment $booking) => $booking->start_time !== null
                 && $booking->end_time !== null

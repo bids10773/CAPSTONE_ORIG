@@ -11,6 +11,7 @@ return [
         'cancellation_window_days' => 30,
     ],
     'clinic_hours' => [
+        'timezone' => 'Asia/Manila',
         'opens_at' => '08:00',
         'closes_at' => '17:00',
         'slot_minutes' => 30,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\ClinicHours;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -19,6 +20,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'clinicHours' => ClinicHours::publicSettings(),
             'auth' => [
                 'user' => $request->user()
                     ? $request->user()->load(['patientProfile', 'company:id,company_name,email,contact_number,status'])

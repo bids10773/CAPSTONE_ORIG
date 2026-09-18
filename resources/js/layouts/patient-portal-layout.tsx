@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { NotificationBell } from '@/components/notification-bell';
+import { ClinicStatus } from '@/components/clinic-status';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -32,7 +33,8 @@ const links = [
 ];
 
 export default function PatientPortalLayout({ children }: AppLayoutProps) {
-    const { auth } = usePage().props as any;
+    const page = usePage();
+    const { auth } = page.props as any;
     const user = auth?.user;
     const [mobileOpen, setMobileOpen] = useState(false);
     const fullName =
@@ -107,6 +109,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                         )}
                     </button>
 
+                    {page.component !== 'dashboard' && <ClinicStatus />}
                     <ThemeToggle />
                     <NotificationBell />
 

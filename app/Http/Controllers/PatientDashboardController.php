@@ -21,7 +21,7 @@ class PatientDashboardController extends Controller
         | If user is not logged in, show welcome/landing page
         */
         if (! $user) {
-            return Inertia::render('welcome');
+            return Inertia::render('welcome', ['clinicHours' => \App\Support\ClinicHours::publicSettings()]);
         }
 
         /*

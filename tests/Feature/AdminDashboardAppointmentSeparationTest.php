@@ -71,6 +71,7 @@ test('admin dashboard separates individual and referred patients from company bu
             ->where('stats.todayAppointments', 1)
             ->where('stats.todayBulkEmployees', 1)
             ->where('bulkSummary.events', 1)
+            ->missing('appointmentsByType')
             ->where('bulkSummary.employees', 1));
 });
 
@@ -99,5 +100,39 @@ test('admin security page shows booking and security alert counts', function () 
             ->component('admin/reports')
             ->where('securityAlerts.possibleDuplicateAccounts', 1)
             ->where('securityAlerts.repeatedBookingAttempts', 1)
-            ->where('securityAlerts.highCancellationActivity', 0));
+            ->where('securityAlerts.highCancellationActivity', 0)
+            ->has('securityLogs.data', 3)
+            ->where('securityLogs.data.0.action', 'repeated_cancellation')
+            ->where('securityLogs.data.0.actor', 'System')
+            ->missing('securityLogs.data.0.metadata'));
+});
+
+test('admin security logs show actors and targets with pagination', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $patient = User::factory()->create(['role' => 'patient']);
+
+    for ($index = 0; $index < 16; $index++) {
+        SecurityAudit::create([
+            'actor_id' => $admin->id,
+            'target_user_id' => $patient->id,
+            'action' => 'appointment_checked_in',
+            'status' => 'success',
+            'metadata' => ['private' => 'not shown in the log'],
+        ]);
+    }
+
+    $this->actingAs($admin)->get(route('admin.security'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('securityLogs.data', 15)
+            ->where('securityLogs.total', 16)
+            ->where('securityLogs.data.0.actor', $admin->name)
+            ->where('securityLogs.data.0.target', $patient->name)
+            ->missing('securityLogs.data.0.metadata'));
+
+    $this->actingAs($admin)->get(route('admin.security', ['page' => 2]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('securityLogs.data', 1)
+            ->where('securityLogs.current_page', 2));
 });

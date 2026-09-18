@@ -31,6 +31,7 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TemporaryPasswordController;
 use App\Http\Controllers\XrayController;
 use App\Support\RoleDashboard;
+use App\Support\ClinicHours;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -73,7 +74,7 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/', function () {
     if (! auth()->check()) {
-        return Inertia::render('welcome');
+        return Inertia::render('welcome', ['clinicHours' => ClinicHours::publicSettings()]);
     }
 
     return redirect(RoleDashboard::path(auth()->user()->role));

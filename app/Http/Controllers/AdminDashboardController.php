@@ -91,8 +91,7 @@ class AdminDashboardController extends Controller
         $appointmentsByStatus = $clinicAppointments()->selectRaw('status, COUNT(*) as count')
             ->groupBy('status')->get()->pluck('count', 'status')->toArray();
 
-        $appointmentsByType = $clinicAppointments()->selectRaw('type, COUNT(*) as count')
-            ->groupBy('type')->get()->pluck('count', 'type')->toArray();
+        $bulkEventCount = Appointment::query()->bulkParents()->count();
 
         $serviceAnalyticsAppointments = Appointment::query()
             ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
@@ -155,11 +154,10 @@ class AdminDashboardController extends Controller
             'upcomingAppointments' => $upcomingAppointments,
             'partnerCompanies' => $partnerCompanies,
             'appointmentsByStatus' => $appointmentsByStatus,
-            'appointmentsByType' => $appointmentsByType,
             'serviceSelections' => $serviceSelections,
             'examinationPurposes' => $examinationPurposes,
             'bulkSummary' => [
-                'events' => Appointment::query()->bulkParents()->count(),
+                'events' => $bulkEventCount,
                 'employees' => $bulkEmployees()->count(),
                 'completed' => $bulkEmployees()->where('status', 'completed')->count(),
                 'active' => $bulkEmployees()->whereNotIn('status', ['completed', 'cancelled', 'rejected'])->count(),
@@ -168,14 +166,31 @@ class AdminDashboardController extends Controller
         ]);
     }
 
-    public function security(): Response
+    public function security(Request $request): Response
     {
+        $perPage = in_array((int) $request->query('per_page'), [10, 15, 25, 50, 100], true)
+            ? (int) $request->query('per_page')
+            : 15;
+
         return Inertia::render('admin/reports', [
             'securityAlerts' => [
                 'possibleDuplicateAccounts' => SecurityAudit::where('action', 'possible_duplicate_account')->where('status', 'review')->count(),
                 'repeatedBookingAttempts' => SecurityAudit::where('action', 'rapid_booking_attempts')->where('status', 'review')->count(),
                 'highCancellationActivity' => SecurityAudit::where('action', 'repeated_cancellation')->where('status', 'review')->count(),
             ],
+            'securityLogs' => SecurityAudit::query()
+                ->with(['actor:id,first_name,middle_name,last_name', 'targetUser:id,first_name,middle_name,last_name'])
+                ->latest('id')
+                ->paginate($perPage)
+                ->withQueryString()
+                ->through(fn (SecurityAudit $audit) => [
+                    'id' => $audit->id,
+                    'action' => $audit->action,
+                    'status' => $audit->status,
+                    'actor' => $audit->actor?->name ?? ($audit->actor_id ? 'Deleted account' : 'System'),
+                    'target' => $audit->targetUser?->name ?? ($audit->target_user_id ? 'Deleted account' : null),
+                    'created_at' => $audit->created_at?->toIso8601String(),
+                ]),
         ]);
     }
 

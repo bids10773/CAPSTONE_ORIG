@@ -13,6 +13,7 @@ import {
     Stethoscope,
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
+import { useClinicHours, type ClinicHoursSettings } from '@/lib/clinic-hours';
 
 type Patient = { first_name?: string; name?: string };
 type Appointment = {
@@ -34,6 +35,7 @@ type Appointment = {
 };
 type PageProps = {
     auth: { user: Patient };
+    clinicHours: ClinicHoursSettings;
     appointments?: Appointment[];
     upcomingAppointments?: Appointment[];
     stats?: { total?: number; completed?: number };
@@ -182,10 +184,12 @@ function careSteps(appointment: Appointment) {
 export default function PatientDashboard() {
     const {
         auth,
+        clinicHours,
         appointments = [],
         upcomingAppointments = [],
         stats = {},
     } = usePage<PageProps>().props;
+    const { isOpen } = useClinicHours(clinicHours);
     const firstName =
         auth.user.first_name || auth.user.name?.split(' ')[0] || 'there';
     const nextAppointment = upcomingAppointments[0];
@@ -210,10 +214,21 @@ export default function PatientDashboard() {
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(190,215,185,.25),transparent_25rem)]" />
                     <div className="relative flex flex-col justify-between gap-7 md:flex-row md:items-end">
                         <div>
-                            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-moss-100">
-                                <HeartPulse className="size-4" /> My health
-                                portal
-                            </span>
+                            <div
+                                role="status"
+                                aria-live="polite"
+                                className={`relative inline-flex items-center gap-2 rounded-full border-2 bg-white/10 px-4 py-2 text-xs font-bold text-moss-100 ${isOpen ? 'border-emerald-400' : 'border-rose-400'}`}
+                            >
+                                <span className="inline-flex items-center gap-2">
+                                    <HeartPulse className="size-4" /> My health
+                                    portal
+                                </span>
+                                <span
+                                    className={`absolute -top-2 right-4 bg-moss-800 px-1.5 text-[10px] leading-4 ${isOpen ? 'text-emerald-200' : 'text-rose-200'}`}
+                                >
+                                    {isOpen ? 'Open now' : 'Closed now'}
+                                </span>
+                            </div>
                             <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
                                 Hello, {firstName}.
                             </h1>
