@@ -31,6 +31,8 @@ interface StaffMember {
     license_no: string | null;
     specialization: string | null;
     is_active: boolean;
+    is_online: boolean;
+    last_active_at: string | null;
     must_change_password: boolean;
     created_at: string;
 }
@@ -57,6 +59,14 @@ export default function StaffIndex() {
         }, 300);
         return () => clearTimeout(delayDebounceFn);
     }, [search, selectedRole, selectedStatus, staff.per_page]);
+
+    useEffect(() => {
+        const refresh = window.setInterval(() => {
+            router.reload({ only: ['staff'] });
+        }, 60_000);
+
+        return () => window.clearInterval(refresh);
+    }, []);
 
     const getRoleBadgeColor = (role: string) => {
         const colors: Record<string, string> = {
@@ -196,7 +206,7 @@ export default function StaffIndex() {
                                                 >
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-xs font-bold text-indigo-600 shadow-sm">
+                                                            <div className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-xs font-bold text-indigo-600 shadow-sm">
                                                                 {
                                                                     member
                                                                         .first_name[0]
@@ -205,6 +215,25 @@ export default function StaffIndex() {
                                                                     member
                                                                         .last_name[0]
                                                                 }
+                                                                <span
+                                                                    role="status"
+                                                                    aria-label={
+                                                                        member.is_online
+                                                                            ? 'Active now'
+                                                                            : 'Offline'
+                                                                    }
+                                                                    title={
+                                                                        member.is_online
+                                                                            ? 'Active now'
+                                                                            : 'Offline'
+                                                                    }
+                                                                    className={cn(
+                                                                        'absolute -right-1 -bottom-1 size-3 rounded-full border-2 border-white',
+                                                                        member.is_online
+                                                                            ? 'bg-emerald-500'
+                                                                            : 'bg-slate-400',
+                                                                    )}
+                                                                />
                                                             </div>
                                                             <div className="flex min-w-0 flex-col">
                                                                 <span className="truncate text-sm font-bold text-gray-900">

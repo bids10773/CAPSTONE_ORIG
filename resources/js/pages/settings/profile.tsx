@@ -149,7 +149,7 @@ export default function Profile({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Profile Settings" />
-            <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+            <main className="w-full max-w-none space-y-6 px-4 py-8 sm:px-6 lg:px-8">
                 <header>
                     <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
                         Profile Settings

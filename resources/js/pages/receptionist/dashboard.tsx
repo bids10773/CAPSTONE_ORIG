@@ -1,6 +1,8 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     Activity,
+    ArrowRight,
+    CalendarClock,
     CheckCircle2,
     CircleX,
     ClipboardList,
@@ -24,6 +26,7 @@ type Metrics = {
     cancelled: number;
     currentQueueNumber: string | null;
     online: number;
+    pendingRequests: number;
 };
 
 type OnlineQueueItem = {
@@ -63,6 +66,34 @@ export default function ReceptionistDashboard({
                     }
                     todayValue={metrics.total}
                 />
+
+                <Link
+                    href="/receptionist/appointment-requests"
+                    className="group flex flex-col justify-between gap-4 rounded-[2rem] border border-amber-200 bg-amber-50 p-5 shadow-sm transition hover:border-amber-300 hover:bg-amber-100/70 focus-visible:ring-4 focus-visible:ring-amber-500/20 focus-visible:outline-none sm:flex-row sm:items-center dark:border-amber-900 dark:bg-amber-950/35 dark:hover:bg-amber-950/55"
+                >
+                    <div className="flex items-center gap-4">
+                        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-500 text-white shadow-sm">
+                            <CalendarClock className="size-6" />
+                        </span>
+                        <div>
+                            <p className="font-bold text-slate-900 dark:text-white">
+                                Appointment requests
+                            </p>
+                            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                                {metrics.pendingRequests === 0
+                                    ? 'No requests are waiting for review.'
+                                    : `${metrics.pendingRequests} ${metrics.pendingRequests === 1 ? 'request needs' : 'requests need'} your review.`}
+                            </p>
+                        </div>
+                    </div>
+                    <span className="inline-flex items-center gap-3 self-end font-bold text-amber-800 sm:self-auto dark:text-amber-300">
+                        <span className="grid min-w-10 place-items-center rounded-full bg-amber-500 px-3 py-2 text-sm text-white">
+                            {metrics.pendingRequests}
+                        </span>
+                        Review requests
+                        <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+                    </span>
+                </Link>
 
                 <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                     <StaffDashboardStat
@@ -140,7 +171,7 @@ export default function ReceptionistDashboard({
                                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                                     {item.start_time ?? 'Time pending'}
                                 </span>
-                                <span className="w-fit rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 capitalize">
+                                <span className="status-text-only w-fit text-xs font-bold text-amber-700 capitalize dark:text-amber-400">
                                     {item.status.replaceAll('_', ' ')}
                                 </span>
                             </article>

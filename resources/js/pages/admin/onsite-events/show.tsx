@@ -176,7 +176,7 @@ export default function AdminOnsiteEvent({
                         </p>
                     </div>
                     <span
-                        className={`rounded-full px-3 py-1.5 text-sm font-medium ${staffing.ready ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
+                        className={`status-text-only text-sm font-bold ${staffing.ready ? 'text-emerald-700' : 'text-amber-700'}`}
                     >
                         {staffing.masterlist_employee_count === 0
                             ? 'Employee masterlist required'
@@ -285,7 +285,7 @@ export default function AdminOnsiteEvent({
                                                 className="px-4 py-3"
                                             >
                                                 <span
-                                                    className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold whitespace-nowrap ${progressClass(status)}`}
+                                                    className={`status-text-only inline-flex text-[10px] font-bold whitespace-nowrap ${progressClass(status)}`}
                                                 >
                                                     {progressLabel(status)}
                                                 </span>
@@ -499,7 +499,7 @@ export default function AdminOnsiteEvent({
                             'results_completed',
                             'closed',
                         ].includes(event.onsite_event_status) ? (
-                            <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-semibold text-emerald-700">
+                            <span className="status-text-only inline-flex text-sm font-bold text-emerald-700">
                                 {event.onsite_event_status === 'closed'
                                     ? 'Event closed — final report released'
                                     : event.onsite_event_status ===

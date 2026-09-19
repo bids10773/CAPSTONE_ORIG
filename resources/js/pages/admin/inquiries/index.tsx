@@ -142,7 +142,7 @@ export default function AdminInquiryIndex({
                                                 {inquiry.subject}
                                             </td>
                                             <td>
-                                                <span className="rounded-full bg-moss-50 px-2.5 py-1 text-xs font-semibold text-moss-800 capitalize">
+                                                <span className="status-text-only text-xs font-bold text-moss-800 capitalize">
                                                     {inquiry.status_label}
                                                 </span>
                                             </td>

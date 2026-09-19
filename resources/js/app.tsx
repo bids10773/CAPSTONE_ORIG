@@ -7,7 +7,9 @@ import LogoutModal from './components/logout-modal';
 import { LogoutModalProvider } from './contexts/logout-modal-context';
 import { initializeTheme } from './hooks/use-appearance';
 
-const pages = import.meta.glob('./pages/**/*.tsx');
+// Keeping the glob options explicit makes Vite rebuild the Inertia page map
+// whenever a new page module is added during development.
+const pages = import.meta.glob('./pages/**/*.tsx', { eager: false });
 
 createInertiaApp({
     // Template: "Page Title - LMIC" or just "LMIC" if no title is set

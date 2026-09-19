@@ -122,7 +122,7 @@ export function OnsiteOverviewCard({
                                                         )}
                                                     </p>
                                                 </div>
-                                                <span className="rounded-full bg-moss-100 px-2.5 py-1 text-[10px] font-bold tracking-wide text-moss-800 uppercase">
+                                                <span className="status-text-only text-[10px] font-bold tracking-wide text-moss-800 uppercase">
                                                     {event.status.replaceAll(
                                                         '_',
                                                         ' ',

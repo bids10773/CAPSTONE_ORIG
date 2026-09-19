@@ -61,7 +61,12 @@ class DoctorAvailabilityController extends Controller
 
         return Inertia::render('admin/doctor-availability/index', [
             'doctors' => $doctors, 'days' => self::DAYS, 'selectedDoctorId' => $selected?->id,
-            'filters' => compact('search', 'status'), 'clinicHours' => config('medical.clinic_hours'), 'isAdmin' => $isAdmin,
+            'filters' => compact('search', 'status'),
+            'availabilityHours' => [
+                'opensAt' => config('medical.clinic_hours.opens_at', '08:00'),
+                'closesAt' => config('medical.clinic_hours.closes_at', '17:00'),
+            ],
+            'isAdmin' => $isAdmin,
             'pendingRequests' => $pendingRequests->map(fn (DoctorAvailabilityChangeRequest $change) => [
                 'id' => $change->id,
                 'doctor_id' => $change->doctor_id,

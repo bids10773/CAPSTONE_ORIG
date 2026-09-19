@@ -118,8 +118,6 @@ export function StatusBadge({
         className: 'border-slate-200 bg-slate-50 text-slate-700',
         icon: CircleDot,
     };
-    const Icon = config.icon;
-
     return (
         <motion.span
             key={key}
@@ -127,12 +125,11 @@ export function StatusBadge({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: reduceMotion ? 0 : 0.18 }}
             className={cn(
-                'motion-status inline-flex min-h-7 w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold capitalize',
+                'status-text-only motion-status inline-flex text-xs font-bold capitalize',
                 config.className,
                 className,
             )}
         >
-            <Icon className="size-3.5" aria-hidden="true" />
             {config.label}
         </motion.span>
     );

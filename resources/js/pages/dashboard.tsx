@@ -13,7 +13,8 @@ import {
     Stethoscope,
 } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
-import { useClinicHours, type ClinicHoursSettings } from '@/lib/clinic-hours';
+import { useClinicHours } from '@/lib/clinic-hours';
+import type { ClinicHoursSettings } from '@/lib/clinic-hours';
 
 type Patient = { first_name?: string; name?: string };
 type Appointment = {
@@ -302,7 +303,7 @@ export default function PatientDashboard() {
                                                 </span>
                                             </span>
                                             <span
-                                                className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold ${statusTone[appointment.status]}`}
+                                                className={`status-text-only shrink-0 text-[10px] font-bold ${statusTone[appointment.status]}`}
                                             >
                                                 {statusLabels[
                                                     appointment.status
@@ -338,7 +339,7 @@ export default function PatientDashboard() {
                             </div>
                             {nextAppointment && (
                                 <span
-                                    className={`rounded-full border px-3 py-1 text-xs font-bold ${statusTone[nextAppointment.status]}`}
+                                    className={`status-text-only text-xs font-bold ${statusTone[nextAppointment.status]}`}
                                 >
                                     {nextAppointment.status.replaceAll(
                                         '_',
@@ -553,7 +554,7 @@ export default function PatientDashboard() {
                                         'Individual'}
                                 </p>
                                 <span
-                                    className={`w-fit rounded-full border px-3 py-1 text-xs font-bold ${statusTone[appointment.status]}`}
+                                    className={`status-text-only w-fit text-xs font-bold ${statusTone[appointment.status]}`}
                                 >
                                     {statusLabels[appointment.status] ??
                                         appointment.status}

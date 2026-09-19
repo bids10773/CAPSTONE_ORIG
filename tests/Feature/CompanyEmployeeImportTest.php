@@ -99,6 +99,26 @@ test('company employee spreadsheets are previewed and imported without fabricate
         ->and($employee->patientProfile->birthdate->toDateString())->toBe('2000-05-15');
 });
 
+test('employees without a company number receive a number based on the company name', function () {
+    $company = Company::create(['company_name' => 'Universal Robina Corporation']);
+    $service = app(CompanyEmployeeImportService::class);
+    $file = employeeSpreadsheet([
+        ['first_name', 'last_name', 'sex', 'birthdate', 'civil_status'],
+        ['Ana', 'Lopez', 'Female', '1995-04-12', 'Single'],
+    ]);
+
+    $preview = $service->preview($file, $company->id);
+    $service->import($preview, $company->id);
+
+    $employee = User::query()
+        ->where('company_id', $company->id)
+        ->where('first_name', 'Ana')
+        ->firstOrFail();
+
+    expect($employee->patientProfile->employee_number)
+        ->toBe('URC-'.str_pad((string) $employee->id, 6, '0', STR_PAD_LEFT));
+});
+
 test('invalid rows and company-scoped duplicates are identified before import', function () {
     $company = Company::create(['company_name' => 'Acme Health']);
     $otherCompany = Company::create(['company_name' => 'Other Company']);

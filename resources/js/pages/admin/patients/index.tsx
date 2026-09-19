@@ -211,13 +211,27 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex min-w-0 items-center gap-3">
-                                                        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-moss-100 text-xs font-bold text-moss-700 dark:bg-moss-900 dark:text-moss-300">
+                                                        <span className="relative flex size-10 shrink-0 items-center justify-center rounded-full bg-moss-100 text-xs font-bold text-moss-700 dark:bg-moss-900 dark:text-moss-300">
                                                             {patient.first_name.charAt(
                                                                 0,
                                                             )}
                                                             {patient.last_name.charAt(
                                                                 0,
                                                             )}
+                                                            <span
+                                                                role="status"
+                                                                aria-label={
+                                                                    patient.is_online
+                                                                        ? 'Active now'
+                                                                        : 'Offline'
+                                                                }
+                                                                title={
+                                                                    patient.is_online
+                                                                        ? 'Active now'
+                                                                        : 'Offline'
+                                                                }
+                                                                className={`absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2 border-white dark:border-card ${patient.is_online ? 'bg-emerald-500' : 'bg-slate-400'}`}
+                                                            />
                                                         </span>
                                                         <div className="min-w-0">
                                                             <TruncatedText

@@ -9,6 +9,7 @@ use App\Services\StaffCredentialService;
 use App\Support\SearchTerm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -30,8 +31,22 @@ class StaffController extends Controller
         $likeSearch = SearchTerm::forLike($search);
         $role = (string) $request->get('role', '');
         $status = (string) $request->get('status', '');
+        $onlineThreshold = now()->subMinutes(5)->timestamp;
 
-        $query = User::query();
+        $latestSessions = DB::table(config('session.table', 'sessions'))
+            ->whereNotNull('user_id')
+            ->select('user_id')
+            ->selectRaw('MAX(last_activity) as last_activity')
+            ->groupBy('user_id');
+
+        $query = User::query()
+            ->leftJoinSub(
+                $latestSessions,
+                'staff_sessions',
+                fn ($join) => $join->on('users.id', '=', 'staff_sessions.user_id'),
+            )
+            ->select('users.*')
+            ->addSelect('staff_sessions.last_activity');
 
         if ($search) {
             $query->where(function ($q) use ($likeSearch) {
@@ -55,7 +70,24 @@ class StaffController extends Controller
         $staff = $query->whereIn('role', ['doctor', 'medtech', 'radtech', 'receptionist'])
             ->orderBy('created_at', 'desc')
             ->paginate($this->perPage($request))
-            ->withQueryString();
+            ->withQueryString()
+            ->through(function (User $member) use ($onlineThreshold): User {
+                $lastActivity = $member->getAttribute('last_activity');
+
+                $member->setAttribute(
+                    'is_online',
+                    $lastActivity !== null && (int) $lastActivity >= $onlineThreshold,
+                );
+                $member->setAttribute(
+                    'last_active_at',
+                    $lastActivity !== null
+                        ? Carbon::createFromTimestamp((int) $lastActivity)->toIso8601String()
+                        : null,
+                );
+                unset($member->last_activity);
+
+                return $member;
+            });
 
         return Inertia::render('admin/staff/index', [
             'staff' => $staff,

@@ -71,7 +71,7 @@ const navigation: Record<string, Item[]> = {
                     icon: CalendarDays,
                 },
                 {
-                    title: 'Today Appointments',
+                    title: "Today's Clinic Overview",
                     href: '/admin/todays-appointments',
                     icon: CalendarClock,
                 },
@@ -167,7 +167,7 @@ const navigation: Record<string, Item[]> = {
             icon: LayoutDashboard,
         },
         {
-            title: 'Laboratory queue',
+            title: 'Medtech Queue',
             href: '/medtech/appointments',
             icon: FlaskConical,
         },
@@ -185,7 +185,7 @@ const navigation: Record<string, Item[]> = {
             icon: LayoutDashboard,
         },
         {
-            title: 'Imaging queue',
+            title: 'Radtech Queue',
             href: '/radtech/appointments',
             icon: ScanLine,
         },
@@ -203,11 +203,6 @@ const navigation: Record<string, Item[]> = {
             icon: LayoutDashboard,
         },
         {
-            title: 'Walk-in Patients',
-            href: '/receptionist/walk-ins',
-            icon: UsersRound,
-        },
-        {
             title: 'Bulk Attendance',
             href: '/receptionist/onsite-events',
             icon: Building2,
@@ -218,9 +213,9 @@ const navigation: Record<string, Item[]> = {
             icon: ListOrdered,
         },
         {
-            title: 'Patient Search',
-            href: '/receptionist/patients',
-            icon: UserRoundSearch,
+            title: 'Appointment Requests',
+            href: '/receptionist/appointment-requests',
+            icon: CalendarClock,
         },
         { title: 'Profile', href: '/settings/profile', icon: Settings },
     ],

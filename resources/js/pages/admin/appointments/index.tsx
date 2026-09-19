@@ -18,7 +18,6 @@ import {
     XCircle,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { Button } from '@/components/ui/button';
@@ -373,6 +372,10 @@ export default function AdminAppointmentsIndex() {
     const [search, setSearch] = useState(filters.search ?? '');
     const [loading, setLoading] = useState(false);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
+    const [overridingAppointment, setOverridingAppointment] =
+        useState<Appointment | null>(null);
+    const [overrideReason, setOverrideReason] = useState('');
+    const [overrideError, setOverrideError] = useState('');
     const [rejectingAppointment, setRejectingAppointment] =
         useState<Appointment | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
@@ -494,19 +497,35 @@ export default function AdminAppointmentsIndex() {
         );
     };
 
-    const approve = (appointment: Appointment) => {
-        setUpdatingId(appointment.id);
+    const openApprovalOverride = (appointment: Appointment) => {
+        setOverrideReason('');
+        setOverrideError('');
+        setOverridingAppointment(appointment);
+    };
+
+    const approveOverride = () => {
+        if (!overridingAppointment || !overrideReason.trim()) {
+            setOverrideError(
+                'Enter a reason for this administrative override.',
+            );
+            return;
+        }
+
+        setUpdatingId(overridingAppointment.id);
         router.patch(
-            `/admin/appointments/${appointment.id}/approve`,
-            {},
+            `/admin/appointments/${overridingAppointment.id}/approve`,
+            { override_reason: overrideReason.trim() },
             {
                 preserveScroll: true,
-                onSuccess: () => setSelectedAppointment(null),
+                onSuccess: () => {
+                    setOverridingAppointment(null);
+                    setSelectedAppointment(null);
+                },
                 onError: (errors) =>
-                    toast.error(
+                    setOverrideError(
                         String(
                             Object.values(errors)[0] ??
-                                'Unable to confirm this appointment.',
+                                'Unable to override this appointment.',
                         ),
                     ),
                 onFinish: () => setUpdatingId(null),
@@ -671,11 +690,11 @@ export default function AdminAppointmentsIndex() {
                         }
                         onSelect={() =>
                             appointment.type === 'individual'
-                                ? approve(appointment)
+                                ? openApprovalOverride(appointment)
                                 : updateStatus(appointment, 'accepted')
                         }
                     >
-                        <CheckCircle2 className="size-4" /> Confirm request
+                        <CheckCircle2 className="size-4" /> Override: accept
                     </DropdownMenuItem>
                 )}
                 {appointment.status === 'pending' &&
@@ -684,7 +703,7 @@ export default function AdminAppointmentsIndex() {
                             className="text-red-600"
                             onSelect={() => openReject(appointment)}
                         >
-                            <XCircle className="size-4" /> Reject request
+                            <XCircle className="size-4" /> Override: reject
                         </DropdownMenuItem>
                     )}
                 {!['pending', 'completed', 'cancelled', 'rejected'].includes(
@@ -726,7 +745,8 @@ export default function AdminAppointmentsIndex() {
                                     : 'requests'}
                             </strong>
                             <span className="mt-1 block text-sm text-amber-700">
-                                Waiting for administrator review
+                                Receptionists handle routine decisions. Admins
+                                can monitor or override exceptions.
                             </span>
                         </span>
                         <ArrowRight className="size-5" />
@@ -1558,7 +1578,7 @@ export default function AdminAppointmentsIndex() {
                                                 openReject(selectedAppointment)
                                             }
                                         >
-                                            Reject Request
+                                            Override: Reject
                                         </Button>
                                     )}
                                     {selectedAppointment.type ===
@@ -1591,7 +1611,7 @@ export default function AdminAppointmentsIndex() {
                                             onClick={() =>
                                                 selectedAppointment.type ===
                                                 'individual'
-                                                    ? approve(
+                                                    ? openApprovalOverride(
                                                           selectedAppointment,
                                                       )
                                                     : updateStatus(
@@ -1601,7 +1621,10 @@ export default function AdminAppointmentsIndex() {
                                             }
                                             className="bg-moss-700 text-white hover:bg-moss-800"
                                         >
-                                            Confirm Appointment
+                                            {selectedAppointment.type ===
+                                            'individual'
+                                                ? 'Override: Accept'
+                                                : 'Confirm Appointment'}
                                         </Button>
                                     )}
                                 </>
@@ -1612,15 +1635,71 @@ export default function AdminAppointmentsIndex() {
             </Dialog>
 
             <Dialog
+                open={overridingAppointment !== null}
+                onOpenChange={(open) => !open && setOverridingAppointment(null)}
+            >
+                <DialogContent className="max-w-lg rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle>
+                            Administrative override: accept request
+                        </DialogTitle>
+                        <DialogDescription>
+                            Routine appointment decisions belong to the
+                            receptionist. Use this only when administrative
+                            intervention is necessary. Your reason will be
+                            recorded in the security audit.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        Override reason
+                        <textarea
+                            value={overrideReason}
+                            maxLength={500}
+                            onChange={(event) => {
+                                setOverrideReason(event.target.value);
+                                setOverrideError('');
+                            }}
+                            rows={4}
+                            placeholder="Explain why an administrator is accepting this request..."
+                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm dark:border-border dark:bg-background"
+                        />
+                    </label>
+                    {overrideError && (
+                        <p role="alert" className="text-sm text-red-600">
+                            {overrideError}
+                        </p>
+                    )}
+                    <div className="flex justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setOverridingAppointment(null)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            disabled={updatingId !== null}
+                            onClick={approveOverride}
+                            className="bg-moss-700 text-white hover:bg-moss-800"
+                        >
+                            Accept by override
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
                 open={rejectingAppointment !== null}
                 onOpenChange={(open) => !open && setRejectingAppointment(null)}
             >
                 <DialogContent className="max-w-lg rounded-2xl">
                     <DialogHeader>
-                        <DialogTitle>Reject appointment request</DialogTitle>
+                        <DialogTitle>
+                            Administrative override: reject request
+                        </DialogTitle>
                         <DialogDescription>
-                            The reserved time will become available again. The
-                            patient will receive the reason.
+                            Use this only for an exception requiring admin
+                            intervention. The patient will receive the reason,
+                            and the action will be audited.
                         </DialogDescription>
                     </DialogHeader>
                     <label className="text-sm font-medium text-slate-700">
@@ -1683,7 +1762,7 @@ export default function AdminAppointmentsIndex() {
                             disabled={updatingId !== null}
                             onClick={reject}
                         >
-                            Reject Request
+                            Reject by override
                         </Button>
                     </div>
                 </DialogContent>

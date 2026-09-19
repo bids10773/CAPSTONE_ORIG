@@ -460,7 +460,7 @@ export default function FinalEvaluation({
                                                     {item.label}
                                                 </h3>
                                                 <span
-                                                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${lab.is_completed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}
+                                                    className={`status-text-only text-xs font-bold ${lab.is_completed ? 'text-emerald-800' : 'text-amber-800'}`}
                                                 >
                                                     {lab.is_completed
                                                         ? 'Finalized'
@@ -705,7 +705,7 @@ function ReviewSection({
                     <h2 className="font-bold text-slate-900">{heading}</h2>
                 </div>
                 <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${complete ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}
+                    className={`status-text-only text-xs font-bold ${complete ? 'text-emerald-800' : 'text-amber-800'}`}
                 >
                     {complete ? 'Complete' : 'Pending'}
                 </span>

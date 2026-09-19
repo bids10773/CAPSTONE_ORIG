@@ -1,9 +1,10 @@
 import { usePage } from '@inertiajs/react';
-import { CalendarDays, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { ClinicStatus } from '@/components/clinic-status';
 import { GlobalSearch } from '@/components/global-search';
+import { LiveDateTime } from '@/components/live-date-time';
 import { PageTransition } from '@/components/motion';
 import { NotificationBell } from '@/components/notification-bell';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -36,12 +37,6 @@ export default function ClinicDashboardLayout({
             .filter(Boolean)
             .join('')
             .toUpperCase() || 'LM';
-    const currentDate = new Intl.DateTimeFormat('en-PH', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-    }).format(new Date());
-
     return (
         <SidebarProvider
             defaultPinned={Boolean(sidebarPinned)}
@@ -60,10 +55,7 @@ export default function ClinicDashboardLayout({
 
                         <div className="ml-auto flex items-center gap-1.5">
                             <ClinicStatus />
-                            <div className="mr-1 hidden items-center gap-2 rounded-xl bg-moss-50 px-3 py-2 text-xs font-medium text-moss-700 xl:flex dark:bg-moss-900 dark:text-moss-200">
-                                <CalendarDays className="size-4" />
-                                <time>{currentDate}</time>
-                            </div>
+                            <LiveDateTime className="mr-1 hidden lg:flex" />
                             <ThemeToggle />
                             <NotificationBell />
                             <DropdownMenu>
@@ -74,15 +66,23 @@ export default function ClinicDashboardLayout({
                                         aria-label="Open account menu"
                                         className="ml-1 flex items-center gap-2 rounded-xl border-l border-slate-200 py-1 pr-1 pl-3 text-left transition outline-none hover:bg-moss-50 focus-visible:ring-4 focus-visible:ring-moss-500/15 data-[state=open]:bg-moss-50 sm:ml-2 sm:pl-4 dark:hover:bg-moss-900 dark:data-[state=open]:bg-moss-900"
                                     >
-                                        <Avatar className="size-9">
-                                            <AvatarImage
-                                                src={user?.avatar}
-                                                alt={fullName}
+                                        <span className="relative shrink-0">
+                                            <Avatar className="size-9">
+                                                <AvatarImage
+                                                    src={user?.avatar}
+                                                    alt={fullName}
+                                                />
+                                                <AvatarFallback className="bg-moss-100 text-xs font-bold text-moss-700">
+                                                    {initials}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <span
+                                                className="absolute right-0 bottom-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-card"
+                                                role="status"
+                                                aria-label="Online"
+                                                title="Online"
                                             />
-                                            <AvatarFallback className="bg-moss-100 text-xs font-bold text-moss-700">
-                                                {initials}
-                                            </AvatarFallback>
-                                        </Avatar>
+                                        </span>
                                         <div className="hidden max-w-36 md:block">
                                             <p className="truncate text-xs font-semibold text-slate-800">
                                                 {fullName}

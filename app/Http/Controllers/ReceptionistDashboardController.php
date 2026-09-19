@@ -44,6 +44,10 @@ class ReceptionistDashboardController extends Controller
             ->orderBy('start_time')
             ->orderBy('id');
         $onlineTotal = (clone $onlineQuery)->count();
+        $pendingRequests = Appointment::query()
+            ->where('type', 'individual')
+            ->where('status', 'pending')
+            ->count();
         $onlineQueue = $onlineQuery
             ->limit(10)
             ->get()
@@ -69,6 +73,7 @@ class ReceptionistDashboardController extends Controller
                 'cancelled' => $counts->get('cancelled', 0),
                 'currentQueueNumber' => $currentQueueNumber,
                 'online' => $onlineTotal,
+                'pendingRequests' => $pendingRequests,
             ],
             'onlineQueue' => $onlineQueue,
         ]);

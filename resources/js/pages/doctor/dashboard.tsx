@@ -389,7 +389,7 @@ export default function DoctorDashboard(props: Props) {
                                                             apt.examination_purpose,
                                                         )}
                                                     </p>
-                                                    <span className="mt-2 inline-flex rounded-full bg-moss-100 px-2.5 py-1 text-[10px] font-bold text-moss-700 capitalize">
+                                                    <span className="status-text-only mt-2 inline-flex text-[10px] font-bold text-moss-700 capitalize">
                                                         {apt.status.replaceAll(
                                                             '_',
                                                             ' ',

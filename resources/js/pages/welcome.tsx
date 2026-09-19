@@ -28,7 +28,7 @@ import {
     UsersRound,
     X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Reveal, StaggerGroup, StaggerItem } from '@/components/motion';
 import { useClinicHours, type ClinicHoursSettings } from '@/lib/clinic-hours';
 import logo from '/resources/images/full_logo2.png';
@@ -163,20 +163,50 @@ function ContactDetail({
 
 function Navbar() {
     const [open, setOpen] = useState(false);
-    const links = [
-        { name: 'About', href: '#about', icon: Info },
-        { name: 'Services', href: '#services', icon: BriefcaseMedical },
+    const [scrolled, setScrolled] = useState(false);
+    const [mobileDropdown, setMobileDropdown] = useState<string | null>(null);
+
+    useEffect(() => {
+        const updateNavbar = () => setScrolled(window.scrollY > 24);
+
+        updateNavbar();
+        window.addEventListener('scroll', updateNavbar, { passive: true });
+
+        return () => window.removeEventListener('scroll', updateNavbar);
+    }, []);
+
+    const navigation = [
         {
-            name: 'Corporate Programs',
-            href: '#corporate',
-            icon: Building2,
+            name: 'About',
+            icon: Info,
+            items: [
+                { name: 'About the Clinic', href: '#about' },
+                { name: 'Clinic Gallery', href: '#clinic-gallery-title' },
+                { name: 'Frequently Asked Questions', href: '#faq' },
+            ],
         },
-        { name: 'Contact', href: '#contact', icon: MessagesSquare },
+        {
+            name: 'Services',
+            icon: BriefcaseMedical,
+            items: [
+                { name: 'Medical Services', href: '#services' },
+                { name: 'Corporate Programs', href: '#corporate' },
+                { name: 'Book a Consultation', href: '/register' },
+            ],
+        },
+        {
+            name: 'Contact',
+            icon: MessagesSquare,
+            items: [
+                { name: 'Clinic Location', href: '#contact' },
+                { name: 'Send an Inquiry', href: '/inquiries/create' },
+            ],
+        },
     ];
     return (
-        <header className="sticky inset-x-0 top-0 z-50 border-b border-slate-200/70 bg-white/90 backdrop-blur-md">
+        <header className="sticky inset-x-0 top-0 z-50">
             <div className="mx-auto max-w-7xl px-5 py-5 sm:px-7">
-                <nav className="flex items-center justify-between rounded-2xl border border-white/80 bg-white/90 px-4 py-3 shadow-[0_14px_45px_rgba(15,38,60,0.10)] backdrop-blur-lg sm:px-5">
+                <nav className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_14px_45px_rgba(15,38,60,0.10)] sm:px-5">
                     <Link
                         href="/"
                         className="flex items-center gap-3"
@@ -189,25 +219,54 @@ function Navbar() {
                                 className="h-full w-full object-contain"
                             />
                         </span>
-                        <span className="leading-tight">
+                        <motion.span
+                            initial={false}
+                            animate={{
+                                width: scrolled ? 0 : 'auto',
+                                opacity: scrolled ? 0 : 1,
+                            }}
+                            transition={{ duration: 0.22, ease: 'easeOut' }}
+                            className="overflow-hidden leading-tight whitespace-nowrap"
+                            aria-hidden={scrolled}
+                        >
                             <span className="block text-sm font-extrabold tracking-[-0.03em] text-slate-950">
                                 LIVING MYTH
                             </span>
                             <span className="block text-[9px] font-bold tracking-[0.18em] text-moss-700 uppercase">
                                 Industrial Clinic
                             </span>
-                        </span>
+                        </motion.span>
                     </Link>
                     <div className="hidden items-center gap-1 lg:flex">
-                        {links.map(({ name, href, icon: Icon }) => (
-                            <a
-                                key={name}
-                                href={href}
-                                className="group inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition-all hover:bg-moss-50 hover:text-moss-800 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
-                            >
-                                <Icon className="size-4 text-slate-400 transition-colors group-hover:text-moss-600" />
-                                {name}
-                            </a>
+                        {navigation.map(({ name, icon: Icon, items }) => (
+                            <div key={name} className="group relative">
+                                <button
+                                    type="button"
+                                    aria-haspopup="menu"
+                                    className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition-all hover:bg-moss-50 hover:text-moss-800 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
+                                >
+                                    <Icon className="size-4 text-slate-400 transition-colors group-hover:text-moss-600" />
+                                    {name}
+                                    <ChevronDown className="size-3.5 transition-transform duration-200 group-focus-within:rotate-180 group-hover:rotate-180" />
+                                </button>
+                                <div className="invisible absolute top-full left-1/2 w-64 -translate-x-1/2 pt-2 opacity-0 transition duration-200 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+                                    <div
+                                        role="menu"
+                                        className="rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10"
+                                    >
+                                        {items.map((item) => (
+                                            <a
+                                                key={item.name}
+                                                href={item.href}
+                                                role="menuitem"
+                                                className="block rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-moss-50 hover:text-moss-800 focus:bg-moss-50 focus:text-moss-800 focus:outline-none"
+                                            >
+                                                {item.name}
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                         ))}
                     </div>
                     <div className="hidden items-center gap-3 sm:flex">
@@ -227,9 +286,13 @@ function Navbar() {
                         </Link>
                     </div>
                     <button
-                        onClick={() => setOpen(!open)}
-                        className="motion-press grid h-10 w-10 place-items-center rounded-xl text-slate-800 sm:hidden"
+                        onClick={() => {
+                            setOpen((current) => !current);
+                            setMobileDropdown(null);
+                        }}
+                        className="motion-press grid h-10 w-10 place-items-center rounded-xl text-slate-800 lg:hidden"
                         aria-label="Toggle navigation"
+                        aria-expanded={open}
                     >
                         {open ? <X size={21} /> : <Menu size={21} />}
                     </button>
@@ -240,27 +303,70 @@ function Navbar() {
                             initial={{ opacity: 0, y: -8 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -8 }}
-                            className="mt-2 rounded-2xl border border-slate-100 bg-white p-3 shadow-xl sm:hidden"
+                            className="mt-2 rounded-2xl border border-slate-100 bg-white p-3 shadow-xl lg:hidden"
                         >
-                            {links.map(({ name, href, icon: Icon }) => (
-                                <a
-                                    onClick={() => setOpen(false)}
-                                    key={name}
-                                    href={href}
-                                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-moss-50 hover:text-moss-800"
-                                >
-                                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-moss-50 text-moss-700">
-                                        <Icon className="size-4" />
-                                    </span>
-                                    {name}
-                                </a>
+                            {navigation.map(({ name, icon: Icon, items }) => (
+                                <div key={name}>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setMobileDropdown((current) =>
+                                                current === name ? null : name,
+                                            )
+                                        }
+                                        className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-moss-50 hover:text-moss-800"
+                                        aria-expanded={mobileDropdown === name}
+                                    >
+                                        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-moss-50 text-moss-700">
+                                            <Icon className="size-4" />
+                                        </span>
+                                        {name}
+                                        <ChevronDown
+                                            className={`ml-auto size-4 transition-transform ${mobileDropdown === name ? 'rotate-180' : ''}`}
+                                        />
+                                    </button>
+                                    <AnimatePresence initial={false}>
+                                        {mobileDropdown === name && (
+                                            <motion.div
+                                                initial={{
+                                                    height: 0,
+                                                    opacity: 0,
+                                                }}
+                                                animate={{
+                                                    height: 'auto',
+                                                    opacity: 1,
+                                                }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="space-y-1 py-1 pr-2 pl-15">
+                                                    {items.map((item) => (
+                                                        <a
+                                                            onClick={() => {
+                                                                setOpen(false);
+                                                                setMobileDropdown(
+                                                                    null,
+                                                                );
+                                                            }}
+                                                            key={item.name}
+                                                            href={item.href}
+                                                            className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-moss-50 hover:text-moss-800"
+                                                        >
+                                                            {item.name}
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                             ))}
                             <Link
                                 href="/login"
                                 className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-moss-800 px-4 py-3 text-sm font-bold text-white"
                             >
                                 <LogIn className="size-4" />
-                                Client Login
+                                Login
                             </Link>
                         </motion.div>
                     )}
@@ -459,10 +565,7 @@ export default function Welcome() {
                                 Trusted by teams across industries
                             </p>
                             <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm font-extrabold tracking-wide text-slate-400">
-                                <span>METROBUILD</span>
-                                <span>APEX MFG</span>
-                                <span>NORTHSTAR</span>
-                                <span>BLUEFORGE</span>
+                                <span>URC</span>
                             </div>
                         </div>
                     </div>
@@ -1046,6 +1149,22 @@ export default function Welcome() {
                                     >
                                         <MapPin className="size-4" />
                                     </a>
+                                    <a
+                                        href="https://www.facebook.com/livingmythindustialclinic"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        aria-label="Visit Living Myth Industrial Clinic on Facebook"
+                                        title="Facebook"
+                                        className="flex size-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white/80 transition hover:border-white/40 hover:bg-white/20 hover:text-white"
+                                    >
+                                        <svg
+                                            viewBox="0 0 24 24"
+                                            aria-hidden="true"
+                                            className="size-4 fill-current"
+                                        >
+                                            <path d="M13.5 22v-8.2h2.75l.41-3.2H13.5V8.56c0-.93.26-1.56 1.59-1.56h1.7V4.14A22.8 22.8 0 0 0 14.31 4c-2.45 0-4.12 1.49-4.12 4.23v2.37H7.42v3.2h2.77V22h3.31Z" />
+                                        </svg>
+                                    </a>
                                 </div>
                             </div>
 
@@ -1075,6 +1194,13 @@ export default function Welcome() {
                                             Send an Inquiry
                                         </Link>
                                         <a href="#faq">FAQs</a>
+                                        <a
+                                            href="https://www.facebook.com/livingmythindustialclinic"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            Facebook
+                                        </a>
                                     </div>
                                 </div>
                                 <div>

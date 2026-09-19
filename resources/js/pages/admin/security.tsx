@@ -206,7 +206,7 @@ export default function AdminSecurity({ securityAlerts, securityLogs }: Props) {
                                             </td>
                                             <td className="px-5 py-4">
                                                 <span
-                                                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusStyles[log.status] ?? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
+                                                    className={`status-text-only inline-flex text-xs font-bold ${statusStyles[log.status] ?? 'text-slate-700 dark:text-slate-300'}`}
                                                 >
                                                     {formatAction(log.status)}
                                                 </span>

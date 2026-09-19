@@ -31,6 +31,10 @@ import {
     YAxis,
 } from 'recharts';
 import AppLayout from '@/layouts/app-layout';
+import {
+    formatAppointmentDateTime,
+    formatAppointmentTime as formatScheduledTime,
+} from '@/lib/appointment-date-time';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -143,13 +147,11 @@ function examinationPurposeLabel(purpose: string): string {
     return labels[purpose] ?? humanize(purpose);
 }
 
-function formatAppointmentDate(date: string): string {
-    return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-    }).format(new Date(date));
+function formatAppointmentDate(
+    date: string,
+    startTime?: string | null,
+): string {
+    return formatAppointmentDateTime(date, startTime);
 }
 
 function dateKey(date: Date): string {
@@ -176,23 +178,7 @@ function appointmentDateKey(appointment: AppointmentData): string {
 }
 
 function formatAppointmentTime(appointment: AppointmentData): string {
-    if (appointment.start_time) {
-        const [hours, minutes] = appointment.start_time
-            .slice(0, 5)
-            .split(':')
-            .map(Number);
-        const time = new Date(2000, 0, 1, hours, minutes);
-
-        return new Intl.DateTimeFormat('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-        }).format(time);
-    }
-
-    return new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-    }).format(new Date(appointment.appointment_date));
+    return formatScheduledTime(appointment.start_time);
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -206,7 +192,7 @@ function StatusBadge({ status }: { status: string }) {
 
     return (
         <span
-            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${styles[status] ?? 'border-slate-200 bg-slate-50 text-slate-600'}`}
+            className={`status-text-only inline-flex text-[11px] font-bold ${styles[status] ?? 'text-slate-600'}`}
         >
             {statusLabels[status] ?? humanize(status)}
         </span>
@@ -1037,6 +1023,7 @@ export default function AdminDashboard() {
                                                     <p className="mt-0.5 text-xs text-slate-500">
                                                         {formatAppointmentDate(
                                                             appointment.appointment_date,
+                                                            appointment.start_time,
                                                         )}{' '}
                                                         ·{' '}
                                                         {humanize(
@@ -1157,6 +1144,7 @@ export default function AdminDashboard() {
                                                 <p className="mt-0.5 text-[11px] text-slate-400">
                                                     {formatAppointmentDate(
                                                         appointment.appointment_date,
+                                                        appointment.start_time,
                                                     )}
                                                 </p>
                                             </div>
@@ -1198,6 +1186,7 @@ export default function AdminDashboard() {
                                             <p className="mt-0.5 text-[11px] text-slate-400">
                                                 {formatAppointmentDate(
                                                     appointment.appointment_date,
+                                                    appointment.start_time,
                                                 )}{' '}
                                                 · {humanize(appointment.type)}
                                             </p>

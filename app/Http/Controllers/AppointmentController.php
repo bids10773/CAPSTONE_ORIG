@@ -14,8 +14,8 @@ use App\Services\AppointmentApprovalService;
 use App\Services\IndividualAppointmentBookingService;
 use App\Services\LaboratoryFormDefinition;
 use App\Services\OnsiteStaffAvailabilityService;
-use App\Support\SearchTerm;
 use App\Support\ClinicHours;
+use App\Support\SearchTerm;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -452,9 +452,9 @@ class AppointmentController extends Controller
         }
 
         if ($appointment->type === 'individual' && $request->status === 'accepted') {
-            app(AppointmentApprovalService::class)->accept($appointment, $request->user());
-
-            return back()->with('success', 'Appointment confirmed successfully.');
+            return back()->withErrors([
+                'appointment' => 'Individual requests are processed by receptionists. Use the documented administrative override when intervention is necessary.',
+            ]);
         }
 
         if ($appointment->isBulkParent()) {
@@ -482,9 +482,19 @@ class AppointmentController extends Controller
 
     public function approve(Request $request, Appointment $appointment)
     {
-        app(AppointmentApprovalService::class)->accept($appointment, $request->user());
+        $validated = $request->validate([
+            'override_reason' => ['required', 'string', 'max:500'],
+        ], [
+            'override_reason.required' => 'An administrative reason is required to override receptionist processing.',
+        ]);
 
-        return back()->with('success', 'Appointment confirmed successfully.');
+        app(AppointmentApprovalService::class)->accept(
+            $appointment,
+            $request->user(),
+            $validated['override_reason'],
+        );
+
+        return back()->with('success', 'Appointment accepted by administrative override.');
     }
 
     public function reject(Request $request, Appointment $appointment)
@@ -652,6 +662,7 @@ class AppointmentController extends Controller
             $dateKey = $date->format('Y-m-d');
             if (! ClinicHours::isBookableDate($dateKey)) {
                 $counts[$dateKey] = 0;
+
                 continue;
             }
             $dayPeriods = $periodsByDay->get(strtolower($date->format('D')), collect());
@@ -716,6 +727,7 @@ class AppointmentController extends Controller
             if (! ClinicHours::isBookableDate($date)
                 || ($date === ClinicHours::today() && $startStr <= ClinicHours::now()->format('H:i'))) {
                 $current->add(new \DateInterval('PT30M'));
+
                 continue;
             }
 

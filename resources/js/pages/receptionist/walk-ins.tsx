@@ -34,7 +34,13 @@ const EXAMINATION_PURPOSE_ICONS = {
 type WalkIn = {
     id: number;
     queue_number: string;
-    status: 'pending' | 'accepted' | 'arrived' | 'completed' | 'cancelled';
+    status:
+        | 'pending'
+        | 'accepted'
+        | 'arrived'
+        | 'completed'
+        | 'rejected'
+        | 'cancelled';
     type: 'walk_in' | 'individual' | 'company_referral';
     service_types: string[];
     appointment_date: string;
@@ -61,6 +67,7 @@ const statusLabels = {
     accepted: 'Scheduled',
     arrived: 'Processing',
     completed: 'Completed',
+    rejected: 'Rejected',
     cancelled: 'Cancelled',
 } as const;
 const statusStyles = {
@@ -68,6 +75,7 @@ const statusStyles = {
     accepted: 'bg-sky-50 text-sky-700',
     arrived: 'bg-violet-50 text-violet-700',
     completed: 'bg-emerald-50 text-emerald-700',
+    rejected: 'bg-rose-50 text-rose-700',
     cancelled: 'bg-rose-50 text-rose-700',
 } as const;
 
@@ -96,6 +104,7 @@ export default function WalkIns({
     availableDoctors: AvailableDoctor[];
 }) {
     const [showRegistration, setShowRegistration] = useState(false);
+    const [queueSearch, setQueueSearch] = useState(filters.search ?? '');
     const [patientQuery, setPatientQuery] = useState('');
     const [patients, setPatients] = useState<Patient[]>([]);
     const [patientSearchError, setPatientSearchError] = useState('');
@@ -212,7 +221,7 @@ export default function WalkIns({
         );
     }
 
-    function filter(status = '', search = filters.search) {
+    function filter(status = filters.status, search = queueSearch) {
         router.get(
             '/receptionist/queue',
             { status, search, per_page: walkIns.per_page },
@@ -222,10 +231,12 @@ export default function WalkIns({
 
     const activeQueue = walkIns.data.filter(
         (appointment) =>
-            !['completed', 'cancelled'].includes(appointment.status),
+            !['completed', 'cancelled', 'rejected'].includes(
+                appointment.status,
+            ),
     );
     const queueHistory = walkIns.data.filter((appointment) =>
-        ['completed', 'cancelled'].includes(appointment.status),
+        ['completed', 'cancelled', 'rejected'].includes(appointment.status),
     );
 
     return (
@@ -752,23 +763,52 @@ export default function WalkIns({
                                 <Printer className="size-4" /> Print queue
                             </button>
                         </div>
-                        <div className="mt-4 flex max-w-full gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1">
-                            {[
-                                ['', 'All'],
-                                ['pending', 'Waiting'],
-                                ['arrived', 'Processing'],
-                                ['completed', 'Completed'],
-                                ['cancelled', 'Cancelled'],
-                            ].map(([value, label]) => (
+                        <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">
+                            <form
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    filter(filters.status, queueSearch);
+                                }}
+                                className="flex min-w-0 flex-1 gap-2"
+                            >
+                                <div className="relative min-w-0 flex-1">
+                                    <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        type="search"
+                                        value={queueSearch}
+                                        onChange={(event) =>
+                                            setQueueSearch(event.target.value)
+                                        }
+                                        placeholder="Search name, email, or contact"
+                                        aria-label="Search today's queue"
+                                        className="h-10 w-full rounded-xl border border-slate-200 bg-white pr-3 pl-10 text-sm"
+                                    />
+                                </div>
                                 <button
-                                    type="button"
-                                    key={value}
-                                    onClick={() => filter(value)}
-                                    className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${filters.status === value ? 'bg-white text-moss-800 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}
+                                    type="submit"
+                                    className="rounded-xl bg-moss-700 px-4 text-sm font-semibold text-white hover:bg-moss-800"
                                 >
-                                    {label}
+                                    Search
                                 </button>
-                            ))}
+                            </form>
+                            <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1">
+                                {[
+                                    ['', 'All'],
+                                    ['pending', 'Waiting'],
+                                    ['arrived', 'Processing'],
+                                    ['completed', 'Completed'],
+                                    ['cancelled', 'Cancelled'],
+                                ].map(([value, label]) => (
+                                    <button
+                                        type="button"
+                                        key={value}
+                                        onClick={() => filter(value)}
+                                        className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${filters.status === value ? 'bg-white text-moss-800 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                     {activeQueue.length === 0 && queueHistory.length === 0 ? (
@@ -964,9 +1004,11 @@ export default function WalkIns({
                                                 </button>
                                             )}
                                         {walkIn.type !== 'walk_in' &&
-                                            ['pending', 'accepted'].includes(
-                                                walkIn.status,
-                                            ) && (
+                                            (walkIn.status === 'accepted' ||
+                                                (walkIn.type ===
+                                                    'company_referral' &&
+                                                    walkIn.status ===
+                                                        'pending')) && (
                                                 <button
                                                     type="button"
                                                     onClick={() =>
@@ -979,7 +1021,7 @@ export default function WalkIns({
                                                 </button>
                                             )}
                                         <span
-                                            className={`rounded-xl px-3 py-2 text-xs font-bold ${statusStyles[walkIn.status]}`}
+                                            className={`status-text-only text-xs font-bold ${statusStyles[walkIn.status]}`}
                                         >
                                             {statusLabels[walkIn.status]}
                                         </span>
@@ -1019,7 +1061,7 @@ export default function WalkIns({
                                             )}
                                     </span>
                                     <span
-                                        className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${statusStyles[appointment.status]}`}
+                                        className={`status-text-only w-fit text-xs font-bold ${statusStyles[appointment.status]}`}
                                     >
                                         {statusLabels[appointment.status]}
                                     </span>

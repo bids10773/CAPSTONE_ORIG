@@ -49,7 +49,7 @@ type Props = {
     days: Record<string, string>;
     selectedDoctorId?: number;
     filters: { search?: string; status?: string };
-    clinicHours: { opens_at: string; closes_at: string };
+    availabilityHours: { opensAt: string; closesAt: string };
     isAdmin: boolean;
     pendingRequests: AvailabilityRequest[];
     selectedRequest: AvailabilityRequest | null;
@@ -59,7 +59,7 @@ export default function DoctorAvailability({
     days,
     selectedDoctorId,
     filters,
-    clinicHours,
+    availabilityHours,
     isAdmin,
     pendingRequests,
     selectedRequest,
@@ -124,7 +124,11 @@ export default function DoctorAvailability({
     const addPeriod = (day: string) =>
         setData('availability', [
             ...data.availability,
-            { day, start: clinicHours.opens_at, end: clinicHours.closes_at },
+            {
+                day,
+                start: availabilityHours.opensAt,
+                end: availabilityHours.closesAt,
+            },
         ]);
     const updatePeriod = (
         day: string,
@@ -452,10 +456,10 @@ export default function DoctorAvailability({
                                                                 <Input
                                                                     type="time"
                                                                     min={
-                                                                        clinicHours.opens_at
+                                                                        availabilityHours.opensAt
                                                                     }
                                                                     max={
-                                                                        clinicHours.closes_at
+                                                                        availabilityHours.closesAt
                                                                     }
                                                                     value={
                                                                         period.start
@@ -479,10 +483,10 @@ export default function DoctorAvailability({
                                                                 <Input
                                                                     type="time"
                                                                     min={
-                                                                        clinicHours.opens_at
+                                                                        availabilityHours.opensAt
                                                                     }
                                                                     max={
-                                                                        clinicHours.closes_at
+                                                                        availabilityHours.closesAt
                                                                     }
                                                                     value={
                                                                         period.end

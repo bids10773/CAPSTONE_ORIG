@@ -1,17 +1,13 @@
 import { Head, Link, usePage, router } from '@inertiajs/react';
-import {
-    Calendar,
-    Plus,
-    Eye,
-    CheckCircle,
-    XCircle,
-    Clock,
-    Building2,
-} from 'lucide-react';
+import { Calendar, Plus, Eye, Clock, Building2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import AppLayout from '@/layouts/app-layout';
+import {
+    formatAppointmentDate,
+    formatAppointmentTime,
+} from '@/lib/appointment-date-time';
 import {
     appointmentStatusLabel,
     examinationPurposeLabel,
@@ -19,11 +15,10 @@ import {
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Appointments', href: '' }];
-
 interface AppointmentData {
     id: number;
     appointment_date: string;
+    start_time?: string | null;
     type: string;
     status: string;
     examination_purpose?: string | null;
@@ -36,7 +31,12 @@ interface AppointmentData {
 
 export default function AppointmentsIndex() {
     const props = usePage().props as any;
-    const { appointments, filters, can, isCompanyView } = props;
+    const { appointments, filters, can, isCompanyView, auth } = props;
+    const pageTitle = isCompanyView
+        ? 'Employee Appointments'
+        : auth?.user?.role === 'patient'
+          ? 'Medical Records'
+          : 'Appointments';
 
     const [search, setSearch] = useState(filters?.search || '');
     const [statusFilter, setStatusFilter] = useState(filters?.status || '');
@@ -82,33 +82,21 @@ export default function AppointmentsIndex() {
         }
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
+    const formatDate = (dateString: string, startTime?: string | null) => {
         return {
-            main: date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-            }),
-            time: date.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-            }),
+            main: formatAppointmentDate(dateString),
+            time: formatAppointmentTime(startTime),
         };
     };
 
     return (
         <>
-            <Head
-                title={isCompanyView ? 'Employee Appointments' : 'Appointments'}
-            />
+            <Head title={pageTitle} />
 
             <div className="mx-auto max-w-7xl space-y-8 p-6 lg:p-8">
                 {/* SEARCH & FILTERS TOOLBAR */}
                 <SearchFilterToolbar
-                    title={
-                        isCompanyView ? 'Employee Appointments' : 'Appointments'
-                    }
+                    title={pageTitle}
                     search={{
                         placeholder: 'Search by patient name or email...',
                         value: search,
@@ -233,6 +221,7 @@ export default function AppointmentsIndex() {
                                         (appointment: AppointmentData) => {
                                             const dateInfo = formatDate(
                                                 appointment.appointment_date,
+                                                appointment.start_time,
                                             );
                                             return (
                                                 <tr
@@ -323,24 +312,12 @@ export default function AppointmentsIndex() {
                                                     <td className="px-6 py-4">
                                                         <span
                                                             className={cn(
-                                                                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition-colors',
+                                                                'status-text-only inline-flex text-xs font-bold transition-colors',
                                                                 getStatusStyles(
                                                                     appointment.status,
                                                                 ),
                                                             )}
                                                         >
-                                                            {appointment.status ===
-                                                                'pending' && (
-                                                                <Clock className="h-3 w-3" />
-                                                            )}
-                                                            {appointment.status ===
-                                                                'completed' && (
-                                                                <CheckCircle className="h-3 w-3" />
-                                                            )}
-                                                            {appointment.status ===
-                                                                'cancelled' && (
-                                                                <XCircle className="h-3 w-3" />
-                                                            )}
                                                             <span>
                                                                 {appointmentStatusLabel(
                                                                     appointment.status,
@@ -382,6 +359,13 @@ export default function AppointmentsIndex() {
     );
 }
 
-AppointmentsIndex.layout = (page: any) => (
-    <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>
-);
+AppointmentsIndex.layout = (page: any) => {
+    const title = page.props.isCompanyView
+        ? 'Employee Appointments'
+        : page.props.auth?.user?.role === 'patient'
+          ? 'Medical Records'
+          : 'Appointments';
+    const breadcrumbs: BreadcrumbItem[] = [{ title, href: '' }];
+
+    return <AppLayout breadcrumbs={breadcrumbs}>{page}</AppLayout>;
+};

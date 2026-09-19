@@ -68,7 +68,7 @@ export default function MyInquiries({
                                         </p>
                                     </div>
                                     <div className="text-left sm:text-right">
-                                        <span className="rounded-full bg-moss-50 px-2.5 py-1 text-xs font-semibold text-moss-800">
+                                        <span className="status-text-only text-xs font-bold text-moss-800">
                                             {inquiry.status_label}
                                         </span>
                                         <p className="mt-2 text-xs text-slate-500">

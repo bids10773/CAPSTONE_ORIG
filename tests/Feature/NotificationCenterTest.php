@@ -65,7 +65,9 @@ test('approval creates exactly one patient confirmation and one doctor assignmen
     $doctor = notificationDoctor();
     $appointment = notificationAppointment($patient, $doctor);
 
-    $this->actingAs($admin)->patch(route('admin.appointments.approve', $appointment))->assertSessionHasNoErrors();
+    $this->actingAs($admin)->patch(route('admin.appointments.approve', $appointment), [
+        'override_reason' => 'Manual exception review.',
+    ])->assertSessionHasNoErrors();
 
     expect($patient->notifications()->where('data->type', 'appointment_confirmed')->count())->toBe(1)
         ->and($doctor->notifications()->where('data->type', 'appointment_assigned')->count())->toBe(1);

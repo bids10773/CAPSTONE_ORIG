@@ -77,28 +77,28 @@
     --motion-entrance: 420ms;
     --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
-    --background: #f7faf7;
+    --background: #f2f6f1;
     --foreground: #1f2937;
 
     --primary: #6b8f71;
     --primary-foreground: #ffffff;
 
-    --sidebar: #ffffff;
+    --sidebar: #fafcf9;
     --sidebar-foreground: #374151;
     --sidebar-primary: #6b8f71;
     --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: #f3f7f2;
     --sidebar-accent-foreground: #455e4a;
-    --sidebar-border: #e3e9e3;
+    --sidebar-border: #dce5dc;
 
-    --card: oklch(1 0 0);
+    --card: #fdfefd;
     --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
+    --popover: #ffffff;
     --popover-foreground: oklch(0.145 0 0);
 
     --secondary: #f3f7f2;
     --secondary-foreground: var(--primary);
-    --muted: #f5f7f5;
+    --muted: #edf2ec;
     --muted-foreground: #6b7280;
     --accent: #e3ede1;
     --accent-foreground: var(--primary);
@@ -106,8 +106,8 @@
     --destructive: #d65c5c;
     --destructive-foreground: oklch(0.985 0 0);
 
-    --border: #e3e9e3;
-    --input: #e3e9e3;
+    --border: #dce5dc;
+    --input: #dce5dc;
     --ring: var(--primary);
     --radius: 0.875rem;
 }
@@ -881,5 +881,19 @@
     .auth-panel-right button[role='checkbox'][data-state='checked'] svg {
         color: white !important;
         stroke: white !important;
+    }
+}
+
+@layer components {
+    /* Statuses are intentionally plain colored text across every workspace. */
+    .status-text-only {
+        min-height: 0 !important;
+        width: fit-content;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        line-height: 1.25rem;
     }
 }

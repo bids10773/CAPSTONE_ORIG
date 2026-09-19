@@ -44,7 +44,7 @@ export default function ShowCompany({ company }: any) {
                                 </p>
                             </div>
                         </div>
-                        <span className="self-start rounded-full bg-white/15 px-3 py-1 text-sm font-semibold capitalize">
+                        <span className="status-text-only self-start text-sm font-bold capitalize">
                             {company.status}
                         </span>
                     </header>

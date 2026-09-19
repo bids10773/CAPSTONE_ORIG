@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { formatAppointmentDateTime } from '@/lib/appointment-date-time';
 
 const EXAMINATION_PURPOSES = [
     ['pre_employment', 'Pre-employment'],
@@ -48,6 +49,7 @@ interface Appointment {
     id: number;
     patient_name?: string | null;
     appointment_date: string;
+    start_time?: string | null;
     status: string;
     examination_purpose: string;
     appointment_type: string;
@@ -56,6 +58,7 @@ interface Appointment {
 interface BulkAppointment {
     id: number;
     appointment_date: string;
+    start_time?: string | null;
     status: string;
     service_types: string[];
     report_status?: string | null;
@@ -737,8 +740,9 @@ export default function CompanyDashboard() {
                                                 key={appointment.id}
                                                 value={appointment.id}
                                             >
-                                                {formatDate(
+                                                {formatAppointmentDateTime(
                                                     appointment.appointment_date,
+                                                    appointment.start_time,
                                                 )}{' '}
                                                 - {appointment.status}
                                             </option>
@@ -879,8 +883,9 @@ export default function CompanyDashboard() {
                                 >
                                     <div>
                                         <p className="text-sm font-medium">
-                                            {formatDate(
+                                            {formatAppointmentDateTime(
                                                 appointment.appointment_date,
+                                                appointment.start_time,
                                             )}
                                         </p>
                                         <p className="mt-0.5 text-[11px] text-slate-400">
@@ -900,7 +905,7 @@ export default function CompanyDashboard() {
                                             Download final Excel
                                         </a>
                                     ) : (
-                                        <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700">
+                                        <span className="status-text-only text-[10px] font-bold text-amber-700">
                                             {appointment.report_status ===
                                             'ready_for_review'
                                                 ? 'Under clinic review'
@@ -1035,12 +1040,13 @@ export default function CompanyDashboard() {
                                                     'Employee appointment'}
                                             </p>
                                             <p className="mt-0.5 text-[11px] text-slate-400">
-                                                {formatDate(
+                                                {formatAppointmentDateTime(
                                                     appointment.appointment_date,
+                                                    appointment.start_time,
                                                 )}
                                             </p>
                                         </div>
-                                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 capitalize">
+                                        <span className="status-text-only text-[10px] font-bold text-slate-600 capitalize">
                                             {appointment.status.replaceAll(
                                                 '_',
                                                 ' ',
@@ -1242,7 +1248,7 @@ function PreviewTable({
                                 </td>
                                 <td className="px-3 py-3">
                                     <span
-                                        className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold capitalize ring-1 ring-inset ${statusStyle[row.status]}`}
+                                        className={`status-text-only inline-flex text-[10px] font-bold capitalize ${statusStyle[row.status]}`}
                                     >
                                         {row.status === 'valid'
                                             ? 'Ready to import'

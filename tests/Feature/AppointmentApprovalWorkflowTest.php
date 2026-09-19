@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Appointment;
-use App\Models\SecurityAudit;
 use App\Models\User;
 use App\Notifications\AppointmentConfirmed;
 use App\Notifications\AppointmentRejected;
@@ -53,14 +52,92 @@ test('admin confirms a pending individual request and the action is audited', fu
     $patient = approvalUser('patient');
     $appointment = pendingRequest($patient, approvalDoctor());
 
-    $this->actingAs($admin)->patch(route('admin.appointments.approve', $appointment))->assertSessionHasNoErrors();
+    $this->actingAs($admin)
+        ->patch(route('admin.appointments.approve', $appointment))
+        ->assertSessionHasErrors('override_reason');
+    $this->patch(route('admin.appointments.approve', $appointment), [
+        'override_reason' => 'Receptionist escalation approved after schedule review.',
+    ])->assertSessionHasNoErrors();
 
     expect($appointment->refresh()->status)->toBe('accepted')
         ->and($appointment->processed_by)->toBe($admin->id)
         ->and($appointment->processed_at)->not->toBeNull();
     $this->assertDatabaseHas('security_audits', ['action' => 'appointment_accepted', 'actor_id' => $admin->id]);
+    $audit = \App\Models\SecurityAudit::query()->where('action', 'appointment_accepted')->latest('id')->firstOrFail();
+    expect($audit->metadata['decision_source'])->toBe('administrative_override')
+        ->and($audit->metadata['administrative_reason'])->toBe('Receptionist escalation approved after schedule review.');
     Notification::assertSentTo($patient, AppointmentConfirmed::class);
 });
+
+test('admin cannot bypass the documented override through the general status endpoint', function () {
+    $admin = approvalUser('admin');
+    $appointment = pendingRequest(approvalUser('patient'), approvalDoctor());
+
+    $this->actingAs($admin)
+        ->patch(route('admin.appointments.update-status', $appointment), [
+            'status' => 'accepted',
+        ])
+        ->assertSessionHasErrors('appointment');
+
+    expect($appointment->refresh()->status)->toBe('pending');
+});
+
+test('receptionist can review and confirm pending individual requests', function () {
+    $receptionist = approvalUser('receptionist');
+    $patient = approvalUser('patient');
+    $appointment = pendingRequest($patient, approvalDoctor());
+
+    $this->actingAs($receptionist)
+        ->get(route('receptionist.appointment-requests.index'))
+        ->assertOk()
+        ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->component('receptionist/appointment-requests')
+            ->has('appointments.data', 1)
+            ->where('appointments.data.0.id', $appointment->id)
+            ->where('pendingCount', 1));
+
+    $this->patch(route('receptionist.appointment-requests.approve', $appointment))
+        ->assertSessionHasNoErrors();
+
+    expect($appointment->refresh()->status)->toBe('accepted')
+        ->and($appointment->processed_by)->toBe($receptionist->id);
+    $this->assertDatabaseHas('security_audits', [
+        'action' => 'appointment_accepted',
+        'actor_id' => $receptionist->id,
+    ]);
+    Notification::assertSentTo($patient, AppointmentConfirmed::class);
+});
+
+test('receptionist rejection requires a reason and is audited', function () {
+    $receptionist = approvalUser('receptionist');
+    $patient = approvalUser('patient');
+    $appointment = pendingRequest($patient, approvalDoctor());
+
+    $this->actingAs($receptionist)
+        ->patch(route('receptionist.appointment-requests.reject', $appointment))
+        ->assertSessionHasErrors('reason');
+
+    $this->patch(route('receptionist.appointment-requests.reject', $appointment), [
+        'reason' => 'doctor_unavailable',
+    ])->assertSessionHasNoErrors();
+
+    expect($appointment->refresh()->status)->toBe('rejected')
+        ->and($appointment->processed_by)->toBe($receptionist->id);
+    $this->assertDatabaseHas('security_audits', [
+        'action' => 'appointment_rejected',
+        'actor_id' => $receptionist->id,
+    ]);
+    Notification::assertSentTo($patient, AppointmentRejected::class);
+});
+
+test('non receptionists cannot use receptionist approval routes', function (string $role) {
+    $actor = approvalUser($role);
+    $appointment = pendingRequest(approvalUser('patient'), approvalDoctor());
+
+    $this->actingAs($actor)
+        ->patch(route('receptionist.appointment-requests.approve', $appointment))
+        ->assertForbidden();
+})->with(['patient', 'doctor']);
 
 test('admin rejection requires a reason, releases the request, and notifies the patient', function () {
     $admin = approvalUser('admin');
@@ -88,7 +165,9 @@ test('a request cannot be processed twice', function () {
     $admin = approvalUser('admin');
     $appointment = pendingRequest(approvalUser('patient'), approvalDoctor());
 
-    $this->actingAs($admin)->patch(route('admin.appointments.approve', $appointment));
+    $this->actingAs($admin)->patch(route('admin.appointments.approve', $appointment), [
+        'override_reason' => 'Manual exception review.',
+    ]);
     $this->patch(route('admin.appointments.reject', $appointment), ['reason' => 'other', 'details' => 'Changed'])->assertSessionHasErrors('appointment');
 
     expect($appointment->refresh()->status)->toBe('accepted');
@@ -123,6 +202,8 @@ test('an appointment in the past cannot be confirmed', function () {
     $doctor->update(['availability' => [['day' => 'fri', 'start' => '07:00', 'end' => '12:00']]]);
     $appointment = pendingRequest(approvalUser('patient'), $doctor, ['appointment_date' => '2026-08-14']);
 
-    $this->actingAs($admin)->patch(route('admin.appointments.approve', $appointment))->assertSessionHasErrors('appointment');
+    $this->actingAs($admin)->patch(route('admin.appointments.approve', $appointment), [
+        'override_reason' => 'Manual exception review.',
+    ])->assertSessionHasErrors('appointment');
     expect($appointment->refresh()->status)->toBe('pending');
 });

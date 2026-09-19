@@ -19,6 +19,46 @@ test('receptionist can view the focused dashboard and walk-in queue', function (
         ->assertOk();
 });
 
+test('receptionist can search todays queue by patient details', function () {
+    $staff = receptionist();
+    $matchingPatient = User::factory()->create([
+        'role' => 'patient',
+        'first_name' => 'Maria',
+        'last_name' => 'Santos',
+        'contact' => '09171234567',
+    ]);
+    $otherPatient = User::factory()->create([
+        'role' => 'patient',
+        'first_name' => 'Juan',
+        'last_name' => 'Cruz',
+    ]);
+
+    foreach ([$matchingPatient, $otherPatient] as $patient) {
+        Appointment::create([
+            'user_id' => $patient->id,
+            'appointment_date' => today(),
+            'type' => 'individual',
+            'status' => 'accepted',
+            'service_types' => ['PE'],
+        ]);
+    }
+
+    $this->actingAs($staff)
+        ->get(route('receptionist.queue.index', ['search' => 'Maria Santos']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('walkIns.data', 1)
+            ->where('walkIns.data.0.user.id', $matchingPatient->id)
+            ->where('filters.search', 'Maria Santos'));
+
+    $this->actingAs($staff)
+        ->get(route('receptionist.queue.index', ['search' => '09171234567']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('walkIns.data', 1)
+            ->where('walkIns.data.0.user.id', $matchingPatient->id));
+});
+
 test('receptionist dashboard includes todays active online queue only', function () {
     $patient = User::factory()->create(['role' => 'patient', 'first_name' => 'Online']);
     Appointment::create([
@@ -43,6 +83,7 @@ test('receptionist dashboard includes todays active online queue only', function
         ->assertInertia(fn (Assert $page) => $page
             ->component('receptionist/dashboard')
             ->where('metrics.online', 1)
+            ->where('metrics.pendingRequests', 1)
             ->has('onlineQueue', 1)
             ->where('onlineQueue.0.patient_name', fn (string $name): bool => str_contains($name, 'Online'))
             ->where('onlineQueue.0.services', ['PE', 'Pregnancy Test']));
@@ -279,7 +320,7 @@ test('receptionist cannot register walk ins while the clinic is closed on weeken
     ]);
 });
 
-test('receptionist can mark online patients arrived but cannot change walk in clinical status', function () {
+test('receptionist can mark accepted online patients arrived but cannot bypass approval or change walk in clinical status', function () {
     $staff = receptionist();
     $patient = User::factory()->create();
     $walkIn = Appointment::create([
@@ -293,7 +334,7 @@ test('receptionist can mark online patients arrived but cannot change walk in cl
         'user_id' => $patient->id,
         'appointment_date' => now(),
         'type' => 'individual',
-        'status' => 'pending',
+        'status' => 'accepted',
         'service_types' => ['PE'],
     ]);
 
@@ -302,6 +343,20 @@ test('receptionist can mark online patients arrived but cannot change walk in cl
         ->assertRedirect();
 
     expect($online->refresh()->status)->toBe('arrived');
+
+    $pendingOnline = Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => now(),
+        'type' => 'individual',
+        'status' => 'pending',
+        'service_types' => ['PE'],
+    ]);
+
+    $this->actingAs($staff)
+        ->patch(route('receptionist.walk-ins.status', $pendingOnline), ['status' => 'arrived'])
+        ->assertSessionHasErrors('status');
+
+    expect($pendingOnline->refresh()->status)->toBe('pending');
 
     $this->actingAs($staff)
         ->patch(route('receptionist.walk-ins.status', $walkIn), ['status' => 'arrived'])

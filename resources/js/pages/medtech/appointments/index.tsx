@@ -4,6 +4,7 @@ import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
+import { formatAppointmentDateTime } from '@/lib/appointment-date-time';
 import { examinationPurposeLabel } from '@/lib/appointment-status';
 import type { BreadcrumbItem } from '@/types';
 
@@ -15,6 +16,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface Appointment {
     id: number;
     appointment_date: string;
+    start_time?: string | null;
     status: string;
     type: string;
     examination_purpose?: string | null;
@@ -55,15 +57,8 @@ export default function MedTechAppointmentsIndex({
     filters,
     pageTitle,
 }: Props) {
-    const formatDate = (date: string) => {
-        return new Date(date).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    };
+    const formatDate = (date: string, startTime?: string | null) =>
+        formatAppointmentDateTime(date, startTime);
 
     const startLabTest = (appointmentId: number) => {
         router.visit(`/medtech/lab-results/${appointmentId}`);
@@ -156,10 +151,12 @@ export default function MedTechAppointmentsIndex({
                                                     className="block truncate whitespace-nowrap"
                                                     title={formatDate(
                                                         apt.appointment_date,
+                                                        apt.start_time,
                                                     )}
                                                 >
                                                     {formatDate(
                                                         apt.appointment_date,
+                                                        apt.start_time,
                                                     )}
                                                 </span>
                                             </td>
@@ -183,7 +180,7 @@ export default function MedTechAppointmentsIndex({
                                             </td>
                                             <td className="px-6 py-4">
                                                 {apt.lab_result ? (
-                                                    <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                                                    <span className="status-text-only inline-flex text-xs font-bold text-amber-800">
                                                         For Verification
                                                     </span>
                                                 ) : (

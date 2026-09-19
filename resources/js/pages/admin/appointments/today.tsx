@@ -58,17 +58,17 @@ type Props = {
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Appointments', href: '/admin/appointments' },
-    { title: "Today's Appointments", href: '/admin/todays-appointments' },
+    { title: "Today's Clinic Overview", href: '/admin/todays-appointments' },
 ];
 
 const statusStyles: Record<string, string> = {
-    pending: 'border-amber-200 bg-amber-50 text-amber-800',
-    accepted: 'border-indigo-200 bg-indigo-50 text-indigo-700',
-    arrived: 'border-blue-200 bg-blue-50 text-blue-700',
-    for_diagnostics: 'border-cyan-200 bg-cyan-50 text-cyan-700',
-    for_xray: 'border-violet-200 bg-violet-50 text-violet-700',
-    for_final_evaluation: 'border-purple-200 bg-purple-50 text-purple-700',
-    completed: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    pending: 'text-amber-700 dark:text-amber-400',
+    accepted: 'text-indigo-700 dark:text-indigo-400',
+    arrived: 'text-blue-700 dark:text-blue-400',
+    for_diagnostics: 'text-cyan-700 dark:text-cyan-400',
+    for_xray: 'text-violet-700 dark:text-violet-400',
+    for_final_evaluation: 'text-purple-700 dark:text-purple-400',
+    completed: 'text-emerald-700 dark:text-emerald-400',
 };
 
 const typeLabels: Record<string, string> = {
@@ -165,13 +165,9 @@ export default function TodayAppointments({
 
     function accept(appointment: Appointment) {
         setUpdatingId(appointment.id);
-        const endpoint =
-            appointment.type === 'individual'
-                ? `/admin/appointments/${appointment.id}/approve`
-                : `/admin/appointments/${appointment.id}/status`;
         router.patch(
-            endpoint,
-            appointment.type === 'individual' ? {} : { status: 'accepted' },
+            `/admin/appointments/${appointment.id}/status`,
+            { status: 'accepted' },
             {
                 preserveScroll: true,
                 onSuccess: () => setSelectedAppointment(null),
@@ -188,24 +184,38 @@ export default function TodayAppointments({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Today's Appointments" />
-            <main className="space-y-6 p-4 sm:p-6 lg:p-8">
-                <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                    <div>
-                        <p className="flex items-center gap-2 text-sm font-semibold text-moss-700">
-                            <CalendarClock className="size-4" /> {formattedDate}
-                        </p>
-                    </div>
-                    <div className="rounded-xl border border-moss-200 bg-moss-50 px-5 py-3">
-                        <p className="text-xs font-semibold tracking-wide text-moss-700 uppercase">
-                            Today's total
-                        </p>
-                        <p className="mt-1 text-2xl font-bold text-moss-950">
-                            {summary.total}{' '}
-                            <span className="text-sm font-medium">
-                                patients
+            <Head title="Today's Clinic Overview" />
+            <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+                <header className="relative overflow-hidden rounded-[2rem] bg-moss-800 p-6 text-white shadow-[0_18px_45px_-30px_rgba(23,50,34,.8)] sm:p-8">
+                    <div className="absolute -top-20 -right-16 size-64 rounded-full bg-white/10 blur-3xl" />
+                    <div className="absolute -bottom-28 left-1/3 size-56 rounded-full bg-moss-400/20 blur-3xl" />
+                    <div className="relative flex flex-col justify-between gap-8 md:flex-row md:items-end">
+                        <div>
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold tracking-[0.14em] text-moss-100 uppercase">
+                                <CalendarClock className="size-4" /> Live clinic
+                                overview
                             </span>
-                        </p>
+                            <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl">
+                                Today&apos;s Clinic Overview
+                            </h1>
+                            <p className="mt-2 max-w-2xl text-sm text-moss-100/80 sm:text-base">
+                                Monitor patient flow, current workload, and
+                                completed visits without taking over routine
+                                receptionist decisions.
+                            </p>
+                            <p className="mt-5 flex items-center gap-2 text-sm font-semibold text-moss-100">
+                                <CalendarClock className="size-4" />{' '}
+                                {formattedDate}
+                            </p>
+                        </div>
+                        <div className="w-fit rounded-2xl border border-white/15 bg-white/10 px-6 py-4 backdrop-blur-sm">
+                            <p className="text-xs font-bold tracking-[0.14em] text-moss-100 uppercase">
+                                Patients today
+                            </p>
+                            <p className="mt-1 text-4xl font-black tracking-tight">
+                                {summary.total}
+                            </p>
+                        </div>
                     </div>
                 </header>
 
@@ -217,33 +227,42 @@ export default function TodayAppointments({
                         label="Total"
                         value={summary.total}
                         icon={CalendarClock}
+                        tone="moss"
                     />
                     <SummaryCard
                         label="Waiting / Confirmed"
                         value={summary.waiting}
                         icon={Clock3}
+                        tone="amber"
                     />
                     <SummaryCard
                         label="In Progress"
                         value={summary.in_progress}
                         icon={Stethoscope}
+                        tone="blue"
                     />
                     <SummaryCard
                         label="Completed"
                         value={summary.completed}
                         icon={CheckCircle2}
+                        tone="emerald"
                     />
                 </section>
 
-                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                    <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:p-5">
-                        <h1 className="shrink-0 text-2xl font-semibold tracking-[-.03em] text-slate-950 dark:text-slate-100">
-                            Today's Appointments
-                        </h1>
+                <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_12px_35px_-28px_rgba(15,23,42,.35)] dark:border-border dark:bg-card">
+                    <div className="flex flex-col gap-4 border-b border-slate-200 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between dark:border-border">
+                        <div>
+                            <h2 className="text-xl font-bold tracking-tight text-slate-950 dark:text-slate-100">
+                                Today&apos;s patient flow
+                            </h2>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-muted-foreground">
+                                Automatically refreshed every 30 seconds
+                            </p>
+                        </div>
                         <label htmlFor="today-search" className="sr-only">
                             Search today's patients
                         </label>
-                        <div className="relative min-w-0 flex-1 sm:min-w-64">
+                        <div className="relative w-full lg:max-w-md">
                             <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
                             <input
                                 id="today-search"
@@ -252,14 +271,14 @@ export default function TodayAppointments({
                                     setSearch(event.target.value)
                                 }
                                 placeholder="Search today's patients..."
-                                className="h-11 w-full rounded-xl border border-slate-300 bg-white pr-11 pl-10 text-sm outline-none focus:border-moss-500 focus:ring-2 focus:ring-moss-100"
+                                className="h-12 w-full rounded-2xl border border-slate-300 bg-slate-50 pr-11 pl-10 text-sm transition outline-none focus:border-moss-500 focus:bg-white focus:ring-4 focus:ring-moss-500/15 dark:border-border dark:bg-background"
                             />
                             {search && (
                                 <button
                                     type="button"
                                     onClick={() => setSearch('')}
                                     aria-label="Clear search"
-                                    className="absolute top-0 right-0 flex h-11 w-11 items-center justify-center text-slate-400 hover:text-slate-700"
+                                    className="absolute top-0 right-0 flex h-12 w-11 items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                                 >
                                     <X className="size-4" />
                                 </button>
@@ -271,7 +290,7 @@ export default function TodayAppointments({
                         <>
                             <div className="hidden overflow-x-auto md:block">
                                 <table className="w-full text-left text-sm">
-                                    <thead className="bg-slate-50 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                                    <thead className="bg-slate-50/80 text-[11px] font-bold tracking-[0.12em] text-slate-500 uppercase dark:bg-background/60 dark:text-slate-400">
                                         <tr>
                                             <th className="px-5 py-3">
                                                 Patient
@@ -291,7 +310,7 @@ export default function TodayAppointments({
                                             </th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody className="divide-y divide-slate-100 dark:divide-border">
                                         {appointments.data.map(
                                             (appointment) => (
                                                 <AppointmentRow
@@ -306,7 +325,7 @@ export default function TodayAppointments({
                                     </tbody>
                                 </table>
                             </div>
-                            <div className="divide-y divide-slate-100 md:hidden">
+                            <div className="divide-y divide-slate-100 md:hidden dark:divide-border">
                                 {appointments.data.map((appointment) => (
                                     <AppointmentCard
                                         key={appointment.id}
@@ -377,7 +396,7 @@ export default function TodayAppointments({
                                         }
                                     />
                                 )}
-                                <div className="rounded-xl bg-slate-50 p-4">
+                                <div className="rounded-xl bg-slate-50 p-4 dark:bg-background">
                                     <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
                                         Status
                                     </p>
@@ -397,22 +416,38 @@ export default function TodayAppointments({
                                     Close
                                 </Button>
                                 <div className="flex flex-wrap gap-2">
-                                    {selectedAppointment.status ===
-                                        'pending' && (
-                                        <Button
-                                            type="button"
-                                            disabled={
-                                                updatingId ===
-                                                selectedAppointment.id
-                                            }
-                                            onClick={() =>
-                                                accept(selectedAppointment)
-                                            }
-                                        >
-                                            <CheckCircle2 className="size-4" />
-                                            Accept Appointment
-                                        </Button>
-                                    )}
+                                    {selectedAppointment.status === 'pending' &&
+                                        selectedAppointment.type !==
+                                            'individual' && (
+                                            <Button
+                                                type="button"
+                                                disabled={
+                                                    updatingId ===
+                                                    selectedAppointment.id
+                                                }
+                                                onClick={() =>
+                                                    accept(selectedAppointment)
+                                                }
+                                            >
+                                                <CheckCircle2 className="size-4" />
+                                                Confirm Appointment
+                                            </Button>
+                                        )}
+                                    {selectedAppointment.status === 'pending' &&
+                                        selectedAppointment.type ===
+                                            'individual' && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    router.visit(
+                                                        '/admin/appointments?status=pending&type=individual',
+                                                    )
+                                                }
+                                            >
+                                                Open oversight page
+                                            </Button>
+                                        )}
                                     {![
                                         'completed',
                                         'cancelled',
@@ -457,17 +492,17 @@ function AppointmentRow({
         <tr
             className={
                 appointment.status === 'completed'
-                    ? 'bg-slate-50/70 text-slate-500'
-                    : 'text-slate-700'
+                    ? 'bg-slate-50/60 text-slate-500 dark:bg-background/40 dark:text-slate-400'
+                    : 'text-slate-700 transition-colors hover:bg-moss-50/40 dark:text-slate-200 dark:hover:bg-accent/40'
             }
         >
             <td className="px-5 py-4">
                 <div className="flex items-center gap-3">
-                    <span className="flex size-9 items-center justify-center rounded-full bg-moss-50 text-moss-700">
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-moss-50 text-moss-700 dark:bg-moss-950 dark:text-moss-300">
                         <UserRound className="size-4" />
                     </span>
                     <div>
-                        <p className="font-semibold text-slate-900">
+                        <p className="font-semibold text-slate-900 dark:text-slate-100">
                             {fullName(appointment.user)}
                         </p>
                         {appointment.company && (
@@ -504,11 +539,11 @@ function AppointmentCard({
 }) {
     return (
         <article
-            className={`space-y-3 p-4 ${appointment.status === 'completed' ? 'bg-slate-50/70' : ''}`}
+            className={`space-y-4 p-5 ${appointment.status === 'completed' ? 'bg-slate-50/70 dark:bg-background/40' : ''}`}
         >
             <div className="flex items-start justify-between gap-3">
                 <div>
-                    <h2 className="font-semibold text-slate-950">
+                    <h2 className="font-semibold text-slate-950 dark:text-slate-100">
                         {fullName(appointment.user)}
                     </h2>
                     <p className="mt-1 text-sm text-slate-500">
@@ -521,7 +556,7 @@ function AppointmentCard({
                 </div>
                 <StatusBadge status={appointment.status} />
             </div>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
                 Doctor: {fullName(appointment.doctor)}
             </p>
             <Actions appointment={appointment} onView={onView} />
@@ -552,11 +587,13 @@ function Actions({
 
 function Detail({ label, value }: { label: string; value: string }) {
     return (
-        <div className="rounded-xl bg-slate-50 p-4">
+        <div className="rounded-xl bg-slate-50 p-4 dark:bg-background">
             <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
                 {label}
             </p>
-            <p className="mt-1 font-semibold text-slate-900">{value}</p>
+            <p className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
+                {value}
+            </p>
         </div>
     );
 }
@@ -564,7 +601,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 function StatusBadge({ status }: { status: string }) {
     return (
         <span
-            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${statusStyles[status] ?? 'border-slate-200 bg-slate-50 text-slate-700'}`}
+            className={`inline-flex text-xs font-bold whitespace-nowrap ${statusStyles[status] ?? 'text-slate-700 dark:text-slate-300'}`}
         >
             {appointmentStatusLabel(status)}
         </span>
@@ -573,7 +610,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function TypeBadge({ type }: { type: string }) {
     return (
-        <span className="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+        <span className="inline-flex rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-accent dark:text-slate-200">
             {typeLabels[type] ?? type}
         </span>
     );
@@ -583,19 +620,35 @@ function SummaryCard({
     label,
     value,
     icon: Icon,
+    tone,
 }: {
     label: string;
     value: number;
     icon: React.ComponentType<{ className?: string }>;
+    tone: 'moss' | 'amber' | 'blue' | 'emerald';
 }) {
+    const tones = {
+        moss: 'bg-moss-50 text-moss-700 dark:bg-moss-950 dark:text-moss-300',
+        amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+        blue: 'bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300',
+        emerald:
+            'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+    };
+
     return (
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <span className="flex size-10 items-center justify-center rounded-lg bg-moss-50 text-moss-700">
+        <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-border dark:bg-card">
+            <span
+                className={`flex size-12 items-center justify-center rounded-2xl ${tones[tone]}`}
+            >
                 <Icon className="size-5" />
             </span>
             <div>
-                <p className="text-xs font-medium text-slate-500">{label}</p>
-                <p className="text-xl font-bold text-slate-950">{value}</p>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                    {label}
+                </p>
+                <p className="mt-0.5 text-2xl font-bold text-slate-950 dark:text-white">
+                    {value}
+                </p>
             </div>
         </div>
     );
@@ -613,7 +666,7 @@ function EmptyState({
             <span className="flex size-14 items-center justify-center rounded-full bg-moss-50 text-moss-700">
                 <CalendarClock className="size-7" />
             </span>
-            <h2 className="mt-4 text-lg font-semibold text-slate-950">
+            <h2 className="mt-4 text-lg font-semibold text-slate-950 dark:text-slate-100">
                 {search
                     ? 'No patient found'
                     : 'No appointments scheduled today.'}

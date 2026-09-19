@@ -7,6 +7,7 @@ use App\Http\Requests\StoreWalkInRequest;
 use App\Http\Requests\UpdateWalkInStatusRequest;
 use App\Models\Appointment;
 use App\Models\User;
+use App\Services\AppointmentApprovalService;
 use App\Services\AppointmentSchedulingService;
 use App\Services\WalkInDoctorSlotService;
 use App\Services\WalkInService;
@@ -41,6 +42,81 @@ class ReceptionistWalkInController extends Controller
         return $this->renderIndex($request, 'patients');
     }
 
+    public function appointmentRequests(Request $request): Response
+    {
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', Rule::in(['pending', 'accepted', 'rejected'])],
+        ]);
+        $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
+        $status = $request->has('status')
+            ? $request->string('status')->toString()
+            : 'pending';
+
+        $appointments = Appointment::query()
+            ->with([
+                'user:id,first_name,middle_name,last_name,email,contact',
+                'user.patientProfile:user_id,birthdate,sex',
+                'doctor:id,first_name,last_name',
+                'processedBy:id,first_name,last_name',
+            ])
+            ->where('type', 'individual')
+            ->whereIn('status', ['pending', 'accepted', 'rejected'])
+            ->when($status !== '', fn ($query) => $query->where('status', $status))
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->whereHas('user', function ($patient) use ($search): void {
+                    foreach (preg_split('/\s+/', $search) ?: [] as $term) {
+                        $like = '%'.SearchTerm::forLike($term).'%';
+                        $patient->where(fn ($match) => $match
+                            ->where('first_name', 'like', $like)
+                            ->orWhere('middle_name', 'like', $like)
+                            ->orWhere('last_name', 'like', $like)
+                            ->orWhere('email', 'like', $like));
+                    }
+                });
+            })
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+            ->orderBy('appointment_date')
+            ->orderBy('start_time')
+            ->paginate($this->perPage($request))
+            ->withQueryString();
+
+        return Inertia::render('receptionist/appointment-requests', [
+            'appointments' => $appointments,
+            'filters' => compact('search', 'status'),
+            'pendingCount' => Appointment::query()
+                ->where('type', 'individual')
+                ->where('status', 'pending')
+                ->count(),
+        ]);
+    }
+
+    public function approveAppointment(Request $request, Appointment $appointment): RedirectResponse
+    {
+        app(AppointmentApprovalService::class)->accept($appointment, $request->user());
+
+        return back()->with('success', 'Appointment confirmed successfully.');
+    }
+
+    public function rejectAppointment(Request $request, Appointment $appointment): RedirectResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', Rule::in(AppointmentApprovalService::REJECTION_REASONS)],
+            'details' => ['nullable', 'string', 'max:500', 'required_if:reason,other'],
+        ], [
+            'details.required_if' => 'Please provide a short explanation when selecting Other.',
+        ]);
+
+        app(AppointmentApprovalService::class)->reject(
+            $appointment,
+            $request->user(),
+            $validated['reason'],
+            $validated['details'] ?? null,
+        );
+
+        return back()->with('success', 'Appointment request rejected.');
+    }
+
     private function renderIndex(Request $request, string $mode): Response
     {
         abort_unless($request->user()->can('walkin.view'), 403);
@@ -49,7 +125,6 @@ class ReceptionistWalkInController extends Controller
         $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
         $status = $request->string('status')->toString();
         $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
-        $likeSearch = SearchTerm::forLike($search);
         $queuePositions = Appointment::query()
             ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
             ->whereHas('user', fn ($query) => $query->where('role', 'patient'))
@@ -67,10 +142,21 @@ class ReceptionistWalkInController extends Controller
             ->whereHas('user', fn ($query) => $query->where('role', 'patient'))
             ->whereDate('appointment_date', today())
             ->when($status !== '', fn ($query) => $query->where('status', $status))
-            ->when($search !== '', fn ($query) => $query->whereHas('user', fn ($patient) => $patient
-                ->where('first_name', 'like', "%{$likeSearch}%")
-                ->orWhere('last_name', 'like', "%{$likeSearch}%")
-                ->orWhere('email', 'like', "%{$likeSearch}%")))
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->whereHas('user', function ($patient) use ($search): void {
+                    foreach (preg_split('/\s+/', $search) ?: [] as $term) {
+                        $like = '%'.SearchTerm::forLike($term).'%';
+                        $patient->where(function ($match) use ($like): void {
+                            $match
+                                ->where('first_name', 'like', $like)
+                                ->orWhere('middle_name', 'like', $like)
+                                ->orWhere('last_name', 'like', $like)
+                                ->orWhere('email', 'like', $like)
+                                ->orWhere('contact', 'like', $like);
+                        });
+                    }
+                });
+            })
             ->orderByRaw("CASE WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type <> 'walk_in' AND status IN ('pending', 'accepted') THEN 2 WHEN type = 'walk_in' THEN 3 ELSE 4 END")
             ->orderByRaw('COALESCE(start_time, arrived_at, created_at)')
             ->orderBy('id')
@@ -130,6 +216,11 @@ class ReceptionistWalkInController extends Controller
     public function updateStatus(UpdateWalkInStatusRequest $request, Appointment $appointment): RedirectResponse
     {
         abort_unless(in_array($appointment->type, ['individual', 'company_referral'], true) && $appointment->bulk_appointment_id === null, 403);
+        if ($appointment->type === 'individual' && $appointment->status !== 'accepted') {
+            return back()->withErrors([
+                'status' => 'Accept the online appointment request before marking the patient as arrived.',
+            ]);
+        }
         $this->scheduling->checkIn($appointment, $request->user());
 
         return back()->with('success', 'Online appointment patient marked as arrived.');

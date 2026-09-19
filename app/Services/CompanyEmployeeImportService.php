@@ -160,6 +160,17 @@ class CompanyEmployeeImportService
                 if ($existingEmployee) {
                     $result['duplicates']++;
 
+                    if ($existingEmployee->patientProfile && blank($existingEmployee->patientProfile->employee_number)) {
+                        $existingEmployee->loadMissing('company:id,company_name');
+                        $existingEmployee->patientProfile->update([
+                            'employee_number' => $row['employee_number']
+                                ?: PatientProfile::generatedEmployeeNumber(
+                                    $existingEmployee->id,
+                                    $existingEmployee->company->company_name
+                                ),
+                        ]);
+                    }
+
                     if ($bulkAppointment) {
                         $before = $bulkAppointment->bulkEmployees()
                             ->where('user_id', $existingEmployee->id)->exists();

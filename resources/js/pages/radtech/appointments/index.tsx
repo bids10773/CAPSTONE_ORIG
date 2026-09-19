@@ -5,6 +5,7 @@ import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
+import { formatAppointmentDateTime } from '@/lib/appointment-date-time';
 import { examinationPurposeLabel } from '@/lib/appointment-status';
 import type { BreadcrumbItem } from '@/types';
 
@@ -15,6 +16,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface Appointment {
     id: number;
     appointment_date: string;
+    start_time?: string | null;
     status: string;
     type: string;
     examination_purpose?: string | null;
@@ -52,16 +54,8 @@ export default function RadTechAppointmentsIndex(props: Props) {
     const [search, setSearch] = useState(filters.search || '');
     const [status, setStatus] = useState(filters.status || '');
 
-    const formatDate = (date: string) => {
-        return new Date(date).toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    };
+    const formatDate = (date: string, startTime?: string | null) =>
+        formatAppointmentDateTime(date, startTime);
 
     const formatService = (service: any) => {
         try {
@@ -178,10 +172,12 @@ export default function RadTechAppointmentsIndex(props: Props) {
                                                     className="block truncate whitespace-nowrap"
                                                     title={formatDate(
                                                         appointment.appointment_date,
+                                                        appointment.start_time,
                                                     )}
                                                 >
                                                     {formatDate(
                                                         appointment.appointment_date,
+                                                        appointment.start_time,
                                                     )}
                                                 </span>
                                             </td>
@@ -209,7 +205,7 @@ export default function RadTechAppointmentsIndex(props: Props) {
                                             </td>
                                             <td className="px-6 py-4">
                                                 {appointment.xray_report ? (
-                                                    <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                                                    <span className="status-text-only inline-flex text-xs font-bold text-amber-800">
                                                         For Verification
                                                     </span>
                                                 ) : (

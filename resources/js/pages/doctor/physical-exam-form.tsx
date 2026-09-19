@@ -677,7 +677,7 @@ export default function PhysicalExamForm({
                                             {child.label}
                                         </span>
                                         <span
-                                            className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${child.status === 'completed' ? 'bg-emerald-100 text-emerald-800' : child.status === 'draft' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}
+                                            className={`status-text-only text-[10px] font-bold uppercase ${child.status === 'completed' ? 'text-emerald-800' : child.status === 'draft' ? 'text-amber-800' : 'text-slate-600'}`}
                                         >
                                             {child.status}
                                         </span>

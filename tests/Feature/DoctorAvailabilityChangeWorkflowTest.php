@@ -38,6 +38,24 @@ function availabilityWorkflowAppointment(User $patient, User $doctor, string $ti
     ], $attributes));
 }
 
+test('doctor can open their own availability page', function () {
+    $doctor = availabilityWorkflowUser('doctor', [
+        'availability' => [['day' => 'mon', 'start' => '08:00', 'end' => '17:00']],
+    ]);
+
+    $this->actingAs($doctor)
+        ->get(route('doctor.doctor-availability.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/doctor-availability/index')
+            ->where('isAdmin', false)
+            ->has('doctors', 1)
+            ->where('doctors.0.id', $doctor->id)
+            ->where('selectedDoctorId', $doctor->id)
+            ->where('availabilityHours.opensAt', '08:00')
+            ->where('clinicHours.workingDays', ['mon', 'tue', 'wed', 'thu', 'fri']));
+});
+
 test('doctor submission remains pending and warns only patients affected by the requested availability', function () {
     $admin = availabilityWorkflowUser('admin');
     $receptionist = availabilityWorkflowUser('receptionist');

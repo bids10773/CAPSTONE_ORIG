@@ -24,9 +24,9 @@ class AppointmentApprovalService
         'other',
     ];
 
-    public function accept(Appointment $appointment, User $admin): Appointment
+    public function accept(Appointment $appointment, User $actor, ?string $administrativeReason = null): Appointment
     {
-        return DB::transaction(function () use ($appointment, $admin): Appointment {
+        return DB::transaction(function () use ($appointment, $actor, $administrativeReason): Appointment {
             $locked = Appointment::query()->lockForUpdate()->findOrFail($appointment->id);
             $this->assertPendingIndividual($locked);
             $locked->loadMissing('user.patientProfile');
@@ -87,12 +87,12 @@ class AppointmentApprovalService
 
             $locked->update([
                 'status' => 'accepted',
-                'processed_by' => $admin->id,
+                'processed_by' => $actor->id,
                 'processed_at' => now(),
                 'rejection_reason' => null,
                 'rejection_details' => null,
             ]);
-            $this->audit($locked, $admin, 'pending', 'accepted');
+            $this->audit($locked, $actor, 'pending', 'accepted', $administrativeReason);
             DB::afterCommit(function () use ($locked): void {
                 $confirmed = $locked->fresh(['doctor', 'user']);
                 try {
@@ -117,19 +117,19 @@ class AppointmentApprovalService
         }, 3);
     }
 
-    public function reject(Appointment $appointment, User $admin, string $reason, ?string $details): Appointment
+    public function reject(Appointment $appointment, User $actor, string $reason, ?string $details): Appointment
     {
-        return DB::transaction(function () use ($appointment, $admin, $reason, $details): Appointment {
+        return DB::transaction(function () use ($appointment, $actor, $reason, $details): Appointment {
             $locked = Appointment::query()->lockForUpdate()->findOrFail($appointment->id);
             $this->assertPendingIndividual($locked);
             $locked->update([
                 'status' => 'rejected',
                 'rejection_reason' => $reason,
                 'rejection_details' => filled($details) ? trim($details) : null,
-                'processed_by' => $admin->id,
+                'processed_by' => $actor->id,
                 'processed_at' => now(),
             ]);
-            $this->audit($locked, $admin, 'pending', 'rejected');
+            $this->audit($locked, $actor, 'pending', 'rejected');
             DB::afterCommit(function () use ($locked): void {
                 try {
                     $locked->user?->notify(new AppointmentRejected($locked->fresh()));
@@ -155,10 +155,15 @@ class AppointmentApprovalService
         }
     }
 
-    private function audit(Appointment $appointment, User $admin, string $from, string $to): void
-    {
+    private function audit(
+        Appointment $appointment,
+        User $actor,
+        string $from,
+        string $to,
+        ?string $administrativeReason = null,
+    ): void {
         SecurityAudit::create([
-            'actor_id' => $admin->id,
+            'actor_id' => $actor->id,
             'target_user_id' => $appointment->user_id,
             'action' => 'appointment_'.$to,
             'status' => 'success',
@@ -168,6 +173,8 @@ class AppointmentApprovalService
                 'new_status' => $to,
                 'processed_at' => $appointment->processed_at?->toIso8601String(),
                 'rejection_reason' => $appointment->rejection_reason,
+                'decision_source' => $actor->role === 'admin' ? 'administrative_override' : 'receptionist_review',
+                'administrative_reason' => filled($administrativeReason) ? trim($administrativeReason) : null,
             ],
         ]);
     }

@@ -5,6 +5,7 @@ import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
+import { formatAppointmentDateTime } from '@/lib/appointment-date-time';
 import { examinationPurposeLabel } from '@/lib/appointment-status';
 import type { BreadcrumbItem } from '@/types';
 
@@ -18,6 +19,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface Appointment {
     id: number;
     appointment_date: string;
+    start_time?: string | null;
     status: string;
     type: string;
     examination_purpose?: string | null;
@@ -90,16 +92,8 @@ export default function DoctorAppointmentsIndex(props: Props) {
         return () => clearTimeout(timeout);
     }, [search, status, appointments.per_page]);
 
-    const formatDate = (date: string) => {
-        return new Date(date).toLocaleDateString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    };
+    const formatDate = (date: string, startTime?: string | null) =>
+        formatAppointmentDateTime(date, startTime);
 
     const startExam = (appointmentId: number) => {
         router.visit(`/doctor/physical-exam-form/${appointmentId}`);
@@ -198,10 +192,12 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                     className="block truncate whitespace-nowrap"
                                                     title={formatDate(
                                                         appointment.appointment_date,
+                                                        appointment.start_time,
                                                     )}
                                                 >
                                                     {formatDate(
                                                         appointment.appointment_date,
+                                                        appointment.start_time,
                                                     )}
                                                 </span>
                                             </td>
@@ -280,6 +276,7 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                                 Available on{' '}
                                                                 {formatDate(
                                                                     appointment.appointment_date,
+                                                                    appointment.start_time,
                                                                 )}
                                                             </span>
                                                         </span>
