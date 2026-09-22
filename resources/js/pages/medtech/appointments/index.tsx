@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Eye, TestTube, Play } from 'lucide-react';
+import { EditResultButton } from '@/components/edit-result-button';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { StatusBadge } from '@/components/status-badge';
@@ -191,19 +192,29 @@ export default function MedTechAppointmentsIndex({
                                             </td>
                                             <td className="space-x-2 px-6 py-4 text-right">
                                                 {apt.status ===
-                                                    'for_diagnostics' && (
-                                                    <button
-                                                        onClick={() =>
-                                                            startLabTest(apt.id)
-                                                        }
-                                                        className="inline-flex items-center gap-1 rounded-xl bg-green-600 px-3 py-1.5 text-sm text-white transition-colors hover:bg-green-700"
-                                                    >
-                                                        <Play className="h-3 w-3 fill-current" />
-                                                        {apt.lab_result
-                                                            ? 'Edit Result'
-                                                            : 'Encode Lab'}
-                                                    </button>
-                                                )}
+                                                    'for_diagnostics' &&
+                                                    (apt.lab_result ? (
+                                                        <EditResultButton
+                                                            onClick={() =>
+                                                                startLabTest(
+                                                                    apt.id,
+                                                                )
+                                                            }
+                                                        />
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                startLabTest(
+                                                                    apt.id,
+                                                                )
+                                                            }
+                                                            className="inline-flex items-center gap-1 rounded-xl bg-green-600 px-3 py-1.5 text-sm text-white transition-colors hover:bg-green-700"
+                                                        >
+                                                            <Play className="h-3 w-3 fill-current" />
+                                                            Encode Lab
+                                                        </button>
+                                                    ))}
                                                 <Link
                                                     href={`/appointments/${apt.id}`}
                                                     className="inline-flex items-center p-2 text-gray-400 hover:text-moss-600"

@@ -5,6 +5,7 @@ import type { FormEvent } from 'react';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { formatEventDateRange } from '@/lib/appointment-date-time';
 
 type Employee = {
     id: number;
@@ -81,8 +82,11 @@ export default function Attendance({
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
                     Onsite medical examination ·{' '}
-                    {new Date(event.appointment_date).toLocaleDateString()} ·{' '}
-                    {event.event_address ?? event.company?.address}
+                    {formatEventDateRange(
+                        event.appointment_date,
+                        event.event_end_date,
+                    )}{' '}
+                    · {event.event_address ?? event.company?.address}
                 </p>
             </header>
             <section className="grid gap-3 sm:grid-cols-4">

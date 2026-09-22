@@ -8,6 +8,17 @@ use App\Services\BulkAppointmentEnrollmentService;
 use App\Services\LaboratoryFormDefinition;
 use Inertia\Testing\AssertableInertia as Assert;
 
+function createBulkApprovalAssignments(array $staffCounts): array
+{
+    return collect($staffCounts)->flatMap(fn (int $count, string $role) => User::factory()
+        ->count($count)
+        ->create(['role' => $role, 'is_active' => true])
+        ->map(fn (User $staff) => [
+            'user_id' => $staff->id,
+            'service_role' => $role,
+        ]))->values()->all();
+}
+
 test('company accounts always create company bulk appointments', function () {
     $company = Company::create([
         'company_name' => 'Acme Medical Partner',
@@ -40,6 +51,8 @@ test('company accounts always create company bulk appointments', function () {
         'examination_purpose' => 'annual_pe',
         'doctor_id' => null,
         'start_time' => '08:00',
+        'event_contact_name' => $representative->name,
+        'event_contact_number' => $representative->contact,
     ]);
 });
 
@@ -77,6 +90,59 @@ test('company bulk appointments always use annual examination while selected ser
         ->toBe(['drug_test', 'pregnancy']);
 });
 
+test('the clinic decides whether a company bulk appointment needs one or two full days', function () {
+    $company = Company::create([
+        'company_name' => 'Two Day Program Company',
+        'status' => 'active',
+        'is_partnered' => true,
+    ]);
+    $account = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
+    $startDate = today()->next('Monday');
+
+    $this->actingAs($account)->post(route('appointments.store'), [
+        'appointment_date' => $startDate->toDateString(),
+        // Company input is intentionally ignored; the clinic decides at approval.
+        'event_duration_days' => 2,
+        'service_types' => ['PE', 'CBC'],
+        'service_location' => 'onsite',
+        'event_address' => 'Company Main Office',
+        'event_contact_name' => 'Ana Cruz',
+        'event_contact_number' => '09171234567',
+        'expected_employee_count' => 150,
+    ])->assertSessionDoesntHaveErrors();
+
+    $appointment = Appointment::query()->latest('id')->firstOrFail();
+    $employee = User::factory()->create(['role' => 'patient', 'company_id' => $company->id]);
+    $employeeAppointment = app(BulkAppointmentEnrollmentService::class)->enroll($appointment, $employee);
+
+    expect($appointment->appointment_date->toDateString())->toBe($startDate->toDateString())
+        ->and($appointment->event_end_date)->toBeNull()
+        ->and($employeeAppointment->event_end_date)->toBeNull()
+        ->and($appointment->doctor_id)->toBeNull()
+        ->and($appointment->start_time->format('H:i'))->toBe('08:00')
+        ->and($appointment->end_time->format('H:i'))->toBe('17:00');
+
+    $admin = User::factory()->create(['role' => 'admin']);
+    $this->actingAs($admin)
+        ->patch(route('admin.appointments.update-status', $appointment), [
+            'status' => 'accepted',
+            'event_duration_days' => 2,
+            'staff_assignments' => createBulkApprovalAssignments([
+                'doctor' => 3,
+                'medtech' => 2,
+                'receptionist' => 1,
+            ]),
+        ])
+        ->assertSessionDoesntHaveErrors();
+
+    expect($appointment->refresh()->event_end_date->toDateString())
+        ->toBe($startDate->copy()->addDay()->toDateString())
+        ->and($employeeAppointment->refresh()->event_end_date->toDateString())
+        ->toBe($startDate->copy()->addDay()->toDateString())
+        ->and($appointment->onsiteStaff()->where('is_active', true)->count())
+        ->toBe(6);
+});
+
 test('bulk requests have a separate admin approval queue and do not require patient demographics', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $company = Company::create([
@@ -92,6 +158,8 @@ test('bulk requests have a separate admin approval queue and do not require pati
         'user_id' => $representative->id,
         'company_id' => $company->id,
         'appointment_date' => today()->addDay(),
+        'start_time' => '08:00',
+        'end_time' => '17:00',
         'type' => 'company_bulk',
         'status' => 'pending',
         'service_types' => ['PE'],
@@ -114,7 +182,26 @@ test('bulk requests have a separate admin approval queue and do not require pati
             ->has('appointments.data', 0));
 
     $this->actingAs($admin)
-        ->patch(route('admin.appointments.update-status', $bulk), ['status' => 'accepted'])
+        ->patch(route('admin.appointments.update-status', $bulk), [
+            'status' => 'accepted',
+            'event_duration_days' => 1,
+            'staff_assignments' => createBulkApprovalAssignments(['doctor' => 1]),
+        ])
+        ->assertSessionHasErrors('staff_assignments');
+
+    expect($bulk->refresh()->status)->toBe('pending')
+        ->and($bulk->event_end_date)->toBeNull()
+        ->and($bulk->onsiteStaff()->count())->toBe(0);
+
+    $this->actingAs($admin)
+        ->patch(route('admin.appointments.update-status', $bulk), [
+            'status' => 'accepted',
+            'event_duration_days' => 1,
+            'staff_assignments' => createBulkApprovalAssignments([
+                'doctor' => 1,
+                'receptionist' => 1,
+            ]),
+        ])
         ->assertSessionDoesntHaveErrors();
 
     expect($bulk->refresh()->status)->toBe('accepted');
@@ -133,7 +220,10 @@ test('draft bulk requests stay hidden until a masterlist is attached and empty r
     $this->actingAs($admin)->get(route('admin.bulk-appointments.index'))
         ->assertInertia(fn (Assert $page) => $page->has('appointments.data', 0));
     $this->actingAs($admin)->get(route('admin.onsite-events.show', $draft))->assertNotFound();
-    $this->actingAs($admin)->patch(route('admin.appointments.update-status', $draft), ['status' => 'accepted'])
+    $this->actingAs($admin)->patch(route('admin.appointments.update-status', $draft), [
+        'status' => 'accepted',
+        'event_duration_days' => 1,
+    ])
         ->assertSessionHasErrors('masterlist');
     expect($draft->refresh()->status)->toBe('pending');
 });
@@ -182,8 +272,8 @@ test('admin bulk request queue contains parent events but not enrolled employee 
             ->where('employees.data.0.user.id', $employee->id));
 });
 
-test('individual appointments require complete patient details before admin approval', function () {
-    $admin = User::factory()->create(['role' => 'admin']);
+test('individual appointments require complete patient details before receptionist approval', function () {
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
     $patient = User::factory()->create(['contact' => null]);
     $appointmentDate = today()->addDay();
     $doctor = User::factory()->create([
@@ -206,8 +296,8 @@ test('individual appointments require complete patient details before admin appr
         'service_types' => ['PE'],
     ]);
 
-    $this->actingAs($admin)
-        ->patch(route('admin.appointments.update-status', $appointment), ['status' => 'accepted'])
+    $this->actingAs($receptionist)
+        ->patch(route('receptionist.appointment-requests.approve', $appointment))
         ->assertSessionHasErrors('profile');
 
     expect($appointment->refresh()->status)->toBe('pending');
@@ -219,8 +309,8 @@ test('individual appointments require complete patient details before admin appr
         'civil_status' => 'Single',
     ]);
 
-    $this->actingAs($admin)
-        ->patch(route('admin.appointments.update-status', $appointment), ['status' => 'accepted'])
+    $this->actingAs($receptionist)
+        ->patch(route('receptionist.appointment-requests.approve', $appointment))
         ->assertSessionDoesntHaveErrors();
 
     expect($appointment->refresh()->status)->toBe('accepted');
@@ -240,6 +330,8 @@ test('bulk approval schedules every enrolled employee independently under the pa
         'company_id' => $company->id,
         'company_name' => $company->company_name,
         'appointment_date' => today()->addDay(),
+        'start_time' => '08:00',
+        'end_time' => '17:00',
         'type' => 'company_bulk',
         'status' => 'pending',
         'service_types' => ['PE', 'CBC', 'X-Ray'],
@@ -255,7 +347,16 @@ test('bulk approval schedules every enrolled employee independently under the pa
         ->and($childA->medicalExamination)->not->toBeNull();
 
     $this->actingAs($admin)
-        ->patch(route('admin.appointments.update-status', $parent), ['status' => 'accepted'])
+        ->patch(route('admin.appointments.update-status', $parent), [
+            'status' => 'accepted',
+            'event_duration_days' => 1,
+            'staff_assignments' => createBulkApprovalAssignments([
+                'doctor' => 1,
+                'medtech' => 1,
+                'radtech' => 1,
+                'receptionist' => 1,
+            ]),
+        ])
         ->assertSessionDoesntHaveErrors();
 
     expect($childA->refresh()->status)->toBe('accepted')

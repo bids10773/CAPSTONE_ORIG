@@ -131,6 +131,8 @@ class LaboratoryController extends Controller
             return;
         }
 
+        abort_unless($appointment->status === 'completed', 403, 'The appointment is not completed yet.');
+
         abort_unless($appointment->labResult?->isFinalized(), 403, 'The laboratory report has not been finalized yet.');
 
         if ($appointment->isPePackage()) {

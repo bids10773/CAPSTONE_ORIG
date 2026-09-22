@@ -57,6 +57,7 @@ class Appointment extends Model
         'start_time',
         'end_time',
         'appointment_date',
+        'event_end_date',
         'type',
         'status',
         'service_types',
@@ -94,6 +95,7 @@ class Appointment extends Model
     {
         return [
             'appointment_date' => 'datetime',
+            'event_end_date' => 'date',
             'start_time' => 'datetime:H:i',
             'end_time' => 'datetime:H:i',
             'service_types' => 'array',

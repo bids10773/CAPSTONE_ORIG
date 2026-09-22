@@ -42,6 +42,7 @@ type WalkIn = {
         | 'rejected'
         | 'cancelled';
     type: 'walk_in' | 'individual' | 'company_referral';
+    examination_purpose?: string | null;
     service_types: string[];
     appointment_date: string;
     start_time?: string;
@@ -87,6 +88,18 @@ const arrivalLabels = {
     auto_cancelled: 'Auto-cancelled',
     assigned_released_slot: 'Assigned released slot',
 } as const;
+
+const examinationPurposeLabels: Record<string, string> = {
+    pre_employment: 'Pre-employment',
+    annual_pe: 'Annual Physical Exam',
+    medical_clearance: 'Medical Certificate',
+};
+
+function examinationPurposeLabel(value?: string | null): string {
+    if (!value) return 'Not specified';
+
+    return examinationPurposeLabels[value] ?? value.replaceAll('_', ' ');
+}
 
 export default function WalkIns({
     walkIns,
@@ -817,11 +830,11 @@ export default function WalkIns({
                             No patients found for this filter.
                         </div>
                     ) : activeQueue.length > 0 ? (
-                        <div className="grid gap-4 bg-slate-50/60 p-4 lg:grid-cols-2">
+                        <div className="space-y-3 bg-slate-50/60 p-3 sm:p-4">
                             {activeQueue.map((walkIn) => (
                                 <article
                                     key={walkIn.id}
-                                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[auto_minmax(0,1fr)_auto] xl:grid-cols-[auto_minmax(15rem,1fr)_minmax(16rem,1fr)_auto]"
                                 >
                                     <div className="flex h-12 min-w-16 items-center justify-center rounded-xl bg-moss-50 px-2 text-lg font-black text-moss-800">
                                         {walkIn.queue_number}
@@ -831,11 +844,6 @@ export default function WalkIns({
                                             {walkIn.user.first_name}{' '}
                                             {walkIn.user.last_name}
                                         </p>
-                                        <p className="text-xs text-slate-500">
-                                            {walkIn.user.email ||
-                                                walkIn.user.contact ||
-                                                'Walk-in patient'}
-                                        </p>
                                         {walkIn.doctor && walkIn.start_time && (
                                             <p className="mt-1 text-xs font-semibold text-slate-700">
                                                 Dr. {walkIn.doctor.first_name}{' '}
@@ -843,15 +851,23 @@ export default function WalkIns({
                                                 {walkIn.start_time.slice(0, 5)}
                                             </p>
                                         )}
-                                        <span className="mt-1 inline-flex rounded-full bg-moss-50 px-2 py-1 text-[11px] font-bold text-moss-700">
+                                        <p className="mt-1 text-xs font-semibold text-moss-700">
                                             {
                                                 arrivalLabels[
                                                     walkIn.arrival_status
                                                 ]
                                             }
-                                        </span>
+                                        </p>
                                     </div>
-                                    <div className="col-span-2 flex flex-wrap gap-1 border-t border-slate-100 pt-4">
+                                    <div className="col-span-2 flex flex-wrap content-center gap-1 border-t border-slate-100 pt-3 sm:col-span-3 xl:col-span-1 xl:col-start-3 xl:row-start-1 xl:border-0 xl:pt-0">
+                                        <p className="mb-1 w-full text-xs text-slate-600">
+                                            Examination purpose:{' '}
+                                            <span className="font-semibold text-slate-800">
+                                                {examinationPurposeLabel(
+                                                    walkIn.examination_purpose,
+                                                )}
+                                            </span>
+                                        </p>
                                         {walkIn.service_types?.map(
                                             (service) => (
                                                 <span
@@ -977,7 +993,7 @@ export default function WalkIns({
                                                 </div>
                                             )}
                                     </div>
-                                    <div className="col-span-2 flex flex-wrap items-center gap-2">
+                                    <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:justify-end sm:self-start xl:col-start-4">
                                         {walkIn.type === 'walk_in' &&
                                             !walkIn.doctor &&
                                             !walkIn.start_time &&

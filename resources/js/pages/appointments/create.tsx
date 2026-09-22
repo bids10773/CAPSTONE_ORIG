@@ -343,6 +343,12 @@ export default function CreateAppointment() {
                   type: 'company_bulk',
                   company_id: String(auth.user.company_id ?? ''),
                   examination_purpose: 'annual_pe',
+                  event_contact_name:
+                      draft.event_contact_name.trim() || auth.user.name,
+                  event_contact_number:
+                      draft.event_contact_number.trim() ||
+                      auth.user.contact ||
+                      '',
               }
             : {
                   ...draft,
@@ -759,7 +765,9 @@ export default function CreateAppointment() {
                                             {currentStep === 1 &&
                                                 'What care do you need?'}
                                             {currentStep === 2 &&
-                                                'Choose a date and time'}
+                                                (isCompanyAccount
+                                                    ? 'Choose a preferred start date'
+                                                    : 'Choose a date and time')}
                                             {currentStep === 3 &&
                                                 'Confirm your information'}
                                             {currentStep === 4 &&
@@ -769,7 +777,9 @@ export default function CreateAppointment() {
                                             {currentStep === 1 &&
                                                 'Select a visit type and the services you need.'}
                                             {currentStep === 2 &&
-                                                'Only currently available schedules are shown.'}
+                                                (isCompanyAccount
+                                                    ? 'The clinic will set the final one-day or two-day duration after reviewing your request.'
+                                                    : 'Only currently available schedules are shown.')}
                                             {currentStep === 3 &&
                                                 'We use the verified information saved in your profile.'}
                                             {currentStep === 4 &&
@@ -1463,11 +1473,12 @@ function ScheduleStep({
     if (!requiresDoctor) {
         return (
             <FieldGroup
-                title="Requested appointment date"
-                description="Choose the preferred date for this bulk booking. The clinic will coordinate staffing and timing separately."
+                title="Preferred event start date"
+                description="Request your preferred starting date. The clinic will decide whether the program needs one or two full days and will assign all doctors and staff after review."
             >
                 <AppointmentDateInput
                     min={today}
+                    max={latestDate}
                     value={selectedDate}
                     error={errors.appointment_date}
                     onChange={onDate}
@@ -1697,9 +1708,13 @@ function DetailsStep({
                             Service setup
                             <select
                                 value={event.service_location}
-                                onChange={(e) =>
-                                    onEvent('service_location', e.target.value)
-                                }
+                                onChange={(e) => {
+                                    const location = e.target.value;
+                                    onEvent('service_location', location);
+                                    if (location === 'clinic') {
+                                        onEvent('event_address', '');
+                                    }
+                                }}
                                 className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
                             >
                                 <option value="onsite">
@@ -1729,50 +1744,51 @@ function DetailsStep({
                         <InlineError message={errors.expected_employee_count} />
                         {(event.service_location === 'onsite' ||
                             event.service_location === 'hybrid') && (
-                            <label className="text-sm font-semibold text-slate-800 sm:col-span-2">
-                                Event address
-                                <input
-                                    required
-                                    maxLength={500}
-                                    value={event.event_address}
-                                    onChange={(e) =>
-                                        onEvent('event_address', e.target.value)
-                                    }
-                                    className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
-                                />
-                            </label>
+                            <div className="sm:col-span-2">
+                                <label className="text-sm font-semibold text-slate-800">
+                                    Event address
+                                    <input
+                                        required
+                                        maxLength={500}
+                                        value={event.event_address}
+                                        onChange={(e) =>
+                                            onEvent(
+                                                'event_address',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
+                                    />
+                                </label>
+                                <InlineError message={errors.event_address} />
+                            </div>
                         )}
-                        <InlineError message={errors.event_address} />
                         <label className="text-sm font-semibold text-slate-800">
-                            Onsite contact person
+                            {event.service_location === 'clinic'
+                                ? 'Clinic coordination contact'
+                                : 'Event contact person'}
                             <input
                                 required
+                                readOnly
                                 maxLength={255}
                                 value={event.event_contact_name}
-                                onChange={(e) =>
-                                    onEvent(
-                                        'event_contact_name',
-                                        e.target.value,
-                                    )
-                                }
-                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
+                                className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-3 font-normal text-slate-600"
                             />
                         </label>
                         <label className="text-sm font-semibold text-slate-800">
                             Contact number
                             <input
                                 required
+                                readOnly
                                 maxLength={30}
                                 value={event.event_contact_number}
-                                onChange={(e) =>
-                                    onEvent(
-                                        'event_contact_number',
-                                        e.target.value,
-                                    )
-                                }
-                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
+                                className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-3 font-normal text-slate-600"
                             />
                         </label>
+                        <p className="text-xs text-slate-500 sm:col-span-2">
+                            These details come from the company representative's
+                            profile and cannot be changed during booking.
+                        </p>
                         <InlineError
                             message={
                                 errors.event_contact_name ??
@@ -1974,7 +1990,12 @@ function ReviewStep({
             step: 2,
             icon: CalendarDays,
             rows: [
-                ['Date', formatDate(formData.appointment_date)],
+                [
+                    formData.type === 'company_bulk'
+                        ? 'Requested start date'
+                        : 'Date',
+                    formatDate(formData.appointment_date),
+                ],
                 ...(formData.start_time
                     ? [
                           [
@@ -1983,10 +2004,12 @@ function ReviewStep({
                           ] as [string, string],
                       ]
                     : [
-                          ['Time', 'To be coordinated by the clinic'] as [
-                              string,
-                              string,
-                          ],
+                          [
+                              'Schedule',
+                              formData.type === 'company_bulk'
+                                  ? 'Duration and staff decided by the clinic'
+                                  : 'To be coordinated by the clinic',
+                          ] as [string, string],
                       ]),
             ],
         },
@@ -2001,7 +2024,28 @@ function ReviewStep({
                 formData.type === 'company_bulk'
                     ? [
                           ['Email', user.email],
-                          ['Contact number', user.contact || 'Not provided'],
+                          [
+                              'Service setup',
+                              formData.service_location === 'clinic'
+                                  ? 'At LMIC clinic'
+                                  : formData.service_location === 'hybrid'
+                                    ? 'Hybrid'
+                                    : 'Onsite at company',
+                          ],
+                          ...(formData.event_address
+                              ? [
+                                    [
+                                        'Event address',
+                                        formData.event_address,
+                                    ] as [string, string],
+                                ]
+                              : []),
+                          ['Coordination contact', formData.event_contact_name],
+                          ['Contact number', formData.event_contact_number],
+                          [
+                              'Expected employees',
+                              formData.expected_employee_count,
+                          ],
                           ...(formData.notes
                               ? [['Notes', formData.notes] as [string, string]]
                               : []),
@@ -2143,9 +2187,11 @@ function BookingSummary({
                     label={
                         formData.start_time
                             ? formatTime(formData.start_time)
-                            : formData.type === 'individual'
-                              ? 'Choose a time'
-                              : 'Time to be coordinated'
+                            : formData.type === 'company_bulk'
+                              ? 'Clinic to set duration'
+                              : formData.type === 'individual'
+                                ? 'Choose a time'
+                                : 'Time to be coordinated'
                     }
                     active={
                         !!formData.start_time || formData.type !== 'individual'
@@ -2161,10 +2207,9 @@ function BookingSummary({
                 <strong className="text-slate-700 dark:text-slate-100">
                     Arrival guidance:
                 </strong>{' '}
-                Please arrive 15 minutes before your scheduled time for
-                check-in. Your online slot is reserved until 10 minutes after
-                the scheduled time. If you have not checked in by then, it may
-                be cancelled and assigned to a waiting walk-in patient.
+                {formData.type === 'company_bulk'
+                    ? 'The clinic administrator will assign doctors and staff after reviewing the request and employee masterlist.'
+                    : 'Please arrive 15 minutes before your scheduled time for check-in. Your online slot is reserved until 10 minutes after the scheduled time. If you have not checked in by then, it may be cancelled and assigned to a waiting walk-in patient.'}
             </div>
         </aside>
     );

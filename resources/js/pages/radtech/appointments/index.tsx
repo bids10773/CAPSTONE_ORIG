@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Eye, Image, Play } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { EditResultButton } from '@/components/edit-result-button';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { StatusBadge } from '@/components/status-badge';
@@ -221,21 +222,29 @@ export default function RadTechAppointmentsIndex(props: Props) {
                                                 <div className="flex items-center justify-end gap-2">
                                                     {/* START BUTTON */}
                                                     {!appointment.xray_report
-                                                        ?.is_completed && (
-                                                        <button
-                                                            onClick={() =>
-                                                                startXray(
-                                                                    appointment.id,
-                                                                )
-                                                            }
-                                                            className="inline-flex items-center gap-2 rounded-2xl bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 transition-all duration-200 hover:bg-green-200"
-                                                        >
-                                                            <Play className="h-3 w-3" />
-                                                            {appointment.xray_report
-                                                                ? 'Edit Result'
-                                                                : 'Start'}
-                                                        </button>
-                                                    )}
+                                                        ?.is_completed &&
+                                                        (appointment.xray_report ? (
+                                                            <EditResultButton
+                                                                onClick={() =>
+                                                                    startXray(
+                                                                        appointment.id,
+                                                                    )
+                                                                }
+                                                            />
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    startXray(
+                                                                        appointment.id,
+                                                                    )
+                                                                }
+                                                                className="inline-flex items-center gap-2 rounded-2xl bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 transition-all duration-200 hover:bg-green-200"
+                                                            >
+                                                                <Play className="h-3 w-3" />
+                                                                Start
+                                                            </button>
+                                                        ))}
 
                                                     {/* VIEW BUTTON */}
                                                     <Link

@@ -1,16 +1,18 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     BriefcaseMedical,
     Building2,
     CalendarDays,
     CheckCircle2,
+    ClipboardList,
     Clock3,
     Download,
     FileClock,
     FileHeart,
     FlaskConical,
     Hash,
+    HeartPulse,
     ScanLine,
     Stethoscope,
     UserRound,
@@ -69,9 +71,17 @@ export default function AppointmentRecord({
     laboratorySections = {},
 }: AppointmentRecordProps) {
     const patient = appointment.user;
+    const { auth } = usePage().props as { auth: { user: { role: string } } };
     const profile = patient.patient_profile;
     const services: string[] = appointment.service_types ?? [];
     const laboratoryEntries = Object.entries(laboratorySections);
+    const patientDocumentsAvailable =
+        auth.user.role !== 'patient' || appointment.status === 'completed';
+    const peDocumentsAvailable =
+        patientDocumentsAvailable &&
+        (auth.user.role !== 'patient' ||
+            !services.includes('PE') ||
+            Boolean(appointment.medical_examination?.released_at));
     const patientName = [
         patient.first_name,
         patient.middle_name,
@@ -85,10 +95,45 @@ export default function AppointmentRecord({
                   {
                       key: 'physical-exam',
                       icon: <Stethoscope />,
-                      title: 'Physical Examination',
-                      description: 'Vitals, clinical findings, and assessment',
-                      ready: Boolean(appointment.physical_exam),
+                      title: 'Complete PE Report',
+                      description:
+                          'PE summary and completed diagnostic results',
+                      ready:
+                          Boolean(appointment.physical_exam) &&
+                          peDocumentsAvailable,
                       href: `/clinical-forms/${appointment.id}/physical-exam.pdf`,
+                  },
+                  {
+                      key: 'medical-history',
+                      icon: <ClipboardList />,
+                      title: 'Medical History',
+                      description: 'Reported health and medical history',
+                      ready:
+                          Boolean(appointment.medical_history) &&
+                          peDocumentsAvailable,
+                      href: `/clinical-forms/${appointment.id}/medical-history.pdf`,
+                  },
+                  {
+                      key: 'physical-findings',
+                      icon: <Stethoscope />,
+                      title: 'Physical Examination',
+                      description: 'Vital signs and physical findings',
+                      ready:
+                          Boolean(appointment.physical_exam) &&
+                          peDocumentsAvailable,
+                      href: `/clinical-forms/${appointment.id}/physical-findings.pdf`,
+                  },
+                  {
+                      key: 'final-evaluation',
+                      icon: <HeartPulse />,
+                      title: 'Final Medical Evaluation',
+                      description:
+                          'Classification, diagnosis, and recommendations',
+                      ready:
+                          Boolean(
+                              appointment.medical_examination?.finalized_at,
+                          ) && peDocumentsAvailable,
+                      href: `/clinical-forms/${appointment.id}/final-evaluation.pdf`,
                   },
               ]
             : []),
@@ -97,7 +142,9 @@ export default function AppointmentRecord({
             icon: <FlaskConical />,
             title: `${section.label} Result`,
             description: 'Verified laboratory findings and remarks',
-            ready: Boolean(appointment.lab_result?.[section.column]),
+            ready:
+                Boolean(appointment.lab_result?.[section.column]) &&
+                peDocumentsAvailable,
             href: `/clinical-forms/${appointment.id}/laboratory/${key}.pdf`,
         })),
         ...(laboratoryEntries.length > 1
@@ -108,7 +155,9 @@ export default function AppointmentRecord({
                       title: 'Combined Laboratory Report',
                       description:
                           'All requested laboratory results in one file',
-                      ready: Boolean(appointment.lab_result),
+                      ready:
+                          Boolean(appointment.lab_result) &&
+                          peDocumentsAvailable,
                       href: `/clinical-forms/${appointment.id}/laboratory.pdf`,
                   },
               ]
@@ -120,7 +169,9 @@ export default function AppointmentRecord({
                       icon: <ScanLine />,
                       title: 'X-Ray Report',
                       description: 'Radiographic findings and impression',
-                      ready: Boolean(appointment.xray_report),
+                      ready:
+                          Boolean(appointment.xray_report) &&
+                          peDocumentsAvailable,
                       href: `/clinical-forms/${appointment.id}/xray.pdf`,
                   },
               ]

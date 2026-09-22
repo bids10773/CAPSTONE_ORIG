@@ -30,6 +30,7 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+import { DashboardClinicBadge } from '@/components/dashboard-clinic-badge';
 import AppLayout from '@/layouts/app-layout';
 import {
     formatAppointmentDateTime,
@@ -494,6 +495,11 @@ export default function AdminDashboard() {
             <Head title="Admin Dashboard" />
 
             <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+                <section className="rounded-[2rem] bg-moss-800 px-6 py-5 text-white sm:px-8">
+                    <DashboardClinicBadge icon={BarChart3}>
+                        Admin dashboard
+                    </DashboardClinicBadge>
+                </section>
                 <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                     {kpis.map(({ label, value, detail, icon: Icon }, index) => (
                         <article

@@ -2,10 +2,12 @@ import { Head, Link } from '@inertiajs/react';
 import { Building2, CalendarDays, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { formatEventDateRange } from '@/lib/appointment-date-time';
 
 type Event = {
     id: number;
     appointment_date: string;
+    event_end_date?: string | null;
     status: string;
     bulk_employees_count: number;
     arrived_count: number;
@@ -62,9 +64,10 @@ export default function OnsiteEventsIndex({ events }: { events: Page<Event> }) {
                                     <td className="px-5 py-4">
                                         <span className="flex items-center gap-2">
                                             <CalendarDays className="size-4" />
-                                            {new Date(
+                                            {formatEventDateRange(
                                                 event.appointment_date,
-                                            ).toLocaleDateString()}
+                                                event.event_end_date,
+                                            )}
                                         </span>
                                     </td>
                                     <td className="px-5 py-4">

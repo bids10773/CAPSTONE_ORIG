@@ -12,6 +12,7 @@ import {
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { formatEventDateRange } from '@/lib/appointment-date-time';
 
 type Role = 'doctor' | 'medtech' | 'radtech' | 'receptionist';
 type Staff = { id: number; first_name: string; last_name: string; role: Role };
@@ -104,19 +105,87 @@ export default function AdminOnsiteEvent({
     staffOptions: Staff[];
 }) {
     const [mode, setMode] = useState<'manual' | 'recommended'>('manual');
+    const [pendingStaff, setPendingStaff] = useState<Record<Role, Staff[]>>({
+        doctor: [],
+        medtech: [],
+        radtech: [],
+        receptionist: [],
+    });
+    const [approving, setApproving] = useState(false);
     const [assigningStaffId, setAssigningStaffId] = useState<number | null>(
         null,
     );
     const [assignmentError, setAssignmentError] = useState<string | null>(null);
-    const approve = () =>
-        router.patch(`/admin/appointments/${event.id}/status`, {
-            status: 'accepted',
-        });
-    const assigned = (role: Role) =>
-        event.onsite_staff.filter(
+    const [eventDurationDays, setEventDurationDays] = useState<'1' | '2'>(
+        event.event_end_date &&
+            event.event_end_date.slice(0, 10) !==
+                event.appointment_date.slice(0, 10)
+            ? '2'
+            : '1',
+    );
+    const [approvalError, setApprovalError] = useState<string | null>(null);
+    const pendingMissingRoles = roles.filter((role) => {
+        const recommendation = staffing.recommendations[role];
+
+        return (
+            recommendation.required &&
+            pendingStaff[role].length < recommendation.recommended
+        );
+    });
+    const displayedMissingRoles =
+        event.status === 'pending'
+            ? pendingMissingRoles
+            : staffing.missing_roles;
+    const displayedReady =
+        staffing.masterlist_employee_count > 0 &&
+        displayedMissingRoles.length === 0;
+    const approve = () => {
+        setApprovalError(null);
+        router.patch(
+            `/admin/appointments/${event.id}/status`,
+            {
+                status: 'accepted',
+                event_duration_days: Number(eventDurationDays),
+                staff_assignments: roles.flatMap((role) =>
+                    pendingStaff[role].map((staff) => ({
+                        user_id: staff.id,
+                        service_role: role,
+                    })),
+                ),
+            },
+            {
+                preserveScroll: true,
+                onStart: () => setApproving(true),
+                onError: (errors) => {
+                    setApprovalError(
+                        String(
+                            errors.event_duration_days ??
+                                errors.masterlist ??
+                                errors.staff_assignments ??
+                                errors.staff ??
+                                'The bulk request could not be approved.',
+                        ),
+                    );
+                },
+                onFinish: () => setApproving(false),
+            },
+        );
+    };
+    const assigned = (role: Role): Deployment[] =>
+        (event.onsite_staff as Deployment[]).filter(
             (d: Deployment) => d.service_role === role && d.is_active,
         );
     const add = (staff: Staff) => {
+        if (event.status === 'pending') {
+            setPendingStaff((current) => ({
+                ...current,
+                [staff.role]: [...current[staff.role], staff],
+            }));
+            setApprovalError(null);
+
+            return;
+        }
+
         setAssignmentError(null);
         router.post(
             `/admin/onsite-events/${event.id}/staff`,
@@ -137,6 +206,14 @@ export default function AdminOnsiteEvent({
                 onFinish: () => setAssigningStaffId(null),
             },
         );
+    };
+    const removePendingStaff = (staff: Staff) => {
+        setPendingStaff((current) => ({
+            ...current,
+            [staff.role]: current[staff.role].filter(
+                (selected) => selected.id !== staff.id,
+            ),
+        }));
     };
     const remove = (deployment: Deployment) => {
         if (
@@ -169,20 +246,21 @@ export default function AdminOnsiteEvent({
                         </h1>
                         <p className="mt-2 text-sm text-slate-500">
                             <Building2 className="mr-1 inline size-4" />
-                            {new Date(
+                            {formatEventDateRange(
                                 event.appointment_date,
-                            ).toLocaleDateString()}{' '}
+                                event.event_end_date,
+                            )}{' '}
                             · {event.event_address ?? event.company?.address}
                         </p>
                     </div>
                     <span
-                        className={`status-text-only text-sm font-bold ${staffing.ready ? 'text-emerald-700' : 'text-amber-700'}`}
+                        className={`status-text-only text-sm font-bold ${displayedReady ? 'text-emerald-700' : 'text-amber-700'}`}
                     >
                         {staffing.masterlist_employee_count === 0
                             ? 'Employee masterlist required'
-                            : staffing.ready
+                            : displayedReady
                               ? 'Required team complete'
-                              : `Staff assignments incomplete: ${staffing.missing_roles.join(', ')}`}
+                              : `Staff assignments incomplete: ${displayedMissingRoles.join(', ')}`}
                     </span>
                 </div>
             </header>
@@ -230,13 +308,48 @@ export default function AdminOnsiteEvent({
                         )}
                     </div>
                     {event.status === 'pending' && (
-                        <Button
-                            onClick={approve}
-                            disabled={attendance.total === 0}
-                        >
-                            <CheckCircle2 className="size-4" /> Approve bulk
-                            request
-                        </Button>
+                        <div className="min-w-60 space-y-2">
+                            <label className="block text-xs font-semibold text-slate-600">
+                                Clinic-approved event duration
+                                <select
+                                    value={eventDurationDays}
+                                    onChange={(event) =>
+                                        setEventDurationDays(
+                                            event.target.value as '1' | '2',
+                                        )
+                                    }
+                                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
+                                >
+                                    <option value="1">
+                                        One full clinic day
+                                    </option>
+                                    <option value="2">
+                                        Two full clinic days
+                                    </option>
+                                </select>
+                            </label>
+                            <Button
+                                onClick={approve}
+                                disabled={
+                                    attendance.total === 0 ||
+                                    pendingMissingRoles.length > 0 ||
+                                    approving
+                                }
+                                className="w-full"
+                            >
+                                {approving ? (
+                                    <LoaderCircle className="size-4 animate-spin" />
+                                ) : (
+                                    <CheckCircle2 className="size-4" />
+                                )}
+                                Approve &amp; assign staff
+                            </Button>
+                            {approvalError && (
+                                <p className="text-xs text-red-600">
+                                    {approvalError}
+                                </p>
+                            )}
+                        </div>
                     )}
                 </div>
                 <div className="mt-4 overflow-x-auto rounded-lg border">
@@ -379,10 +492,17 @@ export default function AdminOnsiteEvent({
                 <div className="mt-6 grid gap-5 lg:grid-cols-2">
                     {roles.map((role) => {
                         const deployments = assigned(role);
+                        const selectedStaff =
+                            event.status === 'pending'
+                                ? pendingStaff[role]
+                                : deployments.map(
+                                      (deployment: Deployment) =>
+                                          deployment.user,
+                                  );
                         const recommendation = staffing.recommendations[role];
                         const remaining = Math.max(
                             0,
-                            recommendation.recommended - deployments.length,
+                            recommendation.recommended - selectedStaff.length,
                         );
                         return (
                             <div key={role} className="rounded-xl border p-4">
@@ -391,7 +511,7 @@ export default function AdminOnsiteEvent({
                                         {roleName(role)}
                                     </h3>
                                     <span className="text-xs text-slate-500">
-                                        {deployments.length} selected /{' '}
+                                        {selectedStaff.length} selected /{' '}
                                         {recommendation.recommended} recommended
                                     </span>
                                 </div>
@@ -405,32 +525,54 @@ export default function AdminOnsiteEvent({
                                     </p>
                                 )}
                                 <div className="mt-3 flex flex-wrap gap-2">
-                                    {deployments.map((d: Deployment) => (
-                                        <span
-                                            key={d.id}
-                                            className="inline-flex items-center gap-2 rounded-full bg-moss-50 px-3 py-1.5 text-sm text-moss-800"
-                                        >
-                                            {d.user.first_name}{' '}
-                                            {d.user.last_name}
-                                            <button
-                                                type="button"
-                                                aria-label={`Remove ${d.user.first_name} ${d.user.last_name}`}
-                                                onClick={() => remove(d)}
-                                                className="-mr-1 grid size-7 place-items-center rounded-full transition hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
-                                            >
-                                                <X className="size-3.5" />
-                                            </button>
-                                        </span>
-                                    ))}
+                                    {event.status === 'pending'
+                                        ? selectedStaff.map((staff) => (
+                                              <span
+                                                  key={staff.id}
+                                                  className="inline-flex items-center gap-2 rounded-full bg-moss-50 px-3 py-1.5 text-sm text-moss-800"
+                                              >
+                                                  {staff.first_name}{' '}
+                                                  {staff.last_name}
+                                                  <button
+                                                      type="button"
+                                                      aria-label={`Remove ${staff.first_name} ${staff.last_name}`}
+                                                      onClick={() =>
+                                                          removePendingStaff(
+                                                              staff,
+                                                          )
+                                                      }
+                                                      className="-mr-1 grid size-7 place-items-center rounded-full transition hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
+                                                  >
+                                                      <X className="size-3.5" />
+                                                  </button>
+                                              </span>
+                                          ))
+                                        : deployments.map((d: Deployment) => (
+                                              <span
+                                                  key={d.id}
+                                                  className="inline-flex items-center gap-2 rounded-full bg-moss-50 px-3 py-1.5 text-sm text-moss-800"
+                                              >
+                                                  {d.user.first_name}{' '}
+                                                  {d.user.last_name}
+                                                  <button
+                                                      type="button"
+                                                      aria-label={`Remove ${d.user.first_name} ${d.user.last_name}`}
+                                                      onClick={() => remove(d)}
+                                                      className="-mr-1 grid size-7 place-items-center rounded-full transition hover:bg-red-50 hover:text-red-700 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:outline-none"
+                                                  >
+                                                      <X className="size-3.5" />
+                                                  </button>
+                                              </span>
+                                          ))}
                                 </div>
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {staffOptions
                                         .filter(
                                             (s) =>
                                                 s.role === role &&
-                                                !deployments.some(
-                                                    (d: Deployment) =>
-                                                        d.user.id === s.id,
+                                                !selectedStaff.some(
+                                                    (selected) =>
+                                                        selected.id === s.id,
                                                 ),
                                         )
                                         .map((staff) => (
@@ -439,9 +581,8 @@ export default function AdminOnsiteEvent({
                                                 size="sm"
                                                 variant="outline"
                                                 disabled={
-                                                    event.status ===
-                                                        'pending' ||
-                                                    assigningStaffId !== null
+                                                    assigningStaffId !== null ||
+                                                    approving
                                                 }
                                                 onClick={() => add(staff)}
                                             >

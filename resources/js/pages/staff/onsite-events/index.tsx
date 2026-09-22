@@ -2,11 +2,13 @@ import { Head, Link } from '@inertiajs/react';
 import { Building2, CalendarDays, ClipboardList } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
+import { formatEventDateRange } from '@/lib/appointment-date-time';
 
 type Role = 'doctor' | 'medtech' | 'radtech';
 type Event = {
     id: number;
     appointment_date: string;
+    event_end_date?: string | null;
     status: string;
     event_address?: string | null;
     bulk_employees_count: number;
@@ -65,13 +67,17 @@ export default function StaffOnsiteEvents({
                                 <td className="px-5 py-4 font-medium">
                                     <span className="flex items-center gap-2">
                                         <Building2 className="size-4 text-moss-600" />
-                                        {event.company?.company_name ?? 'Company'}
+                                        {event.company?.company_name ??
+                                            'Company'}
                                     </span>
                                 </td>
                                 <td className="px-5 py-4">
                                     <span className="flex items-center gap-2">
                                         <CalendarDays className="size-4" />
-                                        {new Date(event.appointment_date).toLocaleDateString()}
+                                        {formatEventDateRange(
+                                            event.appointment_date,
+                                            event.event_end_date,
+                                        )}
                                     </span>
                                     {event.event_address && (
                                         <p className="mt-1 text-xs text-slate-500">
@@ -92,8 +98,11 @@ export default function StaffOnsiteEvents({
                                 </td>
                                 <td className="px-5 py-4 text-right">
                                     <Button asChild size="sm">
-                                        <Link href={`/${role}/onsite-events/${event.id}`}>
-                                            <ClipboardList className="size-4" /> Open queue
+                                        <Link
+                                            href={`/${role}/onsite-events/${event.id}`}
+                                        >
+                                            <ClipboardList className="size-4" />{' '}
+                                            Open queue
                                         </Link>
                                     </Button>
                                 </td>
@@ -121,4 +130,6 @@ export default function StaffOnsiteEvents({
     );
 }
 
-StaffOnsiteEvents.layout = (page: React.ReactNode) => <AppLayout>{page}</AppLayout>;
+StaffOnsiteEvents.layout = (page: React.ReactNode) => (
+    <AppLayout>{page}</AppLayout>
+);

@@ -7,7 +7,6 @@ use App\Models\XrayReport;
 use App\Services\MedicalExaminationService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 function delayedPeAppointment(array $services = ['PE', 'Drug Test']): Appointment
@@ -158,6 +157,12 @@ test('patient cannot download PE records until finalized report is explicitly re
 
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.physical-exam.pdf', $appointment))
+        ->assertForbidden();
+
+    $appointment->update(['status' => 'completed']);
+
+    $this->actingAs($appointment->user)
+        ->get(route('clinical-forms.physical-exam.pdf', $appointment))
         ->assertOk()
         ->assertHeader('content-type', 'application/pdf');
 });
@@ -231,4 +236,83 @@ test('updated PE PDF uses the official consolidated medical examination sections
         ->toContain('CERTIFICATION')
         ->toContain('110/80')
         ->toContain('OU 20/20');
+});
+
+test('released PE provides a combined PDF and its individual clinical forms', function () {
+    $appointment = delayedPeAppointment(['PE', 'CBC', 'X-Ray']);
+    $examination = app(MedicalExaminationService::class)->forAppointment($appointment);
+    $appointment->physicalExam()->create([
+        'medical_examination_id' => $examination->id,
+        'doctor_id' => $appointment->doctor_id,
+        'classification' => 'Class A',
+        'height' => 170,
+        'is_completed' => true,
+    ]);
+    $appointment->medicalHistory()->create([
+        'medical_examination_id' => $examination->id,
+        'past_medical_history' => 'No significant illness',
+    ]);
+    $appointment->labResult()->create([
+        'medical_examination_id' => $examination->id,
+        'encoded_by' => User::factory()->create(['role' => 'medtech'])->id,
+        'cbc_results' => ['hemoglobin' => '14.2'],
+        'status' => 'finalized',
+        'is_completed' => true,
+        'finalized_at' => now(),
+    ]);
+    $appointment->xrayReport()->create([
+        'medical_examination_id' => $examination->id,
+        'radiologist_id' => User::factory()->create(['role' => 'radtech'])->id,
+        'findings' => 'Clear lung fields',
+        'impression' => 'Normal chest X-ray',
+        'status' => 'completed',
+        'is_completed' => true,
+        'verified_at' => now(),
+    ]);
+    $examination->update([
+        'medical_classification' => 'Class A',
+        'final_diagnosis' => 'Fit to work',
+        'finalized_by' => $appointment->doctor_id,
+        'finalized_at' => now(),
+    ]);
+
+    $this->actingAs($appointment->user)
+        ->get(route('clinical-forms.pe-section.pdf', [$appointment, 'medical-history']))
+        ->assertForbidden();
+
+    $examination->update(['released_at' => now(), 'released_by' => $appointment->doctor_id]);
+    $appointment->update(['status' => 'completed']);
+    $appointment->load([
+        'user.patientProfile', 'company', 'physicalExam', 'medicalHistory',
+        'labResult', 'xrayReport', 'medicalExamination.diagnosticResults',
+    ]);
+    $html = view('pdf.physical-examination-report', [
+        'appointment' => $appointment,
+        'examination' => $appointment->medicalExamination,
+        'physical' => $appointment->physicalExam,
+        'history' => $appointment->medicalHistory,
+        'laboratory' => $appointment->labResult,
+        'xray' => $appointment->xrayReport,
+        'laboratorySections' => app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment),
+    ])->render();
+
+    expect($html)->toContain('Complete Blood Count Result')
+        ->toContain('14.2')
+        ->toContain('Clear lung fields')
+        ->toContain('Final Medical Evaluation');
+
+    foreach (['medical-history', 'physical-findings', 'final-evaluation'] as $section) {
+        $this->get(route('clinical-forms.pe-section.pdf', [$appointment, $section]))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    $this->get(route('clinical-forms.physical-exam.pdf', $appointment))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+
+    $otherPatient = User::factory()->create(['role' => 'patient']);
+    $this->actingAs($otherPatient)
+        ->get(route('clinical-forms.pe-section.pdf', [$appointment, 'medical-history']))
+        ->assertForbidden();
 });

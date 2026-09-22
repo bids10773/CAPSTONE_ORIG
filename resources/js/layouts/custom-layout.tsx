@@ -2,7 +2,6 @@ import { usePage } from '@inertiajs/react';
 import { ChevronDown } from 'lucide-react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Breadcrumbs } from '@/components/breadcrumbs';
-import { ClinicStatus } from '@/components/clinic-status';
 import { GlobalSearch } from '@/components/global-search';
 import { LiveDateTime } from '@/components/live-date-time';
 import { PageTransition } from '@/components/motion';
@@ -54,7 +53,6 @@ export default function ClinicDashboardLayout({
                         <GlobalSearch />
 
                         <div className="ml-auto flex items-center gap-1.5">
-                            <ClinicStatus />
                             <LiveDateTime className="mr-1 hidden lg:flex" />
                             <ThemeToggle />
                             <NotificationBell />

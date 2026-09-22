@@ -13,7 +13,7 @@ class AppointmentPolicy
             || ($user->role === 'patient' && $appointment->user_id === $user->id)
             || ($user->role === 'doctor'
                 && $appointment->bulk_appointment_id === null
-                && $appointment->doctor_id === $user->id);
+                && $this->isAssignedDoctor($user, $appointment));
     }
 
     public function viewClinicalForms(User $user, Appointment $appointment): bool
@@ -24,7 +24,7 @@ class AppointmentPolicy
 
         return match ($user->role) {
             'doctor' => $appointment->bulk_appointment_id === null
-                ? ($appointment->doctor_id === null || $appointment->doctor_id === $user->id)
+                ? $this->isAssignedDoctor($user, $appointment)
                 : ($this->hasAnyAssignedTask($user, $appointment, ['doctor', 'drug_verification', 'final_evaluation'])
                     || $appointment->medicalExamination?->examining_doctor_id === $user->id
                     || $appointment->medicalExamination?->finalized_by === $user->id),
@@ -57,7 +57,9 @@ class AppointmentPolicy
             && ($appointment->appointment_date?->isToday() ?? false)
             && $appointment->status !== 'completed'
             && in_array('PE', $appointment->service_types ?? [], true)
-            && ($appointment->doctor_id === null || $appointment->doctor_id === $user->id);
+            && ($appointment->bulk_appointment_id === null
+                ? $this->isAssignedDoctor($user, $appointment)
+                : ($appointment->doctor_id === null || $appointment->doctor_id === $user->id));
     }
 
     public function updateXray(User $user, Appointment $appointment): bool
@@ -71,7 +73,8 @@ class AppointmentPolicy
     public function finalizeMedicalEvaluation(User $user, Appointment $appointment): bool
     {
         return $user->role === 'doctor'
-            && $this->eligibleOnsiteStaff($user, $appointment, 'final_evaluation');
+            && $this->eligibleOnsiteStaff($user, $appointment, 'final_evaluation')
+            && ($appointment->bulk_appointment_id !== null || $this->isAssignedDoctor($user, $appointment));
     }
 
     private function eligibleOnsiteStaff(User $user, Appointment $appointment, string $role): bool
@@ -99,7 +102,7 @@ class AppointmentPolicy
     {
         return $user->role === 'doctor'
             && ($appointment->bulk_appointment_id === null
-                ? ($appointment->doctor_id === null || $appointment->doctor_id === $user->id)
+                ? $this->isAssignedDoctor($user, $appointment)
                 : $this->hasAnyAssignedTask($user, $appointment, ['drug_verification']));
     }
 
@@ -109,8 +112,13 @@ class AppointmentPolicy
             && $appointment->medicalExamination?->finalized_at !== null
             && $appointment->medicalExamination?->released_at === null
             && ($appointment->bulk_appointment_id === null
-                ? ($appointment->doctor_id === null || $appointment->doctor_id === $user->id)
+                ? $this->isAssignedDoctor($user, $appointment)
                 : $appointment->medicalExamination?->finalized_by === $user->id);
+    }
+
+    private function isAssignedDoctor(User $user, Appointment $appointment): bool
+    {
+        return $appointment->doctor_id !== null && $appointment->doctor_id === $user->id;
     }
 
     private function hasAnyAssignedTask(User $user, Appointment $appointment, array $tasks): bool

@@ -7,6 +7,7 @@ import {
     CalendarDays,
     CheckCircle2,
     CircleAlert,
+    ClipboardList,
     EllipsisVertical,
     Eye,
     HeartHandshake,
@@ -79,6 +80,7 @@ interface AssignedStaff {
 interface Appointment {
     id: number;
     appointment_date: string;
+    event_end_date?: string | null;
     start_time: string | null;
     end_time: string | null;
     status: string;
@@ -242,6 +244,19 @@ function formatDate(value: string): string {
     }).format(new Date(value));
 }
 
+function appointmentDateLabel(appointment: Appointment): string {
+    if (
+        appointment.type === 'company_bulk' &&
+        appointment.event_end_date &&
+        appointment.event_end_date.slice(0, 10) !==
+            appointment.appointment_date.slice(0, 10)
+    ) {
+        return `${formatDate(appointment.appointment_date)} – ${formatDate(appointment.event_end_date)}`;
+    }
+
+    return formatDate(appointment.appointment_date);
+}
+
 function calculateAge(birthdate?: string | null): number | null {
     if (!birthdate) return null;
     const [year, month, day] = birthdate.slice(0, 10).split('-').map(Number);
@@ -278,6 +293,12 @@ function formatTime(value: string | null): string | null {
 }
 
 function appointmentTime(appointment: Appointment): string {
+    if (appointment.type === 'company_bulk') {
+        return appointment.event_end_date
+            ? 'Whole-day clinic event'
+            : 'Duration pending clinic approval';
+    }
+
     const start = formatTime(appointment.start_time);
     const end = formatTime(appointment.end_time);
     if (start && end) return `${start} – ${end}`;
@@ -285,7 +306,10 @@ function appointmentTime(appointment: Appointment): string {
 }
 
 function isPastAppointment(appointment: Appointment): boolean {
-    const appointmentDate = appointment.appointment_date.slice(0, 10);
+    const appointmentDate =
+        appointment.type === 'company_bulk' && appointment.event_end_date
+            ? appointment.event_end_date.slice(0, 10)
+            : appointment.appointment_date.slice(0, 10);
 
     // Bulk company events intentionally have no individual time slot. Keep a
     // pending event confirmable for the whole scheduled day and only consider
@@ -671,6 +695,18 @@ export default function AdminAppointmentsIndex() {
                 >
                     <Eye className="size-4" /> View details
                 </DropdownMenuItem>
+                {appointment.type !== 'company_bulk' && (
+                    <DropdownMenuItem
+                        onSelect={() =>
+                            router.visit(
+                                `/admin/appointments/${appointment.id}`,
+                            )
+                        }
+                    >
+                        <ClipboardList className="size-4" /> Medical record and
+                        files
+                    </DropdownMenuItem>
+                )}
                 {appointment.type === 'company_bulk' && bulkOnly && (
                     <DropdownMenuItem
                         onSelect={() =>
@@ -1183,8 +1219,8 @@ export default function AdminAppointmentsIndex() {
                                                             className="font-medium text-slate-800 dark:text-slate-200"
                                                         />
                                                         <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-                                                            {formatDate(
-                                                                appointment.appointment_date,
+                                                            {appointmentDateLabel(
+                                                                appointment,
                                                             )}
                                                         </p>
                                                     </td>
@@ -1219,8 +1255,8 @@ export default function AdminAppointmentsIndex() {
                                                     {fullName(appointment.user)}
                                                 </p>
                                                 <p className="mt-1 text-xs text-slate-500">
-                                                    {formatDate(
-                                                        appointment.appointment_date,
+                                                    {appointmentDateLabel(
+                                                        appointment,
                                                     )}{' '}
                                                     ·{' '}
                                                     {appointmentTime(
@@ -1404,8 +1440,8 @@ export default function AdminAppointmentsIndex() {
                                 <DetailCard
                                     icon={CalendarDays}
                                     label="Schedule"
-                                    value={formatDate(
-                                        selectedAppointment.appointment_date,
+                                    value={appointmentDateLabel(
+                                        selectedAppointment,
                                     )}
                                     detail={appointmentTime(
                                         selectedAppointment,
@@ -1537,6 +1573,19 @@ export default function AdminAppointmentsIndex() {
                             )}
 
                         <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+                            {selectedAppointment.type !== 'company_bulk' && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                        router.visit(
+                                            `/admin/appointments/${selectedAppointment.id}`,
+                                        )
+                                    }
+                                >
+                                    <ClipboardList className="size-4" /> Medical
+                                    record and files
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
                                 onClick={() => setSelectedAppointment(null)}

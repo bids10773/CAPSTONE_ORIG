@@ -14,7 +14,7 @@
 | `fbs.pdf` | 1 of 3 | Fasting blood sugar |
 | `HEPA B.pdf` | 1 of 3 | HBsAg and Anti-HAV IgM |
 | `PREGTEST.pdf` | 1 of 3 | Urine pregnancy test |
-| `PE FORM UPDATED...pdf` | 1 of 1 | Blood chemistry—not a physical-examination form |
+| `PE FORM UPDATED.xlsx - Sheet1.pdf` | 1 of 6 | Combined pre-employment examination summary, with medical history, physical findings, laboratory results, X-ray, and final classification |
 
 Blank pages and spreadsheet helper/reference print areas are not clinical documents.
 
@@ -55,10 +55,10 @@ All structured result groups live on the unique `lab_results.appointment_id` rec
 - Physical measurements and body-system findings remain in `physical_exams`.
 - History remains in the unique `medical_history.appointment_id` record.
 - X-ray findings and impression remain in `xray_reports`.
-- Final evaluation classification and doctor remarks remain in `physical_exams`.
+- Final evaluation classification and remarks are stored in `medical_examinations`; physical findings and exam remarks remain in `physical_exams`.
 - Final doctor approval sets finalization metadata and locks all encounter documents.
 
-The uploaded files do not include an official physical-examination or X-ray source layout. The system generates clean LMIC PDFs for the currently captured data, but exact paper-layout matching requires those missing originals.
+The updated PE source supplies the pre-employment summary layout. The PE PDF includes completed laboratory sections and a verified X-ray report as additional pages. Patients can also download the medical history, physical findings, final evaluation, laboratory sections, and X-ray report separately. ECG and audiometry remain summary references because no structured result form is integrated for those services.
 
 ## Workflow and access
 

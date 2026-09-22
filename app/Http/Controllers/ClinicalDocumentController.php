@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Services\ClinicalFormWorkflowService;
+use App\Services\LaboratoryFormDefinition;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -11,16 +12,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ClinicalDocumentController extends Controller
 {
-    public function physicalExam(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow): Response
+    public function physicalExam(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow, LaboratoryFormDefinition $definitions): Response
     {
-        Gate::authorize('viewClinicalForms', $appointment);
-        $this->ensurePatientResultIsReleased($request, $appointment);
-        $appointment->load([
-            'user.patientProfile', 'company', 'medicalExamination.examiningDoctor',
-            'medicalExamination.finalizedBy', 'medicalExamination.diagnosticResults',
-            'physicalExam.doctor', 'medicalHistory', 'labResult', 'xrayReport.verifiedBy',
-        ]);
-        abort_unless($appointment->physicalExam, 404, 'No physical examination exists.');
+        $this->loadPeAppointment($request, $appointment);
         $workflow->auditDocumentAccess($appointment, $request->user(), 'physical_exam', $request);
 
         $pdf = Pdf::loadView('pdf.physical-examination-report', [
@@ -30,10 +24,44 @@ class ClinicalDocumentController extends Controller
             'history' => $appointment->medicalHistory,
             'laboratory' => $appointment->labResult,
             'xray' => $appointment->xrayReport,
+            'laboratorySections' => $definitions->sectionsFor($appointment),
         ])->setPaper('letter', 'portrait');
-        $filename = "LMIC-Physical-Examination-{$appointment->id}.pdf";
+        $filename = "LMIC-Complete-PE-{$appointment->id}.pdf";
 
         return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
+    }
+
+    public function peSection(Request $request, Appointment $appointment, string $section, ClinicalFormWorkflowService $workflow): Response
+    {
+        $this->loadPeAppointment($request, $appointment);
+        abort_if($section === 'medical-history' && ! $appointment->medicalHistory, 404, 'No medical history exists.');
+        abort_if($section === 'final-evaluation' && ! $appointment->medicalExamination?->finalized_at, 404, 'No final evaluation exists.');
+        $workflow->auditDocumentAccess($appointment, $request->user(), $section, $request);
+
+        $pdf = Pdf::loadView('pdf.pe-section', [
+            'appointment' => $appointment,
+            'section' => $section,
+            'physical' => $appointment->physicalExam,
+            'history' => $appointment->medicalHistory,
+            'examination' => $appointment->medicalExamination,
+        ])->setPaper('letter', 'portrait');
+        $filename = 'LMIC-'.str($section)->title()."-{$appointment->id}.pdf";
+
+        return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
+    }
+
+    private function loadPeAppointment(Request $request, Appointment $appointment): void
+    {
+        Gate::authorize('viewClinicalForms', $appointment);
+        $this->ensurePatientResultIsReleased($request, $appointment);
+        abort_unless($appointment->isPePackage(), 404, 'This appointment has no PE form.');
+        $appointment->load([
+            'user.patientProfile', 'company', 'medicalExamination.examiningDoctor',
+            'medicalExamination.finalizedBy', 'medicalExamination.diagnosticResults',
+            'physicalExam.doctor', 'medicalHistory', 'labResult.encodedBy',
+            'labResult.verifiedBy', 'xrayReport.verifiedBy', 'xrayReport.radiologist',
+        ]);
+        abort_unless($appointment->physicalExam, 404, 'No physical examination exists.');
     }
 
     public function xray(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow): Response
@@ -63,6 +91,8 @@ class ClinicalDocumentController extends Controller
         if ($request->user()->role !== 'patient') {
             return;
         }
+
+        abort_unless($appointment->status === 'completed', 403, 'The appointment is not completed yet.');
 
         if ($appointment->isPePackage()) {
             $appointment->loadMissing('medicalExamination');

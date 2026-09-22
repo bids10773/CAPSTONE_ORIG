@@ -8,7 +8,6 @@ import {
     X,
 } from 'lucide-react';
 import { useState } from 'react';
-import { ClinicStatus } from '@/components/clinic-status';
 import { LiveDateTime } from '@/components/live-date-time';
 import { NotificationBell } from '@/components/notification-bell';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -130,7 +129,6 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                     </button>
 
                     <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                        {page.component !== 'dashboard' && <ClinicStatus />}
                         <LiveDateTime className="hidden lg:flex" />
                         <ThemeToggle />
                         <NotificationBell />

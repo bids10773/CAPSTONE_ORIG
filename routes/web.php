@@ -179,6 +179,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('clinical-forms.laboratory.section.pdf');
     Route::get('/clinical-forms/{appointment}/physical-exam.pdf', [ClinicalDocumentController::class, 'physicalExam'])
         ->name('clinical-forms.physical-exam.pdf');
+    Route::get('/clinical-forms/{appointment}/{section}.pdf', [ClinicalDocumentController::class, 'peSection'])
+        ->where('section', 'medical-history|physical-findings|final-evaluation')
+        ->name('clinical-forms.pe-section.pdf');
     Route::get('/clinical-forms/{appointment}/xray.pdf', [ClinicalDocumentController::class, 'xray'])
         ->name('clinical-forms.xray.pdf');
 

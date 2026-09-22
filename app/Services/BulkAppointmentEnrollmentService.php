@@ -30,6 +30,7 @@ class BulkAppointmentEnrollmentService
                     'company_id' => $parent->company_id,
                     'company_name' => $parent->company_name,
                     'appointment_date' => $parent->appointment_date,
+                    'event_end_date' => $parent->event_end_date,
                     'type' => 'company_bulk',
                     'status' => $this->employeeStatus($parent->status),
                     'service_types' => $parent->service_types,
@@ -42,19 +43,39 @@ class BulkAppointmentEnrollmentService
         });
     }
 
-    public function synchronizeParentStatus(Appointment $bulkAppointment, string $status): void
+    public function synchronizeParentStatus(Appointment $bulkAppointment, string $status, ?int $durationDays = null): void
     {
-        DB::transaction(function () use ($bulkAppointment, $status): void {
+        DB::transaction(function () use ($bulkAppointment, $status, $durationDays): void {
             $parent = Appointment::query()->lockForUpdate()->findOrFail($bulkAppointment->id);
-            $parent->update(['status' => $status]);
 
             if ($status === 'accepted') {
-                $parent->bulkEmployees()->where('status', 'pending')->update(['status' => 'accepted']);
+                if (! in_array($durationDays, [1, 2], true)) {
+                    throw ValidationException::withMessages([
+                        'event_duration_days' => 'The clinic must choose a one-day or two-day event before approval.',
+                    ]);
+                }
+
+                $eventEndDate = $parent->appointment_date->copy();
+                if ($durationDays === 2) {
+                    $eventEndDate = $eventEndDate->addDay();
+                    while ($eventEndDate->isWeekend()) {
+                        $eventEndDate = $eventEndDate->addDay();
+                    }
+                }
+                $eventEndDate = $eventEndDate->toDateString();
+                $parent->update(['status' => $status, 'event_end_date' => $eventEndDate]);
+                $parent->bulkEmployees()->where('status', 'pending')->update([
+                    'status' => 'accepted',
+                    'event_end_date' => $eventEndDate,
+                ]);
             } elseif ($status === 'cancelled') {
+                $parent->update(['status' => $status]);
                 $parent->bulkEmployees()
                     ->whereNotIn('status', ['completed', 'absent'])
                     ->update(['status' => 'absent', 'attendance_status' => 'absent', 'attendance_marked_at' => now(), 'absence_reason' => 'event_cancelled']);
                 $parent->onsiteQueues()->whereNotIn('status', ['completed'])->update(['status' => 'removed', 'assigned_staff_id' => null]);
+            } else {
+                $parent->update(['status' => $status]);
             }
         });
     }

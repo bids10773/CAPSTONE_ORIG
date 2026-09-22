@@ -31,3 +31,18 @@ export function formatAppointmentDateTime(
 ): string {
     return `${formatAppointmentDate(date)} · ${formatAppointmentTime(startTime)}`;
 }
+
+export function formatEventDateRange(
+    startDate: string,
+    endDate?: string | null,
+): string {
+    if (!endDate) {
+        return `${formatAppointmentDate(startDate)} · Duration pending clinic approval`;
+    }
+
+    if (endDate && endDate.slice(0, 10) !== startDate.slice(0, 10)) {
+        return `${formatAppointmentDate(startDate)} – ${formatAppointmentDate(endDate)}`;
+    }
+
+    return `${formatAppointmentDate(startDate)} · Whole day`;
+}

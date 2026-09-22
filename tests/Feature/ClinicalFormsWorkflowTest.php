@@ -128,6 +128,13 @@ test('patient can download completed laboratory PDF but receptionist cannot acce
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
 
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.pdf', $appointment))
+        ->assertForbidden();
+    $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'cbc']))
+        ->assertForbidden();
+
+    $appointment->update(['status' => 'completed']);
+
+    $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.pdf', $appointment))
         ->assertOk()->assertHeader('content-type', 'application/pdf');
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'cbc']))
         ->assertOk()->assertHeader('content-type', 'application/pdf');
@@ -140,6 +147,7 @@ test('patient cannot download a laboratory form that was not selected for the ap
     $appointment = clinicalAppointment(['CBC']);
     $medtech = User::factory()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
+    $appointment->update(['status' => 'completed']);
 
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'urinalysis']))
@@ -173,6 +181,7 @@ test('patient can download every selected laboratory service form', function () 
         'verified_by' => $medtech->id,
         'verified_at' => now(),
     ]);
+    $appointment->update(['status' => 'completed']);
 
     foreach (array_keys($sections) as $section) {
         $this->actingAs($appointment->user)
@@ -244,6 +253,22 @@ test('patient cannot download an xray report before radtech verification', funct
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.xray.pdf', $appointment))
         ->assertForbidden();
+
+    $appointment->xrayReport->update([
+        'status' => 'completed',
+        'is_completed' => true,
+        'verified_by' => $radtech->id,
+        'verified_at' => now(),
+    ]);
+    $this->actingAs($appointment->user)
+        ->get(route('clinical-forms.xray.pdf', $appointment))
+        ->assertForbidden();
+
+    $appointment->update(['status' => 'completed']);
+    $this->actingAs($appointment->user)
+        ->get(route('clinical-forms.xray.pdf', $appointment))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
 });
 
 test('patient cannot access another patients appointment or clinical document by changing the id', function () {
@@ -278,6 +303,7 @@ test('PE laboratory package cannot be finalized with only one required child res
 test('doctor records structured physical findings and final approval locks the encounter', function () {
     $appointment = clinicalAppointment(config('medical.pe_package.pre_employment_services'));
     $doctor = User::factory()->create(['role' => 'doctor']);
+    $appointment->update(['doctor_id' => $doctor->id]);
     $parts = ['head_scalp', 'eyes', 'ears', 'nose_sinuses', 'mouth_throat', 'neck_thyroid', 'chest_breast', 'lungs', 'heart', 'abdomen', 'back', 'anus', 'genitals', 'extremities', 'skin', 'dental'];
     $payload = [
         'height' => 170, 'weight' => 65, 'blood_pressure' => '120 / 80',
@@ -354,6 +380,7 @@ test('individual final evaluation requires only the services selected for that a
     $appointment = clinicalAppointment(['CBC']);
     $medtech = User::factory()->create(['role' => 'medtech']);
     $doctor = User::factory()->create(['role' => 'doctor']);
+    $appointment->update(['doctor_id' => $doctor->id]);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
 
     $this->actingAs($doctor)->get(route('doctor.final-evaluation', $appointment))
@@ -375,6 +402,7 @@ test('individual final evaluation requires only the services selected for that a
 test('unselected diagnostics do not block final evaluation while selected xray does', function () {
     $appointment = clinicalAppointment(['X-Ray']);
     $doctor = User::factory()->create(['role' => 'doctor']);
+    $appointment->update(['doctor_id' => $doctor->id]);
 
     $this->actingAs($doctor)->post(route('doctor.final-evaluation.store', $appointment), [
         'medical_class' => 'pending', 'final_diagnosis' => 'Pending official X-ray result.',

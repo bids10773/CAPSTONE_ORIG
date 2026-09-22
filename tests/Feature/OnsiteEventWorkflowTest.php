@@ -22,6 +22,7 @@ function onsiteFixture(): array
 
 test('a doctor with a normal appointment cannot be assigned to an overlapping company event', function () {
     extract(onsiteFixture());
+    $event->update(['appointment_date' => today()->next('Monday')]);
     $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
     $patient = User::factory()->create(['role' => 'patient']);
     Appointment::create([
@@ -41,6 +42,31 @@ test('a doctor with a normal appointment cannot be assigned to an overlapping co
 
     expect($event->onsiteStaff()->where('user_id', $doctor->id)->doesntExist())
         ->toBeTrue();
+});
+
+test('two-day company events check doctor conflicts on the second clinic day', function () {
+    extract(onsiteFixture());
+    $eventStart = today()->next('Monday');
+    $event->update([
+        'appointment_date' => $eventStart,
+        'event_end_date' => $eventStart->copy()->addDay(),
+    ]);
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $patient = User::factory()->create(['role' => 'patient']);
+    Appointment::create([
+        'user_id' => $patient->id,
+        'doctor_id' => $doctor->id,
+        'appointment_date' => $eventStart->copy()->addDay(),
+        'start_time' => '09:00',
+        'end_time' => '09:30',
+        'type' => 'individual',
+        'status' => 'pending',
+        'service_types' => ['PE'],
+    ]);
+
+    expect(fn () => app(OnsiteEventWorkflowService::class)
+        ->assignStaff($event->fresh(), $doctor, 'doctor', 10))
+        ->toThrow(ValidationException::class, 'conflicting clinic appointment');
 });
 
 test('only arrived onsite employees enter independent medical queues', function () {

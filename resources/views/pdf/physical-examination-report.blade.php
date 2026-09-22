@@ -87,6 +87,15 @@
         .signature-name { border-bottom: .55px solid {{ $green }}; color: #111; font-size: 7.5px; }
         .signature-role { font-size: 6.8px; }
         .conclusion { padding-top: 7px; color: #244080; text-align: center; font-size: 8px; }
+        .attachment-page { page-break-before: always; padding: 12px; color: #26382b; font-size: 10px; line-height: 1.35; }
+        .attachment-page h1 { margin: 0; font-size: 19px; text-align: center; }
+        .attachment-page h2 { margin: 24px 0 12px; font-size: 16px; text-align: center; }
+        .attachment-page .attachment-address { margin: 4px 0 18px; border-bottom: 2px solid #455e4a; padding-bottom: 10px; text-align: center; }
+        .attachment-page .attachment-meta { margin-bottom: 18px; }
+        .attachment-page .attachment-meta td { border: 1px solid #b8cbb8; padding: 7px; }
+        .attachment-page .attachment-results th, .attachment-page .attachment-results td { border: 1px solid #b8cbb8; padding: 7px; text-align: left; }
+        .attachment-page .attachment-results th { background: #e3ede1; }
+        .attachment-page .attachment-signature { margin-top: 35px; text-align: right; }
     </style>
 </head>
 <body>
@@ -200,5 +209,120 @@
         </tr>
     </table>
     <div class="conclusion">{{ strtoupper($examination?->final_diagnosis ?: '') }}</div>
+
+    @if($history)
+        <div class="attachment-page">
+            <h1>Living Myth Medical Clinic</h1>
+            <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
+            <h2>Medical History</h2>
+            <table class="attachment-meta"><tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>#{{ $appointment->id }}</td></tr></table>
+            <table class="attachment-results">
+                @foreach([
+                    'Present illness' => $history->present_illness,
+                    'Past medical history' => $history->past_medical_history,
+                    'Operations / accidents' => $history->operations_accidents,
+                    'Family history' => $history->family_history,
+                    'Allergies' => $history->allergies,
+                    'Personal / social history' => $history->personal_social_history,
+                    'OB / menstrual history' => $history->ob_menstrual_history,
+                ] as $label => $value)
+                    <tr><th style="width:30%">{{ $label }}</th><td>{{ $value ?: '—' }}</td></tr>
+                @endforeach
+            </table>
+        </div>
+    @endif
+
+    <div class="attachment-page">
+        <h1>Living Myth Medical Clinic</h1>
+        <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
+        <h2>Physical Examination</h2>
+        <table class="attachment-meta"><tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>#{{ $appointment->id }}</td></tr></table>
+        <table class="attachment-results">
+            @foreach([
+                'Height' => $physical->height ? $physical->height.' cm' : null,
+                'Weight' => $physical->weight ? $physical->weight.' kg' : null,
+                'Blood pressure' => $physical->blood_pressure,
+                'Temperature' => $physical->temperature ? $physical->temperature.' °C' : null,
+                'Pulse rate' => $physical->pulse_rate,
+                'Respiration rate' => $physical->respiration_rate,
+                'Hearing' => $physical->hearing,
+                'Visual acuity' => $physical->visual_acuity,
+                'BMI' => $physical->bmi,
+            ] as $label => $value)
+                <tr><th style="width:30%">{{ $label }}</th><td>{{ $value ?? '—' }}</td></tr>
+            @endforeach
+            @foreach($systemFindings as $label => $finding)
+                <tr><th>{{ $label }}</th><td>{{ $finding ?: 'Normal' }}</td></tr>
+            @endforeach
+        </table>
+        @if($physical->remarks)<p><b>Remarks:</b> {{ $physical->remarks }}</p>@endif
+        <div class="attachment-signature">{{ $physical->doctor?->name ?? 'Authorized doctor' }}<br>Examining Physician</div>
+    </div>
+
+    @foreach(($laboratorySections ?? []) as $sectionKey => $section)
+        @if($laboratory?->isFinalized() && filled($laboratory->{$section['column']}))
+            @php
+                $stored = $laboratory->{$section['column']};
+                if ($sectionKey === 'pregnancy' && ! is_array($stored)) $stored = ['pregnancy_test' => $stored];
+                if ($sectionKey === 'blood_type' && ! is_array($stored)) $stored = ['blood_type' => $stored];
+                $stored = is_array($stored) ? $stored : [];
+            @endphp
+            <div class="attachment-page">
+                <h1>Living Myth Medical Clinic</h1>
+                <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
+                <h2>{{ $section['label'] }} Result</h2>
+                <table class="attachment-meta">
+                    <tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>#{{ $appointment->id }}</td></tr>
+                    <tr><td><b>Date</b></td><td>{{ $laboratory->finalized_at?->format('F j, Y') ?? $appointment->appointment_date?->format('F j, Y') }}</td><td><b>Company</b></td><td>{{ $appointment->company?->company_name ?? $appointment->company_name ?? 'OPD' }}</td></tr>
+                </table>
+                <table class="attachment-results">
+                    <tr><th>Examination</th><th>Normal values</th><th>Result</th></tr>
+                    @foreach($section['fields'] as $field)
+                        <tr>
+                            <td>{{ $field['label'] }}</td>
+                            <td>{{ $field['normal'] ?: '—' }} @if($field['normal'] && $field['unit']) {{ $field['unit'] }} @endif</td>
+                            <td>{{ $stored[$field['key']] ?? '—' }} @if(filled($stored[$field['key']] ?? null) && $field['unit']) {{ $field['unit'] }} @endif</td>
+                        </tr>
+                    @endforeach
+                </table>
+                @if($laboratory->remarks)<p><b>Remarks:</b> {{ $laboratory->remarks }}</p>@endif
+                <div class="attachment-signature">{{ $laboratory->verifiedBy?->name ?? $laboratory->encodedBy?->name ?? 'Medical Technologist' }}<br>Medical Technologist</div>
+            </div>
+        @endif
+    @endforeach
+
+    @if($xray?->isVerified())
+        <div class="attachment-page">
+            <h1>Living Myth Medical Clinic</h1>
+            <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
+            <h2>Chest X-Ray Report</h2>
+            <table class="attachment-meta">
+                <tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>#{{ $appointment->id }}</td></tr>
+                <tr><td><b>Date</b></td><td>{{ $appointment->appointment_date?->format('F j, Y') }}</td><td><b>Company</b></td><td>{{ $appointment->company?->company_name ?? $appointment->company_name ?? 'OPD' }}</td></tr>
+            </table>
+            <table class="attachment-results">
+                <tr><th style="width:25%">Findings</th><td>{{ $xray->findings ?: '—' }}</td></tr>
+                <tr><th>Impression</th><td>{{ $xray->impression ?: '—' }}</td></tr>
+            </table>
+            <div class="attachment-signature">{{ $xray->radiologist?->name ?? $xray->verifiedBy?->name ?? 'Authorized Clinical Staff' }}<br>Authorized Clinical Staff</div>
+        </div>
+    @endif
+
+    @if($examination?->finalized_at)
+        <div class="attachment-page">
+            <h1>Living Myth Medical Clinic</h1>
+            <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
+            <h2>Final Medical Evaluation</h2>
+            <table class="attachment-meta"><tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>#{{ $appointment->id }}</td></tr></table>
+            <table class="attachment-results">
+                <tr><th style="width:30%">Classification</th><td>{{ $examination->medical_classification ?? '—' }}</td></tr>
+                <tr><th>Diagnosis</th><td>{{ $examination->final_diagnosis ?? '—' }}</td></tr>
+                <tr><th>Remarks</th><td>{{ $examination->final_remarks ?? '—' }}</td></tr>
+                <tr><th>Recommendations</th><td>{{ $examination->recommendations ?? '—' }}</td></tr>
+                <tr><th>Finalized on</th><td>{{ $examination->finalized_at->format('F j, Y') }}</td></tr>
+            </table>
+            <div class="attachment-signature">{{ $examination->finalizedBy?->name ?? 'Authorized doctor' }}<br>Classifying Physician</div>
+        </div>
+    @endif
 </body>
 </html>

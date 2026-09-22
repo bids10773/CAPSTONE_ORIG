@@ -14,6 +14,57 @@ class OnsiteEventWorkflowService
 {
     public const ABSENCE_REASONS = ['no_show', 'company_advised', 'employee_unavailable', 'removed_by_company', 'rescheduled', 'other'];
 
+    /**
+     * Approve a bulk request and deploy its initial team as one transaction.
+     *
+     * @param  array<int, array{user_id: int, service_role: string}>  $assignments
+     * @return array<int, OnsiteEventStaff>
+     */
+    public function approveAndAssignStaff(Appointment $event, int $durationDays, array $assignments, User $actor): array
+    {
+        return DB::transaction(function () use ($event, $durationDays, $assignments, $actor): array {
+            $event = Appointment::query()->lockForUpdate()->findOrFail($event->id);
+            $this->assertParent($event);
+
+            $recommendations = app(OnsiteStaffingRecommendationService::class)->for($event);
+            $assignmentsByRole = collect($assignments)->groupBy('service_role');
+            $missingRoles = collect($recommendations)
+                ->filter(fn (array $recommendation, string $role) => $recommendation['required']
+                    && $assignmentsByRole->get($role, collect())->count() < $recommendation['recommended'])
+                ->keys()
+                ->map(fn (string $role) => match ($role) {
+                    'doctor' => 'doctor',
+                    'medtech' => 'medical technologist',
+                    'radtech' => 'radiologic technologist',
+                    'receptionist' => 'receptionist',
+                })
+                ->values();
+
+            if ($missingRoles->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'staff_assignments' => 'Assign the recommended number of '.$missingRoles->join(', ', ' and ').' before approving this request.',
+                ]);
+            }
+
+            app(BulkAppointmentEnrollmentService::class)
+                ->synchronizeParentStatus($event, 'accepted', $durationDays);
+            $event->refresh();
+
+            return collect($assignments)->map(function (array $assignment) use ($event, $recommendations, $actor): OnsiteEventStaff {
+                $staff = User::query()->findOrFail($assignment['user_id']);
+                $recommendation = $recommendations[$assignment['service_role']];
+
+                return $this->assignStaff(
+                    $event,
+                    $staff,
+                    $assignment['service_role'],
+                    $recommendation['capacity_per_staff'] ?? 1,
+                    $actor,
+                );
+            })->all();
+        }, 3);
+    }
+
     public function markArrived(Appointment $employee, User $actor): void
     {
         $this->assertReceptionist($actor);

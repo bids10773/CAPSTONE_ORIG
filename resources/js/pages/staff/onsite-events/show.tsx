@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { formatEventDateRange } from '@/lib/appointment-date-time';
 
 type Role = 'doctor' | 'medtech' | 'radtech';
 type Queue = {
@@ -77,9 +78,11 @@ export default function StaffOnsiteEvent({
                 </h1>
                 <p className="mt-2 text-sm text-slate-500">
                     <Building2 className="mr-1 inline size-4" />
-                    {new Date(
+                    {formatEventDateRange(
                         event.appointment_date,
-                    ).toLocaleDateString()} ·{' '}
+                        event.event_end_date,
+                    )}{' '}
+                    ·{' '}
                     {event.event_address ?? event.company?.address ?? 'Onsite'}
                 </p>
             </header>

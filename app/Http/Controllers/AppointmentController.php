@@ -9,10 +9,12 @@ use App\Models\Company;
 use App\Models\CompanyReferral;
 use App\Models\MedicalHistory;
 use App\Models\User;
+use App\Notifications\OnsiteStaffAssigned;
 use App\Rules\Weekday;
 use App\Services\AppointmentApprovalService;
 use App\Services\IndividualAppointmentBookingService;
 use App\Services\LaboratoryFormDefinition;
+use App\Services\OnsiteEventWorkflowService;
 use App\Services\OnsiteStaffAvailabilityService;
 use App\Support\ClinicHours;
 use App\Support\SearchTerm;
@@ -214,6 +216,8 @@ class AppointmentController extends Controller
                 'doctor_id' => null,
                 'start_time' => null,
                 'examination_purpose' => 'annual_pe',
+                'event_contact_name' => $user->name,
+                'event_contact_number' => $user->contact,
             ]);
         }
 
@@ -262,6 +266,7 @@ class AppointmentController extends Controller
             if ($request->type !== 'company_bulk') {
                 return;
             }
+
             $unsupported = collect($request->input('service_types', []))
                 ->intersect(['ECG', 'Audiometry', 'Neuro Psychiatric Test']);
             if ($unsupported->isNotEmpty()) {
@@ -363,6 +368,7 @@ class AppointmentController extends Controller
                 'start_time' => $data['type'] === 'company_bulk' ? '08:00' : $startTime?->format('H:i'),
                 'end_time' => $data['type'] === 'company_bulk' ? '17:00' : $endTime?->format('H:i'),
                 'appointment_date' => $data['appointment_date'],
+                'event_end_date' => null,
                 'type' => $data['type'],
                 'status' => 'pending',
                 'examination_purpose' => $data['examination_purpose'] ?? null,
@@ -418,6 +424,7 @@ class AppointmentController extends Controller
             'company',
             'medicalExamination',
             'physicalExam',
+            'medicalHistory',
             'labResult',
             'xrayReport',
         ]);
@@ -445,6 +452,15 @@ class AppointmentController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'status' => ['required', 'string', 'in:pending,accepted,arrived,for_diagnostics,for_xray,awaiting_xray_result,for_final_evaluation,completed,cancelled'],
+            'event_duration_days' => [
+                Rule::requiredIf(fn () => $appointment->isBulkParent() && $request->status === 'accepted'),
+                'nullable',
+                'integer',
+                Rule::in([1, 2]),
+            ],
+            'staff_assignments' => ['nullable', 'array'],
+            'staff_assignments.*.user_id' => ['required', 'integer', 'distinct', 'exists:users,id'],
+            'staff_assignments.*.service_role' => ['required', Rule::in(['doctor', 'medtech', 'radtech', 'receptionist'])],
         ]);
 
         if ($validator->fails()) {
@@ -461,8 +477,21 @@ class AppointmentController extends Controller
             if ($request->status === 'accepted' && ! $appointment->bulkEmployees()->exists()) {
                 return back()->withErrors(['masterlist' => 'This bulk request cannot be approved until the company uploads at least one valid employee.']);
             }
-            app(\App\Services\BulkAppointmentEnrollmentService::class)
-                ->synchronizeParentStatus($appointment, $request->status);
+            if ($request->status === 'accepted') {
+                $deployments = app(OnsiteEventWorkflowService::class)->approveAndAssignStaff(
+                    $appointment,
+                    $request->integer('event_duration_days'),
+                    $request->input('staff_assignments', []),
+                    $request->user(),
+                );
+
+                foreach ($deployments as $deployment) {
+                    $deployment->user->notify(new OnsiteStaffAssigned($appointment, $deployment->service_role));
+                }
+            } else {
+                app(\App\Services\BulkAppointmentEnrollmentService::class)
+                    ->synchronizeParentStatus($appointment, $request->status);
+            }
         } else {
             $appointment->update([
                 'status' => $request->status,
@@ -849,11 +878,29 @@ class AppointmentController extends Controller
         }
 
         if ($dateFilter === 'today') {
-            $query->whereDate('appointment_date', today());
+            $query->when(
+                $bulkOnly,
+                fn ($query) => $query
+                    ->whereDate('appointment_date', '<=', today())
+                    ->where(fn ($range) => $range
+                        ->whereDate('event_end_date', '>=', today())
+                        ->orWhere(fn ($legacy) => $legacy
+                            ->whereNull('event_end_date')
+                            ->whereDate('appointment_date', today()))),
+                fn ($query) => $query->whereDate('appointment_date', today()),
+            );
         } elseif ($dateFilter === 'upcoming') {
             $query->whereDate('appointment_date', '>', today());
         } elseif ($dateFilter === 'past') {
-            $query->whereDate('appointment_date', '<', today());
+            $query->when(
+                $bulkOnly,
+                fn ($query) => $query->where(fn ($range) => $range
+                    ->whereDate('event_end_date', '<', today())
+                    ->orWhere(fn ($legacy) => $legacy
+                        ->whereNull('event_end_date')
+                        ->whereDate('appointment_date', '<', today()))),
+                fn ($query) => $query->whereDate('appointment_date', '<', today()),
+            );
         }
 
         if ($doctorId) {
