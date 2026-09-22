@@ -1,5 +1,5 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { Eye, TestTube, Play } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
+import { TestTube, Play } from 'lucide-react';
 import { EditResultButton } from '@/components/edit-result-button';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
@@ -215,12 +215,6 @@ export default function MedTechAppointmentsIndex({
                                                             Encode Lab
                                                         </button>
                                                     ))}
-                                                <Link
-                                                    href={`/appointments/${apt.id}`}
-                                                    className="inline-flex items-center p-2 text-gray-400 hover:text-moss-600"
-                                                >
-                                                    <Eye className="h-5 w-5" />
-                                                </Link>
                                             </td>
                                         </tr>
                                     ))

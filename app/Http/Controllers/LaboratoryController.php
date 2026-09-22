@@ -117,7 +117,7 @@ class LaboratoryController extends Controller
             'birthdate' => $profile?->birthdate?->toDateString(),
             'age' => $profile?->birthdate?->age,
             'sex' => $profile?->sex ?? $appointment->user->sex,
-            'company' => $appointment->company?->company_name ?? $appointment->company_name ?? 'OPD',
+            'company' => $appointment->company?->company_name ?? $appointment->company_name,
             'employee_number' => $profile?->employee_number,
             'appointment' => $appointment->id,
             'date' => $appointment->appointment_date?->toDateString(),

@@ -21,11 +21,17 @@ export function PatientSummaryCard({
     subtitle,
     details,
     stage,
+    embedded = false,
+    compactIdentity = false,
+    hero = false,
 }: {
     name: string;
     subtitle?: string;
     details: PatientSummaryDetail[];
     stage: string;
+    embedded?: boolean;
+    compactIdentity?: boolean;
+    hero?: boolean;
 }) {
     const initials = name
         .split(' ')
@@ -36,49 +42,133 @@ export function PatientSummaryCard({
         .toUpperCase();
 
     return (
-        <section className="sticky top-[88px] z-20 rounded-2xl border border-border bg-white/95 p-4 shadow-[0_14px_38px_-28px_rgba(31,41,55,.3)] backdrop-blur-xl sm:p-5">
-            <div className="flex flex-col gap-5 xl:flex-row xl:items-center">
-                <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-moss-100 text-sm font-bold text-moss-800">
-                        {initials || <UserRound className="size-5" />}
-                    </span>
+        <section
+            className={cn(
+                hero
+                    ? 'relative overflow-hidden bg-moss-800 text-white'
+                    : 'bg-white/95',
+                embedded
+                    ? 'px-3 py-3 sm:px-4'
+                    : 'sticky top-[88px] z-20 rounded-2xl border border-border p-4 shadow-[0_14px_38px_-28px_rgba(31,41,55,.3)] backdrop-blur-xl sm:p-5',
+            )}
+        >
+            {hero && (
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(190,215,185,.25),transparent_25rem)]"
+                />
+            )}
+            <div
+                className={cn(
+                    'relative',
+                    compactIdentity
+                        ? 'flex flex-col gap-3 lg:flex-row lg:items-center'
+                        : 'flex flex-col xl:flex-row xl:items-center',
+                    !compactIdentity && (embedded ? 'gap-3' : 'gap-5'),
+                )}
+            >
+                <div
+                    className={cn(
+                        'flex min-w-0 items-center gap-3',
+                        compactIdentity && 'lg:min-w-[235px]',
+                    )}
+                >
+                    {!compactIdentity && (
+                        <span
+                            className={cn(
+                                'flex shrink-0 items-center justify-center rounded-2xl bg-moss-100 text-sm font-bold text-moss-800',
+                                embedded ? 'size-10' : 'size-12',
+                            )}
+                        >
+                            {initials || <UserRound className="size-5" />}
+                        </span>
+                    )}
                     <div className="min-w-0">
-                        <p className="text-[11px] font-semibold tracking-[.12em] text-moss-700 uppercase">
-                            Active patient
-                        </p>
-                        <h1 className="truncate text-lg font-semibold text-slate-950">
+                        {!compactIdentity && (
+                            <p className="text-[11px] font-semibold tracking-[.12em] text-moss-700 uppercase">
+                                Active patient
+                            </p>
+                        )}
+                        <h1
+                            className={cn(
+                                'truncate text-lg font-semibold',
+                                hero ? 'text-white' : 'text-slate-950',
+                            )}
+                        >
                             {name}
                         </h1>
-                        {subtitle && (
+                        {compactIdentity ? (
+                            <p
+                                className={cn(
+                                    'text-xs font-medium',
+                                    hero ? 'text-moss-100' : 'text-moss-700',
+                                )}
+                            >
+                                {stage}
+                            </p>
+                        ) : subtitle ? (
                             <p className="truncate text-xs text-slate-500">
                                 {subtitle}
                             </p>
-                        )}
+                        ) : null}
                     </div>
                 </div>
 
-                <dl className="grid flex-1 grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-3 lg:grid-cols-4 xl:border-l xl:border-border xl:pl-6">
+                <dl
+                    className={cn(
+                        compactIdentity
+                            ? cn(
+                                  'grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4 lg:flex lg:flex-none lg:gap-x-6 lg:border-l lg:pl-5',
+                                  hero
+                                      ? 'lg:border-white/20'
+                                      : 'lg:border-border',
+                              )
+                            : 'grid flex-1 grid-cols-2 gap-x-5 sm:grid-cols-3 lg:grid-cols-4 xl:border-l xl:border-border',
+                        !compactIdentity &&
+                            (embedded ? 'gap-y-2 xl:pl-4' : 'gap-y-3 xl:pl-6'),
+                    )}
+                >
                     {details.map(({ label, value, icon: Icon = Hash }) => (
                         <div key={label} className="min-w-0">
-                            <dt className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
-                                <Icon className="size-3.5" />
+                            <dt
+                                className={cn(
+                                    'flex items-center gap-1.5 text-[10px] font-semibold tracking-wide uppercase',
+                                    hero ? 'text-moss-200' : 'text-slate-400',
+                                )}
+                            >
+                                {!compactIdentity && (
+                                    <Icon className="size-3.5" />
+                                )}
                                 {label}
                             </dt>
-                            <dd className="mt-1 truncate text-sm font-semibold text-slate-800">
+                            <dd
+                                className={cn(
+                                    'truncate text-sm font-semibold',
+                                    hero ? 'text-white' : 'text-slate-800',
+                                    embedded ? 'mt-0.5' : 'mt-1',
+                                )}
+                            >
                                 {value || 'Not available'}
                             </dd>
                         </div>
                     ))}
                 </dl>
 
-                <div className="shrink-0 rounded-xl border border-moss-200 bg-moss-50 px-3.5 py-2.5">
-                    <p className="text-[10px] font-semibold tracking-wide text-moss-600 uppercase">
-                        Current stage
-                    </p>
-                    <p className="mt-0.5 text-sm font-semibold text-moss-900">
-                        {stage}
-                    </p>
-                </div>
+                {!compactIdentity && (
+                    <div
+                        className={cn(
+                            'shrink-0 rounded-xl border border-moss-200 bg-moss-50',
+                            embedded ? 'px-3 py-2' : 'px-3.5 py-2.5',
+                        )}
+                    >
+                        <p className="text-[10px] font-semibold tracking-wide text-moss-600 uppercase">
+                            Current stage
+                        </p>
+                        <p className="mt-0.5 text-sm font-semibold text-moss-900">
+                            {stage}
+                        </p>
+                    </div>
+                )}
             </div>
         </section>
     );
@@ -87,14 +177,21 @@ export function PatientSummaryCard({
 export function WorkflowTimeline({
     steps,
     current,
+    embedded = false,
 }: {
     steps: string[];
     current: number;
+    embedded?: boolean;
 }) {
     return (
         <nav
             aria-label="Clinical workflow progress"
-            className="overflow-x-auto rounded-2xl border border-border bg-white px-4 py-4"
+            className={cn(
+                'overflow-x-auto bg-white',
+                embedded
+                    ? 'border-t border-border px-3 py-2.5 sm:px-4'
+                    : 'rounded-2xl border border-border px-4 py-4',
+            )}
         >
             <ol className="flex min-w-max items-center">
                 {steps.map((step, index) => {
@@ -105,7 +202,8 @@ export function WorkflowTimeline({
                             <div className="flex items-center gap-2">
                                 <span
                                     className={cn(
-                                        'flex size-8 items-center justify-center rounded-full border text-xs font-semibold transition-all',
+                                        'flex items-center justify-center rounded-full border text-xs font-semibold transition-all',
+                                        embedded ? 'size-7' : 'size-8',
                                         complete &&
                                             'border-moss-500 bg-moss-500 text-white',
                                         active &&
@@ -136,7 +234,12 @@ export function WorkflowTimeline({
                                 </span>
                             </div>
                             {index < steps.length - 1 && (
-                                <ChevronRight className="mx-3 size-4 text-slate-300" />
+                                <ChevronRight
+                                    className={cn(
+                                        'size-4 text-slate-300',
+                                        embedded ? 'mx-2' : 'mx-3',
+                                    )}
+                                />
                             )}
                         </li>
                     );

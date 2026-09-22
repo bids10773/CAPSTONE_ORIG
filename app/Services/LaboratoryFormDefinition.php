@@ -45,7 +45,7 @@ class LaboratoryFormDefinition
                 $this->numberField('meta', 'Meta', null, '0.00–0.01', 0, 1, 2, ['default' => [0, 0.01]]),
                 $this->field('differential_others', 'Differential Others'),
                 $this->numberField('platelet_count', 'Platelet Count', '×10⁹/L', '150–450', 0, 2000, 2, ['default' => [150, 450]]),
-                $this->field('verification_note', 'Verification Note'),
+                $this->field('verification_note', 'Note'),
             ]],
             'urinalysis' => ['label' => 'Urinalysis', 'column' => 'urinalysis_results', 'services' => ['Urinalysis'], 'fields' => [
                 $this->field('color', 'Color', 'select', null, 'Straw–Amber', ['Straw', 'Yellow', 'Light Yellow', 'Dark Yellow', 'Amber', 'Reddish', 'Other']),

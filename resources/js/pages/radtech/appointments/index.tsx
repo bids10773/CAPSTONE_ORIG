@@ -1,5 +1,5 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { Eye, Image, Play } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
+import { Image } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { EditResultButton } from '@/components/edit-result-button';
 import { Pagination } from '@/components/pagination';
@@ -239,20 +239,11 @@ export default function RadTechAppointmentsIndex(props: Props) {
                                                                         appointment.id,
                                                                     )
                                                                 }
-                                                                className="inline-flex items-center gap-2 rounded-2xl bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700 transition-all duration-200 hover:bg-green-200"
+                                                                className="text-xs font-bold text-green-700 hover:underline focus-visible:underline focus-visible:outline-none"
                                                             >
-                                                                <Play className="h-3 w-3" />
                                                                 Start
                                                             </button>
                                                         ))}
-
-                                                    {/* VIEW BUTTON */}
-                                                    <Link
-                                                        href={`/appointments/${appointment.id}`}
-                                                        className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-gray-100 text-gray-600 transition-all duration-200 hover:bg-moss-100 hover:text-moss-600"
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Link>
                                                 </div>
                                             </td>
                                         </tr>

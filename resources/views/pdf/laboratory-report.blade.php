@@ -39,7 +39,7 @@
 </div>
 <div class="title">LABORATORY RESULT</div>
 <table class="patient">
-    <tr><td class="label">Name</td><td>{{ $patient['name'] }}</td><td class="label">Company/Agency</td><td>{{ $patient['company'] }}</td></tr>
+    <tr><td class="label">Name</td><td>{{ $patient['name'] }}</td><td class="label">Company/Agency</td><td>{{ $patient['company'] ?? 'OPD' }}</td></tr>
     <tr><td class="label">Age/Sex</td><td>{{ $patient['age'] ?? '—' }}/{{ strtoupper(substr($patient['sex'] ?? '—', 0, 1)) }}</td><td class="label">Date</td><td>{{ $result->finalized_at?->format('m/d/Y') ?? $patient['date'] }}</td></tr>
     @if($patient['employee_number'])<tr><td class="label">Employee No.</td><td>{{ $patient['employee_number'] }}</td><td class="label">Appointment</td><td>#{{ $appointment->id }}</td></tr>@endif
 </table>

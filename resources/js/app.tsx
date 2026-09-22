@@ -9,7 +9,11 @@ import { initializeTheme } from './hooks/use-appearance';
 
 // Keeping the glob options explicit makes Vite rebuild the Inertia page map
 // whenever a new page module is added during development.
-const pages = import.meta.glob('./pages/**/*.tsx', { eager: false });
+const pages = {
+    ...import.meta.glob('./pages/**/*.tsx', { eager: false }),
+    './pages/radtech/xray-report-form.tsx': () =>
+        import('./pages/radtech/xray-report-form'),
+};
 
 createInertiaApp({
     // Template: "Page Title - LMIC" or just "LMIC" if no title is set

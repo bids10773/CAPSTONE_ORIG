@@ -10,6 +10,7 @@ import {
 import { useState } from 'react';
 
 import InputError from '@/components/input-error';
+import { useSessionDraft } from '@/hooks/use-session-draft';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -36,8 +37,8 @@ type Props = {
         age?: number;
         sex?: string;
         birthdate?: string;
-        company?: string;
-        employee_number?: string;
+        company?: string | null;
+        employee_number?: string | null;
         date?: string;
         doctor?: string;
     };
@@ -87,6 +88,25 @@ export default function LaboratoryResultsForm({
         finalize: false,
         drug_workflow_action: 'complete',
     });
+    const { clearDraft } = useSessionDraft(
+        `laboratory-${appointment.id}`,
+        form.data,
+        form.isDirty,
+        (draft) =>
+            form.setData({
+                ...form.data,
+                results: Object.fromEntries(
+                    Object.entries(form.data.results).map(
+                        ([section, values]) => [
+                            section,
+                            { ...values, ...(draft.results?.[section] ?? {}) },
+                        ],
+                    ),
+                ),
+                remarks: draft.remarks ?? form.data.remarks,
+            }),
+        !locked,
+    );
     const inputClass =
         'mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15 disabled:bg-slate-100';
     const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
@@ -159,6 +179,15 @@ export default function LaboratoryResultsForm({
             [key]: validateField(field, value),
         }));
     };
+    const focusNextField = (current: HTMLInputElement | HTMLSelectElement) => {
+        const fields = Array.from(
+            current.form?.querySelectorAll<HTMLElement>(
+                '[data-lab-field]:not(:disabled)',
+            ) ?? [],
+        );
+        const index = fields.indexOf(current);
+        if (index >= 0) fields[index + 1]?.focus();
+    };
     const referenceStatus = (field: Field, value: unknown) => {
         if (field.type !== 'number' || !field.reference || !field.validation)
             return null;
@@ -191,14 +220,23 @@ export default function LaboratoryResultsForm({
             finalize,
             drug_workflow_action: drugWorkflowAction,
         }));
-        form.post(submitUrl);
+        form.post(submitUrl, { onSuccess: clearDraft });
     };
+    const selectedServices = Object.values(sections).map(
+        (section) => section.label,
+    );
+    const finalizeLabel =
+        selectedServices.length === 1
+            ? `Finalize ${selectedServices[0]}`
+            : 'Finalize Laboratory Report';
     const confirmFinalize = () => {
-        if (
-            window.confirm(
-                'Finalize Drug Test?\n\nPlease confirm that the result has been reviewed and verified. Once finalized, this service will be marked as completed and become read-only.',
-            )
-        ) {
+        const services =
+            selectedServices.length > 1
+                ? `\n\nSelected services: ${selectedServices.join(', ')}.`
+                : '';
+        const message = `${finalizeLabel}?${services}\n\nPlease confirm that the results have been reviewed and verified. Once finalized, the report will be marked as completed and become read-only.`;
+
+        if (window.confirm(message)) {
             submit(true);
         }
     };
@@ -234,18 +272,22 @@ export default function LaboratoryResultsForm({
                                 label="Age / Sex"
                                 value={`${patientSummary.age ?? '—'} / ${patientSummary.sex ?? '—'}`}
                             />
-                            <Summary
-                                label="Company"
-                                value={patientSummary.company ?? 'OPD'}
-                            />
+                            {patientSummary.company && (
+                                <Summary
+                                    label="Company"
+                                    value={patientSummary.company}
+                                />
+                            )}
                             <Summary
                                 label="Birthdate"
                                 value={patientSummary.birthdate ?? '—'}
                             />
-                            <Summary
-                                label="Employee No."
-                                value={patientSummary.employee_number ?? '—'}
-                            />
+                            {patientSummary.employee_number && (
+                                <Summary
+                                    label="Employee No."
+                                    value={patientSummary.employee_number}
+                                />
+                            )}
                             <Summary
                                 label="Doctor"
                                 value={patientSummary.doctor ?? 'Unassigned'}
@@ -324,6 +366,7 @@ export default function LaboratoryResultsForm({
                                             {field.type === 'select' ? (
                                                 <select
                                                     id={`${sectionKey}-${field.key}`}
+                                                    data-lab-field
                                                     disabled={
                                                         locked ||
                                                         (drugVerificationPending &&
@@ -332,18 +375,24 @@ export default function LaboratoryResultsForm({
                                                     }
                                                     className={inputClass}
                                                     value={value}
-                                                    onChange={(e) =>
+                                                    onChange={(e) => {
                                                         update(
                                                             sectionKey,
                                                             field,
                                                             e.target.value,
-                                                        )
-                                                    }
-                                                    onBlur={() =>
+                                                        );
+                                                        if (e.target.value) {
+                                                            focusNextField(
+                                                                e.currentTarget,
+                                                            );
+                                                        }
+                                                    }}
+                                                    onBlur={(e) =>
                                                         blurField(
                                                             sectionKey,
                                                             field,
-                                                            value,
+                                                            e.currentTarget
+                                                                .value,
                                                         )
                                                     }
                                                 >
@@ -365,6 +414,7 @@ export default function LaboratoryResultsForm({
                                                 <div className="relative">
                                                     <input
                                                         id={`${sectionKey}-${field.key}`}
+                                                        data-lab-field
                                                         disabled={
                                                             locked ||
                                                             (drugVerificationPending &&
@@ -387,11 +437,44 @@ export default function LaboratoryResultsForm({
                                                                 e.target.value,
                                                             )
                                                         }
-                                                        onBlur={() =>
+                                                        onKeyDown={(e) => {
+                                                            if (
+                                                                e.key !==
+                                                                    'Enter' ||
+                                                                e.nativeEvent
+                                                                    .isComposing
+                                                            ) {
+                                                                return;
+                                                            }
+                                                            e.preventDefault();
+                                                            if (
+                                                                e.currentTarget.value.trim() &&
+                                                                !validateField(
+                                                                    field,
+                                                                    e
+                                                                        .currentTarget
+                                                                        .value,
+                                                                )
+                                                            ) {
+                                                                focusNextField(
+                                                                    e.currentTarget,
+                                                                );
+                                                            } else {
+                                                                blurField(
+                                                                    sectionKey,
+                                                                    field,
+                                                                    e
+                                                                        .currentTarget
+                                                                        .value,
+                                                                );
+                                                            }
+                                                        }}
+                                                        onBlur={(e) =>
                                                             blurField(
                                                                 sectionKey,
                                                                 field,
-                                                                value,
+                                                                e.currentTarget
+                                                                    .value,
                                                             )
                                                         }
                                                     />
@@ -429,6 +512,7 @@ export default function LaboratoryResultsForm({
                         </label>
                         <textarea
                             id="remarks"
+                            data-lab-field
                             disabled={locked}
                             rows={4}
                             className={inputClass}
@@ -497,9 +581,7 @@ export default function LaboratoryResultsForm({
                                         ) : (
                                             <ShieldCheck className="h-4 w-4" />
                                         )}
-                                        {sections.drug_test
-                                            ? 'Finalize Drug Test'
-                                            : 'Finalize report'}
+                                        {finalizeLabel}
                                     </button>
                                     {!drugVerificationPending &&
                                         sections.drug_test &&
