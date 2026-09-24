@@ -44,7 +44,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import logo from '/public/images/full_logo2.png';
+import logo from '/public/images/full_logo2-optimized.webp';
 
 type Item = {
     title: string;

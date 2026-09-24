@@ -1,6 +1,4 @@
-import type { SVGAttributes } from 'react';
-
-import logo from '/public/images/full_logo2.png';
+import logo from '/public/images/full_logo2-optimized.webp';
 
 export default function AppLogoIcon(
     props: React.ImgHTMLAttributes<HTMLImageElement>,

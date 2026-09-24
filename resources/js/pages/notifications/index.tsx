@@ -4,6 +4,7 @@ import { relativeNotificationTime } from '@/components/notification-bell';
 import type { AppNotification } from '@/components/notification-bell';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { paginationLabel } from '@/lib/pagination-label';
 import type { BreadcrumbItem } from '@/types';
 
 type PageLink = { url: string | null; label: string; active: boolean };
@@ -140,10 +141,9 @@ export default function NotificationsIndex() {
                                         link.url && router.get(link.url)
                                     }
                                     className={`rounded-lg px-3 py-2 text-sm ${link.active ? 'bg-moss-700 text-white' : 'text-slate-600 hover:bg-slate-100 disabled:opacity-40'}`}
-                                    dangerouslySetInnerHTML={{
-                                        __html: link.label,
-                                    }}
-                                />
+                                >
+                                    {paginationLabel(link.label)}
+                                </button>
                             ))}
                         </div>
                     )}

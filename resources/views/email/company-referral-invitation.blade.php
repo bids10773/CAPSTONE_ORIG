@@ -1,4 +1,4 @@
-<x-email.layout title="Medical Examination Referral" preheader="{{ $companyName }} invited you to complete a medical examination." :logo-src="$message->embed(public_path('images/email-logo.png'))">
+<x-email.layout title="Medical Examination Referral" preheader="{{ $companyName }} invited you to complete a medical examination." :logo-src="$message->embed(public_path('images/email-logo-optimized.png'))">
     <p style="margin:0 0 8px;color:#6b8f71;font-size:13px;line-height:20px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;">Company referral</p>
     <h1 style="margin:0;color:#1f2937;font-size:27px;line-height:35px;font-weight:700;">You have been referred for a medical examination</h1>
     <p style="margin:18px 0 0;color:#4b5563;font-size:15px;line-height:24px;">Hello {{ $employeeName }},</p>

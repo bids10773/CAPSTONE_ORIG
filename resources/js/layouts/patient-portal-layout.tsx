@@ -20,7 +20,7 @@ import {
 import { UserMenuContent } from '@/components/user-menu-content';
 import { cn } from '@/lib/utils';
 import type { AppLayoutProps } from '@/types';
-import logo from '/public/images/full_logo2.png';
+import logo from '/public/images/full_logo2-optimized.webp';
 
 const links = [
     { title: 'Home', href: '/dashboard', icon: Home },

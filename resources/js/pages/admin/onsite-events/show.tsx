@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { formatEventDateRange } from '@/lib/appointment-date-time';
+import { paginationLabel } from '@/lib/pagination-label';
 
 type Role = 'doctor' | 'medtech' | 'radtech' | 'receptionist';
 type Staff = { id: number; first_name: string; last_name: string; role: Role };
@@ -423,8 +424,9 @@ export default function AdminOnsiteEvent({
                             href={link.url ?? '#'}
                             preserveState
                             className={`rounded border px-3 py-1.5 text-sm ${link.active ? 'bg-moss-600 text-white' : 'bg-white'} ${!link.url ? 'pointer-events-none opacity-40' : ''}`}
-                            dangerouslySetInnerHTML={{ __html: link.label }}
-                        />
+                        >
+                            {paginationLabel(link.label)}
+                        </Link>
                     ))}
                 </nav>
             </section>

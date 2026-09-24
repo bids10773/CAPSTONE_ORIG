@@ -172,7 +172,7 @@ test('radtech can repeatedly save one pending xray then finalize it once', funct
         'chest_status' => 'normal',
         'chest_findings' => 'Both lungs are clear.',
         'impression' => 'Essentially normal chest X-Ray.',
-    ])->assertSessionHas('success', 'X-Ray result finalized successfully.');
+    ])->assertSessionHas('success', 'X-Ray result verified and finalized by RadTech.');
 
     $report = $appointment->xrayReport()->firstOrFail();
     expect($appointment->xrayReport()->count())->toBe(1)

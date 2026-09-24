@@ -27,7 +27,8 @@ import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import AppointmentDateInput from '@/components/appointment-date-input';
 import AppLayout from '@/layouts/app-layout';
-import { useClinicHours, type ClinicHoursSettings } from '@/lib/clinic-hours';
+import { useClinicHours } from '@/lib/clinic-hours';
+import type { ClinicHoursSettings } from '@/lib/clinic-hours';
 import type { Doctor } from '@/types/availability';
 
 interface Company {
@@ -444,22 +445,6 @@ export default function CreateAppointment() {
         );
         return () => window.clearTimeout(timeout);
     }, [formData, storageKey]);
-
-    useEffect(() => {
-        if (formData.appointment_date && formData.appointment_date < minDate) {
-            setFormData((current) => ({
-                ...current,
-                appointment_date: '',
-                start_time: '',
-            }));
-            setAvailability(null);
-            setErrors((current) => ({
-                ...current,
-                appointment_date:
-                    'This date is no longer available. Please choose another day.',
-            }));
-        }
-    }, [formData.appointment_date, minDate]);
 
     useEffect(() => {
         const warnBeforeLeaving = (event: BeforeUnloadEvent) => {

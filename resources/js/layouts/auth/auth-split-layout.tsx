@@ -9,7 +9,7 @@ import {
     Sparkles,
 } from 'lucide-react';
 import type { AuthLayoutProps } from '@/types';
-import logo from '/public/images/full_logo2.png';
+import logo from '/public/images/full_logo2-optimized.webp';
 
 export default function AuthSplitLayout({
     children,
@@ -56,7 +56,7 @@ export default function AuthSplitLayout({
                                 duration: reduceMotion ? 0 : 0.42,
                                 ease: 'easeOut',
                             }}
-                            className="my-auto max-w-xl py-14"
+                            className="mt-8 max-w-xl"
                         >
                             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-moss-200 bg-white px-3.5 py-2 text-xs font-medium text-moss-700 shadow-sm">
                                 <Sparkles className="size-3.5 text-moss-300" />
@@ -140,7 +140,7 @@ export default function AuthSplitLayout({
                             </div>
                         </motion.div>
 
-                        <div className="flex items-center gap-6 text-[11px] font-medium text-slate-500">
+                        <div className="mt-auto flex items-center gap-6 pt-10 text-[11px] font-medium text-slate-500">
                             <span className="flex items-center gap-2">
                                 <ShieldCheck className="size-4 text-moss-300" />{' '}
                                 Secure access

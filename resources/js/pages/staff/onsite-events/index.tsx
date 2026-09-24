@@ -1,8 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
 import { Building2, CalendarDays, ClipboardList } from 'lucide-react';
-import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
+import AppLayout from '@/layouts/app-layout';
 import { formatEventDateRange } from '@/lib/appointment-date-time';
+import { paginationLabel } from '@/lib/pagination-label';
 
 type Role = 'doctor' | 'medtech' | 'radtech';
 type Event = {
@@ -122,8 +123,9 @@ export default function StaffOnsiteEvents({
                         key={index}
                         href={link.url ?? '#'}
                         className={`rounded border px-3 py-1.5 text-sm ${link.active ? 'bg-moss-600 text-white' : 'bg-white'} ${!link.url ? 'pointer-events-none opacity-40' : ''}`}
-                        dangerouslySetInnerHTML={{ __html: link.label }}
-                    />
+                    >
+                        {paginationLabel(link.label)}
+                    </Link>
                 ))}
             </nav>
         </div>

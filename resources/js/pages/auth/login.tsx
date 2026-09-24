@@ -34,6 +34,11 @@ type LoginAttemptLimit = {
     retryAfter: number;
 };
 
+type LoginCountdown = {
+    key: string;
+    retryAfter: number;
+};
+
 export default function Login({
     status,
     canResetPassword,
@@ -45,9 +50,7 @@ export default function Login({
         flash?: { error?: string };
     };
     const [showPassword, setShowPassword] = useState(false);
-    const [attemptLimit, setAttemptLimit] = useState<LoginAttemptLimit | null>(
-        loginAttemptLimit ?? null,
-    );
+    const [countdown, setCountdown] = useState<LoginCountdown | null>(null);
     const [showVerified, setShowVerified] = useState(
         () =>
             typeof window !== 'undefined' &&
@@ -64,25 +67,44 @@ export default function Login({
         }
     }, [showVerified]);
 
-    useEffect(() => {
-        setAttemptLimit(loginAttemptLimit ?? null);
-    }, [loginAttemptLimit]);
+    const attemptKey = loginAttemptLimit
+        ? [
+              loginAttemptLimit.maxAttempts,
+              loginAttemptLimit.remainingAttempts,
+              loginAttemptLimit.locked,
+              loginAttemptLimit.retryAfter,
+          ].join(':')
+        : '';
+    const retryAfter =
+        countdown?.key === attemptKey
+            ? countdown.retryAfter
+            : (loginAttemptLimit?.retryAfter ?? 0);
+    const attemptLimit =
+        loginAttemptLimit?.locked && retryAfter === 0
+            ? null
+            : loginAttemptLimit
+              ? { ...loginAttemptLimit, retryAfter }
+              : null;
 
     useEffect(() => {
-        if (!attemptLimit?.locked || attemptLimit.retryAfter <= 0) return;
+        if (!loginAttemptLimit?.locked || retryAfter <= 0) return;
 
         const timer = window.setInterval(() => {
-            setAttemptLimit((current) => {
-                if (!current?.locked) return current;
+            setCountdown((current) => {
+                const currentRetryAfter =
+                    current?.key === attemptKey
+                        ? current.retryAfter
+                        : loginAttemptLimit.retryAfter;
 
-                const retryAfter = Math.max(0, current.retryAfter - 1);
-
-                return retryAfter === 0 ? null : { ...current, retryAfter };
+                return {
+                    key: attemptKey,
+                    retryAfter: Math.max(0, currentRetryAfter - 1),
+                };
             });
         }, 1000);
 
         return () => window.clearInterval(timer);
-    }, [attemptLimit?.locked]);
+    }, [attemptKey, loginAttemptLimit, retryAfter]);
 
     const isLocked = attemptLimit?.locked === true;
     const retryTime = attemptLimit

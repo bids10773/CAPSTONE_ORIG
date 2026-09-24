@@ -1,8 +1,6 @@
 import { Head, useForm, router } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
+import { CalendarDays, Clock, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     Card,
     CardContent,
@@ -10,7 +8,9 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { CalendarDays, Clock, Save, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import AppLayout from '@/layouts/app-layout';
 
 interface Props {
     availability: Array<{
@@ -22,7 +22,7 @@ interface Props {
 }
 
 export default function DoctorAvailability(props: Props) {
-    const { data, setData, patch, processing, errors } = useForm({
+    const { data, setData, patch, processing } = useForm({
         availability: props.availability,
     });
 

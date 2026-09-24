@@ -258,7 +258,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/patient-visits', [PatientVisitForecastController::class, 'index'])->name('patient-visits.index');
         Route::get('/api/patient-visits', [PatientVisitForecastController::class, 'dashboard'])->name('patient-visits.dashboard');
         Route::get('/security', [AdminDashboardController::class, 'security'])->name('security');
-        Route::get('/reports', [AdminDashboardController::class, 'security'])->name('reports');
+        Route::get('/reports', [AdminDashboardController::class, 'reports'])->name('reports');
     });
 });
 

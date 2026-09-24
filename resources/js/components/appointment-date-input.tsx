@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
 
 type DateParts = { day: string; month: string; year: string };
@@ -68,8 +68,14 @@ export default function AppointmentDateInput({
     slotCountContext = 'across all doctors',
     loadingSlotCounts = false,
 }: Props) {
-    const [parts, setParts] = useState(() => partsFromValue(value));
-    useEffect(() => setParts(partsFromValue(value)), [value]);
+    const [draft, setDraft] = useState(() => ({
+        sourceValue: value,
+        parts: partsFromValue(value),
+    }));
+    if (draft.sourceValue !== value) {
+        setDraft({ sourceValue: value, parts: partsFromValue(value) });
+    }
+    const parts = draft.parts;
     const [visibleMonth, setVisibleMonth] = useState(() => {
         const initial = value || min;
         return initial
@@ -100,7 +106,7 @@ export default function AppointmentDateInput({
 
     function selectCalendarDate(date: Date) {
         const nextValue = dateKey(date);
-        setParts(partsFromValue(nextValue));
+        setDraft({ sourceValue: nextValue, parts: partsFromValue(nextValue) });
         setLocalError(undefined);
         onChange(nextValue);
     }
@@ -110,7 +116,6 @@ export default function AppointmentDateInput({
             ...parts,
             [part]: raw.replace(/\D/g, '').slice(0, part === 'year' ? 4 : 2),
         };
-        setParts(next);
         setLocalError(undefined);
         const complete =
             next.day.length === 2 &&
@@ -123,6 +128,7 @@ export default function AppointmentDateInput({
             complete && !message
                 ? `${next.year}-${next.month}-${next.day}`
                 : '';
+        setDraft({ sourceValue: nextValue, parts: next });
         onChange(nextValue);
         if (nextValue) setVisibleMonth(new Date(`${nextValue}T00:00:00`));
 

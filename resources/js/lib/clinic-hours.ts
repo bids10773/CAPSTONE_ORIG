@@ -16,28 +16,19 @@ export function useClinicHours(hours?: Partial<ClinicHoursSettings>) {
         ? hours.workingDays
         : ['mon', 'tue', 'wed', 'thu', 'fri'];
     const serverNow = hours?.serverNow ?? new Date().toISOString();
-    const [clock, setClock] = useState(() => ({
-        serverTime: new Date(serverNow).getTime(),
-        localTime: Date.now(),
-    }));
-    const [tick, setTick] = useState(0);
+    const [currentTime, setCurrentTime] = useState(() =>
+        new Date(serverNow).getTime(),
+    );
 
     useEffect(() => {
         const timer = window.setInterval(
-            () => setTick((value) => value + 1),
+            () => setCurrentTime((value) => value + 15_000),
             15_000,
         );
         return () => window.clearInterval(timer);
     }, []);
 
-    useEffect(() => {
-        setClock({
-            serverTime: new Date(serverNow).getTime(),
-            localTime: Date.now(),
-        });
-    }, [serverNow]);
-
-    const current = new Date(clock.serverTime + Date.now() - clock.localTime);
+    const current = new Date(currentTime);
     const parts = new Intl.DateTimeFormat('en-US', {
         timeZone: timezone,
         year: 'numeric',
@@ -62,6 +53,5 @@ export function useClinicHours(hours?: Partial<ClinicHoursSettings>) {
         ? earliestBookableDate.toISOString().slice(0, 10)
         : today;
 
-    void tick;
     return { today, time, minDate, isOpen };
 }

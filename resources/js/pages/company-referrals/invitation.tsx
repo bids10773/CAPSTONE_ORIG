@@ -41,7 +41,7 @@ export default function ReferralInvitation({
             <section className="relative mx-auto max-w-2xl overflow-hidden rounded-[1.5rem] border border-moss-200/80 bg-white shadow-[0_24px_70px_-30px_rgba(48,63,52,0.35)]">
                 <header className="bg-moss-600 px-6 py-7 text-white sm:px-9 sm:py-8">
                     <img
-                        src="/images/email-logo.png"
+                        src="/images/email-logo-optimized.png"
                         alt="Living Myth Industrial Clinic"
                         className="h-12 w-auto"
                     />

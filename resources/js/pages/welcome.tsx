@@ -30,8 +30,9 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Reveal, StaggerGroup, StaggerItem } from '@/components/motion';
-import { useClinicHours, type ClinicHoursSettings } from '@/lib/clinic-hours';
-import logo from '/resources/images/full_logo2.png';
+import { useClinicHours } from '@/lib/clinic-hours';
+import type { ClinicHoursSettings } from '@/lib/clinic-hours';
+import logo from '/public/images/full_logo2-optimized.webp';
 
 const services = [
     {
@@ -205,14 +206,14 @@ function Navbar() {
     ];
     return (
         <header className="sticky inset-x-0 top-0 z-50">
-            <div className="mx-auto max-w-7xl px-5 py-5 sm:px-7">
-                <nav className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_14px_45px_rgba(15,38,60,0.10)] sm:px-5">
+            <div className="mx-auto max-w-7xl px-5 py-3 sm:px-7">
+                <nav className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-[0_14px_45px_rgba(15,38,60,0.10)] sm:px-5">
                     <Link
                         href="/"
                         className="flex items-center gap-3"
                         aria-label="Living Myth Industrial Clinic home"
                     >
-                        <span className="ph flex h-11 w-[72px] items-center justify-center rounded-xl px-1.5">
+                        <span className="ph flex h-10 w-[66px] items-center justify-center rounded-xl px-1.5">
                             <img
                                 src={logo}
                                 alt="Living Myth Industrial Clinic"

@@ -239,16 +239,14 @@ function PolicySections({ sections }: { sections: PolicySection[] }) {
     ));
 }
 
-function ContactDetails({ privacy = false }: { privacy?: boolean }) {
+function ContactDetails() {
     return (
         <address className="rounded-xl border border-moss-100 bg-moss-50 p-4 not-italic">
             <p className="font-semibold text-slate-900">
                 Living Myth Industrial Clinic
             </p>
             <p>Brgy. Banlic, Canlubang, Calamba City, Laguna</p>
-            <p>
-                Email: {' livingmythindustrialclinic@gmail.com'}
-            </p>
+            <p>Email: {' livingmythindustrialclinic@gmail.com'}</p>
             <p>Contact Number: +63 922 889 6850</p>
         </address>
     );
@@ -322,7 +320,7 @@ export default function TermsPrivacyContent() {
                         Users who have questions or concerns regarding privacy
                         or their personal information may contact:
                     </p>
-                    <ContactDetails privacy />
+                    <ContactDetails />
                 </section>
             </article>
         </div>

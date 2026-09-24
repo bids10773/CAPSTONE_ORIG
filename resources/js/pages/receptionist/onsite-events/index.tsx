@@ -3,6 +3,7 @@ import { Building2, CalendarDays, UsersRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { formatEventDateRange } from '@/lib/appointment-date-time';
+import { paginationLabel } from '@/lib/pagination-label';
 
 type Event = {
     id: number;
@@ -107,8 +108,9 @@ export default function OnsiteEventsIndex({ events }: { events: Page<Event> }) {
                         key={i}
                         href={link.url ?? '#'}
                         className={`rounded border px-3 py-1.5 text-sm ${link.active ? 'bg-moss-600 text-white' : 'bg-white'} ${!link.url ? 'pointer-events-none opacity-40' : ''}`}
-                        dangerouslySetInnerHTML={{ __html: link.label }}
-                    />
+                    >
+                        {paginationLabel(link.label)}
+                    </Link>
                 ))}
             </nav>
         </div>

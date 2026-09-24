@@ -38,7 +38,7 @@ jobs:
           node-version: '22'
 
       - name: Install Node Dependencies
-        run: npm i
+        run: npm ci
 
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
@@ -52,5 +52,11 @@ jobs:
       - name: Build Assets
         run: npm run build
 
+      - name: Audit PHP Dependencies
+        run: composer audit --locked
+
+      - name: Audit Production Node Dependencies
+        run: npm audit --omit=dev
+
       - name: Tests
-        run: ./vendor/bin/pest
+        run: php -d memory_limit=512M artisan test

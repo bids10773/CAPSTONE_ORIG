@@ -7,6 +7,7 @@ import {
     LoaderCircle,
 } from 'lucide-react';
 import { useState } from 'react';
+import { paginationLabel } from '@/lib/pagination-label';
 import type { PaginatedResponse } from '@/types/pagination';
 
 type PaginationProps<T> = {
@@ -134,7 +135,7 @@ export function Pagination<T>({
                         type="button"
                         disabled={!link.url || loading}
                         aria-current={link.active ? 'page' : undefined}
-                        aria-label={`Page ${link.label}`}
+                        aria-label={`Page ${paginationLabel(link.label)}`}
                         onClick={() => visit(link.url)}
                         className={`min-w-9 rounded-lg px-2 py-2 text-sm font-semibold ${
                             link.active
@@ -142,7 +143,9 @@ export function Pagination<T>({
                                 : 'border border-slate-200 text-slate-700 hover:bg-moss-50 disabled:opacity-40 dark:border-border dark:text-slate-300 dark:hover:bg-accent'
                         }`}
                     >
-                        {link.label === '...' ? '…' : link.label}
+                        {link.label === '...'
+                            ? '…'
+                            : paginationLabel(link.label)}
                     </button>
                 ))}
                 <PageButton

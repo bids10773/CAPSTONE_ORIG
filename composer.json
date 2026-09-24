@@ -10,14 +10,14 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "barryvdh/laravel-dompdf": "3.1.2",
+        "barryvdh/laravel-dompdf": "^3.1.2",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/fortify": "^1.30",
         "laravel/framework": "^12.0",
-        "laravel/socialite": "*",
+        "laravel/socialite": "^5.30",
         "laravel/tinker": "^2.10.1",
         "laravel/wayfinder": "^0.1.9",
-        "maatwebsite/excel": "*"
+        "maatwebsite/excel": "^3.1.70"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -73,8 +73,7 @@
             "@test"
         ],
         "test": [
-            "@php artisan config:clear --ansi",
-            "@lint:check",
+            "Composer\\Config::disableProcessTimeout",
             "@php artisan test"
         ],
         "post-autoload-dump": [
@@ -82,8 +81,7 @@
             "@php artisan package:discover --ansi"
         ],
         "post-update-cmd": [
-            "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
-            "@php artisan boost:update --ansi"
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
         ],
         "post-root-package-install": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""

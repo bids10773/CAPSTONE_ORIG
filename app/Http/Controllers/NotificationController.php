@@ -51,8 +51,7 @@ class NotificationController extends Controller
             'appointment_request' => $request->user()->role === 'admin'
                 ? route('admin.appointments.index', ['status' => 'pending', 'type' => 'individual'], false)
                 : route('notifications.index', absolute: false),
-            'appointment_submitted', 'appointment_confirmed', 'appointment_rejected', 'appointment_cancelled' =>
-                in_array($request->user()->role, ['patient', 'company'], true)
+            'appointment_submitted', 'appointment_confirmed', 'appointment_rejected', 'appointment_cancelled' => in_array($request->user()->role, ['patient', 'company'], true)
                     ? route('appointments.index', absolute: false)
                     : route('notifications.index', absolute: false),
             'appointment_assigned' => $request->user()->role === 'doctor'

@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
+import { Link } from '@inertiajs/react';
 import {
     Calendar,
     ArrowLeft,
@@ -9,8 +8,9 @@ import {
     FileText,
     Users,
 } from 'lucide-react';
-import { Link } from '@inertiajs/react';
-import type { BreadcrumbItem, SharedData } from '@/types';
+import { useMemo, useState } from 'react';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -32,6 +32,7 @@ interface Patient {
 }
 
 interface Props {
+    [key: string]: unknown;
     companies: Company[];
     patients: Patient[];
     serviceTypes: Record<string, string>;
@@ -39,8 +40,8 @@ interface Props {
 }
 
 export default function AdminCreateAppointment() {
-    const props = usePage().props as any;
-    const { companies, patients, serviceTypes, appointmentTypes } = props;
+    const { companies, patients, serviceTypes, appointmentTypes } =
+        usePage<Props>().props;
 
     const [formData, setFormData] = useState({
         patient_id: '',
@@ -60,37 +61,26 @@ export default function AdminCreateAppointment() {
     const [patientSearch, setPatientSearch] = useState('');
     const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
     const [showPatientDropdown, setShowPatientDropdown] = useState(false);
-    const [filteredCompanies, setFilteredCompanies] = useState(companies || []);
-    const [filteredPatients, setFilteredPatients] = useState(patients || []);
-
-    // Filter companies based on search
-    useEffect(() => {
-        if (companySearch) {
-            const filtered = (companies || []).filter((c: Company) =>
-                c.company_name
-                    .toLowerCase()
-                    .includes(companySearch.toLowerCase()),
-            );
-            setFilteredCompanies(filtered);
-        } else {
-            setFilteredCompanies(companies || []);
-        }
+    const filteredCompanies = useMemo(() => {
+        const search = companySearch.trim().toLowerCase();
+        return search
+            ? companies.filter((company) =>
+                  company.company_name.toLowerCase().includes(search),
+              )
+            : companies;
     }, [companySearch, companies]);
 
-    // Filter patients based on search
-    useEffect(() => {
-        if (patientSearch) {
-            const filtered = (patients || []).filter(
-                (p: Patient) =>
-                    `${p.first_name} ${p.last_name}`
-                        .toLowerCase()
-                        .includes(patientSearch.toLowerCase()) ||
-                    p.email.toLowerCase().includes(patientSearch.toLowerCase()),
-            );
-            setFilteredPatients(filtered);
-        } else {
-            setFilteredPatients(patients || []);
-        }
+    const filteredPatients = useMemo(() => {
+        const search = patientSearch.trim().toLowerCase();
+        return search
+            ? patients.filter(
+                  (patient) =>
+                      `${patient.first_name} ${patient.last_name}`
+                          .toLowerCase()
+                          .includes(search) ||
+                      patient.email.toLowerCase().includes(search),
+              )
+            : patients;
     }, [patientSearch, patients]);
 
     const handleChange = (

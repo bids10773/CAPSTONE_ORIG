@@ -2,7 +2,7 @@
     $green = '#455e4a';
     $mossDark = '#303f34';
     $mossSoft = '#e3ede1';
-    $logoFile = public_path('images/full_logo2.png');
+    $logoFile = public_path('images/full_logo2-optimized.png');
     $logoData = is_file($logoFile) ? 'data:image/png;base64,'.base64_encode(file_get_contents($logoFile)) : null;
     $profile = $appointment->user->patientProfile;
     $diagnostics = $examination?->diagnosticResults?->keyBy('service_key') ?? collect();

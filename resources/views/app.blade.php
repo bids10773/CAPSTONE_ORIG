@@ -37,8 +37,8 @@
     </style>
 
     {{-- Icons --}}
-    <link rel="icon" type="image/png" href="{{ asset('images/email-logo.png') }}?v=2">
-    <link rel="apple-touch-icon" href="{{ asset('images/email-logo.png') }}?v=2">
+    <link rel="icon" type="image/png" href="{{ asset('images/email-logo-optimized.png') }}?v=3">
+    <link rel="apple-touch-icon" href="{{ asset('images/email-logo-optimized.png') }}?v=3">
 
     {{-- Fonts --}}
     <link rel="preconnect" href="https://fonts.bunny.net">

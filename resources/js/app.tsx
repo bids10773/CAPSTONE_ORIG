@@ -1,5 +1,6 @@
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import type { ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from 'sonner';
 import '../css/app.css';
@@ -9,8 +10,16 @@ import { initializeTheme } from './hooks/use-appearance';
 
 // Keeping the glob options explicit makes Vite rebuild the Inertia page map
 // whenever a new page module is added during development.
-const pages = {
-    ...import.meta.glob('./pages/**/*.tsx', { eager: false }),
+type InertiaPageModule = { default: ComponentType<never> };
+
+const pages: Record<string, () => Promise<InertiaPageModule>> = {
+    ...import.meta.glob<InertiaPageModule>('./pages/**/*.tsx', {
+        eager: false,
+    }),
+    './pages/receptionist/onsite-events/attendance.tsx': () =>
+        import('./pages/receptionist/onsite-events/attendance'),
+    './pages/staff/onsite-events/show.tsx': () =>
+        import('./pages/staff/onsite-events/show'),
     './pages/radtech/xray-report-form.tsx': () =>
         import('./pages/radtech/xray-report-form'),
 };
