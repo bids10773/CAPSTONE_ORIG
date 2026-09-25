@@ -16,7 +16,7 @@ class ReceptionistSeeder extends Seeder
             'email' => 'receptionist@lmic.com',
             'password' => Hash::make('password'),
             'role' => 'receptionist',
-            'contact' => '0090567570', // ← add this
+            'contact' => '0090567570',
             'is_active' => true,
             'email_verified_at' => now(),
         ]);
