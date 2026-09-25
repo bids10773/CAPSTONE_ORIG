@@ -78,7 +78,7 @@ test('matching patient securely accepts referral and company services override b
     $doctor = User::factory()->create([
         'role' => 'doctor',
         'is_active' => true,
-        'availability' => [['day' => strtolower(today()->addDay()->format('D')), 'start' => '09:00', 'end' => '10:00']],
+        'availability' => [['day' => strtolower(today()->nextWeekday()->format('D')), 'start' => '09:00', 'end' => '10:00']],
     ]);
 
     $referral->update(['patient_id' => $patient->id, 'status' => 'viewed']);
@@ -87,7 +87,7 @@ test('matching patient securely accepts referral and company services override b
         'type' => 'individual',
         'company_id' => null,
         'doctor_id' => $doctor->id,
-        'appointment_date' => today()->addDay()->toDateString(),
+        'appointment_date' => today()->nextWeekday()->toDateString(),
         'start_time' => '09:00',
         'service_types' => ['Urinalysis'],
     ])->assertSessionDoesntHaveErrors();
@@ -224,14 +224,14 @@ test('patient cannot create an unlinked company referral appointment', function 
     $doctor = User::factory()->create([
         'role' => 'doctor',
         'is_active' => true,
-        'availability' => [['day' => strtolower(today()->addDay()->format('D')), 'start' => '09:00', 'end' => '10:00']],
+        'availability' => [['day' => strtolower(today()->nextWeekday()->format('D')), 'start' => '09:00', 'end' => '10:00']],
     ]);
 
     $this->actingAs($patient)->post(route('appointments.store'), [
         'type' => 'company_referral',
         'company_id' => $account->company_id,
         'doctor_id' => $doctor->id,
-        'appointment_date' => today()->addDay()->toDateString(),
+        'appointment_date' => today()->nextWeekday()->toDateString(),
         'start_time' => '09:00',
         'service_types' => ['PE'],
     ])->assertSessionHasErrors('company_referral_id');

@@ -29,7 +29,7 @@ test('company accounts always create company bulk appointments', function () {
         'role' => 'company',
         'company_id' => $company->id,
     ]);
-    $date = today()->addDay();
+    $date = today()->nextWeekday();
 
     $this->actingAs($representative)
         ->post(route('appointments.store'), [
@@ -65,7 +65,7 @@ test('company bulk appointments always use annual examination while selected ser
     $account = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
 
     $this->actingAs($account)->post(route('appointments.store'), [
-        'appointment_date' => today()->addDay()->toDateString(),
+        'appointment_date' => today()->nextWeekday()->toDateString(),
         'service_types' => ['PE'],
         'examination_purpose' => 'pre_employment',
         'service_location' => 'clinic', 'event_contact_name' => 'Ana Cruz',
@@ -77,7 +77,7 @@ test('company bulk appointments always use annual examination while selected ser
         ->and($standard->service_types)->toBe(['PE']);
 
     $this->actingAs($account)->post(route('appointments.store'), [
-        'appointment_date' => today()->addDays(2)->toDateString(),
+        'appointment_date' => today()->nextWeekday()->addWeekday()->toDateString(),
         'service_types' => ['PE', 'Drug Test', 'Pregnancy Test'],
         'examination_purpose' => 'pre_employment',
         'service_location' => 'clinic', 'event_contact_name' => 'Ana Cruz',
@@ -275,7 +275,7 @@ test('admin bulk request queue contains parent events but not enrolled employee 
 test('individual appointments require complete patient details before receptionist approval', function () {
     $receptionist = User::factory()->create(['role' => 'receptionist']);
     $patient = User::factory()->create(['contact' => null]);
-    $appointmentDate = today()->addDay();
+    $appointmentDate = today()->nextWeekday();
     $doctor = User::factory()->create([
         'role' => 'doctor',
         'is_active' => true,
