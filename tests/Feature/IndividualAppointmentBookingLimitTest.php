@@ -59,14 +59,15 @@ function existingIndividual(User $patient, string $date, string $status = 'pendi
     ]);
 }
 
-test('patient can book first appointment and another date when only one is active', function () {
+test('patient can book only one active appointment', function () {
     $patient = bookingPatient();
     $doctor = bookingDoctor();
 
     postIndividual($this, $patient, $doctor, '2026-08-18')->assertSessionDoesntHaveErrors();
-    postIndividual($this, $patient, $doctor, '2026-08-19')->assertSessionDoesntHaveErrors();
+    postIndividual($this, $patient, $doctor, '2026-08-19')
+        ->assertSessionHasErrors('appointment_limit');
 
-    expect(Appointment::where('user_id', $patient->id)->count())->toBe(2);
+    expect(Appointment::where('user_id', $patient->id)->count())->toBe(1);
 });
 
 test('patient cannot book a weekend appointment', function () {
@@ -161,27 +162,50 @@ test('same date is blocked through the direct post endpoint and audited', functi
     ]);
 });
 
-test('patient cannot exceed two active future appointments', function () {
+test('patient cannot create another appointment while one is pending', function () {
     $patient = bookingPatient();
     $doctor = bookingDoctor();
     existingIndividual($patient, '2026-08-18', 'pending');
-    existingIndividual($patient, '2026-08-19', 'accepted');
 
-    postIndividual($this, $patient, $doctor, '2026-08-20')
+    postIndividual($this, $patient, $doctor, '2026-08-19')
         ->assertSessionHasErrors('appointment_limit');
 
-    expect(Appointment::where('user_id', $patient->id)->count())->toBe(2);
+    expect(Appointment::where('user_id', $patient->id)->count())->toBe(1);
     $this->assertDatabaseHas('security_audits', ['action' => 'future_limit_reached', 'status' => 'blocked']);
 });
+
+test('patient stays on the current page when opening booking with a pending appointment', function () {
+    $patient = bookingPatient();
+    $appointment = existingIndividual($patient, '2026-08-18', 'pending');
+
+    $this->actingAs($patient)
+        ->from(route('dashboard'))
+        ->get(route('appointment.create'))
+        ->assertRedirect(route('dashboard'))
+        ->assertSessionHas(
+            'warning',
+            "You already have a pending appointment ({$appointment->reference_code}). Please complete or cancel it before booking another appointment.",
+        );
+});
+
+test('patient cannot create another appointment while clinical processing is active', function (string $status) {
+    $patient = bookingPatient();
+    $doctor = bookingDoctor();
+    existingIndividual($patient, '2026-08-18', $status);
+
+    postIndividual($this, $patient, $doctor, '2026-08-19')
+        ->assertSessionHasErrors('appointment_limit');
+
+    expect(Appointment::where('user_id', $patient->id)->count())->toBe(1);
+})->with(['arrived', 'for_diagnostics', 'for_xray', 'for_final_evaluation']);
 
 test('cancelled and completed appointments do not count toward the future limit', function (string $status) {
     $patient = bookingPatient();
     $doctor = bookingDoctor();
     existingIndividual($patient, '2026-08-18', $status);
-    existingIndividual($patient, '2026-08-19', 'accepted');
 
-    postIndividual($this, $patient, $doctor, '2026-08-20')->assertSessionDoesntHaveErrors();
-    expect(Appointment::where('user_id', $patient->id)->count())->toBe(3);
+    postIndividual($this, $patient, $doctor, '2026-08-19')->assertSessionDoesntHaveErrors();
+    expect(Appointment::where('user_id', $patient->id)->count())->toBe(2);
 })->with(['cancelled', 'completed']);
 
 test('repeated submissions create only one appointment', function () {

@@ -79,6 +79,7 @@ interface AssignedStaff {
 
 interface Appointment {
     id: number;
+    reference_code: string;
     appointment_date: string;
     event_end_date?: string | null;
     start_time: string | null;
@@ -1106,7 +1107,9 @@ export default function AdminAppointmentsIndex() {
                                                     className="text-sm text-slate-700 transition-colors hover:bg-moss-50/50 dark:text-slate-300 dark:hover:bg-moss-900/25"
                                                 >
                                                     <td className="px-3 py-2.5 font-medium text-slate-500">
-                                                        #{appointment.id}
+                                                        {
+                                                            appointment.reference_code
+                                                        }
                                                     </td>
                                                     <td className="min-w-0 px-3 py-2.5">
                                                         <div className="flex items-center gap-2.5">
@@ -1360,7 +1363,7 @@ export default function AdminAppointmentsIndex() {
                         <DialogHeader>
                             <DialogTitle>Appointment Details</DialogTitle>
                             <DialogDescription>
-                                Appointment #{selectedAppointment.id} · Current
+                                {selectedAppointment.reference_code} · Current
                                 scheduling and coordination information
                             </DialogDescription>
                         </DialogHeader>

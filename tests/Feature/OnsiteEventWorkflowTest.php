@@ -294,6 +294,12 @@ test('bulk employees stay out of regular dashboards and remain available in onsi
 
 test('clinical staff have dedicated onsite event pages scoped to their own assignments', function () {
     extract(onsiteFixture());
+    $employee->patientProfile()->create([
+        'employee_number' => 'ONS-000001',
+        'birthdate' => '1990-01-01',
+        'sex' => 'male',
+        'civil_status' => 'Single',
+    ]);
     $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
     $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
     $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
@@ -311,7 +317,9 @@ test('clinical staff have dedicated onsite event pages scoped to their own assig
         $this->actingAs($staff)->get(route("{$role}.onsite-events.index"))
             ->assertInertia(fn ($page) => $page->component('staff/onsite-events/index')->has('events.data', 1));
         $this->actingAs($staff)->get(route("{$role}.onsite-events.show", $event))
-            ->assertInertia(fn ($page) => $page->component('staff/onsite-events/show')->has('queues.data', 1));
+            ->assertInertia(fn ($page) => $page->component('staff/onsite-events/show')
+                ->has('queues.data', 1)
+                ->where('queues.data.0.appointment.patient_profile.employee_number', 'ONS-000001'));
     }
 
     $this->actingAs($otherDoctor)->get(route('doctor.onsite-events.show', $event))->assertForbidden();

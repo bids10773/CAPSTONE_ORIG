@@ -28,9 +28,14 @@ const inputClass =
 interface Props {
     appointment: {
         id: number;
+        reference_code: string;
         appointment_date?: string;
         user: { first_name: string; last_name: string };
-        patient_profile?: { sex?: string; birthdate?: string };
+        patient_profile?: {
+            sex?: string;
+            birthdate?: string;
+            employee_number?: string | null;
+        };
         service_types: string;
     };
     xrayReport?: {
@@ -131,7 +136,7 @@ export default function XrayReportForm({
                                 X-Ray result entry
                             </h1>
                             <p className="mt-2 text-sm text-moss-100">
-                                Appointment #{appointment.id} ·{' '}
+                                {appointment.reference_code} ·{' '}
                                 {appointment.appointment_date
                                     ? formatAppointmentDate(
                                           appointment.appointment_date,
@@ -162,6 +167,15 @@ export default function XrayReportForm({
                                     appointment.service_types || 'Chest X-ray'
                                 }
                             />
+                            {appointment.patient_profile?.employee_number && (
+                                <Summary
+                                    label="Company ID"
+                                    value={
+                                        appointment.patient_profile
+                                            .employee_number
+                                    }
+                                />
+                            )}
                         </div>
                     </div>
                 </header>

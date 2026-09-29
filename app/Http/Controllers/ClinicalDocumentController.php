@@ -52,7 +52,7 @@ class ClinicalDocumentController extends Controller
 
     private function loadPeAppointment(Request $request, Appointment $appointment): void
     {
-        Gate::authorize('viewClinicalForms', $appointment);
+        Gate::authorize('viewPhysicalExam', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment);
         abort_unless($appointment->isPePackage(), 404, 'This appointment has no PE form.');
         $appointment->load([
@@ -66,7 +66,7 @@ class ClinicalDocumentController extends Controller
 
     public function xray(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow): Response
     {
-        Gate::authorize('viewClinicalForms', $appointment);
+        Gate::authorize('viewXray', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment);
         $appointment->load(['user.patientProfile', 'company', 'xrayReport.radiologist']);
         abort_unless($appointment->xrayReport, 404, 'No X-ray report exists.');
@@ -88,7 +88,7 @@ class ClinicalDocumentController extends Controller
 
     private function ensurePatientResultIsReleased(Request $request, Appointment $appointment): void
     {
-        if ($request->user()->role !== 'patient') {
+        if (! in_array($request->user()->role, ['patient', 'company'], true)) {
             return;
         }
 

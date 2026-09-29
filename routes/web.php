@@ -28,6 +28,7 @@ use App\Http\Controllers\RadTechDashboardController;
 use App\Http\Controllers\ReceptionistDashboardController;
 use App\Http\Controllers\ReceptionistWalkInController;
 use App\Http\Controllers\StaffController;
+use App\Http\Controllers\StaffPatientRecordController;
 use App\Http\Controllers\TemporaryPasswordController;
 use App\Http\Controllers\XrayController;
 use App\Support\ClinicHours;
@@ -138,8 +139,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/appointment-requests', [ReceptionistWalkInController::class, 'appointmentRequests'])->name('appointment-requests.index');
         Route::patch('/appointment-requests/{appointment}/approve', [ReceptionistWalkInController::class, 'approveAppointment'])->name('appointment-requests.approve');
         Route::patch('/appointment-requests/{appointment}/reject', [ReceptionistWalkInController::class, 'rejectAppointment'])->name('appointment-requests.reject');
+        Route::post('/appointment-requests/{appointment}/remind', [ReceptionistWalkInController::class, 'remindAppointment'])
+            ->middleware('throttle:6,1')
+            ->name('appointment-requests.remind');
         Route::get('/patients', [ReceptionistWalkInController::class, 'patients'])->name('patients.index');
         Route::get('/patients/search', [ReceptionistWalkInController::class, 'searchPatients'])->name('patients.search');
+        Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
         Route::get('/onsite-events', [OnsiteEventController::class, 'receptionistIndex'])->name('onsite-events.index');
         Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'receptionistShow'])->name('onsite-events.show');
         Route::patch('/onsite-employees/{employee}/attendance', [OnsiteEventController::class, 'attendance'])->name('onsite-employees.attendance');
@@ -151,6 +156,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/onsite-events/{event}/queue', [OnsiteEventController::class, 'myQueue'])->name('onsite-events.queue');
         Route::get('/dashboard', DoctorDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor')->name('appointments');
+        Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
         Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
         Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
         Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'doctorSubmit'])->name('doctor-availability.update');
@@ -168,6 +174,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/onsite-events/{event}/queue', [OnsiteEventController::class, 'myQueue'])->name('onsite-events.queue');
         Route::get('/dashboard', MedTechDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'medtech')->name('appointments');
+        Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
         Route::get('/lab-results/{appointment}', [LaboratoryController::class, 'create'])->name('lab-results.create');
         Route::post('/lab-results/{appointment}', [LaboratoryController::class, 'store'])->name('lab-results.store');
     });
@@ -191,6 +198,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/onsite-events/{event}/queue', [OnsiteEventController::class, 'myQueue'])->name('onsite-events.queue');
         Route::get('/dashboard', RadTechDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'radtech')->name('appointments');
+        Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
         Route::get('/xrays/{appointment}', [XrayController::class, 'create'])->name('xrays.create');
         Route::post('/xrays/{appointment}', [XrayController::class, 'store'])->name('xrays.store');
     });

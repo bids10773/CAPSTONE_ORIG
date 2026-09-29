@@ -356,7 +356,7 @@ export default function StaffOnsiteEvent({
                                             Employee
                                         </th>
                                         <th className="px-5 py-3.5">
-                                            Employee no.
+                                            Company ID
                                         </th>
                                         <th className="px-5 py-3.5">Task</th>
                                         <th className="px-5 py-3.5">

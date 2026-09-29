@@ -25,7 +25,13 @@ interface AppointmentData {
     service_type?: string;
     service_types?: string[];
     referral_code: string | null;
-    user: { id: number; first_name: string; last_name: string; email: string };
+    user: {
+        id: number;
+        first_name: string;
+        last_name: string;
+        email: string;
+        patient_profile?: { employee_number?: string | null } | null;
+    };
     company: { id: number; company_name: string } | null;
 }
 
@@ -33,7 +39,7 @@ export default function AppointmentsIndex() {
     const props = usePage().props as any;
     const { appointments, filters, can, isCompanyView, auth } = props;
     const pageTitle = isCompanyView
-        ? 'Employee Appointments'
+        ? 'Employee Records'
         : auth?.user?.role === 'patient'
           ? 'Medical Records'
           : 'Appointments';
@@ -98,7 +104,9 @@ export default function AppointmentsIndex() {
                 <SearchFilterToolbar
                     title={pageTitle}
                     search={{
-                        placeholder: 'Search by patient name or email...',
+                        placeholder: isCompanyView
+                            ? 'Search by employee name, email, or company ID...'
+                            : 'Search by patient name or email...',
                         value: search,
                         onChange: (event) => setSearch(event.target.value),
                         'aria-label': 'Search appointments',
@@ -181,6 +189,9 @@ export default function AppointmentsIndex() {
                         <table className="w-full border-collapse text-left">
                             <thead>
                                 <tr className="border-b border-gray-200 bg-gray-50/50">
+                                    <th className="px-6 py-4 text-xs font-bold tracking-wider whitespace-nowrap text-gray-500 uppercase">
+                                        Employee ID
+                                    </th>
                                     <th className="px-6 py-4 text-xs font-bold tracking-wider text-gray-500 uppercase">
                                         Patient Details
                                     </th>
@@ -202,7 +213,7 @@ export default function AppointmentsIndex() {
                                 {appointments?.data?.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan={5}
+                                            colSpan={6}
                                             className="px-6 py-20 text-center"
                                         >
                                             <div className="flex flex-col items-center justify-center space-y-3">
@@ -228,6 +239,14 @@ export default function AppointmentsIndex() {
                                                     key={appointment.id}
                                                     className="group transition-colors hover:bg-gray-50/80"
                                                 >
+                                                    <td className="px-6 py-4">
+                                                        <span className="font-mono text-sm font-bold whitespace-nowrap text-moss-700">
+                                                            {appointment.user
+                                                                .patient_profile
+                                                                ?.employee_number ||
+                                                                '—'}
+                                                        </span>
+                                                    </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-3">
                                                             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-moss-200 bg-moss-100 text-sm font-bold text-moss-600">
@@ -336,9 +355,13 @@ export default function AppointmentsIndex() {
                                                             </Link>
                                                         )}
                                                         {isCompanyView && (
-                                                            <span className="text-xs font-medium text-slate-500">
-                                                                Status only
-                                                            </span>
+                                                            <Link
+                                                                href={`/appointments/${appointment.id}`}
+                                                                className="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-moss-600 transition-all hover:bg-moss-50"
+                                                            >
+                                                                <Eye className="h-4 w-4" />
+                                                                View records
+                                                            </Link>
                                                         )}
                                                     </td>
                                                 </tr>
@@ -361,7 +384,7 @@ export default function AppointmentsIndex() {
 
 AppointmentsIndex.layout = (page: any) => {
     const title = page.props.isCompanyView
-        ? 'Employee Appointments'
+        ? 'Employee Records'
         : page.props.auth?.user?.role === 'patient'
           ? 'Medical Records'
           : 'Appointments';

@@ -8,6 +8,7 @@ import {
     X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { ClinicStatusLogo } from '@/components/clinic-status-logo';
 import { LiveDateTime } from '@/components/live-date-time';
 import { NotificationBell } from '@/components/notification-bell';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -72,13 +73,13 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                         className="flex shrink-0 items-center gap-3 rounded-xl focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
                         aria-label="LMIC patient portal home"
                     >
-                        <span className="flex size-10 overflow-hidden rounded-xl border border-moss-200 bg-moss-100">
+                        <ClinicStatusLogo className="size-10">
                             <img
                                 src={logo}
                                 alt="LMIC"
                                 className="size-full object-contain p-1"
                             />
-                        </span>
+                        </ClinicStatusLogo>
                         <span className="hidden leading-tight sm:block">
                             <strong className="block text-sm text-slate-950">
                                 Living Myth
@@ -209,7 +210,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                     </nav>
                 )}
             </header>
-            <main>{children}</main>
+            <main className="min-w-0 overflow-x-clip">{children}</main>
         </div>
     );
 }

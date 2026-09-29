@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateWalkInStatusRequest;
 use App\Models\Appointment;
 use App\Models\User;
 use App\Services\AppointmentApprovalService;
+use App\Services\AppointmentReminderService;
 use App\Services\AppointmentSchedulingService;
 use App\Services\WalkInDoctorSlotService;
 use App\Services\WalkInService;
@@ -56,7 +57,7 @@ class ReceptionistWalkInController extends Controller
         $appointments = Appointment::query()
             ->with([
                 'user:id,first_name,middle_name,last_name,email,contact',
-                'user.patientProfile:user_id,birthdate,sex',
+                'user.patientProfile:user_id,birthdate,sex,civil_status',
                 'doctor:id,first_name,last_name',
                 'processedBy:id,first_name,last_name',
             ])
@@ -115,6 +116,15 @@ class ReceptionistWalkInController extends Controller
         );
 
         return back()->with('success', 'Appointment request rejected.');
+    }
+
+    public function remindAppointment(
+        Appointment $appointment,
+        AppointmentReminderService $reminders,
+    ): RedirectResponse {
+        $reminders->send($appointment, allowResend: true);
+
+        return back()->with('success', 'Appointment reminder sent to '.$appointment->user->email.'.');
     }
 
     private function renderIndex(Request $request, string $mode): Response

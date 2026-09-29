@@ -18,6 +18,7 @@ import AppLayout from '@/layouts/app-layout';
 type Patient = { first_name?: string; name?: string };
 type Appointment = {
     id: number;
+    reference_code: string;
     appointment_date: string;
     start_time?: string | null;
     status: string;
@@ -469,7 +470,7 @@ export default function PatientDashboard() {
                                     </span>
                                     <span className="min-w-0 flex-1">
                                         <span className="block font-bold text-slate-900">
-                                            Appointment #{appointment.id}
+                                            {appointment.reference_code}
                                         </span>
                                         <span className="block truncate text-xs text-slate-500">
                                             {

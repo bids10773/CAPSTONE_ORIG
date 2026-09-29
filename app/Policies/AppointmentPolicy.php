@@ -11,6 +11,7 @@ class AppointmentPolicy
     {
         return $user->role === 'admin'
             || ($user->role === 'patient' && $appointment->user_id === $user->id)
+            || $this->companyOwnsAppointment($user, $appointment)
             || ($user->role === 'doctor'
                 && $appointment->bulk_appointment_id === null
                 && $this->isAssignedDoctor($user, $appointment));
@@ -18,21 +19,76 @@ class AppointmentPolicy
 
     public function viewClinicalForms(User $user, Appointment $appointment): bool
     {
-        if ($user->role === 'admin' || $appointment->user_id === $user->id) {
+        return $this->viewPhysicalExam($user, $appointment)
+            || $this->viewLaboratory($user, $appointment)
+            || $this->viewXray($user, $appointment);
+    }
+
+    public function viewPhysicalExam(User $user, Appointment $appointment): bool
+    {
+        if ($this->canViewOwnOrAdmin($user, $appointment)) {
             return true;
         }
 
-        return match ($user->role) {
-            'doctor' => $appointment->bulk_appointment_id === null
-                ? $this->isAssignedDoctor($user, $appointment)
-                : ($this->hasAnyAssignedTask($user, $appointment, ['doctor', 'drug_verification', 'final_evaluation'])
-                    || $appointment->medicalExamination?->examining_doctor_id === $user->id
-                    || $appointment->medicalExamination?->finalized_by === $user->id),
-            'medtech' => app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment) !== []
-                && $this->eligibleOnsiteStaff($user, $appointment, 'medtech'),
-            'radtech' => $appointment->requiresXray() && $this->eligibleOnsiteStaff($user, $appointment, 'radtech'),
-            default => false,
-        };
+        return $user->role === 'doctor' && $this->doctorHasRecordAccess($user, $appointment);
+    }
+
+    public function viewLaboratory(User $user, Appointment $appointment): bool
+    {
+        if ($this->canViewOwnOrAdmin($user, $appointment)) {
+            return true;
+        }
+
+        if ($user->role === 'doctor') {
+            return $this->doctorHasRecordAccess($user, $appointment);
+        }
+
+        return $user->role === 'medtech'
+            && app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment) !== []
+            && ($appointment->bulk_appointment_id === null
+                || $this->hasAssignedTask($user, $appointment, ['medtech'])
+                || $appointment->labResult?->encoded_by === $user->id);
+    }
+
+    public function viewXray(User $user, Appointment $appointment): bool
+    {
+        if ($this->canViewOwnOrAdmin($user, $appointment)) {
+            return true;
+        }
+
+        if ($user->role === 'doctor') {
+            return $this->doctorHasRecordAccess($user, $appointment);
+        }
+
+        return $user->role === 'radtech'
+            && $appointment->requiresXray()
+            && ($appointment->bulk_appointment_id === null
+                || $this->hasAssignedTask($user, $appointment, ['radtech'])
+                || $appointment->xrayReport?->radiologist_id === $user->id);
+    }
+
+    private function canViewOwnOrAdmin(User $user, Appointment $appointment): bool
+    {
+        return $user->role === 'admin'
+            || ($user->role === 'patient' && $appointment->user_id === $user->id)
+            || $this->companyOwnsAppointment($user, $appointment);
+    }
+
+    private function companyOwnsAppointment(User $user, Appointment $appointment): bool
+    {
+        return $user->role === 'company'
+            && $user->company_id !== null
+            && $appointment->company_id === $user->company_id
+            && $appointment->user?->role === 'patient';
+    }
+
+    private function doctorHasRecordAccess(User $user, Appointment $appointment): bool
+    {
+        return $appointment->bulk_appointment_id === null
+            ? $this->isAssignedDoctor($user, $appointment)
+            : ($this->hasAssignedTask($user, $appointment, ['doctor', 'drug_verification', 'final_evaluation'])
+                || $appointment->medicalExamination?->examining_doctor_id === $user->id
+                || $appointment->medicalExamination?->finalized_by === $user->id);
     }
 
     public function updateLaboratory(User $user, Appointment $appointment): bool
@@ -130,5 +186,14 @@ class AppointmentPolicy
                 ->whereIn('service_role', $tasks)
                 ->whereIn('status', ['assigned', 'in_progress'])
                 ->exists();
+    }
+
+    private function hasAssignedTask(User $user, Appointment $appointment, array $tasks): bool
+    {
+        return \App\Models\OnsiteServiceQueue::query()
+            ->where('appointment_id', $appointment->id)
+            ->where('assigned_staff_id', $user->id)
+            ->whereIn('service_role', $tasks)
+            ->exists();
     }
 }

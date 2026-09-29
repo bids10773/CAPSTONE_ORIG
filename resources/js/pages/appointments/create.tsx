@@ -310,7 +310,7 @@ export default function CreateAppointment() {
         clinicHours,
         referral = null,
         bookingPolicy = {
-            maximumUpcoming: 2,
+            maximumUpcoming: 1,
             bookedDates: [],
             upcomingAppointments: [],
         },
@@ -599,12 +599,12 @@ export default function CreateAppointment() {
                 nextErrors.appointment_date =
                     'You already have an appointment on this date.';
             if (
-                formData.type === 'individual' &&
+                !isCompanyAccount &&
                 bookingPolicy.upcomingAppointments.length >=
                     bookingPolicy.maximumUpcoming
             )
                 nextErrors.appointment_limit =
-                    'You already have the maximum number of upcoming appointments. Please complete or cancel an existing appointment before scheduling another one.';
+                    'You already have an active or pending appointment. Please complete or cancel it before scheduling another one.';
             if (
                 ['individual', 'company_referral'].includes(formData.type) &&
                 !formData.doctor_id

@@ -70,9 +70,9 @@
     </div>
     <h2>{{ $title }}</h2>
     <table class="meta">
-        <tr><th>Patient</th><td>{{ $appointment->user->name }}</td><th>Appointment</th><td>#{{ $appointment->id }}</td></tr>
+        <tr><th>Patient</th><td>{{ $appointment->user->name }}</td><th>Appointment</th><td>{{ $appointment->reference_code }}</td></tr>
         <tr><th>Age / Sex</th><td>{{ $profile?->birthdate?->age ?? '—' }} / {{ $profile?->sex ?? $appointment->user->sex ?? '—' }}</td><th>Date</th><td>{{ $appointment->appointment_date?->format('F j, Y') }}</td></tr>
-        <tr><th>Company / agency</th><td colspan="3">{{ $appointment->company?->company_name ?? $appointment->company_name ?? 'OPD' }}</td></tr>
+        <tr><th>Company / agency</th><td colspan="3">{{ $appointment->company?->company_name ?? $appointment->company_name ?? 'N/A' }}</td></tr>
     </table>
 
     @if($section === 'medical-history')

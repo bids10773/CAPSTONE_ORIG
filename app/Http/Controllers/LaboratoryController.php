@@ -57,7 +57,7 @@ class LaboratoryController extends Controller
 
     public function pdf(Request $request, Appointment $appointment, LaboratoryFormDefinition $definitions, ClinicalFormWorkflowService $workflow): HttpResponse
     {
-        Gate::authorize('viewClinicalForms', $appointment);
+        Gate::authorize('viewLaboratory', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment);
         $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'labResult.verifiedBy']);
         abort_unless($appointment->labResult, 404, 'No laboratory report exists for this appointment.');
@@ -82,7 +82,7 @@ class LaboratoryController extends Controller
         LaboratoryFormDefinition $definitions,
         ClinicalFormWorkflowService $workflow,
     ): HttpResponse {
-        Gate::authorize('viewClinicalForms', $appointment);
+        Gate::authorize('viewLaboratory', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment);
         $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'labResult.verifiedBy']);
 
@@ -127,7 +127,7 @@ class LaboratoryController extends Controller
 
     private function ensurePatientResultIsReleased(Request $request, Appointment $appointment): void
     {
-        if ($request->user()->role !== 'patient') {
+        if (! in_array($request->user()->role, ['patient', 'company'], true)) {
             return;
         }
 

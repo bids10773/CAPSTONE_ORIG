@@ -107,11 +107,13 @@ export function StaffDashboardAction({
     href,
     label,
     icon: Icon,
+    secondaryAction,
 }: {
     title: string;
     href: string;
     label: string;
     icon: LucideIcon;
+    secondaryAction?: { href: string; label: string };
 }) {
     return (
         <div className="flex flex-col justify-between rounded-[2rem] border border-moss-200 bg-gradient-to-br from-moss-700 to-moss-900 p-6 text-white shadow-sm sm:col-span-2 xl:col-span-1">
@@ -126,13 +128,24 @@ export function StaffDashboardAction({
                     <Icon className="size-6" />
                 </span>
             </div>
-            <Link
-                href={href}
-                className="mt-6 flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-bold text-moss-800 transition hover:bg-moss-50"
-            >
-                {label}
-                <ArrowRight className="size-4" />
-            </Link>
+            <div className="mt-6 grid gap-2">
+                <Link
+                    href={href}
+                    className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-bold text-moss-800 transition hover:bg-moss-50"
+                >
+                    {label}
+                    <ArrowRight className="size-4" />
+                </Link>
+                {secondaryAction && (
+                    <Link
+                        href={secondaryAction.href}
+                        className="flex items-center justify-between rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20"
+                    >
+                        {secondaryAction.label}
+                        <ArrowRight className="size-4" />
+                    </Link>
+                )}
+            </div>
         </div>
     );
 }

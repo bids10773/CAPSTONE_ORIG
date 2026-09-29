@@ -31,7 +31,7 @@ type Field = {
 };
 type Section = { label: string; column: string; fields: Field[] };
 type Props = {
-    appointment: { id: number };
+    appointment: { id: number; reference_code: string };
     patientSummary: {
         name: string;
         age?: number;
@@ -259,7 +259,7 @@ export default function LaboratoryResultsForm({
                                 Laboratory result entry
                             </h1>
                             <p className="mt-2 text-sm text-moss-100">
-                                Appointment #{appointment.id} ·{' '}
+                                {appointment.reference_code} ·{' '}
                                 {patientSummary.date ?? 'Date unavailable'}
                             </p>
                         </div>
@@ -284,7 +284,7 @@ export default function LaboratoryResultsForm({
                             />
                             {patientSummary.employee_number && (
                                 <Summary
-                                    label="Employee No."
+                                    label="Company ID"
                                     value={patientSummary.employee_number}
                                 />
                             )}

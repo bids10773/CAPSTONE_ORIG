@@ -75,6 +75,7 @@ export interface BirthdateInputProps {
     required?: boolean;
     validateRequiredOnBlur?: boolean;
     minimumAge?: number;
+    showPartLabels?: boolean;
     onChange?: (value: string) => void;
 }
 
@@ -85,6 +86,7 @@ export default function BirthdateInput({
     required = false,
     validateRequiredOnBlur = false,
     minimumAge,
+    showPartLabels = true,
     onChange,
 }: BirthdateInputProps) {
     const [parts, setParts] = useState(() => partsFromValue(value));
@@ -174,13 +176,17 @@ export default function BirthdateInput({
     return (
         <div ref={groupRef} onBlur={validateVisibleValue}>
             <input type="hidden" name={name} value={combined} />
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(5.5rem,1.5fr)] gap-2.5">
                 {fields.map((field) => (
                     <label
                         key={field.key}
-                        className="grid gap-1.5 text-xs font-medium text-slate-600"
+                        className={
+                            showPartLabels
+                                ? 'grid gap-1.5 text-xs font-medium text-slate-600'
+                                : 'block'
+                        }
                     >
-                        <span>{field.label}</span>
+                        {showPartLabels && <span>{field.label}</span>}
                         <input
                             ref={field.ref}
                             type="text"
@@ -221,7 +227,7 @@ export default function BirthdateInput({
                                 if (field.key === 'year')
                                     monthRef.current?.focus();
                             }}
-                            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-center text-sm tracking-wider text-slate-900 transition outline-none placeholder:text-slate-400 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10 aria-invalid:border-rose-400 aria-invalid:focus:ring-rose-500/10"
+                            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-2 text-center text-sm tracking-wide text-slate-900 transition outline-none placeholder:text-slate-400 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10 aria-invalid:border-rose-400 aria-invalid:focus:ring-rose-500/10"
                         />
                     </label>
                 ))}

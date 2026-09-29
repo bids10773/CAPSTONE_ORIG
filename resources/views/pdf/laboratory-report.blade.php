@@ -39,9 +39,9 @@
 </div>
 <div class="title">LABORATORY RESULT</div>
 <table class="patient">
-    <tr><td class="label">Name</td><td>{{ $patient['name'] }}</td><td class="label">Company/Agency</td><td>{{ $patient['company'] ?? 'OPD' }}</td></tr>
+    <tr><td class="label">Name</td><td>{{ $patient['name'] }}</td><td class="label">Company/Agency</td><td>{{ $patient['company'] ?? 'N/A' }}</td></tr>
     <tr><td class="label">Age/Sex</td><td>{{ $patient['age'] ?? '—' }}/{{ strtoupper(substr($patient['sex'] ?? '—', 0, 1)) }}</td><td class="label">Date</td><td>{{ $result->finalized_at?->format('m/d/Y') ?? $patient['date'] }}</td></tr>
-    @if($patient['employee_number'])<tr><td class="label">Employee No.</td><td>{{ $patient['employee_number'] }}</td><td class="label">Appointment</td><td>#{{ $appointment->id }}</td></tr>@endif
+    @if($patient['employee_number'])<tr><td class="label">Employee No.</td><td>{{ $patient['employee_number'] }}</td><td class="label">Appointment</td><td>{{ $appointment->reference_code }}</td></tr>@endif
 </table>
 
 @foreach($sections as $sectionKey => $section)
@@ -70,10 +70,14 @@
 
 @if($result->remarks)<div class="section"><h2>REMARKS</h2><div class="remarks">{{ $result->remarks }}</div></div>@endif
 
+@php
+    $physician = $appointment->doctor;
+    $medicalTechnologist = $result->verifiedBy ?? $result->encodedBy;
+@endphp
 <table class="signatures"><tr>
-    <td><div class="signature-line">DR. DEXTER A. LEDESMA M.D.</div><div>LIC. NO. 0089730</div><div class="role">Pathologist</div></td>
-    <td><div class="signature-line">{{ strtoupper($result->verifiedBy?->name ?? $result->encodedBy?->name ?? 'MEDICAL TECHNOLOGIST') }}</div><div>{{ $result->verifiedBy?->license_no ? 'LIC. NO. '.$result->verifiedBy->license_no : '' }}</div><div class="role">Medical Technologist</div></td>
+    <td><div class="signature-line">{{ strtoupper($physician?->name ?? '') }}</div><div>{{ $physician?->license_no ? 'LIC. NO. '.$physician->license_no : '' }}</div><div class="role">{{ $physician?->specialization ?? $physician?->role_label ?? '' }}</div></td>
+    <td><div class="signature-line">{{ strtoupper($medicalTechnologist?->name ?? '') }}</div><div>{{ $medicalTechnologist?->license_no ? 'LIC. NO. '.$medicalTechnologist->license_no : '' }}</div><div class="role">{{ $medicalTechnologist?->specialization ?? $medicalTechnologist?->role_label ?? '' }}</div></td>
 </tr></table>
-<div class="footer">Electronically generated LMIC clinical document · Appointment #{{ $appointment->id }} · {{ now()->format('Y-m-d H:i') }}</div>
+<div class="footer">Electronically generated LMIC clinical document · {{ $appointment->reference_code }} · {{ now()->format('Y-m-d H:i') }}</div>
 </body>
 </html>

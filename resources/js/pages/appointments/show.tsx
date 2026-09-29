@@ -73,13 +73,22 @@ export default function AppointmentRecord({
     const patient = appointment.user;
     const { auth } = usePage().props as { auth: { user: { role: string } } };
     const profile = patient.patient_profile;
+    const companyEmployeeId =
+        auth.user.role === 'company' ? profile?.employee_number : null;
+    const displayedRecordId = companyEmployeeId ?? appointment.reference_code;
+    const displayedRecordIdLabel = companyEmployeeId
+        ? 'Employee ID'
+        : 'Appointment';
     const services: string[] = appointment.service_types ?? [];
     const laboratoryEntries = Object.entries(laboratorySections);
+    const isPortalRecordViewer = ['patient', 'company'].includes(
+        auth.user.role,
+    );
     const patientDocumentsAvailable =
-        auth.user.role !== 'patient' || appointment.status === 'completed';
+        !isPortalRecordViewer || appointment.status === 'completed';
     const peDocumentsAvailable =
         patientDocumentsAvailable &&
-        (auth.user.role !== 'patient' ||
+        (!isPortalRecordViewer ||
             !services.includes('PE') ||
             Boolean(appointment.medical_examination?.released_at));
     const patientName = [
@@ -144,6 +153,9 @@ export default function AppointmentRecord({
             description: 'Verified laboratory findings and remarks',
             ready:
                 Boolean(appointment.lab_result?.[section.column]) &&
+                (!isPortalRecordViewer ||
+                    Boolean(appointment.lab_result?.finalized_at) ||
+                    appointment.lab_result?.status === 'finalized') &&
                 peDocumentsAvailable,
             href: `/clinical-forms/${appointment.id}/laboratory/${key}.pdf`,
         })),
@@ -157,6 +169,9 @@ export default function AppointmentRecord({
                           'All requested laboratory results in one file',
                       ready:
                           Boolean(appointment.lab_result) &&
+                          (!isPortalRecordViewer ||
+                              Boolean(appointment.lab_result?.finalized_at) ||
+                              appointment.lab_result?.status === 'finalized') &&
                           peDocumentsAvailable,
                       href: `/clinical-forms/${appointment.id}/laboratory.pdf`,
                   },
@@ -194,7 +209,7 @@ export default function AppointmentRecord({
                         Back to appointments
                     </Link>
                     <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 dark:border-border dark:bg-card dark:text-slate-300">
-                        <Hash className="size-3.5" /> Record {appointment.id}
+                        <Hash className="size-3.5" /> {displayedRecordId}
                     </span>
                 </div>
 
@@ -238,8 +253,8 @@ export default function AppointmentRecord({
 
                         <div className="flex flex-wrap gap-3 lg:justify-end">
                             <HeroStat
-                                label="Appointment"
-                                value={`#${appointment.id}`}
+                                label={displayedRecordIdLabel}
+                                value={displayedRecordId}
                             />
                             <HeroStat
                                 label="Status"

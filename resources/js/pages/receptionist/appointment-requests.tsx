@@ -3,6 +3,8 @@ import {
     CalendarCheck2,
     CheckCircle2,
     Clock3,
+    Eye,
+    MailCheck,
     Search,
     UserRound,
     XCircle,
@@ -26,6 +28,7 @@ type AppointmentStatus = 'pending' | 'accepted' | 'rejected';
 
 type Appointment = {
     id: number;
+    reference_code?: string;
     appointment_date: string;
     start_time: string | null;
     end_time: string | null;
@@ -35,6 +38,7 @@ type Appointment = {
     rejection_reason?: string | null;
     rejection_details?: string | null;
     processed_at?: string | null;
+    reminder_sent_at?: string | null;
     user: {
         first_name: string;
         middle_name?: string | null;
@@ -44,6 +48,7 @@ type Appointment = {
         patient_profile?: {
             birthdate?: string | null;
             sex?: string | null;
+            civil_status?: string | null;
         } | null;
     };
     doctor?: {
@@ -116,6 +121,8 @@ export default function AppointmentRequests({
 }) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [processingId, setProcessingId] = useState<number | null>(null);
+    const [viewingAppointment, setViewingAppointment] =
+        useState<Appointment | null>(null);
     const [confirmingAppointment, setConfirmingAppointment] =
         useState<Appointment | null>(null);
     const [rejectingAppointment, setRejectingAppointment] =
@@ -163,6 +170,35 @@ export default function AppointmentRequests({
         setRejectionDetails('');
         setRejectionError('');
         setRejectingAppointment(appointment);
+    }
+
+    function openAcceptFromDetails(appointment: Appointment) {
+        setViewingAppointment(null);
+        setConfirmingAppointment(appointment);
+    }
+
+    function openRejectFromDetails(appointment: Appointment) {
+        setViewingAppointment(null);
+        openReject(appointment);
+    }
+
+    function sendReminder(appointment: Appointment) {
+        setProcessingId(appointment.id);
+        router.post(
+            `/receptionist/appointment-requests/${appointment.id}/remind`,
+            {},
+            {
+                preserveScroll: true,
+                onError: (errors) =>
+                    toast.error(
+                        String(
+                            Object.values(errors)[0] ??
+                                'Unable to send the appointment reminder.',
+                        ),
+                    ),
+                onFinish: () => setProcessingId(null),
+            },
+        );
     }
 
     function reject() {
@@ -329,8 +365,20 @@ export default function AppointmentRequests({
                                     </div>
 
                                     <div className="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
-                                        {appointment.status === 'pending' ? (
-                                            <>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() =>
+                                                setViewingAppointment(
+                                                    appointment,
+                                                )
+                                            }
+                                        >
+                                            <Eye className="size-4" />
+                                            View
+                                        </Button>
+                                        {appointment.status === 'accepted' ? (
+                                            <div className="flex flex-col items-start gap-1.5 lg:items-end">
                                                 <Button
                                                     type="button"
                                                     variant="outline"
@@ -339,36 +387,44 @@ export default function AppointmentRequests({
                                                         appointment.id
                                                     }
                                                     onClick={() =>
-                                                        openReject(appointment)
-                                                    }
-                                                    className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
-                                                >
-                                                    <XCircle className="size-4" />
-                                                    Reject
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    disabled={
-                                                        processingId ===
-                                                        appointment.id
-                                                    }
-                                                    onClick={() =>
-                                                        setConfirmingAppointment(
+                                                        sendReminder(
                                                             appointment,
                                                         )
                                                     }
-                                                    className="bg-moss-700 text-white hover:bg-moss-800"
                                                 >
-                                                    <CheckCircle2 className="size-4" />
-                                                    Accept
+                                                    <MailCheck className="size-4" />
+                                                    {appointment.reminder_sent_at
+                                                        ? 'Resend reminder'
+                                                        : 'Send reminder'}
                                                 </Button>
-                                            </>
+                                                {appointment.reminder_sent_at && (
+                                                    <span className="text-xs text-slate-500 dark:text-muted-foreground">
+                                                        Last sent{' '}
+                                                        {new Intl.DateTimeFormat(
+                                                            'en-PH',
+                                                            {
+                                                                month: 'short',
+                                                                day: 'numeric',
+                                                                hour: 'numeric',
+                                                                minute: '2-digit',
+                                                            },
+                                                        ).format(
+                                                            new Date(
+                                                                appointment.reminder_sent_at,
+                                                            ),
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </div>
                                         ) : (
-                                            <span
-                                                className={`status-text-only text-xs font-bold capitalize ${statusStyles[appointment.status]}`}
-                                            >
-                                                {appointment.status}
-                                            </span>
+                                            appointment.status !==
+                                                'pending' && (
+                                                <span
+                                                    className={`status-text-only text-xs font-bold capitalize ${statusStyles[appointment.status]}`}
+                                                >
+                                                    {appointment.status}
+                                                </span>
+                                            )
                                         )}
                                     </div>
                                 </article>
@@ -381,6 +437,197 @@ export default function AppointmentRequests({
                     />
                 </section>
             </main>
+
+            <Dialog
+                open={viewingAppointment !== null}
+                onOpenChange={(open) => !open && setViewingAppointment(null)}
+            >
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                    <DialogHeader>
+                        <div className="flex flex-wrap items-center justify-between gap-3 pr-6">
+                            <DialogTitle>
+                                Appointment request details
+                            </DialogTitle>
+                            {viewingAppointment && (
+                                <span
+                                    className={`rounded-full border px-3 py-1 text-xs font-bold capitalize ${statusStyles[viewingAppointment.status]}`}
+                                >
+                                    {viewingAppointment.status}
+                                </span>
+                            )}
+                        </div>
+                        <DialogDescription>
+                            Review the patient and schedule information before
+                            processing this request.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {viewingAppointment && (
+                        <div className="space-y-5">
+                            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-border dark:bg-accent/30">
+                                <p className="text-xs font-bold tracking-wider text-moss-700 uppercase dark:text-moss-300">
+                                    Patient information
+                                </p>
+                                <h3 className="mt-2 text-lg font-bold text-slate-950 dark:text-foreground">
+                                    {patientName(viewingAppointment)}
+                                </h3>
+                                <dl className="mt-3 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                                    <div>
+                                        <dt className="text-slate-500 dark:text-muted-foreground">
+                                            Email
+                                        </dt>
+                                        <dd className="font-semibold break-all text-slate-900 dark:text-foreground">
+                                            {viewingAppointment.user.email}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-slate-500 dark:text-muted-foreground">
+                                            Contact number
+                                        </dt>
+                                        <dd className="font-semibold text-slate-900 dark:text-foreground">
+                                            {viewingAppointment.user.contact ||
+                                                'Not provided'}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-slate-500 dark:text-muted-foreground">
+                                            Birthdate
+                                        </dt>
+                                        <dd className="font-semibold text-slate-900 dark:text-foreground">
+                                            {viewingAppointment.user
+                                                .patient_profile?.birthdate
+                                                ? formatDate(
+                                                      viewingAppointment.user
+                                                          .patient_profile
+                                                          .birthdate,
+                                                  )
+                                                : 'Not provided'}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-slate-500 dark:text-muted-foreground">
+                                            Sex
+                                        </dt>
+                                        <dd className="font-semibold text-slate-900 capitalize dark:text-foreground">
+                                            {viewingAppointment.user
+                                                .patient_profile?.sex ||
+                                                'Not provided'}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-slate-500 dark:text-muted-foreground">
+                                            Civil status
+                                        </dt>
+                                        <dd className="font-semibold text-slate-900 capitalize dark:text-foreground">
+                                            {viewingAppointment.user
+                                                .patient_profile
+                                                ?.civil_status ||
+                                                'Not provided'}
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </section>
+
+                            <section>
+                                <p className="text-xs font-bold tracking-wider text-moss-700 uppercase dark:text-moss-300">
+                                    Appointment information
+                                </p>
+                                <dl className="mt-3 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                                    <div>
+                                        <dt className="text-slate-500 dark:text-muted-foreground">
+                                            Reference
+                                        </dt>
+                                        <dd className="font-semibold text-slate-900 dark:text-foreground">
+                                            {viewingAppointment.reference_code ??
+                                                `APT${String(viewingAppointment.id).padStart(4, '0')}`}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-slate-500 dark:text-muted-foreground">
+                                            Date and time
+                                        </dt>
+                                        <dd className="font-semibold text-slate-900 dark:text-foreground">
+                                            {formatDate(
+                                                viewingAppointment.appointment_date,
+                                            )}{' '}
+                                            ·{' '}
+                                            {formatTime(
+                                                viewingAppointment.start_time,
+                                            )}
+                                            {viewingAppointment.end_time
+                                                ? ` – ${formatTime(viewingAppointment.end_time)}`
+                                                : ''}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-slate-500 dark:text-muted-foreground">
+                                            Assigned doctor
+                                        </dt>
+                                        <dd className="font-semibold text-slate-900 dark:text-foreground">
+                                            {viewingAppointment.doctor
+                                                ? `Dr. ${viewingAppointment.doctor.first_name} ${viewingAppointment.doctor.last_name}`
+                                                : 'Unassigned'}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-slate-500 dark:text-muted-foreground">
+                                            Examination purpose
+                                        </dt>
+                                        <dd className="font-semibold text-slate-900 capitalize dark:text-foreground">
+                                            {viewingAppointment.examination_purpose?.replaceAll(
+                                                '_',
+                                                ' ',
+                                            ) || 'Not specified'}
+                                        </dd>
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <dt className="text-slate-500 dark:text-muted-foreground">
+                                            Requested services
+                                        </dt>
+                                        <dd className="font-semibold text-slate-900 dark:text-foreground">
+                                            {viewingAppointment.service_types?.join(
+                                                ', ',
+                                            ) || 'No services selected'}
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </section>
+
+                            {viewingAppointment.status === 'pending' && (
+                                <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end dark:border-border">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        disabled={processingId !== null}
+                                        onClick={() =>
+                                            openRejectFromDetails(
+                                                viewingAppointment,
+                                            )
+                                        }
+                                        className="border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                                    >
+                                        <XCircle className="size-4" />
+                                        Reject request
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        disabled={processingId !== null}
+                                        onClick={() =>
+                                            openAcceptFromDetails(
+                                                viewingAppointment,
+                                            )
+                                        }
+                                        className="bg-moss-700 text-white hover:bg-moss-800"
+                                    >
+                                        <CheckCircle2 className="size-4" />
+                                        Accept request
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
 
             <Dialog
                 open={confirmingAppointment !== null}

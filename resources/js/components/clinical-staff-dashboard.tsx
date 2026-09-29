@@ -36,6 +36,7 @@ export function ClinicalStaffDashboard({
     actionTitle,
     actionLabel,
     appointmentsHref,
+    patientRecordsHref,
     onsiteHref,
     onsiteSummary,
     extraStat,
@@ -56,6 +57,7 @@ export function ClinicalStaffDashboard({
     actionTitle: string;
     actionLabel: string;
     appointmentsHref: string;
+    patientRecordsHref: string;
     onsiteHref: string;
     onsiteSummary: OnsiteOverview;
     extraStat?: { label: string; value: string | number; icon: LucideIcon };
@@ -90,6 +92,10 @@ export function ClinicalStaffDashboard({
                     href={appointmentsHref}
                     label={actionLabel}
                     icon={Icon}
+                    secondaryAction={{
+                        href: patientRecordsHref,
+                        label: 'Open patient records',
+                    }}
                 />
                 {extraStat && (
                     <StaffDashboardStat

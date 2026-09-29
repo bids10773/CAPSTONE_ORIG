@@ -44,9 +44,30 @@ class GlobalSearchController extends Controller
         match ($user->role) {
             'admin' => null,
             'receptionist' => $query->whereDate('appointment_date', today()),
-            'doctor' => $query->where('doctor_id', $user->id),
-            'medtech' => $query->whereIn('status', ['for_diagnostics', 'for_final_evaluation', 'completed']),
-            'radtech' => $query->whereIn('status', ['for_xray', 'awaiting_xray_result', 'for_final_evaluation', 'completed']),
+            'doctor' => $query->where(fn (Builder $access) => $access
+                ->where('doctor_id', $user->id)
+                ->orWhereHas('serviceQueues', fn (Builder $queue) => $queue
+                    ->where('assigned_staff_id', $user->id)
+                    ->whereIn('service_role', ['doctor', 'drug_verification', 'final_evaluation']))
+                ->orWhereHas('medicalExamination', fn (Builder $exam) => $exam
+                    ->where('examining_doctor_id', $user->id)
+                    ->orWhere('finalized_by', $user->id))),
+            'medtech' => $query->where(fn (Builder $access) => $access
+                ->whereHas('labResult', fn (Builder $lab) => $lab->where('encoded_by', $user->id))
+                ->orWhereHas('serviceQueues', fn (Builder $queue) => $queue
+                    ->where('assigned_staff_id', $user->id)
+                    ->where('service_role', 'medtech'))
+                ->orWhere(fn (Builder $available) => $available
+                    ->whereNull('bulk_appointment_id')
+                    ->whereIn('status', ['for_diagnostics', 'verifying_drug_test']))),
+            'radtech' => $query->where(fn (Builder $access) => $access
+                ->whereHas('xrayReport', fn (Builder $xray) => $xray->where('radiologist_id', $user->id))
+                ->orWhereHas('serviceQueues', fn (Builder $queue) => $queue
+                    ->where('assigned_staff_id', $user->id)
+                    ->where('service_role', 'radtech'))
+                ->orWhere(fn (Builder $available) => $available
+                    ->whereNull('bulk_appointment_id')
+                    ->whereIn('status', ['for_xray', 'awaiting_xray_result', 'verifying_xray']))),
             'company' => $user->company_id
                 ? $query->where('company_id', $user->company_id)
                 : $query->whereRaw('1 = 0'),
@@ -58,12 +79,22 @@ class GlobalSearchController extends Controller
         $items = $query->latest('appointment_date')->limit(6)->get()->map(fn (Appointment $appointment): array => [
             'id' => 'appointment-'.$appointment->id,
             'type' => 'appointment',
-            'title' => 'Appointment #'.$appointment->id.' · '.($appointment->user?->name ?? 'Patient'),
+            'title' => $appointment->reference_code.' · '.($appointment->user?->name ?? 'Patient'),
             'subtitle' => $appointment->appointment_date?->format('M j, Y').' · '.implode(', ', $appointment->service_types ?? []).' · '.str($appointment->status)->replace('_', ' ')->title(),
             'url' => $this->appointmentUrl($user, $appointment),
         ])->all();
 
-        return ['key' => 'appointments', 'title' => 'Appointments and records', 'items' => $items];
+        $title = match ($user->role) {
+            'doctor' => 'Assigned patients and records',
+            'medtech' => 'Laboratory patients and records',
+            'radtech' => 'Radiology patients and records',
+            'receptionist' => "Today's appointments",
+            'company' => 'Employee records',
+            'patient' => 'My appointments and records',
+            default => 'Appointments and records',
+        };
+
+        return ['key' => 'appointments', 'title' => $title, 'items' => $items];
     }
 
     private function peopleGroup(User $user, string $term): ?array
@@ -136,11 +167,32 @@ class GlobalSearchController extends Controller
         $likeTerm = SearchTerm::forLike($term);
         $query->where(function (Builder $query) use ($term, $likeTerm): void {
             $query->when(ctype_digit($term), fn (Builder $query) => $query->orWhereKey((int) $term))
+                ->when($this->referenceParts($term), function (Builder $query, array $reference): void {
+                    $query->orWhere(fn (Builder $referenceQuery) => $referenceQuery
+                        ->whereKey($reference['id'])
+                        ->whereIn('type', $reference['types']));
+                })
                 ->orWhereHas('user', fn (Builder $patient) => $this->matchUser($patient, $term))
                 ->orWhereHas('company', fn (Builder $company) => $company->where('company_name', 'like', "%{$likeTerm}%"))
                 ->orWhere('status', 'like', "%{$likeTerm}%")
                 ->orWhere('service_types', 'like', "%{$likeTerm}%");
         });
+    }
+
+    private function referenceParts(string $term): ?array
+    {
+        if (! preg_match('/^(APT|WLK|REF)0*(\d+)$/i', $term, $matches)) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $matches[2],
+            'types' => match (strtoupper($matches[1])) {
+                'WLK' => ['walk_in'],
+                'REF' => ['company_referral'],
+                default => ['individual', 'company_bulk'],
+            },
+        ];
     }
 
     private function matchUser(Builder $query, string $term): void
@@ -160,9 +212,17 @@ class GlobalSearchController extends Controller
             'receptionist' => route('receptionist.queue.index', ['search' => $appointment->user?->name]),
             'doctor' => $appointment->status === 'for_final_evaluation'
                 ? route('doctor.final-evaluation', $appointment)
-                : route('doctor.physical-exams.create', $appointment),
-            'medtech' => route('medtech.lab-results.create', $appointment),
-            'radtech' => route('radtech.xrays.create', $appointment),
+                : (in_array($appointment->status, ['accepted', 'arrived'], true)
+                    && $appointment->appointment_date?->isToday()
+                    ? route('doctor.physical-exams.create', $appointment)
+                    : route('doctor.patient-records.index', ['search' => $appointment->user?->name])),
+            'medtech' => in_array($appointment->status, ['for_diagnostics', 'verifying_drug_test'], true)
+                ? route('medtech.lab-results.create', $appointment)
+                : route('medtech.patient-records.index', ['search' => $appointment->user?->name]),
+            'radtech' => in_array($appointment->status, ['for_xray', 'awaiting_xray_result', 'verifying_xray'], true)
+                ? route('radtech.xrays.create', $appointment)
+                : route('radtech.patient-records.index', ['search' => $appointment->user?->name]),
+            'company' => route('company.dashboard'),
             default => route('appointments.show', $appointment),
         };
     }

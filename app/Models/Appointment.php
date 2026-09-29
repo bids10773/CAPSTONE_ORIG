@@ -9,10 +9,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Appointment extends Model
 {
+    protected $appends = ['reference_code'];
+
     public const ACTIVE_RESERVATION_STATUSES = ['pending', 'accepted'];
 
     public const OPEN_STATUSES = [
-        'pending', 'accepted', 'arrived', 'for_diagnostics', 'for_xray', 'awaiting_xray_result', 'for_final_evaluation',
+        'pending', 'accepted', 'arrived', 'for_physical_examination', 'for_diagnostics', 'for_xray',
+        'awaiting_xray_result', 'verifying_xray', 'verifying_drug_test', 'verifying_drug_and_xray',
+        'for_final_evaluation',
     ];
 
     public const TYPES = ['individual', 'company_referral', 'company_bulk', 'walk_in'];
@@ -82,6 +86,7 @@ class Appointment extends Model
         'rejection_details',
         'processed_by',
         'processed_at',
+        'reminder_sent_at',
         'released_from_appointment_id',
         'released_slot_assigned_at',
     ];
@@ -103,6 +108,7 @@ class Appointment extends Model
             'auto_cancelled_at' => 'datetime',
             'released_slot_assigned_at' => 'datetime',
             'processed_at' => 'datetime',
+            'reminder_sent_at' => 'datetime',
             'attendance_marked_at' => 'datetime',
         ];
     }
@@ -253,6 +259,17 @@ class Appointment extends Model
             'cancelled' => 'red',
             default => 'gray',
         };
+    }
+
+    public function getReferenceCodeAttribute(): string
+    {
+        $prefix = match ($this->type) {
+            'walk_in' => 'WLK',
+            'company_referral' => 'REF',
+            default => 'APT',
+        };
+
+        return $prefix.str_pad((string) $this->getKey(), 4, '0', STR_PAD_LEFT);
     }
 
     /**

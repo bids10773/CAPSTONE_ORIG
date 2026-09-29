@@ -51,6 +51,7 @@ export default function RadTechDashboard({
                 actionTitle="X-ray requests"
                 actionLabel="Review scans"
                 appointmentsHref="/radtech/appointments"
+                patientRecordsHref="/radtech/patient-records"
                 onsiteHref="/radtech/onsite-events"
                 onsiteSummary={onsiteSummary}
             />

@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Appointment;
+use App\Models\Company;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -70,4 +72,42 @@ test('staff and receptionist searches reject oversized terms', function () {
     $this->actingAs($receptionist)
         ->get(route('receptionist.queue.index', ['search' => $oversized]))
         ->assertSessionHasErrors('search');
+});
+
+test('company employee appointments expose and search the employee company id', function () {
+    $company = Company::create([
+        'company_name' => 'Green Ridge Enterprises',
+        'email' => 'green-ridge@example.test',
+        'status' => 'active',
+    ]);
+    $companyUser = User::factory()->create([
+        'role' => 'company',
+        'company_id' => $company->id,
+    ]);
+    $employee = User::factory()->create([
+        'role' => 'patient',
+        'company_id' => $company->id,
+    ]);
+    $employee->patientProfile()->create([
+        'employee_number' => 'GRE-000123',
+        'birthdate' => today()->subYears(28),
+        'sex' => 'Male',
+    ]);
+    $appointment = Appointment::create([
+        'user_id' => $employee->id,
+        'company_id' => $company->id,
+        'appointment_date' => today(),
+        'type' => 'company_referral',
+        'status' => 'accepted',
+        'service_types' => ['PE'],
+    ]);
+
+    $this->actingAs($companyUser)
+        ->get(route('appointments.index', ['search' => 'GRE-000123']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('isCompanyView', true)
+            ->has('appointments.data', 1)
+            ->where('appointments.data.0.id', $appointment->id)
+            ->where('appointments.data.0.user.patient_profile.employee_number', 'GRE-000123'));
 });
