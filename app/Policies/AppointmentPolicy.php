@@ -79,6 +79,7 @@ class AppointmentPolicy
         return $user->role === 'company'
             && $user->company_id !== null
             && $appointment->company_id === $user->company_id
+            && $appointment->type === 'company_referral'
             && $appointment->user?->role === 'patient';
     }
 
