@@ -241,12 +241,13 @@ export default function Register() {
                                 </Field>
                             </div>
 
-                            <div className="grid gap-4 sm:grid-cols-3">
+                            <div className="grid gap-4 sm:grid-cols-[minmax(18rem,2fr)_minmax(6.5rem,.65fr)_minmax(8rem,.85fr)]">
                                 <Field label="Birthdate">
                                     <BirthdateInput
                                         required
                                         validateRequiredOnBlur
                                         minimumAge={18}
+                                        showPartLabels={false}
                                         error={errors.birthdate}
                                     />
                                 </Field>

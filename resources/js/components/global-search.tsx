@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import {
     Building2,
@@ -25,7 +25,51 @@ const icons = {
     company: Building2,
 };
 
+const roleSearchCopy: Record<
+    string,
+    { button: string; input: string; empty: string }
+> = {
+    admin: {
+        button: 'Search patients, staff, appointments, companies...',
+        input: 'Search by name, reference code, service, or company...',
+        empty: 'Search all authorized clinic records.',
+    },
+    doctor: {
+        button: 'Search assigned patients and records...',
+        input: 'Search assigned patients, APT/REF codes, or services...',
+        empty: 'Search only patients assigned to you and their records.',
+    },
+    medtech: {
+        button: 'Search laboratory patients and records...',
+        input: 'Search lab patients, reference codes, or tests...',
+        empty: 'Search your laboratory queue and records you handled.',
+    },
+    radtech: {
+        button: 'Search radiology patients and records...',
+        input: 'Search X-ray patients, reference codes, or services...',
+        empty: 'Search your radiology queue and records you handled.',
+    },
+    receptionist: {
+        button: "Search today's patients and appointments...",
+        input: 'Search today by patient, reference code, or service...',
+        empty: "Search today's front-desk appointment records.",
+    },
+    company: {
+        button: 'Search employees and company appointments...',
+        input: 'Search your employees, referrals, or appointments...',
+        empty: 'Search only employees and appointments for your company.',
+    },
+    patient: {
+        button: 'Search my appointments and records...',
+        input: 'Search your reference code, service, or status...',
+        empty: 'Search only your own appointments and medical records.',
+    },
+};
+
 export function GlobalSearch() {
+    const { auth } = usePage().props as { auth?: { user?: { role?: string } } };
+    const copy =
+        roleSearchCopy[auth?.user?.role ?? 'patient'] ?? roleSearchCopy.patient;
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [groups, setGroups] = useState<SearchGroup[]>([]);
@@ -140,9 +184,7 @@ export function GlobalSearch() {
                 aria-label="Open global search"
             >
                 <Search className="mr-2.5 size-4" />
-                <span className="truncate">
-                    Search patients, appointments, records…
-                </span>
+                <span className="truncate">{copy.button}</span>
                 <kbd className="ml-auto rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground">
                     Ctrl K
                 </kbd>
@@ -184,7 +226,7 @@ export function GlobalSearch() {
                                 }
                                 onKeyDown={onKeyDown}
                                 type="search"
-                                placeholder="Search by patient, appointment number, service, company…"
+                                placeholder={copy.input}
                                 aria-label="Global search query"
                                 aria-controls="global-search-results"
                                 className="h-14 min-w-0 flex-1 border-0 px-3 text-base outline-none"
@@ -206,8 +248,7 @@ export function GlobalSearch() {
                             {query.trim().length < 2 && (
                                 <div className="p-8 text-center text-sm text-slate-500">
                                     <FileSearch className="mx-auto mb-3 size-8 text-moss-600" />
-                                    Enter at least two characters. Results are
-                                    limited to records your role can access.
+                                    Enter at least two characters. {copy.empty}
                                 </div>
                             )}
                             {error && (

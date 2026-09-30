@@ -11,6 +11,18 @@ Artisan::command('inspire', function () {
 
 Schedule::command('appointments:expire-late')->everyMinute()->withoutOverlapping();
 
+Artisan::command('appointments:send-reminders', function () {
+    $sent = app(\App\Services\AppointmentReminderService::class)->sendDue();
+    $this->info("Sent {$sent} appointment reminder(s).");
+
+    return 0;
+})->purpose('Send reminders for accepted patient appointments scheduled tomorrow');
+
+Schedule::command('appointments:send-reminders')
+    ->dailyAt('08:00')
+    ->timezone('Asia/Manila')
+    ->withoutOverlapping();
+
 Artisan::command('weather:sync-month {month : Completed month in YYYY-MM format}', function (string $month) {
     if (! preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', $month, $matches)) {
         $this->error('Provide a month in YYYY-MM format.');

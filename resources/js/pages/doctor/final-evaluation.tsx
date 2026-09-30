@@ -177,8 +177,14 @@ export default function FinalEvaluation({
                             />
                             <Meta
                                 label="Appointment"
-                                value={`#${appointment.id}`}
+                                value={appointment.reference_code}
                             />
+                            {profile?.employee_number && (
+                                <Meta
+                                    label="Company ID"
+                                    value={profile.employee_number}
+                                />
+                            )}
                             <Meta
                                 label="PE master"
                                 value={`#${medicalExamination.id}`}

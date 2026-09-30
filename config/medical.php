@@ -2,7 +2,7 @@
 
 return [
     'booking_security' => [
-        'max_active_future_appointments' => 2,
+        'max_active_future_appointments' => 1,
         'booking_attempts_per_minute' => 5,
         'registration_attempts_per_minute' => 5,
         'blocked_attempt_threshold' => 5,

@@ -13,9 +13,11 @@
         return is_array($data) && filled($data[$key] ?? null) ? $data[$key] : null;
     };
     $isRequested = fn (string $service) => in_array($service, $appointment->service_types ?? [], true);
-    $drugSummary = data_get($diagnostic('drug_test')?->result_data, 'summary');
-    $drugNegative = $drugSummary === 'negative';
-    $drugPositive = $drugSummary === 'positive_confirmed';
+    $companyName = $appointment->company?->company_name ?: ($appointment->company_name ?: 'N/A');
+    $drugResult = data_get($diagnostic('drug_test')?->result_data, 'final_result');
+    $drugResult = is_array($drugResult) ? $drugResult : ($laboratory?->drug_test_results ?? []);
+    $methamphetamine = strtolower((string) $labValue($drugResult, 'methamphetamine'));
+    $marijuana = strtolower((string) $labValue($drugResult, 'tetrahydrocannabinol'));
     $xrayNormal = $xray?->isVerified() && str_contains(strtolower((string) $xray->impression), 'normal');
     $xrayFindings = $xray?->isVerified() && ! $xrayNormal;
     $classification = $examination?->medical_classification;
@@ -116,7 +118,7 @@
             <td><span class="line" style="width:100%">{{ $profile?->birthdate?->age ?? '—' }}/{{ strtoupper(substr($profile?->sex ?? $appointment->user->sex ?? '—', 0, 1)) }}</span></td>
         </tr>
         <tr><td class="patient-label">Address</td><td><span class="line" style="width:100%">{{ $profile?->address ?? '' }}</span></td><td class="patient-label">Civil Status</td><td class="black center">{{ strtoupper($profile?->civil_status ?? '') }}</td></tr>
-        <tr><td class="patient-label">Company/Agency</td><td><span class="line" style="width:100%">{{ strtoupper($appointment->company?->company_name ?? $appointment->company_name ?? 'OPD') }}</span></td><td colspan="2"></td></tr>
+        <tr><td class="patient-label">Company/Agency</td><td><span class="line" style="width:100%">{{ strtoupper($companyName) }}</span></td><td colspan="2"></td></tr>
         <tr><td class="patient-label">Date of Examination</td><td><span class="line" style="width:100%">{{ $examination?->examination_date?->format('m/d/Y') ?? $appointment->appointment_date?->format('m/d/Y') }}</span></td><td colspan="2"></td></tr>
     </table>
 
@@ -164,13 +166,13 @@
         <tr><td class="test">B. Urinalysis</td><td class="choice">[ {{ $tick($verified('urinalysis')) }} ] Normal</td><td class="choice">[ {{ $tick(false) }} ] Findings</td><td class="notes">{{ $verified('urinalysis') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
         <tr><td class="test">C. Fecalysis</td><td class="choice">[ {{ $tick($verified('fecalysis')) }} ] Normal</td><td class="choice">[ {{ $tick(false) }} ] Findings</td><td class="notes">{{ $verified('fecalysis') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
         @php $hbsag = strtolower((string) $labValue($laboratory?->serology_results, 'hbsag')); $hav = strtolower((string) $labValue($laboratory?->serology_results, 'anti_hav_igm')); @endphp
-        <tr><td class="test">D. Hepatitis B (HBs Ag)</td><td class="choice">[ {{ $tick(str_contains($hbsag, 'non')) }} ] Non-reactive</td><td class="choice">[ {{ $tick($hbsag === 'reactive') }} ] Reactive</td><td class="notes">{{ $verified('serology') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
-        <tr><td class="test">E. Hepatitis A (Anti-HAV IgM)</td><td class="choice">[ {{ $tick(str_contains($hav, 'non')) }} ] Non-reactive</td><td class="choice">[ {{ $tick($hav === 'reactive') }} ] Reactive</td><td class="notes"></td></tr>
+        <tr><td class="test">D. Hepatitis B (HBs Ag)</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && str_contains($hbsag, 'non')) }} ] Non-reactive</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && $hbsag === 'reactive') }} ] Reactive</td><td class="notes">{{ ! $isRequested('Hepatitis') ? 'NOT REQUESTED' : ($verified('serology') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
+        <tr><td class="test">E. Hepatitis A (Anti-HAV IgM)</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && str_contains($hav, 'non')) }} ] Non-reactive</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && $hav === 'reactive') }} ] Reactive</td><td class="notes">{{ ! $isRequested('Hepatitis') ? 'NOT REQUESTED' : ($verified('serology') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
         @php $pregnancy = strtolower((string) (is_array($laboratory?->pregnancy_test) ? data_get($laboratory->pregnancy_test, 'pregnancy_test') : $laboratory?->pregnancy_test)); @endphp
-        <tr><td class="test">F. Pregnancy Test</td><td class="choice">[ {{ $tick($pregnancy === 'negative') }} ] Negative</td><td class="choice">[ {{ $tick($pregnancy === 'positive') }} ] Positive</td><td class="notes"></td></tr>
+        <tr><td class="test">F. Pregnancy Test</td><td class="choice">[ {{ $tick($isRequested('Pregnancy Test') && $pregnancy === 'negative') }} ] Negative</td><td class="choice">[ {{ $tick($isRequested('Pregnancy Test') && $pregnancy === 'positive') }} ] Positive</td><td class="notes">{{ ! $isRequested('Pregnancy Test') ? 'NOT REQUESTED' : ($verified('pregnancy') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
         <tr><td colspan="4">G. Drug Test</td></tr>
-        <tr><td class="test" style="padding-left:14px">a. Methamphetamine (Shabu)</td><td class="choice">[ {{ $tick($drugNegative) }} ] Negative</td><td class="choice">[ {{ $tick($drugPositive) }} ] Positive</td><td class="notes"></td></tr>
-        <tr><td class="test" style="padding-left:14px">b. Marijuana</td><td class="choice">[ {{ $tick($drugNegative) }} ] Negative</td><td class="choice">[ {{ $tick($drugPositive) }} ] Positive</td><td class="notes"></td></tr>
+        <tr><td class="test" style="padding-left:14px">a. Methamphetamine (Shabu)</td><td class="choice">[ {{ $tick($isRequested('Drug Test') && $methamphetamine === 'negative') }} ] Negative</td><td class="choice">[ {{ $tick($isRequested('Drug Test') && $methamphetamine === 'positive') }} ] Positive</td><td class="notes">{{ ! $isRequested('Drug Test') ? 'NOT REQUESTED' : ($verified('drug_test') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
+        <tr><td class="test" style="padding-left:14px">b. Marijuana</td><td class="choice">[ {{ $tick($isRequested('Drug Test') && $marijuana === 'negative') }} ] Negative</td><td class="choice">[ {{ $tick($isRequested('Drug Test') && $marijuana === 'positive') }} ] Positive</td><td class="notes">{{ ! $isRequested('Drug Test') ? 'NOT REQUESTED' : ($verified('drug_test') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
     </table>
 
     <div class="section">IV. CHEST X-RAY</div>
@@ -215,7 +217,7 @@
             <h1>Living Myth Medical Clinic</h1>
             <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
             <h2>Medical History</h2>
-            <table class="attachment-meta"><tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>#{{ $appointment->id }}</td></tr></table>
+            <table class="attachment-meta"><tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>{{ $appointment->reference_code }}</td></tr></table>
             <table class="attachment-results">
                 @foreach([
                     'Present illness' => $history->present_illness,
@@ -236,7 +238,7 @@
         <h1>Living Myth Medical Clinic</h1>
         <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
         <h2>Physical Examination</h2>
-        <table class="attachment-meta"><tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>#{{ $appointment->id }}</td></tr></table>
+        <table class="attachment-meta"><tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>{{ $appointment->reference_code }}</td></tr></table>
         <table class="attachment-results">
             @foreach([
                 'Height' => $physical->height ? $physical->height.' cm' : null,
@@ -272,8 +274,8 @@
                 <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
                 <h2>{{ $section['label'] }} Result</h2>
                 <table class="attachment-meta">
-                    <tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>#{{ $appointment->id }}</td></tr>
-                    <tr><td><b>Date</b></td><td>{{ $laboratory->finalized_at?->format('F j, Y') ?? $appointment->appointment_date?->format('F j, Y') }}</td><td><b>Company</b></td><td>{{ $appointment->company?->company_name ?? $appointment->company_name ?? 'OPD' }}</td></tr>
+                    <tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>{{ $appointment->reference_code }}</td></tr>
+                    <tr><td><b>Date</b></td><td>{{ $laboratory->finalized_at?->format('F j, Y') ?? $appointment->appointment_date?->format('F j, Y') }}</td><td><b>Company</b></td><td>{{ $companyName }}</td></tr>
                 </table>
                 <table class="attachment-results">
                     <tr><th>Examination</th><th>Normal values</th><th>Result</th></tr>
@@ -297,8 +299,8 @@
             <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
             <h2>Chest X-Ray Report</h2>
             <table class="attachment-meta">
-                <tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>#{{ $appointment->id }}</td></tr>
-                <tr><td><b>Date</b></td><td>{{ $appointment->appointment_date?->format('F j, Y') }}</td><td><b>Company</b></td><td>{{ $appointment->company?->company_name ?? $appointment->company_name ?? 'OPD' }}</td></tr>
+                <tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>{{ $appointment->reference_code }}</td></tr>
+                <tr><td><b>Date</b></td><td>{{ $appointment->appointment_date?->format('F j, Y') }}</td><td><b>Company</b></td><td>{{ $companyName }}</td></tr>
             </table>
             <table class="attachment-results">
                 <tr><th style="width:25%">Findings</th><td>{{ $xray->findings ?: '—' }}</td></tr>
@@ -313,7 +315,7 @@
             <h1>Living Myth Medical Clinic</h1>
             <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
             <h2>Final Medical Evaluation</h2>
-            <table class="attachment-meta"><tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>#{{ $appointment->id }}</td></tr></table>
+            <table class="attachment-meta"><tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>{{ $appointment->reference_code }}</td></tr></table>
             <table class="attachment-results">
                 <tr><th style="width:30%">Classification</th><td>{{ $examination->medical_classification ?? '—' }}</td></tr>
                 <tr><th>Diagnosis</th><td>{{ $examination->final_diagnosis ?? '—' }}</td></tr>

@@ -18,6 +18,7 @@ use App\Services\OnsiteEventWorkflowService;
 use App\Services\OnsiteStaffAvailabilityService;
 use App\Support\ClinicHours;
 use App\Support\SearchTerm;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -71,8 +72,12 @@ class AppointmentController extends Controller
 
         if ($search) {
             $query->whereHas('user', function ($q) use ($likeSearch) {
-                $q->where('first_name', 'like', "%{$likeSearch}%")
-                    ->orWhere('last_name', 'like', "%{$likeSearch}%");
+                $q->where(function ($user) use ($likeSearch) {
+                    $user->where('first_name', 'like', "%{$likeSearch}%")
+                        ->orWhere('last_name', 'like', "%{$likeSearch}%")
+                        ->orWhere('email', 'like', "%{$likeSearch}%");
+                })->orWhereHas('patientProfile', fn ($profile) => $profile
+                    ->where('employee_number', 'like', "%{$likeSearch}%"));
             });
         }
 
@@ -105,8 +110,26 @@ class AppointmentController extends Controller
     /**
      * Show the form for creating a new appointment.
      */
-    public function create(Request $request): Response
+    public function create(Request $request): Response|RedirectResponse
     {
+        if ($request->user()->role === 'patient') {
+            $activeAppointment = Appointment::query()
+                ->where('user_id', $request->user()->id)
+                ->open()
+                ->orderBy('appointment_date')
+                ->orderBy('start_time')
+                ->first();
+
+            if ($activeAppointment) {
+                $state = $activeAppointment->status === 'pending' ? 'pending' : 'active';
+
+                return back()->with(
+                    'warning',
+                    "You already have a {$state} appointment ({$activeAppointment->reference_code}). Please complete or cancel it before booking another appointment.",
+                );
+            }
+        }
+
         $referral = null;
         if ($request->filled('referral')) {
             abort_unless($request->user()->role === 'patient', 403);
@@ -135,9 +158,7 @@ class AppointmentController extends Controller
         if ($user->role === 'patient') {
             $upcomingAppointments = Appointment::query()
                 ->where('user_id', $user->id)
-                ->where('type', 'individual')
-                ->whereDate('appointment_date', '>=', today())
-                ->activeReservation()
+                ->open()
                 ->orderBy('appointment_date')
                 ->orderBy('start_time')
                 ->get(['id', 'appointment_date', 'start_time', 'end_time', 'status']);
@@ -158,7 +179,7 @@ class AppointmentController extends Controller
                 'user' => $user, // ✅ SEND USER WITH PROFILE
             ],
             'bookingPolicy' => [
-                'maximumUpcoming' => (int) config('medical.booking_security.max_active_future_appointments', 2),
+                'maximumUpcoming' => (int) config('medical.booking_security.max_active_future_appointments', 1),
                 'upcomingAppointments' => $upcomingAppointments,
                 'bookedDates' => $upcomingAppointments->pluck('appointment_date')->map->toDateString()->unique()->values(),
             ],
@@ -285,6 +306,20 @@ class AppointmentController extends Controller
         }
 
         $data = $validator->validated();
+        if ($data['type'] === 'company_referral') {
+            $activeAppointment = Appointment::query()
+                ->where('user_id', $user->id)
+                ->open()
+                ->orderBy('appointment_date')
+                ->first();
+
+            if ($activeAppointment !== null) {
+                return back()->withErrors([
+                    'appointment_limit' => "You already have an active or pending appointment ({$activeAppointment->reference_code}). Complete or cancel it before creating another appointment.",
+                ])->withInput();
+            }
+        }
+
         if (($data['examination_purpose'] ?? null) === 'pre_employment') {
             $data['service_types'] = collect(config('medical.pe_package.pre_employment_services', []))
                 ->merge($data['service_types'])
@@ -356,6 +391,17 @@ class AppointmentController extends Controller
         $appointment = DB::transaction(function () use ($data, $user, $startTime, $endTime, $referral) {
             $lockedReferral = null;
             if ($referral) {
+                User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+                $activeAppointment = Appointment::query()
+                    ->where('user_id', $user->id)
+                    ->open()
+                    ->lockForUpdate()
+                    ->first();
+                if ($activeAppointment !== null) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'appointment_limit' => "You already have an active or pending appointment ({$activeAppointment->reference_code}). Complete or cancel it before creating another appointment.",
+                    ]);
+                }
                 $lockedReferral = CompanyReferral::query()->lockForUpdate()->findOrFail($referral->id);
                 abort_unless($lockedReferral->patient_id === $user->id && $lockedReferral->isSchedulable(), 422);
             }

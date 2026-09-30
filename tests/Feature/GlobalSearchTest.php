@@ -143,3 +143,58 @@ test('receptionist and diagnostic global searches stay within their workflow sco
         ->assertJsonFragment(['id' => 'appointment-'.$today->id])
         ->assertJsonMissing(['id' => 'appointment-'.$future->id]);
 });
+
+test('diagnostic staff search completed records only when they handled them', function () {
+    $patient = User::factory()->create(['role' => 'patient', 'first_name' => 'HandledRecord']);
+    $medtech = User::factory()->create(['role' => 'medtech']);
+    $radtech = User::factory()->create(['role' => 'radtech']);
+
+    $handledLab = searchableAppointment($patient, [
+        'status' => 'completed',
+        'service_types' => ['CBC'],
+    ]);
+    $handledLab->labResult()->create([
+        'encoded_by' => $medtech->id,
+        'cbc_results' => ['hemoglobin' => '14'],
+        'status' => 'finalized',
+    ]);
+    $handledXray = searchableAppointment($patient, [
+        'status' => 'completed',
+        'service_types' => ['X-Ray'],
+    ]);
+    $handledXray->xrayReport()->create([
+        'radiologist_id' => $radtech->id,
+        'status' => 'completed',
+        'is_completed' => true,
+    ]);
+    $unhandled = searchableAppointment($patient, [
+        'status' => 'completed',
+        'service_types' => ['CBC', 'X-Ray'],
+    ]);
+
+    $this->actingAs($medtech)
+        ->getJson(route('api.global-search', ['q' => 'HandledRecord']))
+        ->assertOk()
+        ->assertJsonFragment(['id' => 'appointment-'.$handledLab->id])
+        ->assertJsonMissing(['id' => 'appointment-'.$unhandled->id]);
+
+    $this->actingAs($radtech)
+        ->getJson(route('api.global-search', ['q' => 'HandledRecord']))
+        ->assertOk()
+        ->assertJsonFragment(['id' => 'appointment-'.$handledXray->id])
+        ->assertJsonMissing(['id' => 'appointment-'.$unhandled->id]);
+});
+
+test('global search accepts the displayed appointment reference code', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $patient = User::factory()->create(['role' => 'patient']);
+    $walkIn = searchableAppointment($patient, ['type' => 'walk_in']);
+
+    $this->actingAs($admin)
+        ->getJson(route('api.global-search', ['q' => $walkIn->reference_code]))
+        ->assertOk()
+        ->assertJsonFragment([
+            'id' => 'appointment-'.$walkIn->id,
+            'title' => $walkIn->reference_code.' · '.$patient->name,
+        ]);
+});

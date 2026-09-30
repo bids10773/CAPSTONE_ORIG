@@ -37,11 +37,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface Props {
     appointment: {
         id: number;
+        reference_code: string;
         user: { first_name: string; last_name: string };
         patient_profile?: {
             sex?: string;
             birthdate?: string;
             civil_status?: string;
+            employee_number?: string | null;
         };
         medical_history?: Record<string, string | null>;
     };
@@ -296,8 +298,17 @@ export default function PhysicalExamForm({
                         },
                         {
                             label: 'Queue',
-                            value: `#${appointment.id}`,
+                            value: appointment.reference_code,
                         },
+                        ...(appointment.patient_profile?.employee_number
+                            ? [
+                                  {
+                                      label: 'Company ID',
+                                      value: appointment.patient_profile
+                                          .employee_number,
+                                  },
+                              ]
+                            : []),
                     ]}
                 />
 

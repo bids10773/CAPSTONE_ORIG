@@ -53,6 +53,7 @@ export default function MedTechDashboard({
                 actionTitle="Laboratory requests"
                 actionLabel="Review requests"
                 appointmentsHref="/medtech/appointments"
+                patientRecordsHref="/medtech/patient-records"
                 onsiteHref="/medtech/onsite-events"
                 onsiteSummary={onsiteSummary}
                 extraStat={{

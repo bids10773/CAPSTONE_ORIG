@@ -16,10 +16,12 @@ import {
     UserRoundSearch,
     ListOrdered,
     MessagesSquare,
+    FolderHeart,
     Lock,
     Unlock,
 } from 'lucide-react';
 import { useState } from 'react';
+import { ClinicStatusLogo } from '@/components/clinic-status-logo';
 import {
     Collapsible,
     CollapsibleContent,
@@ -154,6 +156,11 @@ const navigation: Record<string, Item[]> = {
             icon: Building2,
         },
         {
+            title: 'Patient Records',
+            href: '/doctor/patient-records',
+            icon: FolderHeart,
+        },
+        {
             title: 'Availability',
             href: '/doctor/doctor-availability',
             icon: Stethoscope,
@@ -176,6 +183,11 @@ const navigation: Record<string, Item[]> = {
             href: '/medtech/onsite-events',
             icon: Building2,
         },
+        {
+            title: 'Patient Records',
+            href: '/medtech/patient-records',
+            icon: FolderHeart,
+        },
         { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
     radtech: [
@@ -193,6 +205,11 @@ const navigation: Record<string, Item[]> = {
             title: 'Onsite Events',
             href: '/radtech/onsite-events',
             icon: Building2,
+        },
+        {
+            title: 'Patient Records',
+            href: '/radtech/patient-records',
+            icon: FolderHeart,
         },
         { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
@@ -217,6 +234,11 @@ const navigation: Record<string, Item[]> = {
             href: '/receptionist/appointment-requests',
             icon: CalendarClock,
         },
+        {
+            title: 'Patient Records',
+            href: '/receptionist/patient-records',
+            icon: FolderHeart,
+        },
         { title: 'Profile', href: '/settings/profile', icon: Settings },
     ],
     company: [
@@ -225,7 +247,7 @@ const navigation: Record<string, Item[]> = {
             href: '/company/dashboard',
             icon: LayoutDashboard,
         },
-        { title: 'Employee bookings', href: '/appointments', icon: UsersRound },
+        { title: 'Employee Records', href: '/appointments', icon: FolderHeart },
         { title: 'Inquiries', href: '/my-inquiries', icon: MessagesSquare },
         { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
@@ -273,13 +295,13 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                     onClick={closeMobileSidebar}
                     className="flex min-w-0 items-center gap-3 rounded-xl p-1 group-data-[collapsible=icon]:mx-auto focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
                 >
-                    <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-moss-200 bg-moss-100 shadow-sm">
+                    <ClinicStatusLogo className="size-10">
                         <img
                             src={logo}
                             alt="LMIC"
                             className="h-full w-full object-contain"
                         />
-                    </span>
+                    </ClinicStatusLogo>
                     <span className="min-w-0 group-data-[collapsible=icon]:hidden">
                         <span className="block truncate text-sm font-bold tracking-[-.02em] text-slate-950">
                             Living Myth

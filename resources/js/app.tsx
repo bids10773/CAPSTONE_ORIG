@@ -20,6 +20,8 @@ const pages: Record<string, () => Promise<InertiaPageModule>> = {
         import('./pages/receptionist/onsite-events/attendance'),
     './pages/staff/onsite-events/show.tsx': () =>
         import('./pages/staff/onsite-events/show'),
+    './pages/staff/patient-records/index.tsx': () =>
+        import('./pages/staff/patient-records/index'),
     './pages/radtech/xray-report-form.tsx': () =>
         import('./pages/radtech/xray-report-form'),
 };

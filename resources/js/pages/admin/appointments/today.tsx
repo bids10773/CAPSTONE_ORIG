@@ -34,6 +34,7 @@ type Person = {
 
 type Appointment = {
     id: number;
+    reference_code: string;
     appointment_date: string;
     start_time: string | null;
     arrived_at?: string | null;
@@ -358,7 +359,7 @@ export default function TodayAppointments({
                             <DialogHeader>
                                 <DialogTitle>Appointment Details</DialogTitle>
                                 <DialogDescription>
-                                    Appointment #{selectedAppointment.id} ·{' '}
+                                    {selectedAppointment.reference_code} ·{' '}
                                     {appointmentStatusLabel(
                                         selectedAppointment.status,
                                     )}

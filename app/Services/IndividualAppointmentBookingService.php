@@ -57,19 +57,18 @@ class IndividualAppointmentBookingService
                 ];
             }
 
-            $futureCount = Appointment::query()
+            $activeAppointment = Appointment::query()
                 ->where('user_id', $user->id)
-                ->where('type', 'individual')
-                ->whereDate('appointment_date', '>=', today())
-                ->activeReservation()
-                ->count();
-            $limit = (int) config('medical.booking_security.max_active_future_appointments', 2);
+                ->open()
+                ->orderBy('appointment_date')
+                ->lockForUpdate()
+                ->first();
 
-            if ($futureCount >= $limit) {
+            if ($activeAppointment !== null) {
                 return [
                     'action' => 'future_limit_reached',
-                    'metadata' => ['active_future_count' => $futureCount],
-                    'messages' => ['appointment_limit' => 'You already have the maximum number of upcoming appointments. Please complete or cancel an existing appointment before scheduling another one.'],
+                    'metadata' => ['active_appointment_id' => $activeAppointment->id],
+                    'messages' => ['appointment_limit' => "You already have an active or pending appointment ({$activeAppointment->reference_code}). Complete or cancel it before creating another appointment."],
                 ];
             }
 

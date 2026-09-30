@@ -22,11 +22,18 @@ import {
     X,
     XCircle,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { DashboardClinicBadge } from '@/components/dashboard-clinic-badge';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
 import { formatAppointmentDateTime } from '@/lib/appointment-date-time';
 
@@ -218,11 +225,17 @@ export default function CompanyDashboard() {
         serviceTypes,
     } = usePage<DashboardProps>().props;
     const [isUploadOpen, setIsUploadOpen] = useState(
-        !!importPreview || !!bulkUploadId,
+        !!importPreview ||
+            !!bulkUploadId ||
+            (typeof window !== 'undefined' &&
+                window.location.hash === '#employee-upload-panel'),
     );
     const [dragging, setDragging] = useState(false);
     const [confirming, setConfirming] = useState(false);
-    const [isReferralOpen, setIsReferralOpen] = useState(false);
+    const [isReferralOpen, setIsReferralOpen] = useState(
+        typeof window !== 'undefined' &&
+            window.location.hash === '#employee-referral-dialog',
+    );
     const fileInput = useRef<HTMLInputElement>(null);
     const previewForm = useForm<{
         file: File | null;
@@ -240,12 +253,53 @@ export default function CompanyDashboard() {
         service_types: [] as string[],
     });
 
+    const scrollToPanel = (id: string) => {
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                document
+                    .getElementById(id)
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    };
+
+    const openQuickAction = (panel: 'referral' | 'upload') => {
+        if (panel === 'referral') {
+            setIsReferralOpen(true);
+            window.history.replaceState(null, '', '#employee-referral-dialog');
+            return;
+        }
+
+        const id = 'employee-upload-panel';
+        setIsUploadOpen(true);
+        window.history.replaceState(null, '', `#${id}`);
+        scrollToPanel(id);
+    };
+
+    const toggleReferralDialog = (open: boolean) => {
+        setIsReferralOpen(open);
+        if (!open && window.location.hash === '#employee-referral-dialog') {
+            window.history.replaceState(
+                null,
+                '',
+                `${window.location.pathname}${window.location.search}`,
+            );
+        }
+    };
+
+    useEffect(() => {
+        const panel = window.location.hash.slice(1);
+        if (panel === 'employee-upload-panel') {
+            scrollToPanel(panel);
+        }
+    }, []);
+
     const submitReferral = () => {
         referralForm.post('/company/referrals', {
             preserveScroll: true,
             onSuccess: () => {
                 referralForm.reset();
-                setIsReferralOpen(false);
+                toggleReferralDialog(false);
                 toast.success('Employee referral created.');
             },
             onError: () => {
@@ -360,7 +414,8 @@ export default function CompanyDashboard() {
                             <div className="mt-6 space-y-2">
                                 <button
                                     type="button"
-                                    onClick={() => setIsReferralOpen(true)}
+                                    onClick={() => openQuickAction('referral')}
+                                    aria-controls="employee-referral-dialog"
                                     className="flex w-full items-center gap-3 rounded-xl border border-moss-200 bg-white px-4 py-3 text-left text-sm font-semibold text-moss-900 transition hover:bg-moss-50 dark:border-moss-700 dark:bg-card dark:text-moss-100"
                                 >
                                     <Plus className="size-4" /> Create employee
@@ -368,19 +423,13 @@ export default function CompanyDashboard() {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setIsUploadOpen(true)}
+                                    onClick={() => openQuickAction('upload')}
+                                    aria-controls="employee-upload-panel"
                                     className="flex w-full items-center gap-3 rounded-xl border border-moss-200 bg-white px-4 py-3 text-left text-sm font-semibold text-moss-900 transition hover:bg-moss-50 dark:border-moss-700 dark:bg-card dark:text-moss-100"
                                 >
                                     <UploadCloud className="size-4" /> Upload
                                     employee Excel file
                                 </button>
-                                <a
-                                    href="/company/employees/import/template"
-                                    className="flex w-full items-center gap-3 rounded-xl border border-moss-200 bg-white px-4 py-3 text-sm font-semibold text-moss-900 transition hover:bg-moss-50 dark:border-moss-700 dark:bg-card dark:text-moss-100"
-                                >
-                                    <Download className="size-4" /> Download
-                                    template
-                                </a>
                             </div>
                         </div>
                     </section>
@@ -509,28 +558,23 @@ export default function CompanyDashboard() {
                     </div>
                 </section>
 
-                {isReferralOpen && (
-                    <section className="rounded-[2rem] border border-moss-200 bg-white p-5 shadow-sm sm:p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="font-semibold">
-                                    Create employee referral
-                                </h2>
-                                <p className="mt-1 text-xs text-slate-500">
-                                    The employee chooses their own date, doctor,
-                                    and time.
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setIsReferralOpen(false)}
-                                aria-label="Close referral form"
-                                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
-                            >
-                                <X className="size-4" />
-                            </button>
-                        </div>
-                        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Dialog
+                    open={isReferralOpen}
+                    onOpenChange={toggleReferralDialog}
+                >
+                    <DialogContent
+                        id="employee-referral-dialog"
+                        className="max-h-[calc(100vh-2rem)] gap-2 overflow-y-auto p-4 sm:max-w-5xl lg:max-w-6xl"
+                    >
+                        <DialogHeader>
+                            <DialogTitle>Create employee referral</DialogTitle>
+                            <DialogDescription>
+                                Enter the employee details and required medical
+                                services. The employee chooses their own date,
+                                doctor, and time.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="mt-2 grid gap-3 sm:grid-cols-3">
                             {(
                                 [
                                     ['first_name', 'First name'],
@@ -554,7 +598,7 @@ export default function CompanyDashboard() {
                                                 e.target.value,
                                             )
                                         }
-                                        className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-normal outline-none focus:border-moss-500"
+                                        className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm font-normal outline-none focus:border-moss-500"
                                     />
                                     <InputError
                                         message={referralForm.errors[field]}
@@ -563,11 +607,11 @@ export default function CompanyDashboard() {
                                 </label>
                             ))}
                         </div>
-                        <div className="mt-5">
+                        <div className="mt-2">
                             <p className="text-xs font-semibold text-slate-700">
                                 Medical purpose
                             </p>
-                            <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                            <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
                                 {EXAMINATION_PURPOSES.map(([value, label]) => {
                                     const Icon =
                                         EXAMINATION_PURPOSE_ICONS[value];
@@ -605,7 +649,7 @@ export default function CompanyDashboard() {
                                                     }),
                                                 );
                                             }}
-                                            className={`flex items-center gap-2.5 rounded-xl border px-3 py-3 text-left text-xs font-semibold ${selected ? 'border-moss-500 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-700'}`}
+                                            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-semibold ${selected ? 'border-moss-500 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-700'}`}
                                         >
                                             <span
                                                 className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-500'}`}
@@ -624,16 +668,16 @@ export default function CompanyDashboard() {
                                 className="mt-1"
                             />
                         </div>
-                        <div className="mt-5">
+                        <div className="mt-2">
                             <p className="text-xs font-semibold text-slate-700">
                                 Required medical services
                             </p>
-                            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                            <div className="mt-1.5 grid gap-1.5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
                                 {Object.entries(serviceTypes).map(
                                     ([value, label]) => (
                                         <label
                                             key={value}
-                                            className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-xs"
+                                            className="flex min-h-9 items-center gap-2 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] leading-tight"
                                         >
                                             <input
                                                 type="checkbox"
@@ -676,11 +720,11 @@ export default function CompanyDashboard() {
                                 className="mt-1"
                             />
                         </div>
-                        <div className="mt-5 flex justify-end gap-2">
+                        <div className="mt-2 flex justify-end gap-2 border-t border-slate-100 pt-3">
                             <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => setIsReferralOpen(false)}
+                                onClick={() => toggleReferralDialog(false)}
                             >
                                 Cancel
                             </Button>
@@ -693,15 +737,16 @@ export default function CompanyDashboard() {
                                 Create referral
                             </Button>
                         </div>
-                    </section>
-                )}
+                    </DialogContent>
+                </Dialog>
 
                 {importResult && <ImportResultBanner result={importResult} />}
 
                 {isUploadOpen && (
                     <section
+                        id="employee-upload-panel"
                         aria-labelledby="upload-title"
-                        className="overflow-hidden rounded-[2rem] border border-moss-100 bg-white shadow-[0_18px_50px_-36px_rgba(37,99,235,.45)]"
+                        className="scroll-mt-28 overflow-hidden rounded-[2rem] border border-moss-100 bg-white shadow-[0_18px_50px_-36px_rgba(37,99,235,.45)]"
                     >
                         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
                             <div>
@@ -727,7 +772,8 @@ export default function CompanyDashboard() {
                         </div>
 
                         {!importPreview ? (
-                            <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+                            <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+                                <ImportInstructions />
                                 <div>
                                     <label
                                         htmlFor="bulk-appointment"
@@ -867,7 +913,6 @@ export default function CompanyDashboard() {
                                         )}
                                     </Button>
                                 </div>
-                                <ImportInstructions />
                             </div>
                         ) : (
                             <PreviewTable
@@ -1144,13 +1189,6 @@ function ImportInstructions() {
                     XLS, or CSV up to 10 MB
                 </li>
             </ul>
-            <a
-                href="/company/employees/import/template"
-                className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-moss-600 hover:text-moss-700"
-            >
-                <Download className="size-3.5" /> Download the formatted
-                template
-            </a>
         </aside>
     );
 }

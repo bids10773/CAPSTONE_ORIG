@@ -238,6 +238,57 @@ test('updated PE PDF uses the official consolidated medical examination sections
         ->toContain('OU 20/20');
 });
 
+test('PE PDF shows individual patient company fallback and each saved drug test result', function () {
+    $appointment = delayedPeAppointment(['PE', 'Drug Test']);
+    $examination = app(MedicalExaminationService::class)->forAppointment($appointment);
+    $physical = PhysicalExam::create([
+        'appointment_id' => $appointment->id,
+        'medical_examination_id' => $examination->id,
+        'doctor_id' => $appointment->doctor_id,
+        'classification' => 'Pending',
+        'is_completed' => true,
+    ]);
+    $appointment->labResult()->create([
+        'medical_examination_id' => $examination->id,
+        'encoded_by' => User::factory()->create(['role' => 'medtech'])->id,
+        'drug_test_results' => [
+            'methamphetamine' => 'Negative',
+            'tetrahydrocannabinol' => 'Positive',
+        ],
+        'status' => 'finalized',
+        'is_completed' => true,
+        'finalized_at' => now(),
+    ]);
+    $examination->diagnosticResults()->where('service_key', 'drug_test')->update([
+        'status' => 'verified',
+        'result_data' => ['final_result' => [
+            'methamphetamine' => 'Negative',
+            'tetrahydrocannabinol' => 'Positive',
+        ]],
+        'verified_at' => now(),
+    ]);
+    $appointment->load([
+        'user.patientProfile', 'company', 'labResult',
+        'medicalExamination.diagnosticResults',
+    ]);
+
+    $html = view('pdf.physical-examination-report', [
+        'appointment' => $appointment,
+        'examination' => $appointment->medicalExamination,
+        'physical' => $physical->load('doctor'),
+        'history' => null,
+        'laboratory' => $appointment->labResult,
+        'xray' => null,
+        'laboratorySections' => app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment),
+    ])->render();
+
+    expect($html)
+        ->toContain('>N/A</span>')
+        ->toMatch('/Methamphetamine \(Shabu\).*?\[ \/ \] Negative.*?\[ {3}\] Positive/s')
+        ->toMatch('/b\. Marijuana.*?\[ {3}\] Negative.*?\[ \/ \] Positive/s')
+        ->toContain('NOT REQUESTED');
+});
+
 test('released PE provides a combined PDF and its individual clinical forms', function () {
     $appointment = delayedPeAppointment(['PE', 'CBC', 'X-Ray']);
     $examination = app(MedicalExaminationService::class)->forAppointment($appointment);

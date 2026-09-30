@@ -101,6 +101,41 @@ test('matching patient securely accepts referral and company services override b
         ->and($referral->refresh()->status)->toBe('scheduled');
 });
 
+test('patient cannot schedule a company referral while another appointment is active', function () {
+    [$company, $account] = referralCompanyAccount();
+    $patient = User::factory()->create([
+        'role' => 'patient',
+        'email' => 'juan.referral@example.com',
+        'contact' => '09171234567',
+    ]);
+    $patient->patientProfile()->create(['birthdate' => '1995-05-10', 'sex' => 'Male', 'civil_status' => 'Single']);
+    $referral = app(CompanyReferralService::class)->create($account, referralData());
+    $referral->update(['patient_id' => $patient->id, 'status' => 'viewed']);
+    $doctor = User::factory()->create([
+        'role' => 'doctor',
+        'is_active' => true,
+        'availability' => [['day' => strtolower(today()->nextWeekday()->format('D')), 'start' => '09:00', 'end' => '10:00']],
+    ]);
+    Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => today(),
+        'type' => 'individual',
+        'status' => 'pending',
+        'service_types' => ['CBC'],
+    ]);
+
+    $this->actingAs($patient)->post(route('appointments.store'), [
+        'company_referral_id' => $referral->id,
+        'doctor_id' => $doctor->id,
+        'appointment_date' => today()->nextWeekday()->toDateString(),
+        'start_time' => '09:00',
+        'service_types' => ['PE'],
+    ])->assertSessionHasErrors('appointment_limit');
+
+    expect(Appointment::where('user_id', $patient->id)->count())->toBe(1)
+        ->and($referral->fresh()->status)->toBe('viewed');
+});
+
 test('new referred patient continues to scheduling automatically after registration and verification', function () {
     [$company, $account] = referralCompanyAccount();
     $token = 'registration-referral-token';
@@ -202,8 +237,9 @@ test('expired referrals cannot be scheduled and another company cannot cancel th
         ->assertForbidden();
 });
 
-test('company cannot open a referred patients detailed clinical appointment', function () {
+test('company can open its own employee record but another company cannot', function () {
     [$company, $account] = referralCompanyAccount();
+    [, $otherAccount] = referralCompanyAccount('Other Company');
     $patient = User::factory()->create(['role' => 'patient']);
     $appointment = Appointment::create([
         'user_id' => $patient->id,
@@ -214,7 +250,52 @@ test('company cannot open a referred patients detailed clinical appointment', fu
         'service_types' => ['PE'],
     ]);
 
-    $this->actingAs($account)->get(route('appointments.show', $appointment))->assertForbidden();
+    $this->actingAs($account)
+        ->get(route('appointments.show', $appointment))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('appointments/show')
+            ->where('appointment.id', $appointment->id));
+
+    $this->actingAs($otherAccount)
+        ->get(route('appointments.show', $appointment))
+        ->assertForbidden();
+});
+
+test('company can download finalized employee PDFs but cannot access drafts', function () {
+    [$company, $account] = referralCompanyAccount();
+    [, $otherAccount] = referralCompanyAccount('Other Company');
+    $patient = User::factory()->create(['role' => 'patient']);
+    $medtech = User::factory()->create(['role' => 'medtech']);
+    $appointment = Appointment::create([
+        'user_id' => $patient->id,
+        'company_id' => $company->id,
+        'appointment_date' => today(),
+        'type' => 'company_referral',
+        'status' => 'for_diagnostics',
+        'service_types' => ['CBC'],
+    ]);
+    $result = $appointment->labResult()->create([
+        'encoded_by' => $medtech->id,
+        'cbc_results' => ['hemoglobin' => '14'],
+        'status' => 'draft',
+    ]);
+
+    $this->actingAs($account)
+        ->get(route('clinical-forms.laboratory.pdf', $appointment))
+        ->assertForbidden();
+
+    $result->update(['status' => 'finalized', 'finalized_at' => now()]);
+    $appointment->update(['status' => 'completed']);
+
+    $this->actingAs($account)
+        ->get(route('clinical-forms.laboratory.pdf', $appointment))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+
+    $this->actingAs($otherAccount)
+        ->get(route('clinical-forms.laboratory.pdf', $appointment))
+        ->assertForbidden();
 });
 
 test('patient cannot create an unlinked company referral appointment', function () {

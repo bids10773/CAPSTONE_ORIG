@@ -295,13 +295,22 @@ export default function DoctorDashboard(props: Props) {
                                 <Stethoscope className="size-6" />
                             </span>
                         </div>
-                        <Link
-                            href="/doctor/appointments"
-                            className="mt-6 flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-bold text-moss-800 transition hover:-translate-y-0.5 hover:bg-moss-50"
-                        >
-                            Review patients
-                            <ArrowRight className="size-4" />
-                        </Link>
+                        <div className="mt-6 grid gap-2">
+                            <Link
+                                href="/doctor/appointments"
+                                className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm font-bold text-moss-800 transition hover:-translate-y-0.5 hover:bg-moss-50"
+                            >
+                                Review patients
+                                <ArrowRight className="size-4" />
+                            </Link>
+                            <Link
+                                href="/doctor/patient-records"
+                                className="flex items-center justify-between rounded-2xl border border-white/25 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20"
+                            >
+                                Open patient records
+                                <ArrowRight className="size-4" />
+                            </Link>
+                        </div>
                     </div>
                 </div>
 
