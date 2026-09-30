@@ -39,6 +39,16 @@ Configure secrets through the hosting platform, not source control.
 9. Verify `/up`, the landing page, login, registration, protected role dashboards, queue health, and external integrations.
 10. End maintenance mode and monitor errors, latency, failed jobs, and health alerts.
 
+## Initial production administrator
+
+Create the initial administrator only after migrations have completed and outbound email has been verified. Run the following once from a secure interactive shell inside the deployed application service:
+
+```bash
+php artisan app:bootstrap-admin owner@example.com --first-name="Clinic" --last-name="Owner"
+```
+
+The command requires confirmation in production, refuses to run after any administrator exists, stores an unguessable discarded password, sends Laravel's expiring password-reset link, and records `initial_admin_bootstrapped` in `security_audits`. It never prints a password. Do not add this command to automated pre-deploy or start commands. After using the link, complete email verification, enable two-factor authentication, and store the recovery codes securely.
+
 ## Rollback
 
 1. Re-enable maintenance mode.
