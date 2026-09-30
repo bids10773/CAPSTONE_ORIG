@@ -212,7 +212,7 @@ class GlobalSearchController extends Controller
             'receptionist' => route('receptionist.queue.index', ['search' => $appointment->user?->name]),
             'doctor' => $appointment->status === 'for_final_evaluation'
                 ? route('doctor.final-evaluation', $appointment)
-                : (in_array($appointment->status, ['accepted', 'arrived'], true)
+                : (($appointment->status === 'arrived' || $appointment->arrived_at !== null)
                     && $appointment->appointment_date?->isToday()
                     ? route('doctor.physical-exams.create', $appointment)
                     : route('doctor.patient-records.index', ['search' => $appointment->user?->name])),

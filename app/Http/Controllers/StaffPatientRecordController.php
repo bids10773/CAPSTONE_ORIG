@@ -107,7 +107,7 @@ class StaffPatientRecordController extends Controller
         $manageUrl = match ($role) {
             'doctor' => $appointment->status === 'for_final_evaluation'
                 ? route('doctor.final-evaluation', $appointment, false)
-                : (in_array($appointment->status, ['accepted', 'arrived'], true)
+                : (($appointment->status === 'arrived' || $appointment->arrived_at !== null)
                     && $appointment->appointment_date?->isToday()
                     && $appointment->isPePackage()
                     ? route('doctor.physical-exams.create', $appointment, false)

@@ -77,7 +77,7 @@
     --motion-entrance: 420ms;
     --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
-    --background: #f2f6f1;
+    --background: #ffffff;
     --foreground: #1f2937;
 
     --primary: #6b8f71;
@@ -869,19 +869,20 @@
     .auth-panel-right span {
         color: oklch(0.145 0 0);
     }
-    .auth-panel-right input::placeholder {
-        color: oklch(0.6 0 0);
+    .auth-shell input::placeholder {
+        color: oklch(0.6 0 0) !important;
     }
     .auth-panel-right .text-muted-foreground {
         color: oklch(0.45 0 0) !important;
     }
     /* Input fields: visible bg + dark text */
-    .auth-panel-right input[type='email'],
-    .auth-panel-right input[type='password'],
-    .auth-panel-right input[type='text'] {
-        background-color: oklch(0.96 0.005 240);
-        color: oklch(0.145 0 0);
-        border-color: oklch(0.88 0 0);
+    .auth-shell input[type='email'],
+    .auth-shell input[type='password'],
+    .auth-shell input[type='text'] {
+        background-color: #ffffff !important;
+        color: oklch(0.145 0 0) !important;
+        border-color: oklch(0.88 0 0) !important;
+        -webkit-text-fill-color: oklch(0.145 0 0);
     }
 
     /* ─── Checkbox fix ─── */

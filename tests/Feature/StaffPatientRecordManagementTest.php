@@ -20,7 +20,11 @@ test('doctor patient records contain only appointments assigned to that doctor',
     $otherDoctor = User::factory()->create(['role' => 'doctor']);
     $patient = User::factory()->create(['role' => 'patient']);
 
-    $assigned = staffRecordAppointment($patient, ['doctor_id' => $doctor->id]);
+    $assigned = staffRecordAppointment($patient, [
+        'doctor_id' => $doctor->id,
+        'status' => 'arrived',
+        'arrived_at' => now(),
+    ]);
     staffRecordAppointment($patient, ['doctor_id' => $otherDoctor->id]);
 
     $this->actingAs($doctor)

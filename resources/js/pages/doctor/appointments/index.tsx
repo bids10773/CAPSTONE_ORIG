@@ -237,13 +237,9 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                     <Eye className="h-4 w-4" />
                                                 </Link>
 
-                                                {/* FIXED LOGIC: Show exam button if status is accepted/arrived AND no exam exists */}
-                                                {[
-                                                    'accepted',
-                                                    'arrived',
-                                                ].includes(
-                                                    appointment.status.toLowerCase(),
-                                                ) &&
+                                                {/* The examination starts only after reception checks the patient in. */}
+                                                {appointment.status.toLowerCase() ===
+                                                    'arrived' &&
                                                     appointment.is_scheduled_today &&
                                                     !appointment.physical_exam
                                                         ?.id && (
@@ -258,6 +254,23 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                         >
                                                             <Play className="h-4 w-4" />
                                                         </button>
+                                                    )}
+
+                                                {appointment.status.toLowerCase() ===
+                                                    'accepted' &&
+                                                    appointment.is_scheduled_today &&
+                                                    !appointment.physical_exam
+                                                        ?.id && (
+                                                        <span
+                                                            className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700"
+                                                            title="Reception must check the patient in before the physical examination can begin"
+                                                        >
+                                                            <LockKeyhole className="h-3.5 w-3.5" />
+                                                            <span className="hidden 2xl:inline">
+                                                                Waiting for
+                                                                check-in
+                                                            </span>
+                                                        </span>
                                                     )}
 
                                                 {[

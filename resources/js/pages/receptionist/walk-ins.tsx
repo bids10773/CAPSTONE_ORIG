@@ -101,6 +101,18 @@ function examinationPurposeLabel(value?: string | null): string {
     return examinationPurposeLabels[value] ?? value.replaceAll('_', ' ');
 }
 
+function formatTime(value?: string | null): string {
+    if (!value) return 'Time pending';
+
+    const match = value.match(/(\d{2}):(\d{2})/);
+    if (!match) return value;
+
+    return new Intl.DateTimeFormat('en-PH', {
+        hour: 'numeric',
+        minute: '2-digit',
+    }).format(new Date(2000, 0, 1, Number(match[1]), Number(match[2])));
+}
+
 export default function WalkIns({
     walkIns,
     serviceTypes,
@@ -700,7 +712,7 @@ export default function WalkIns({
                                         </option>
                                         {selectedDoctor?.slots.map((slot) => (
                                             <option key={slot} value={slot}>
-                                                {slot}
+                                                {formatTime(slot)}
                                             </option>
                                         ))}
                                     </select>
@@ -848,7 +860,7 @@ export default function WalkIns({
                                             <p className="mt-1 text-xs font-semibold text-slate-700">
                                                 Dr. {walkIn.doctor.first_name}{' '}
                                                 {walkIn.doctor.last_name} ·{' '}
-                                                {walkIn.start_time.slice(0, 5)}
+                                                {formatTime(walkIn.start_time)}
                                             </p>
                                         )}
                                         <p className="mt-1 text-xs font-semibold text-moss-700">
@@ -949,7 +961,9 @@ export default function WalkIns({
                                                                     key={slot}
                                                                     value={slot}
                                                                 >
-                                                                    {slot}
+                                                                    {formatTime(
+                                                                        slot,
+                                                                    )}
                                                                 </option>
                                                             ),
                                                         )}

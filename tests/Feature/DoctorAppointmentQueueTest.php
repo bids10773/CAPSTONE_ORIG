@@ -38,14 +38,24 @@ test('doctor queue shows assigned appointments from today onward and marks their
             ->where('appointments.data.1.is_scheduled_today', false));
 });
 
-test('doctor cannot edit a physical examination before its scheduled date', function () {
+test('doctor can start a physical examination only after check-in on its scheduled date', function () {
     $doctor = User::factory()->create(['role' => 'doctor']);
     $patient = User::factory()->create(['role' => 'patient']);
-    $today = doctorQueueAppointment($patient, $doctor);
+    $acceptedToday = doctorQueueAppointment($patient, $doctor);
+    $arrivedToday = doctorQueueAppointment($patient, $doctor, [
+        'status' => 'arrived',
+        'arrived_at' => now(),
+        'start_time' => now()->addHours(2)->format('H:i'),
+    ]);
     $upcoming = doctorQueueAppointment($patient, $doctor, ['appointment_date' => today()->addDay()]);
 
-    expect($doctor->can('updatePhysicalExam', $today))->toBeTrue()
+    expect($doctor->can('updatePhysicalExam', $acceptedToday))->toBeFalse()
+        ->and($doctor->can('updatePhysicalExam', $arrivedToday))->toBeTrue()
         ->and($doctor->can('updatePhysicalExam', $upcoming))->toBeFalse();
+
+    $this->actingAs($doctor)
+        ->get(route('doctor.physical-exams.create', $acceptedToday))
+        ->assertForbidden();
 
     $this->actingAs($doctor)
         ->get(route('doctor.appointments.show', $upcoming))

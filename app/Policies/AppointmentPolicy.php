@@ -109,10 +109,15 @@ class AppointmentPolicy
 
     public function updatePhysicalExam(User $user, Appointment $appointment): bool
     {
+        $patientHasCheckedIn = $appointment->status === 'arrived'
+            || $appointment->arrived_at !== null;
+        $examAlreadyExists = $appointment->physicalExam()->exists();
+
         return $user->role === 'doctor'
             && $this->eligibleOnsiteStaff($user, $appointment, 'doctor')
             && ($appointment->appointment_date?->isToday() ?? false)
             && $appointment->status !== 'completed'
+            && ($patientHasCheckedIn || $examAlreadyExists)
             && in_array('PE', $appointment->service_types ?? [], true)
             && ($appointment->bulk_appointment_id === null
                 ? $this->isAssignedDoctor($user, $appointment)

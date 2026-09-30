@@ -17,7 +17,7 @@ function clinicalAppointment(array $services = ['CBC']): Appointment
     return Appointment::create([
         'user_id' => $patient->id, 'company_id' => $company->id,
         'appointment_date' => now(), 'type' => 'company_referral',
-        'status' => 'for_diagnostics', 'service_types' => $services,
+        'status' => 'for_diagnostics', 'arrived_at' => now(), 'service_types' => $services,
     ]);
 }
 

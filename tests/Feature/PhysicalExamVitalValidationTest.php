@@ -13,6 +13,7 @@ function vitalExamAppointment(): array
         'appointment_date' => today(),
         'type' => 'individual',
         'status' => 'for_physical_examination',
+        'arrived_at' => now(),
         'service_types' => ['PE'],
     ]);
 
