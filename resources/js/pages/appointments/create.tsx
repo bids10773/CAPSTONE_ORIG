@@ -325,7 +325,16 @@ export default function CreateAppointment() {
 
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState<BookingData>(() => {
-        const draft = restoreDraft(storageKey);
+        const restoredDraft = restoreDraft(storageKey);
+        const draft =
+            restoredDraft.appointment_date &&
+            restoredDraft.appointment_date < minDate
+                ? {
+                      ...restoredDraft,
+                      appointment_date: '',
+                      start_time: '',
+                  }
+                : restoredDraft;
 
         if (referral) {
             return {
@@ -505,7 +514,11 @@ export default function CreateAppointment() {
     }, [formData.type]);
 
     useEffect(() => {
-        if (!formData.doctor_id || !formData.appointment_date) {
+        if (
+            !formData.doctor_id ||
+            !formData.appointment_date ||
+            formData.appointment_date < minDate
+        ) {
             return;
         }
         const controller = new AbortController();
@@ -549,7 +562,7 @@ export default function CreateAppointment() {
                 if (!controller.signal.aborted) setLoadingAvailability(false);
             });
         return () => controller.abort();
-    }, [formData.doctor_id, formData.appointment_date]);
+    }, [formData.doctor_id, formData.appointment_date, minDate]);
 
     const update = <K extends keyof BookingData>(
         key: K,

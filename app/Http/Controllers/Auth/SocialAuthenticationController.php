@@ -169,6 +169,10 @@ class SocialAuthenticationController extends Controller
 
     private function login(Request $request, User $user): RedirectResponse
     {
+        if ($user->login_locked_at !== null) {
+            return to_route('login')->with('error', 'Your account is locked. Reset your password by email to unlock it.');
+        }
+
         if (! $user->isActive()) {
             return to_route('login')->with('error', 'Your account is currently unavailable. Please contact the administrator.');
         }

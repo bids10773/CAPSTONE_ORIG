@@ -58,6 +58,17 @@ function dateKey(date: Date): string {
     ].join('-');
 }
 
+function monthKey(date: Date): string {
+    return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+    ].join('-');
+}
+
+function dateFromKey(value: string): Date {
+    return new Date(`${value}T00:00:00`);
+}
+
 export default function AppointmentDateInput({
     value,
     error,
@@ -77,9 +88,11 @@ export default function AppointmentDateInput({
     }
     const parts = draft.parts;
     const [visibleMonth, setVisibleMonth] = useState(() => {
-        const initial = value || min;
+        const valueIsInRange =
+            value && (!min || value >= min) && (!max || value <= max);
+        const initial = valueIsInRange ? value : min;
         return initial
-            ? new Date(`${initial}T00:00:00`)
+            ? dateFromKey(initial)
             : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     });
     const [localError, setLocalError] = useState<string>();
@@ -88,9 +101,20 @@ export default function AppointmentDateInput({
     const yearRef = useRef<HTMLInputElement>(null);
     const errorId = `${useId()}-error`;
 
+    const displayedMonth = useMemo(() => {
+        if (min && monthKey(visibleMonth) < min.slice(0, 7)) {
+            return dateFromKey(`${min.slice(0, 7)}-01`);
+        }
+        if (max && monthKey(visibleMonth) > max.slice(0, 7)) {
+            return dateFromKey(`${max.slice(0, 7)}-01`);
+        }
+
+        return visibleMonth;
+    }, [max, min, visibleMonth]);
+
     const calendarDays = useMemo(() => {
-        const year = visibleMonth.getFullYear();
-        const month = visibleMonth.getMonth();
+        const year = displayedMonth.getFullYear();
+        const month = displayedMonth.getMonth();
         const firstWeekday = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -100,7 +124,7 @@ export default function AppointmentDateInput({
                 ? new Date(year, month, day)
                 : null;
         });
-    }, [visibleMonth]);
+    }, [displayedMonth]);
 
     const selectedSlotCount = value ? slotCounts?.[value] : undefined;
 
@@ -221,24 +245,17 @@ export default function AppointmentDateInput({
                             type="button"
                             onClick={() =>
                                 setVisibleMonth(
-                                    (current) =>
-                                        new Date(
-                                            current.getFullYear(),
-                                            current.getMonth() - 1,
-                                            1,
-                                        ),
+                                    new Date(
+                                        displayedMonth.getFullYear(),
+                                        displayedMonth.getMonth() - 1,
+                                        1,
+                                    ),
                                 )
                             }
                             className="flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30"
                             disabled={
                                 !!min &&
-                                dateKey(
-                                    new Date(
-                                        visibleMonth.getFullYear(),
-                                        visibleMonth.getMonth() + 1,
-                                        0,
-                                    ),
-                                ) < min
+                                monthKey(displayedMonth) <= min.slice(0, 7)
                             }
                             aria-label="Previous month"
                         >
@@ -249,30 +266,23 @@ export default function AppointmentDateInput({
                             {new Intl.DateTimeFormat('en-US', {
                                 month: 'long',
                                 year: 'numeric',
-                            }).format(visibleMonth)}
+                            }).format(displayedMonth)}
                         </span>
                         <button
                             type="button"
                             onClick={() =>
                                 setVisibleMonth(
-                                    (current) =>
-                                        new Date(
-                                            current.getFullYear(),
-                                            current.getMonth() + 1,
-                                            1,
-                                        ),
+                                    new Date(
+                                        displayedMonth.getFullYear(),
+                                        displayedMonth.getMonth() + 1,
+                                        1,
+                                    ),
                                 )
                             }
                             className="flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30"
                             disabled={
                                 !!max &&
-                                dateKey(
-                                    new Date(
-                                        visibleMonth.getFullYear(),
-                                        visibleMonth.getMonth() + 1,
-                                        1,
-                                    ),
-                                ) > max
+                                monthKey(displayedMonth) >= max.slice(0, 7)
                             }
                             aria-label="Next month"
                         >

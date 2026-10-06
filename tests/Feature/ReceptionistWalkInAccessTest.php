@@ -2,6 +2,7 @@
 
 use App\Models\Appointment;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
 function receptionist(): User
@@ -258,7 +259,8 @@ test('receptionist assigns a doctor only in a free slot that does not overlap an
     $walkIn = Appointment::query()->where('user_id', $patient->id)->where('type', 'walk_in')->firstOrFail();
     expect($walkIn->doctor_id)->toBe($doctor->id)
         ->and($walkIn->start_time->format('H:i'))->toBe('08:30')
-        ->and($walkIn->end_time->format('H:i'))->toBe('09:00');
+        ->and($walkIn->end_time->format('H:i'))->toBe('09:00')
+        ->and($walkIn->status)->toBe('accepted');
 
     $this->post(route('receptionist.walk-ins.store'), [...$registration, 'start_time' => '08:30'])
         ->assertSessionHasErrors('start_time');
@@ -294,7 +296,8 @@ test('receptionist can later assign a waiting walk-in without taking an online s
         'doctor_id' => $doctor->id, 'start_time' => '08:30',
     ])->assertRedirect();
     expect($walkIn->refresh()->doctor_id)->toBe($doctor->id)
-        ->and($walkIn->start_time->format('H:i'))->toBe('08:30');
+        ->and($walkIn->start_time->format('H:i'))->toBe('08:30')
+        ->and($walkIn->status)->toBe('accepted');
 
     $this->actingAs($staff)->patch(route('receptionist.walk-ins.doctor', $walkIn), [
         'doctor_id' => $doctor->id, 'start_time' => '09:30',
@@ -320,7 +323,7 @@ test('receptionist cannot register walk ins while the clinic is closed on weeken
     ]);
 });
 
-test('receptionist can mark accepted online patients arrived but cannot bypass approval or change walk in clinical status', function () {
+test('receptionist can mark accepted online patients arrived but cannot bypass approval or start an unscheduled walk in', function () {
     $staff = receptionist();
     $patient = User::factory()->create();
     $walkIn = Appointment::create([
@@ -360,9 +363,41 @@ test('receptionist can mark accepted online patients arrived but cannot bypass a
 
     $this->actingAs($staff)
         ->patch(route('receptionist.walk-ins.status', $walkIn), ['status' => 'arrived'])
-        ->assertForbidden();
+        ->assertSessionHasErrors('status');
 
     expect($walkIn->refresh()->status)->toBe('pending');
+});
+
+test('scheduled walk in can start processing only when its assigned time arrives', function () {
+    $this->travelTo(Carbon::parse('2026-09-18 14:30:00', 'Asia/Manila'));
+    $staff = receptionist();
+    $doctor = User::factory()->create(['role' => 'doctor']);
+    $patient = User::factory()->create(['role' => 'patient']);
+    $walkIn = Appointment::create([
+        'user_id' => $patient->id,
+        'doctor_id' => $doctor->id,
+        'appointment_date' => today(),
+        'start_time' => '15:00',
+        'end_time' => '15:30',
+        'type' => 'walk_in',
+        'status' => 'accepted',
+        'arrived_at' => now(),
+        'checked_in_by' => $staff->id,
+        'service_types' => ['PE'],
+    ]);
+
+    $this->actingAs($staff)
+        ->patch(route('receptionist.walk-ins.status', $walkIn), ['status' => 'arrived'])
+        ->assertSessionHasErrors('status');
+    expect($walkIn->refresh()->status)->toBe('accepted');
+
+    $this->travelTo(Carbon::parse('2026-09-18 15:00:00', 'Asia/Manila'));
+    $this->actingAs($staff)
+        ->patch(route('receptionist.walk-ins.status', $walkIn), ['status' => 'arrived'])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect($walkIn->refresh()->status)->toBe('arrived');
 });
 
 test('bulk employees never appear in or mutate through the walk-in queue', function () {

@@ -12,6 +12,7 @@ use App\Services\AppointmentReminderService;
 use App\Services\AppointmentSchedulingService;
 use App\Services\WalkInDoctorSlotService;
 use App\Services\WalkInService;
+use App\Support\ClinicHours;
 use App\Support\SearchTerm;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -225,7 +226,25 @@ class ReceptionistWalkInController extends Controller
 
     public function updateStatus(UpdateWalkInStatusRequest $request, Appointment $appointment): RedirectResponse
     {
-        abort_unless(in_array($appointment->type, ['individual', 'company_referral'], true) && $appointment->bulk_appointment_id === null, 403);
+        abort_unless(in_array($appointment->type, ['individual', 'company_referral', 'walk_in'], true) && $appointment->bulk_appointment_id === null, 403);
+        if ($appointment->type === 'walk_in') {
+            if ($appointment->status !== 'accepted' || $appointment->doctor_id === null || $appointment->start_time === null) {
+                return back()->withErrors([
+                    'status' => 'Assign a doctor and time before starting this walk-in appointment.',
+                ]);
+            }
+
+            if ($this->scheduling->scheduledAt($appointment, ClinicHours::timezone())?->greaterThan(ClinicHours::now())) {
+                return back()->withErrors([
+                    'status' => 'This walk-in appointment cannot start before its assigned time.',
+                ]);
+            }
+
+            $this->scheduling->checkIn($appointment, $request->user());
+
+            return back()->with('success', 'Walk-in appointment is now processing.');
+        }
+
         if ($appointment->type === 'individual' && $appointment->status !== 'accepted') {
             return back()->withErrors([
                 'status' => 'Accept the online appointment request before marking the patient as arrived.',

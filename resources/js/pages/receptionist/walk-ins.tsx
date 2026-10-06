@@ -10,7 +10,7 @@ import {
     UserPlus,
     Users,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import BirthdateInput from '@/components/birthdate-input';
 import { Pagination } from '@/components/pagination';
@@ -113,6 +113,51 @@ function formatTime(value?: string | null): string {
     }).format(new Date(2000, 0, 1, Number(match[1]), Number(match[2])));
 }
 
+function scheduledTime(walkIn: WalkIn): number | null {
+    if (!walkIn.start_time) return null;
+
+    const date = walkIn.appointment_date.slice(0, 10).split('-').map(Number);
+    const timeMatch = walkIn.start_time.match(/(\d{2}):(\d{2})/);
+    if (date.length !== 3 || date.some(Number.isNaN) || !timeMatch) return null;
+
+    return new Date(
+        date[0],
+        date[1] - 1,
+        date[2],
+        Number(timeMatch[1]),
+        Number(timeMatch[2]),
+    ).getTime();
+}
+
+function isReady(walkIn: WalkIn, now: number): boolean {
+    const scheduled = scheduledTime(walkIn);
+
+    return (
+        walkIn.type === 'walk_in' &&
+        walkIn.status === 'accepted' &&
+        scheduled !== null &&
+        scheduled <= now
+    );
+}
+
+function queueStageLabel(walkIn: WalkIn, now: number): string {
+    if (isReady(walkIn, now)) return 'Ready';
+
+    return statusLabels[walkIn.status];
+}
+
+function queueDetailLabel(walkIn: WalkIn, now: number): string {
+    if (walkIn.type !== 'walk_in') return arrivalLabels[walkIn.arrival_status];
+    if (walkIn.status === 'pending') return 'Walk-in — waiting for a slot';
+    if (isReady(walkIn, now)) return 'Ready for procedures';
+    if (walkIn.status === 'accepted') {
+        return `Scheduled for ${formatTime(walkIn.start_time)}`;
+    }
+    if (walkIn.status === 'arrived') return 'Procedures in progress';
+
+    return statusLabels[walkIn.status];
+}
+
 export default function WalkIns({
     walkIns,
     serviceTypes,
@@ -145,6 +190,15 @@ export default function WalkIns({
     );
     const [assignmentTime, setAssignmentTime] = useState('');
     const [assignmentError, setAssignmentError] = useState('');
+    const [currentTime, setCurrentTime] = useState(() => Date.now());
+    useEffect(() => {
+        const timer = window.setInterval(
+            () => setCurrentTime(Date.now()),
+            15_000,
+        );
+
+        return () => window.clearInterval(timer);
+    }, []);
     const form = useForm({
         patient_type: 'existing',
         user_id: null as number | null,
@@ -864,11 +918,10 @@ export default function WalkIns({
                                             </p>
                                         )}
                                         <p className="mt-1 text-xs font-semibold text-moss-700">
-                                            {
-                                                arrivalLabels[
-                                                    walkIn.arrival_status
-                                                ]
-                                            }
+                                            {queueDetailLabel(
+                                                walkIn,
+                                                currentTime,
+                                            )}
                                         </p>
                                     </div>
                                     <div className="col-span-2 flex flex-wrap content-center gap-1 border-t border-slate-100 pt-3 sm:col-span-3 xl:col-span-1 xl:col-start-3 xl:row-start-1 xl:border-0 xl:pt-0">
@@ -1050,10 +1103,37 @@ export default function WalkIns({
                                                     Mark Arrived
                                                 </button>
                                             )}
+                                        {walkIn.type === 'walk_in' &&
+                                            walkIn.status === 'accepted' && (
+                                                <button
+                                                    type="button"
+                                                    disabled={
+                                                        !isReady(
+                                                            walkIn,
+                                                            currentTime,
+                                                        )
+                                                    }
+                                                    onClick={() =>
+                                                        markArrived(walkIn)
+                                                    }
+                                                    className="inline-flex items-center gap-1 rounded-xl bg-moss-700 px-3 py-2 text-xs font-bold text-white hover:bg-moss-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                                >
+                                                    <Check className="size-3.5" />
+                                                    {isReady(
+                                                        walkIn,
+                                                        currentTime,
+                                                    )
+                                                        ? 'Start processing'
+                                                        : `Starts ${formatTime(walkIn.start_time)}`}
+                                                </button>
+                                            )}
                                         <span
                                             className={`status-text-only text-xs font-bold ${statusStyles[walkIn.status]}`}
                                         >
-                                            {statusLabels[walkIn.status]}
+                                            {queueStageLabel(
+                                                walkIn,
+                                                currentTime,
+                                            )}
                                         </span>
                                     </div>
                                 </article>

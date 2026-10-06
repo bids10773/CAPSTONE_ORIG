@@ -29,14 +29,10 @@ type Props = {
 
 type LoginAttemptLimit = {
     maxAttempts: number;
+    warningAfterAttempts: number;
+    failedAttempts: number;
     remainingAttempts: number;
     locked: boolean;
-    retryAfter: number;
-};
-
-type LoginCountdown = {
-    key: string;
-    retryAfter: number;
 };
 
 export default function Login({
@@ -50,7 +46,6 @@ export default function Login({
         flash?: { error?: string };
     };
     const [showPassword, setShowPassword] = useState(false);
-    const [countdown, setCountdown] = useState<LoginCountdown | null>(null);
     const [showVerified, setShowVerified] = useState(
         () =>
             typeof window !== 'undefined' &&
@@ -67,49 +62,11 @@ export default function Login({
         }
     }, [showVerified]);
 
-    const attemptKey = loginAttemptLimit
-        ? [
-              loginAttemptLimit.maxAttempts,
-              loginAttemptLimit.remainingAttempts,
-              loginAttemptLimit.locked,
-              loginAttemptLimit.retryAfter,
-          ].join(':')
-        : '';
-    const retryAfter =
-        countdown?.key === attemptKey
-            ? countdown.retryAfter
-            : (loginAttemptLimit?.retryAfter ?? 0);
-    const attemptLimit =
-        loginAttemptLimit?.locked && retryAfter === 0
-            ? null
-            : loginAttemptLimit
-              ? { ...loginAttemptLimit, retryAfter }
-              : null;
-
-    useEffect(() => {
-        if (!loginAttemptLimit?.locked || retryAfter <= 0) return;
-
-        const timer = window.setInterval(() => {
-            setCountdown((current) => {
-                const currentRetryAfter =
-                    current?.key === attemptKey
-                        ? current.retryAfter
-                        : loginAttemptLimit.retryAfter;
-
-                return {
-                    key: attemptKey,
-                    retryAfter: Math.max(0, currentRetryAfter - 1),
-                };
-            });
-        }, 1000);
-
-        return () => window.clearInterval(timer);
-    }, [attemptKey, loginAttemptLimit, retryAfter]);
-
-    const isLocked = attemptLimit?.locked === true;
-    const retryTime = attemptLimit
-        ? `${String(Math.floor(attemptLimit.retryAfter / 60)).padStart(2, '0')}:${String(attemptLimit.retryAfter % 60).padStart(2, '0')}`
-        : '00:00';
+    const isLocked = loginAttemptLimit?.locked === true;
+    const showAttemptWarning =
+        isLocked ||
+        (loginAttemptLimit?.failedAttempts ?? 0) >=
+            (loginAttemptLimit?.warningAfterAttempts ?? 3);
 
     return (
         <>
@@ -201,58 +158,8 @@ export default function Login({
                                         id="email-error"
                                         className="mt-1.5 text-sm text-red-600"
                                     >
-                                        {isLocked
-                                            ? 'Too many failed login attempts.'
-                                            : errors.email}
+                                        {errors.email}
                                     </p>
-                                )}
-                                {attemptLimit && (
-                                    <div
-                                        className={`mt-3 rounded-xl border p-3.5 ${isLocked ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}`}
-                                        role="status"
-                                        aria-live="polite"
-                                    >
-                                        <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
-                                            <span>Attempts Remaining</span>
-                                            <span>
-                                                {attemptLimit.remainingAttempts}{' '}
-                                                / {attemptLimit.maxAttempts}
-                                            </span>
-                                        </div>
-                                        <div
-                                            className="mt-2 flex gap-1.5"
-                                            aria-hidden="true"
-                                        >
-                                            {Array.from({
-                                                length: attemptLimit.maxAttempts,
-                                            }).map((_, index) => (
-                                                <span
-                                                    key={index}
-                                                    className={`size-2.5 rounded-full ${index < attemptLimit.remainingAttempts ? 'bg-moss-600' : 'bg-slate-200'}`}
-                                                />
-                                            ))}
-                                        </div>
-                                        {isLocked ? (
-                                            <div className="mt-2 text-sm text-red-700">
-                                                <p className="font-semibold">
-                                                    Login is temporarily locked.
-                                                </p>
-                                                <p>Try again in {retryTime}</p>
-                                            </div>
-                                        ) : attemptLimit.remainingAttempts ===
-                                          1 ? (
-                                            <p className="mt-2 text-sm font-medium text-amber-800">
-                                                Warning: 1 login attempt
-                                                remaining before temporary
-                                                lockout.
-                                            </p>
-                                        ) : (
-                                            <p className="mt-2 text-sm text-amber-800">
-                                                {attemptLimit.remainingAttempts}{' '}
-                                                attempts remaining.
-                                            </p>
-                                        )}
-                                    </div>
                                 )}
                             </div>
                             <div>
@@ -353,6 +260,17 @@ export default function Login({
                                     >
                                         Use only on a private, trusted device.
                                     </p>
+                                    {showAttemptWarning && (
+                                        <p
+                                            className="mt-0.5 text-xs text-red-600"
+                                            role="status"
+                                            aria-live="polite"
+                                        >
+                                            {isLocked
+                                                ? 'Account locked after 5 failed attempts. Reset your password by email to unlock it.'
+                                                : `${loginAttemptLimit?.failedAttempts} failed attempts. Your account will be locked after 5 failed attempts.`}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                             <button
@@ -361,7 +279,7 @@ export default function Login({
                                 className="auth-primary-button"
                             >
                                 {isLocked ? (
-                                    'Login Temporarily Locked'
+                                    'Account Locked'
                                 ) : processing ? (
                                     <>
                                         <Spinner className="size-4" /> Signing

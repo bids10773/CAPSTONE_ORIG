@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\CompanyReferral;
 use App\Models\MedicalHistory;
 use App\Models\User;
+use App\Notifications\AppointmentCancelled;
 use App\Notifications\OnsiteStaffAssigned;
 use App\Rules\Weekday;
 use App\Services\AppointmentApprovalService;
@@ -496,6 +497,7 @@ class AppointmentController extends Controller
      */
     public function updateStatus(Request $request, Appointment $appointment)
     {
+        $wasCancelled = $appointment->status === 'cancelled';
         $validator = Validator::make($request->all(), [
             'status' => ['required', 'string', 'in:pending,accepted,arrived,for_diagnostics,for_xray,awaiting_xray_result,for_final_evaluation,completed,cancelled'],
             'event_duration_days' => [
@@ -542,6 +544,17 @@ class AppointmentController extends Controller
             $appointment->update([
                 'status' => $request->status,
             ]);
+
+            if ($request->status === 'cancelled' && ! $wasCancelled) {
+                try {
+                    $appointment->user?->notify(new AppointmentCancelled($appointment->fresh()));
+                } catch (\Throwable $exception) {
+                    Log::warning('Patient appointment cancellation notification failed.', [
+                        'appointment_id' => $appointment->id,
+                        'exception' => $exception->getMessage(),
+                    ]);
+                }
+            }
         }
 
         return back()->with('success', match ($request->status) {

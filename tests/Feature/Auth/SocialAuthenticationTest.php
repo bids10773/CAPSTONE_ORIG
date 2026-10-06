@@ -66,6 +66,22 @@ test('an inactive linked social account cannot authenticate', function () {
     $this->assertGuest();
 });
 
+test('a login-locked linked social account must reset its password before authenticating', function () {
+    $user = User::factory()->create([
+        'login_locked_at' => now(),
+        'failed_login_attempts' => 5,
+        'email_verified_at' => now(),
+    ]);
+    SocialAccount::create(['user_id' => $user->id, 'provider' => 'google', 'provider_user_id' => 'locked-google']);
+    fakeSocialIdentity('google', ['id' => 'locked-google', 'email' => $user->email, 'email_verified' => true]);
+
+    $this->get(route('social.callback', 'google'))
+        ->assertRedirect(route('login'))
+        ->assertSessionHas('error', 'Your account is locked. Reset your password by email to unlock it.');
+
+    $this->assertGuest();
+});
+
 test('Facebook without email pauses registration for verified email collection', function () {
     fakeSocialIdentity('facebook', ['id' => 'facebook-no-email', 'name' => 'Facebook Patient', 'email' => null]);
 

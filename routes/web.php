@@ -88,6 +88,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/complete-patient-profile', [PatientProfileCompletionController::class, 'update'])
         ->middleware('throttle:10,1')
         ->name('patient-profile.update');
+    Route::get('/notifications/center', [NotificationController::class, 'center'])->name('notifications.center');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::patch('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('notifications.read');
@@ -220,6 +221,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::resource('staff', StaffController::class)->except('show');
         Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
+        Route::get('/patients/{patient}', [AdminPatientController::class, 'show'])->name('patients.show');
         Route::patch('/staff/{staff}/toggle-active', [StaffController::class, 'toggleActive'])->name('staff.toggle-active');
         Route::post('/staff/{staff}/signature', [StaffController::class, 'uploadSignature'])->name('staff.signature');
         Route::post('/staff/{staff}/resend-credentials', [StaffController::class, 'resendCredentials'])

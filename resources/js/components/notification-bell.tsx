@@ -1,4 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react';
+import { useEcho } from '@laravel/echo-react';
 import {
     Bell,
     CalendarDays,
@@ -7,6 +8,7 @@ import {
     ShieldAlert,
     XCircle,
 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -50,10 +52,70 @@ function NotificationIcon({ type }: { type: string }) {
 }
 
 export function NotificationBell() {
-    const { notificationCenter } = usePage().props as unknown as {
+    const { auth, notificationCenter } = usePage().props as unknown as {
+        auth: { user: { id: number } };
         notificationCenter: NotificationCenter;
     };
     const center = notificationCenter ?? { unreadCount: 0, latest: [] };
+    const [liveCenter, setLiveCenter] = useState<NotificationCenter | null>(
+        null,
+    );
+
+    const displayedCenter = liveCenter ?? center;
+    const unreadCount = displayedCenter.unreadCount;
+
+    const refreshCenter = useCallback(async () => {
+        const response = await fetch('/notifications/center', {
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Unable to refresh notifications.');
+        }
+
+        setLiveCenter((await response.json()) as NotificationCenter);
+    }, []);
+
+    useEffect(() => {
+        const sync = () => {
+            void refreshCenter().catch(() => undefined);
+        };
+        const syncWhenVisible = () => {
+            if (document.visibilityState === 'visible') sync();
+        };
+        const interval = window.setInterval(sync, 10_000);
+
+        sync();
+        window.addEventListener('focus', sync);
+        document.addEventListener('visibilitychange', syncWhenVisible);
+
+        return () => {
+            window.clearInterval(interval);
+            window.removeEventListener('focus', sync);
+            document.removeEventListener('visibilitychange', syncWhenVisible);
+        };
+    }, [refreshCenter]);
+
+    useEcho<{ unreadCount: number }>(
+        `App.Models.User.${auth.user.id}`,
+        '.notification.center.updated',
+        ({ unreadCount }) => {
+            setLiveCenter((current) => ({
+                unreadCount,
+                latest: current?.latest ?? center.latest,
+            }));
+
+            void refreshCenter().catch(() => {
+                // The Reverb payload already updated the badge. The focus and
+                // interval synchronization will retry if this request fails.
+            });
+        },
+        [auth.user.id],
+    );
 
     const visit = (notification: AppNotification) => {
         router.post(
@@ -69,14 +131,12 @@ export function NotificationBell() {
                 <button
                     type="button"
                     className="topbar-icon relative"
-                    aria-label={`Notifications${center.unreadCount ? `, ${center.unreadCount} unread` : ''}`}
+                    aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
                 >
                     <Bell className="size-[18px]" />
-                    {center.unreadCount > 0 && (
+                    {unreadCount > 0 && (
                         <span className="absolute -top-1 -right-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-card">
-                            {center.unreadCount > 99
-                                ? '99+'
-                                : center.unreadCount}
+                            {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
                     )}
                 </button>
@@ -92,10 +152,10 @@ export function NotificationBell() {
                             Notifications
                         </p>
                         <p className="text-xs text-slate-500 dark:text-muted-foreground">
-                            {center.unreadCount} unread
+                            {unreadCount} unread
                         </p>
                     </div>
-                    {center.unreadCount > 0 && (
+                    {unreadCount > 0 && (
                         <button
                             type="button"
                             onClick={() =>
@@ -112,7 +172,7 @@ export function NotificationBell() {
                     )}
                 </div>
                 <div className="max-h-[28rem] overflow-y-auto">
-                    {center.latest.length === 0 ? (
+                    {displayedCenter.latest.length === 0 ? (
                         <div className="px-6 py-10 text-center">
                             <Bell className="mx-auto size-7 text-slate-300 dark:text-slate-600" />
                             <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-foreground">
@@ -124,7 +184,7 @@ export function NotificationBell() {
                             </p>
                         </div>
                     ) : (
-                        center.latest.map((notification) => (
+                        displayedCenter.latest.map((notification) => (
                             <button
                                 key={notification.id}
                                 type="button"

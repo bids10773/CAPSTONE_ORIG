@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\PatientMedicalProfileService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -106,6 +107,19 @@ class AdminPatientController extends Controller
                 'search' => $search,
                 'presence' => $presence,
             ],
+        ]);
+    }
+
+    public function show(User $patient, PatientMedicalProfileService $medicalProfile): Response
+    {
+        abort_unless($patient->role === 'patient', 404);
+        $patient->load('patientProfile', 'company:id,company_name');
+        $patient->patientProfile?->append('age');
+
+        return Inertia::render('admin/patients/show', [
+            'patient' => $patient,
+            'medicalRecords' => $medicalProfile->recordsFor($patient, releasedOnly: false),
+            'medicalReports' => $medicalProfile->adminReportsFor($patient),
         ]);
     }
 }

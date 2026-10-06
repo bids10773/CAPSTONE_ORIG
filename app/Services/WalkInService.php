@@ -50,7 +50,7 @@ class WalkInService
                 'end_time' => $doctor ? \Illuminate\Support\Carbon::parse($data['start_time'])->addMinutes((int) config('medical.clinic_hours.slot_minutes', 30))->format('H:i') : null,
                 'appointment_date' => now(),
                 'type' => 'walk_in',
-                'status' => 'pending',
+                'status' => $doctor ? 'accepted' : 'pending',
                 'arrived_at' => now(),
                 'checked_in_by' => $staff->id,
                 'examination_purpose' => $data['examination_purpose'],
@@ -78,6 +78,7 @@ class WalkInService
                 'start_time' => $startTime,
                 'end_time' => \Illuminate\Support\Carbon::parse($startTime)
                     ->addMinutes((int) config('medical.clinic_hours.slot_minutes', 30))->format('H:i'),
+                'status' => $locked->status === 'pending' ? 'accepted' : $locked->status,
             ]);
 
             return $locked;

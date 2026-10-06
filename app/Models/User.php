@@ -53,6 +53,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'two_factor_secret',
         'two_factor_recovery_codes',
         'remember_token',
+        'failed_login_attempts',
+        'login_locked_at',
     ];
 
     /**
@@ -80,6 +82,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'must_change_password' => 'boolean',
             'temporary_password_created_at' => 'datetime',
             'temporary_password_expires_at' => 'datetime',
+            'login_locked_at' => 'datetime',
         ];
     }
 

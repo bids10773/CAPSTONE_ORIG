@@ -39,7 +39,10 @@ test('reset password screen can be rendered', function () {
 test('password can be reset with valid token', function () {
     Notification::fake();
 
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'failed_login_attempts' => 5,
+        'login_locked_at' => now(),
+    ]);
 
     $this->post(route('password.email'), ['email' => $user->email]);
 
@@ -54,6 +57,15 @@ test('password can be reset with valid token', function () {
         $response
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('login'));
+
+        expect($user->refresh()->failed_login_attempts)->toBe(0)
+            ->and($user->login_locked_at)->toBeNull();
+
+        $this->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => 'Hello123',
+        ]);
+        $this->assertAuthenticatedAs($user);
 
         return true;
     });

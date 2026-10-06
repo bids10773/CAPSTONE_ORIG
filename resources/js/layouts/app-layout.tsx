@@ -39,10 +39,23 @@ export default function AppLayout({
     breadcrumbs = [],
 }: AppLayoutProps) {
     const { auth, flash, errors } = usePage().props as any;
+    const successMessage = flash?.success as string | undefined;
+    const errorMessage = flash?.error as string | undefined;
+    const warningMessage = flash?.warning as string | undefined;
+    const validationError = Object.values(errors ?? {}).find(
+        (message) => typeof message === 'string' && message.length > 0,
+    ) as string | undefined;
 
     useEffect(() => {
-        showToastMessages({ flash, errors });
-    }, [flash, errors]);
+        showToastMessages({
+            flash: {
+                success: successMessage,
+                error: errorMessage,
+                warning: warningMessage,
+            },
+            errors: validationError ? { validationError } : {},
+        });
+    }, [successMessage, errorMessage, warningMessage, validationError]);
 
     if (auth?.user?.role === 'patient') {
         return <PatientPortalLayout>{children}</PatientPortalLayout>;

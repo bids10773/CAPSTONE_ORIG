@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
+use App\Services\PatientMedicalProfileService;
 use App\Support\PhilippineContactNumber;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -20,8 +21,10 @@ class ProfileController extends Controller
     /**
      * Show the user's profile settings page.
      */
-    public function edit(Request $request): Response
+    public function edit(Request $request, PatientMedicalProfileService $medicalProfile): Response
     {
+        $user = $request->user();
+
         return Inertia::render('settings/profile', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
@@ -29,6 +32,9 @@ class ProfileController extends Controller
             'twoFactorEnabled' => $request->user()->hasEnabledTwoFactorAuthentication(),
             'requiresTwoFactorConfirmation' => Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm'),
             'canManageTwoFactor' => now()->timestamp - (int) $request->session()->get('auth.password_confirmed_at', 0) <= (int) config('auth.password_timeout', 10800),
+            'medicalRecords' => $user->role === 'patient'
+                ? $medicalProfile->recordsFor($user, releasedOnly: true)
+                : [],
         ]);
     }
 

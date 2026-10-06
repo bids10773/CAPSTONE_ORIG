@@ -1,9 +1,13 @@
 <?php
 
+use App\Events\NotificationCenterUpdated;
 use App\Models\Appointment;
 use App\Models\User;
 use App\Notifications\AppointmentSubmitted;
+use Illuminate\Broadcasting\BroadcastManager;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(fn () => Carbon::setTestNow('2026-08-17 08:00:00'));
@@ -40,9 +44,9 @@ function notificationAppointment(User $patient, User $doctor): Appointment
     ]);
 }
 
-test('appointment submission stores role-aware admin and patient notifications', function () {
+test('appointment submission stores role-aware reviewer and patient notifications', function () {
     $admin = User::factory()->create(['role' => 'admin', 'is_active' => true]);
-    $otherRole = User::factory()->create(['role' => 'receptionist', 'is_active' => true]);
+    $receptionist = User::factory()->create(['role' => 'receptionist', 'is_active' => true]);
     $patient = notificationPatient();
     $doctor = notificationDoctor();
 
@@ -56,7 +60,48 @@ test('appointment submission stores role-aware admin and patient notifications',
         ->and($patient->unreadNotifications()->count())->toBe(1)
         ->and($patient->unreadNotifications()->first()->data['type'])->toBe('appointment_submitted')
         ->and($doctor->notifications()->count())->toBe(0)
-        ->and($otherRole->notifications()->count())->toBe(0);
+        ->and($receptionist->unreadNotifications()->count())->toBe(1)
+        ->and($receptionist->unreadNotifications()->first()->data['type'])->toBe('appointment_request');
+});
+
+test('database notifications dispatch a private notification center update', function () {
+    Event::fake([NotificationCenterUpdated::class]);
+    $patient = notificationPatient();
+
+    $patient->notify(new AppointmentSubmitted(
+        notificationAppointment($patient, notificationDoctor()),
+    ));
+
+    Event::assertDispatched(
+        NotificationCenterUpdated::class,
+        fn (NotificationCenterUpdated $event) => $event->userId === $patient->id
+            && $event->unreadCount === 1
+            && $event->broadcastOn()[0]->name === 'private-App.Models.User.'.$patient->id,
+    );
+});
+
+test('notification center updates wait for database transactions to commit', function () {
+    expect(new NotificationCenterUpdated(1, 1))
+        ->toBeInstanceOf(ShouldDispatchAfterCommit::class);
+});
+
+test('users can authorize only their own private notification channel', function () {
+    config()->set('broadcasting.default', 'reverb');
+    app(BroadcastManager::class)->purge();
+    require base_path('routes/channels.php');
+    $patient = notificationPatient();
+    $other = notificationPatient();
+    $payload = ['socket_id' => '1234.5678'];
+
+    $this->actingAs($patient)->postJson('/broadcasting/auth', [
+        ...$payload,
+        'channel_name' => 'private-App.Models.User.'.$patient->id,
+    ])->assertOk();
+
+    $this->postJson('/broadcasting/auth', [
+        ...$payload,
+        'channel_name' => 'private-App.Models.User.'.$other->id,
+    ])->assertForbidden();
 });
 
 test('approval creates exactly one patient confirmation and one doctor assignment', function () {
@@ -107,6 +152,18 @@ test('notification center is paginated and shared bell count uses real unread re
         ->has('notificationCenter.latest', 7));
 });
 
+test('authenticated user can refresh notification center data without reloading the page', function () {
+    $patient = notificationPatient();
+    $appointment = notificationAppointment($patient, notificationDoctor());
+    $patient->notify(new AppointmentSubmitted($appointment));
+
+    $this->actingAs($patient)->getJson(route('notifications.center'))
+        ->assertOk()
+        ->assertJsonPath('unreadCount', 1)
+        ->assertJsonCount(1, 'latest')
+        ->assertJsonPath('latest.0.type', 'appointment_submitted');
+});
+
 test('clicking a notification marks it read and redirects to its authorized destination', function () {
     $patient = notificationPatient();
     $appointment = notificationAppointment($patient, notificationDoctor());
@@ -114,7 +171,19 @@ test('clicking a notification marks it read and redirects to its authorized dest
     $notification = $patient->unreadNotifications()->first();
 
     $this->actingAs($patient)->post(route('notifications.visit', $notification->id))
-        ->assertRedirect(route('appointments.index', absolute: false));
+        ->assertRedirect(route('appointments.show', $appointment, false));
+    expect($notification->fresh()->read_at)->not->toBeNull();
+});
+
+test('clicking a cancellation notification opens the cancelled appointment record', function () {
+    $patient = notificationPatient();
+    $appointment = notificationAppointment($patient, notificationDoctor());
+    $patient->notify(new \App\Notifications\AppointmentCancelled($appointment));
+    $notification = $patient->unreadNotifications()->first();
+
+    $this->actingAs($patient)->post(route('notifications.visit', $notification->id))
+        ->assertRedirect(route('appointments.show', $appointment, false));
+
     expect($notification->fresh()->read_at)->not->toBeNull();
 });
 
@@ -127,4 +196,33 @@ test('admin appointment request notifications open the approval queue instead of
 
     $this->actingAs($admin)->post(route('notifications.visit', $notification->id))
         ->assertRedirect(route('admin.appointments.index', ['status' => 'pending', 'type' => 'individual'], false));
+});
+
+test('receptionist appointment request notifications open the receptionist review queue', function () {
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $patient = notificationPatient();
+    $appointment = notificationAppointment($patient, notificationDoctor());
+    $receptionist->notify(new \App\Notifications\NewAppointmentRequest($appointment));
+    $notification = $receptionist->unreadNotifications()->first();
+
+    $this->actingAs($receptionist)->post(route('notifications.visit', $notification->id))
+        ->assertRedirect(route('receptionist.appointment-requests.index', ['status' => 'pending'], false));
+});
+
+test('admin cancellation notifies the patient exactly once', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $patient = notificationPatient();
+    $appointment = notificationAppointment($patient, notificationDoctor());
+
+    $this->actingAs($admin)->patch(route('admin.appointments.update-status', $appointment), [
+        'status' => 'cancelled',
+    ])->assertSessionHasNoErrors();
+
+    expect($patient->notifications()->where('data->type', 'appointment_cancelled')->count())->toBe(1);
+
+    $this->patch(route('admin.appointments.update-status', $appointment), [
+        'status' => 'cancelled',
+    ])->assertSessionHasNoErrors();
+
+    expect($patient->notifications()->where('data->type', 'appointment_cancelled')->count())->toBe(1);
 });

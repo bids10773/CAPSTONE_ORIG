@@ -107,6 +107,12 @@ class FortifyServiceProvider extends ServiceProvider
                 return null;
             }
 
+            if ($user->login_locked_at !== null) {
+                throw ValidationException::withMessages([
+                    'email' => 'Your account is locked. Reset your password by email to unlock it.',
+                ]);
+            }
+
             if (! $user->isActive()) {
                 SecurityAudit::create([
                     'target_user_id' => $user->getAuthIdentifier(),

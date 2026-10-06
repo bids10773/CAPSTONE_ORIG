@@ -17,13 +17,16 @@ class AppointmentSchedulingService
 {
     public const GRACE_PERIOD_MINUTES = 10;
 
-    public function scheduledAt(Appointment $appointment): ?Carbon
+    public function scheduledAt(Appointment $appointment, ?string $timezone = null): ?Carbon
     {
         if ($appointment->start_time === null) {
             return null;
         }
 
-        return Carbon::parse($appointment->appointment_date->format('Y-m-d').' '.$appointment->start_time->format('H:i:s'));
+        return Carbon::parse(
+            $appointment->appointment_date->format('Y-m-d').' '.$appointment->start_time->format('H:i:s'),
+            $timezone ?? config('app.timezone'),
+        );
     }
 
     public function graceEndsAt(Appointment $appointment): ?Carbon
@@ -211,6 +214,7 @@ class AppointmentSchedulingService
                 'doctor_id' => $appointment->doctor_id,
                 'start_time' => $appointment->start_time,
                 'end_time' => $appointment->end_time,
+                'status' => $walkIn->status === 'pending' ? 'accepted' : $walkIn->status,
                 'released_from_appointment_id' => $appointment->id,
                 'released_slot_assigned_at' => $at,
             ]);

@@ -1,4 +1,5 @@
 import { createInertiaApp } from '@inertiajs/react';
+import { configureEcho } from '@laravel/echo-react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import type { ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -7,6 +8,9 @@ import '../css/app.css';
 import LogoutModal from './components/logout-modal';
 import { LogoutModalProvider } from './contexts/logout-modal-context';
 import { initializeTheme } from './hooks/use-appearance';
+configureEcho({
+    broadcaster: 'reverb',
+});
 
 // Keeping the glob options explicit makes Vite rebuild the Inertia page map
 // whenever a new page module is added during development.

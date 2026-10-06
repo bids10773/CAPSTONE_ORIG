@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { CalendarDays, Mail, MapPin, Phone, UsersRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Pagination } from '@/components/pagination';
@@ -234,18 +234,27 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                                             />
                                                         </span>
                                                         <div className="min-w-0">
-                                                            <TruncatedText
-                                                                value={fullName(
+                                                            <Link
+                                                                href={`/admin/patients/${patient.id}`}
+                                                                className="block truncate font-semibold text-slate-900 hover:text-moss-700 hover:underline dark:text-slate-100 dark:hover:text-moss-300"
+                                                                title="View patient profile and vital signs"
+                                                            >
+                                                                {fullName(
                                                                     patient,
                                                                 )}
-                                                                className="font-semibold text-slate-900 dark:text-slate-100"
-                                                            />
+                                                            </Link>
                                                             <p className="mt-0.5 text-xs text-slate-400">
                                                                 Joined{' '}
                                                                 {formatDate(
                                                                     patient.created_at,
                                                                 )}
                                                             </p>
+                                                            <Link
+                                                                href={`/admin/patients/${patient.id}`}
+                                                                className="mt-1 inline-block text-[11px] font-semibold text-moss-700 hover:underline dark:text-moss-300"
+                                                            >
+                                                                View vital signs
+                                                            </Link>
                                                         </div>
                                                     </div>
                                                 </td>

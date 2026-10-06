@@ -100,6 +100,7 @@ class AppointmentPolicy
 
         return $user->role === 'medtech'
             && $this->eligibleOnsiteStaff($user, $appointment, 'medtech')
+            && $this->walkInHasStarted($appointment)
             && $appointment->status !== 'completed'
             && app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment) !== []
             && (! $isVerificationUpdate
@@ -109,8 +110,9 @@ class AppointmentPolicy
 
     public function updatePhysicalExam(User $user, Appointment $appointment): bool
     {
-        $patientHasCheckedIn = $appointment->status === 'arrived'
-            || $appointment->arrived_at !== null;
+        $patientHasCheckedIn = $appointment->type === 'walk_in'
+            ? $this->walkInHasStarted($appointment)
+            : ($appointment->status === 'arrived' || $appointment->arrived_at !== null);
         $examAlreadyExists = $appointment->physicalExam()->exists();
 
         return $user->role === 'doctor'
@@ -128,6 +130,7 @@ class AppointmentPolicy
     {
         return $user->role === 'radtech'
             && $this->eligibleOnsiteStaff($user, $appointment, 'radtech')
+            && $this->walkInHasStarted($appointment)
             && $appointment->status !== 'completed'
             && $appointment->requiresXray();
     }
@@ -158,6 +161,12 @@ class AppointmentPolicy
                 ->where('assigned_staff_id', $user->id)
                 ->whereIn('status', ['assigned', 'in_progress'])
                 ->exists();
+    }
+
+    private function walkInHasStarted(Appointment $appointment): bool
+    {
+        return $appointment->type !== 'walk_in'
+            || ! in_array($appointment->status, ['pending', 'accepted'], true);
     }
 
     public function verifyDiagnosticResults(User $user, Appointment $appointment): bool
