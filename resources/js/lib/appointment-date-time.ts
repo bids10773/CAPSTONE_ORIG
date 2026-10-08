@@ -35,14 +35,20 @@ export function formatAppointmentDateTime(
 export function formatEventDateRange(
     startDate: string,
     endDate?: string | null,
+    startTime?: string | null,
+    endTime?: string | null,
 ): string {
+    const timeRange = `${formatAppointmentTime(startTime)}${
+        endTime ? `–${formatAppointmentTime(endTime)}` : ''
+    }`;
+
     if (!endDate) {
-        return `${formatAppointmentDate(startDate)} · Duration pending clinic approval`;
+        return `${formatAppointmentDate(startDate)} · ${timeRange} · Duration pending clinic approval`;
     }
 
-    if (endDate && endDate.slice(0, 10) !== startDate.slice(0, 10)) {
-        return `${formatAppointmentDate(startDate)} – ${formatAppointmentDate(endDate)}`;
+    if (endDate.slice(0, 10) !== startDate.slice(0, 10)) {
+        return `${formatAppointmentDate(startDate)}–${formatAppointmentDate(endDate)} · ${timeRange} daily`;
     }
 
-    return `${formatAppointmentDate(startDate)} · Whole day`;
+    return `${formatAppointmentDate(startDate)} · ${timeRange}`;
 }

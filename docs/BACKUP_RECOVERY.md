@@ -17,6 +17,10 @@ Do not treat cache, compiled assets, logs, sessions, or queue tables as the only
 
 The system owner must approve an RPO and RTO. A starting policy is daily full backups plus database point-in-time recovery where supported, with daily, weekly, and monthly retention tiers. Backup jobs must alert on failure.
 
+The administrator-facing **Data Management** page provides supplemental application-level ZIP backups every six months and on demand. These archives include business database tables plus private and public uploads, use AES-256 ZIP encryption, and are written to `DATA_BACKUP_DISK`. Set a dedicated `DATA_BACKUP_ENCRYPTION_KEY` in the production secrets manager; retain that key for restoration. The application-level schedule requires Laravel's scheduler to run every minute.
+
+Application-level archives are removed when they exceed the configured data-retention period. Managed database snapshots and any off-host copies must apply an equivalent approved lifecycle policy so expired personal and medical data is not retained elsewhere.
+
 ## Database procedures
 
 For MySQL, use a transaction-consistent backup mechanism such as `mysqldump --single-transaction` or the managed database provider's snapshot/PITR service. Do not place credentials directly in shell history.

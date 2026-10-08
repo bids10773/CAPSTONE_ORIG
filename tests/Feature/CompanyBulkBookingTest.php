@@ -56,6 +56,62 @@ test('company accounts always create company bulk appointments', function () {
     ]);
 });
 
+test('company has a dedicated status page containing only its own bulk appointments', function () {
+    $company = Company::create([
+        'company_name' => 'Visible Bulk Company',
+        'status' => 'active',
+        'is_partnered' => true,
+    ]);
+    $account = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
+    $ownEvent = Appointment::create([
+        'user_id' => $account->id,
+        'company_id' => $company->id,
+        'appointment_date' => today()->addWeek(),
+        'start_time' => '08:00',
+        'end_time' => '17:00',
+        'type' => 'company_bulk',
+        'status' => 'accepted',
+        'service_types' => ['PE', 'CBC'],
+        'service_location' => 'onsite',
+        'event_address' => 'Visible Company Plant',
+    ]);
+
+    $otherCompany = Company::create([
+        'company_name' => 'Private Bulk Company',
+        'status' => 'active',
+        'is_partnered' => true,
+    ]);
+    $otherAccount = User::factory()->create(['role' => 'company', 'company_id' => $otherCompany->id]);
+    Appointment::create([
+        'user_id' => $otherAccount->id,
+        'company_id' => $otherCompany->id,
+        'appointment_date' => today()->addWeek(),
+        'start_time' => '08:00',
+        'end_time' => '17:00',
+        'type' => 'company_bulk',
+        'status' => 'pending',
+        'service_types' => ['PE'],
+        'service_location' => 'clinic',
+    ]);
+
+    $this->actingAs($account)
+        ->get(route('company.bulk-appointments.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('company/bulk-appointments/index')
+            ->has('appointments.data', 1)
+            ->where('appointments.data.0.id', $ownEvent->id)
+            ->where('appointments.data.0.status', 'accepted')
+            ->where('appointments.data.0.start_time', '08:00')
+            ->where('appointments.data.0.end_time', '17:00')
+            ->where('summary.total', 1)
+            ->where('summary.scheduled', 1));
+
+    $this->actingAs(User::factory()->create(['role' => 'patient']))
+        ->get(route('company.bulk-appointments.index'))
+        ->assertForbidden();
+});
+
 test('company bulk appointments always use annual examination while selected services remain available', function () {
     $company = Company::create([
         'company_name' => 'Optional Services Company',

@@ -42,6 +42,9 @@ it('summarizes actual attended visits without duplicate or invalid counts', func
         ->assertJsonPath('summary.total_patients_today', 2)
         ->assertJsonPath('summary.selected_period_visits', 2)
         ->assertJsonPath('summary.selected_period_unique_patients', 1)
+        ->assertJsonPath('overview.total_appointments', 6)
+        ->assertJsonPath('overview.status_breakdown.completed', 4)
+        ->assertJsonPath('overview.service_type_count', 1)
         ->assertJsonPath('daily.forecast.available', false)
         ->assertJsonCount(2, 'daily.history');
 
@@ -52,6 +55,24 @@ it('summarizes actual attended visits without duplicate or invalid counts', func
         ->assertOk()
         ->assertJsonPath('summary.total_patients_today', 3)
         ->assertJsonPath('summary.selected_period_visits', 3);
+});
+
+it('serves one combined analytics page and redirects the old patient volume page', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $this->actingAs($admin)
+        ->get('/admin/analytics')
+        ->assertOk()
+        ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->component('admin/patient-visits/index')
+            ->has('initialData.overview')
+            ->has('initialData.summary')
+            ->has('initialData.daily.forecast')
+            ->has('initialData.monthly.forecast'));
+
+    $this->actingAs($admin)
+        ->get('/analytics/patient-volume')
+        ->assertRedirect('/admin/analytics');
 });
 
 it('generates daily and monthly Holt-Winters forecasts when history is sufficient', function () {

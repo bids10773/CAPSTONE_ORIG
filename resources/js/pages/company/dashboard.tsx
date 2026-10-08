@@ -67,6 +67,7 @@ interface BulkAppointment {
     event_end_date?: string | null;
     start_time?: string | null;
     status: string;
+    onsite_event_status?: string | null;
     service_types: string[];
     report_status?: string | null;
     report_released_at?: string | null;
@@ -187,7 +188,7 @@ const formatDate = (value: string) =>
 
 const formatBulkEventDates = (appointment: BulkAppointment) => {
     if (!appointment.event_end_date) {
-        return `${formatDate(appointment.appointment_date)} · Duration pending clinic approval`;
+        return formatDate(appointment.appointment_date);
     }
 
     if (
@@ -198,6 +199,20 @@ const formatBulkEventDates = (appointment: BulkAppointment) => {
     }
 
     return `${formatDate(appointment.appointment_date)} · Whole day`;
+};
+
+const bulkAppointmentStage = (appointment: BulkAppointment) => {
+    if (appointment.onsite_event_status === 'draft') {
+        return 'Draft — upload masterlist to submit';
+    }
+
+    if (appointment.status === 'pending') {
+        return 'Awaiting clinic approval — duration pending';
+    }
+
+    if (appointment.status === 'accepted') return 'Scheduled';
+
+    return appointment.status.replaceAll('_', ' ');
 };
 
 const statusStyle: Record<PreviewRow['status'], string> = {
@@ -800,7 +815,10 @@ export default function CompanyDashboard() {
                                                 {formatBulkEventDates(
                                                     appointment,
                                                 )}{' '}
-                                                - {appointment.status}
+                                                ·{' '}
+                                                {bulkAppointmentStage(
+                                                    appointment,
+                                                )}
                                             </option>
                                         ))}
                                     </select>

@@ -47,6 +47,8 @@ type Event = {
     id: number;
     appointment_date: string;
     event_end_date?: string | null;
+    start_time?: string | null;
+    end_time?: string | null;
     event_address?: string | null;
     company?: {
         company_name: string;
@@ -262,6 +264,8 @@ export default function StaffOnsiteEvent({
                                     {formatEventDateRange(
                                         event.appointment_date,
                                         event.event_end_date,
+                                        event.start_time,
+                                        event.end_time,
                                     )}
                                 </span>
                             </div>

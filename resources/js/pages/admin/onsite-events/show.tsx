@@ -250,6 +250,8 @@ export default function AdminOnsiteEvent({
                             {formatEventDateRange(
                                 event.appointment_date,
                                 event.event_end_date,
+                                event.start_time,
+                                event.end_time,
                             )}{' '}
                             · {event.event_address ?? event.company?.address}
                         </p>

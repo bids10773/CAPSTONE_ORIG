@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { ArrowRight, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Download, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -126,14 +126,23 @@ export default function AdminSecurity({ securityAlerts, securityLogs }: Props) {
                 </section>
 
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-border dark:bg-card">
-                    <div className="border-b border-slate-200 px-5 py-4 dark:border-border">
-                        <h2 className="font-semibold text-slate-900 dark:text-slate-100">
-                            Security Logs
-                        </h2>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            Recorded security and account activity, newest
-                            first.
-                        </p>
+                    <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-border">
+                        <div>
+                            <h2 className="font-semibold text-slate-900 dark:text-slate-100">
+                                Security Logs
+                            </h2>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                Recorded security and account activity, newest
+                                first.
+                            </p>
+                        </div>
+                        <a
+                            href="/admin/security/logs/download"
+                            className="inline-flex items-center justify-center gap-2 rounded-lg border border-moss-600 px-4 py-2 text-sm font-semibold text-moss-700 transition hover:bg-moss-50 dark:border-moss-500 dark:text-moss-300 dark:hover:bg-moss-950/40"
+                        >
+                            <Download className="size-4" />
+                            Download logs
+                        </a>
                     </div>
                     {securityLogs.data.length > 0 ? (
                         <div className="overflow-x-auto">

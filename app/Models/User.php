@@ -46,6 +46,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'availability',
         'email_verified_at',
         'last_active_at',
+        'retention_anonymized_at',
         'must_change_password',
         'temporary_password_created_at',
         'temporary_password_expires_at',
@@ -87,6 +88,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'last_active_at' => 'datetime',
+            'retention_anonymized_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'is_active' => 'boolean',

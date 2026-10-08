@@ -129,6 +129,42 @@ test('attendance is restricted to the receptionist assigned to the selected even
         ->and(SecurityAudit::where('action', 'onsite_employee_marked_arrived')->where('actor_id', $assigned->id)->exists())->toBeTrue();
 });
 
+test('future onsite events show their exact schedule but keep staff workspaces locked', function () {
+    extract(onsiteFixture());
+    $event->update(['appointment_date' => today()->addWeek()]);
+    $admin = User::factory()->create(['role' => 'admin']);
+    $receptionist = User::factory()->create(['role' => 'receptionist', 'is_active' => true]);
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $workflow = app(OnsiteEventWorkflowService::class);
+    $workflow->assignStaff($event, $receptionist, 'receptionist', 10, $admin);
+    $workflow->assignStaff($event, $doctor, 'doctor', 10, $admin);
+
+    $this->actingAs($receptionist)
+        ->get(route('receptionist.onsite-events.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('events.data.0.appointment_date', $event->fresh()->appointment_date->toISOString())
+            ->where('events.data.0.start_time', '08:00')
+            ->where('events.data.0.end_time', '17:00')
+            ->where('events.data.0.can_manage_attendance', false));
+    $this->actingAs($receptionist)
+        ->get(route('receptionist.onsite-events.show', $event))
+        ->assertForbidden();
+    $this->actingAs($receptionist)
+        ->patch(route('receptionist.onsite-employees.attendance', $child), ['attendance_status' => 'arrived'])
+        ->assertForbidden();
+
+    $this->actingAs($doctor)
+        ->get(route('doctor.onsite-events.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('events.data.0.can_open_queue', false));
+    $this->actingAs($doctor)
+        ->get(route('doctor.onsite-events.show', $event))
+        ->assertForbidden();
+    $this->actingAs($doctor)
+        ->get(route('doctor.onsite-events.queue', $event))
+        ->assertForbidden();
+});
+
 test('receptionist employee search is scoped to one bulk event and supports employee number', function () {
     extract(onsiteFixture());
     $admin = User::factory()->create(['role' => 'admin']);

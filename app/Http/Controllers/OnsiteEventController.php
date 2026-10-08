@@ -40,6 +40,11 @@ class OnsiteEventController extends Controller
             ])
             ->orderBy('appointment_date')
             ->paginate(15)->withQueryString();
+        $events->through(function (Appointment $event): Appointment {
+            $event->setAttribute('can_open_queue', $this->eventHasStarted($event));
+
+            return $event;
+        });
 
         return Inertia::render('staff/onsite-events/index', ['events' => $events, 'role' => $role]);
     }
@@ -51,6 +56,7 @@ class OnsiteEventController extends Controller
         $likeSearch = SearchTerm::forLike($search);
         $role = $this->clinicalRole($request);
         $this->authorizeAssignedClinicalStaff($request, $event, $role);
+        $this->ensureEventHasStarted($event);
         $event->load('company:id,company_name,address');
         $queues = OnsiteServiceQueue::query()
             ->with(['appointment.user:id,first_name,middle_name,last_name', 'appointment.patientProfile:id,user_id,employee_number'])
@@ -88,6 +94,11 @@ class OnsiteEventController extends Controller
                 'bulkEmployees as arrived_count' => fn ($query) => $query->where('attendance_status', 'arrived'),
                 'bulkEmployees as absent_count' => fn ($query) => $query->where('attendance_status', 'absent'),
             ])->orderBy('appointment_date')->paginate(15)->withQueryString();
+        $events->through(function (Appointment $event): Appointment {
+            $event->setAttribute('can_manage_attendance', $this->eventHasStarted($event));
+
+            return $event;
+        });
 
         return Inertia::render('receptionist/onsite-events/index', ['events' => $events]);
     }
@@ -97,6 +108,7 @@ class OnsiteEventController extends Controller
         $filters = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
         $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
         $this->authorizeAssignedReceptionist($request, $event);
+        $this->ensureEventHasStarted($event);
         $event->load(['company:id,company_name,address', 'onsiteStaff' => fn ($query) => $query->where('is_active', true), 'onsiteStaff.user:id,first_name,middle_name,last_name,role']);
         $employees = $this->employeeQuery($event, $search)
             ->paginate(25)->withQueryString();
@@ -176,6 +188,7 @@ class OnsiteEventController extends Controller
         abort_unless($request->user()->role === 'receptionist', 403);
         abort_unless($employee->bulkAppointment && OnsiteEventStaff::where('bulk_appointment_id', $employee->bulk_appointment_id)
             ->where('user_id', $request->user()->id)->where('service_role', 'receptionist')->where('is_active', true)->exists(), 403);
+        $this->ensureEventHasStarted($employee->bulkAppointment);
         $data = $request->validate(['attendance_status' => ['required', Rule::in(['arrived', 'absent'])], 'absence_reason' => ['nullable', Rule::in(OnsiteEventWorkflowService::ABSENCE_REASONS)], 'absence_details' => ['nullable', 'string', 'max:500', 'required_if:absence_reason,other']]);
         $data['attendance_status'] === 'arrived'
             ? $workflow->markArrived($employee, $request->user())
@@ -233,10 +246,18 @@ class OnsiteEventController extends Controller
         $role = $request->user()->role;
         abort_unless(in_array($role, ['doctor', 'medtech', 'radtech'], true), 403);
         abort_unless(OnsiteEventStaff::where('bulk_appointment_id', $event->id)->where('user_id', $request->user()->id)->where('service_role', $role)->where('is_active', true)->exists(), 403);
+        $this->ensureEventHasStarted($event);
         $tasks = $role === 'doctor' ? ['doctor', 'drug_verification', 'final_evaluation'] : [$role];
         $queues = OnsiteServiceQueue::with('appointment.user:id,first_name,middle_name,last_name')->where('bulk_appointment_id', $event->id)->whereIn('service_role', $tasks)->where('assigned_staff_id', $request->user()->id)->whereIn('status', ['assigned', 'in_progress'])->orderByRaw("CASE WHEN status = 'in_progress' THEN 0 ELSE 1 END")->orderBy('assigned_at')->get();
 
-        return response()->json(['event' => $event->only(['id', 'appointment_date', 'event_address']), 'queue' => $queues]);
+        return response()->json(['event' => $event->only([
+            'id',
+            'appointment_date',
+            'event_end_date',
+            'start_time',
+            'end_time',
+            'event_address',
+        ]), 'queue' => $queues]);
     }
 
     private function authorizeAssignedReceptionist(Request $request, Appointment $event): void
@@ -244,6 +265,21 @@ class OnsiteEventController extends Controller
         abort_unless($event->isBulkParent(), 404);
         abort_unless(OnsiteEventStaff::where('bulk_appointment_id', $event->id)
             ->where('user_id', $request->user()->id)->where('service_role', 'receptionist')->where('is_active', true)->exists(), 403);
+    }
+
+    private function eventHasStarted(Appointment $event): bool
+    {
+        return $event->appointment_date !== null
+            && $event->appointment_date->copy()->startOfDay()->lte(today());
+    }
+
+    private function ensureEventHasStarted(Appointment $event): void
+    {
+        abort_unless(
+            $this->eventHasStarted($event),
+            403,
+            'This workspace opens on the scheduled appointment date.',
+        );
     }
 
     private function authorizeAssignedClinicalStaff(Request $request, Appointment $event, string $role): void

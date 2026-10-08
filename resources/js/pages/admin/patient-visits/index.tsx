@@ -1,9 +1,12 @@
 import { Head } from '@inertiajs/react';
 import {
     Activity,
+    Building2,
+    Calendar,
     CalendarDays,
     CalendarRange,
     RefreshCw,
+    Stethoscope,
     TrendingDown,
     TrendingUp,
     Users,
@@ -86,6 +89,29 @@ type PatientVolumeData = {
     daily: { history: HistoryPoint[]; trend: Trend; forecast: Forecast };
     monthly: { history: HistoryPoint[]; trend: Trend; forecast: Forecast };
     planning: { title: string; value: string; detail: string }[];
+    overview: {
+        total_appointments: number;
+        today_appointments: number;
+        active_companies: number;
+        service_type_count: number;
+        status_breakdown: Record<string, number>;
+        service_type_breakdown: Record<string, number>;
+        staff_by_role: Record<string, number>;
+    };
+};
+
+const humanize = (value: string) =>
+    value
+        .replaceAll('_', ' ')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const statusTone: Record<string, string> = {
+    completed: 'text-emerald-700 dark:text-emerald-400',
+    pending: 'text-amber-700 dark:text-amber-400',
+    accepted: 'text-blue-700 dark:text-blue-400',
+    arrived: 'text-violet-700 dark:text-violet-400',
+    cancelled: 'text-red-700 dark:text-red-400',
+    rejected: 'text-red-700 dark:text-red-400',
 };
 
 const formatPeriod = (period: string, frequency: Frequency) => {
@@ -408,7 +434,7 @@ export default function PatientVisitDashboard({
 
     return (
         <>
-            <Head title="Patient Volume Analytics" />
+            <Head title="Analytics" />
             <main className="min-h-screen bg-slate-50/70 px-4 py-6 sm:px-6 lg:px-8 dark:bg-slate-950">
                 <div className="mx-auto w-full max-w-[1800px] space-y-6">
                     <header className="rounded-3xl bg-gradient-to-br from-[#173f31] to-[#2f7256] p-6 text-white shadow-lg sm:p-8">
@@ -416,14 +442,131 @@ export default function PatientVisitDashboard({
                             Operations analytics
                         </p>
                         <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-                            Patient Volume Summaries & Forecasting
+                            Analytics
                         </h1>
-                        <p className="mt-3 max-w-4xl text-sm leading-6 text-emerald-50 sm:text-base">
-                            Monitor actual attended visits and use Holt-Winters
-                            seasonal estimates to support staffing, scheduling,
-                            and resource planning.
-                        </p>
                     </header>
+
+                    <section>
+                        <h2 className="text-xl font-bold text-slate-950 dark:text-white">
+                            Operations overview
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                            Current appointment, company, service, and staffing
+                            totals.
+                        </p>
+                    </section>
+
+                    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <StatCard
+                            label="Total appointments"
+                            value={data.overview.total_appointments}
+                            detail="All appointment records"
+                            icon={Calendar}
+                        />
+                        <StatCard
+                            label="Today's appointments"
+                            value={data.overview.today_appointments}
+                            detail="Scheduled for today"
+                            icon={CalendarDays}
+                        />
+                        <StatCard
+                            label="Active companies"
+                            value={data.overview.active_companies}
+                            detail="Active company accounts"
+                            icon={Building2}
+                        />
+                        <StatCard
+                            label="Service types"
+                            value={data.overview.service_type_count}
+                            detail="Services represented in appointments"
+                            icon={Stethoscope}
+                        />
+                    </section>
+
+                    <section className="grid gap-6 xl:grid-cols-3">
+                        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                            <h3 className="font-bold text-slate-950 dark:text-white">
+                                Appointments by status
+                            </h3>
+                            <div className="mt-4 space-y-3">
+                                {Object.entries(
+                                    data.overview.status_breakdown,
+                                ).map(([status, count]) => (
+                                    <div
+                                        key={status}
+                                        className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2 text-sm last:border-0 last:pb-0 dark:border-slate-800"
+                                    >
+                                        <span
+                                            className={`font-semibold ${statusTone[status] ?? 'text-slate-600 dark:text-slate-300'}`}
+                                        >
+                                            {humanize(status)}
+                                        </span>
+                                        <strong className="text-slate-950 dark:text-white">
+                                            {count.toLocaleString()}
+                                        </strong>
+                                    </div>
+                                ))}
+                            </div>
+                        </article>
+
+                        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                            <h3 className="font-bold text-slate-950 dark:text-white">
+                                Service selections
+                            </h3>
+                            <div className="mt-4 space-y-3">
+                                {Object.entries(
+                                    data.overview.service_type_breakdown,
+                                )
+                                    .slice(0, 8)
+                                    .map(([service, count]) => (
+                                        <div
+                                            key={service}
+                                            className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2 text-sm last:border-0 last:pb-0 dark:border-slate-800"
+                                        >
+                                            <span className="truncate text-slate-600 dark:text-slate-300">
+                                                {service}
+                                            </span>
+                                            <strong className="text-slate-950 dark:text-white">
+                                                {count.toLocaleString()}
+                                            </strong>
+                                        </div>
+                                    ))}
+                            </div>
+                        </article>
+
+                        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                            <h3 className="font-bold text-slate-950 dark:text-white">
+                                Staff by role
+                            </h3>
+                            <div className="mt-4 space-y-3">
+                                {Object.entries(
+                                    data.overview.staff_by_role,
+                                ).map(([role, count]) => (
+                                    <div
+                                        key={role}
+                                        className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2 text-sm last:border-0 last:pb-0 dark:border-slate-800"
+                                    >
+                                        <span className="text-slate-600 dark:text-slate-300">
+                                            {humanize(role)}
+                                        </span>
+                                        <strong className="text-slate-950 dark:text-white">
+                                            {count.toLocaleString()}
+                                        </strong>
+                                    </div>
+                                ))}
+                            </div>
+                        </article>
+                    </section>
+
+                    <section>
+                        <h2 className="text-xl font-bold text-slate-950 dark:text-white">
+                            Patient volume and forecasting
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                            Filter actual attended visits and planning
+                            estimates.
+                        </p>
+                    </section>
 
                     <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-700 dark:bg-slate-900">
                         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">

@@ -23,6 +23,16 @@ Schedule::command('appointments:send-reminders')
     ->timezone('Asia/Manila')
     ->withoutOverlapping();
 
+Schedule::command('data:backup-scheduled')
+    ->dailyAt('01:00')
+    ->timezone('Asia/Manila')
+    ->withoutOverlapping();
+
+Schedule::command('data:enforce-retention')
+    ->dailyAt('02:00')
+    ->timezone('Asia/Manila')
+    ->withoutOverlapping();
+
 Artisan::command('weather:sync-month {month : Completed month in YYYY-MM format}', function (string $month) {
     if (! preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', $month, $matches)) {
         $this->error('Provide a month in YYYY-MM format.');

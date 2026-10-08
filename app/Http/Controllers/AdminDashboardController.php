@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminDashboardController extends Controller
 {
@@ -194,63 +195,37 @@ class AdminDashboardController extends Controller
         ]);
     }
 
-    /**
-     * Analytics page with Seasonal Decomposition
-     */
-    public function analytics(Request $request): Response
+    public function downloadSecurityLogs(): StreamedResponse
     {
-        $monthlyTrends = [];
-        for ($i = 11; $i >= 0; $i--) {
-            $month = Carbon::now()->subMonths($i);
-            $monthlyTrends[] = [
-                'month' => $month->format('M Y'),
-                'count' => Appointment::whereYear('appointment_date', $month->year)
-                    ->whereMonth('appointment_date', $month->month)
-                    ->count(),
-                'is_predicted' => false,
-            ];
-        }
+        $filename = 'security-logs-'.now()->format('Y-m-d-His').'.csv';
 
-        $predictions = $this->generateLevel3Forecast($monthlyTrends, 4);
-        $combinedTrends = array_merge($monthlyTrends, $predictions);
+        return response()->streamDownload(function (): void {
+            $output = fopen('php://output', 'w');
 
-        $serviceTypeBreakdown = Appointment::query()
-            ->get(['service_types'])
-            ->flatMap(fn (Appointment $appointment) => $appointment->service_types ?? [])
-            ->filter()
-            ->countBy()
-            ->all();
+            fputcsv($output, ['Time', 'Event', 'Actor', 'Target', 'Outcome']);
 
-        $companyAppointments = Company::query()
-            ->has('appointments')
-            ->withCount('appointments')
-            ->orderByDesc('appointments_count')
-            ->get(['id', 'company_name'])
-            ->map(fn (Company $company): array => [
-                'company_name' => $company->company_name,
-                'count' => $company->appointments_count,
-            ])->all();
+            SecurityAudit::query()
+                ->with(['actor:id,first_name,middle_name,last_name', 'targetUser:id,first_name,middle_name,last_name'])
+                ->latest('id')
+                ->each(function (SecurityAudit $audit) use ($output): void {
+                    fputcsv($output, [
+                        $audit->created_at?->timezone(config('app.timezone'))->format('Y-m-d H:i:s'),
+                        $this->safeCsvValue($audit->action),
+                        $this->safeCsvValue($audit->actor?->name ?? ($audit->actor_id ? 'Deleted account' : 'System')),
+                        $this->safeCsvValue($audit->targetUser?->name ?? ($audit->target_user_id ? 'Deleted account' : '')),
+                        $this->safeCsvValue($audit->status),
+                    ]);
+                });
 
-        $statusTrends = [
-            'completed' => Appointment::where('status', 'completed')->count(),
-            'pending' => Appointment::where('status', 'pending')->count(),
-            'cancelled' => Appointment::where('status', 'cancelled')->count(),
-            'arrived' => Appointment::where('status', 'arrived')->count(),
-        ];
+            fclose($output);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
 
-        return Inertia::render('admin/analytics', [
-            'monthlyTrends' => $combinedTrends,
-            'serviceTypeBreakdown' => $serviceTypeBreakdown,
-            'companyAppointments' => $companyAppointments,
-            'statusTrends' => $statusTrends,
-            'todayAppointments' => Appointment::whereDate('appointment_date', Carbon::today())->count(),
-            'staffByRole' => [
-                'doctors' => User::where('role', 'doctor')->count(),
-                'medtechs' => User::where('role', 'medtech')->count(),
-                'radtechs' => User::where('role', 'radtech')->count(),
-                'admins' => User::where('role', 'admin')->count(),
-            ],
-        ]);
+    private function safeCsvValue(?string $value): string
+    {
+        $value ??= '';
+
+        return preg_match('/^[=+\-@]/', $value) ? "'".$value : $value;
     }
 
     /**

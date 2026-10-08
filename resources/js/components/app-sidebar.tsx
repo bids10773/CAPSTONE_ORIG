@@ -17,6 +17,7 @@ import {
     ListOrdered,
     MessagesSquare,
     FolderHeart,
+    DatabaseBackup,
     Lock,
     Unlock,
 } from 'lucide-react';
@@ -122,7 +123,7 @@ const navigation: Record<string, Item[]> = {
             icon: BarChart3,
             children: [
                 {
-                    title: 'Analytics overview',
+                    title: 'Analytics dashboard',
                     href: '/admin/analytics',
                     icon: BarChart3,
                 },
@@ -131,17 +132,17 @@ const navigation: Record<string, Item[]> = {
                     href: '/admin/forecast',
                     icon: ChartSpline,
                 },
-                {
-                    title: 'Patient volume',
-                    href: '/analytics/patient-volume',
-                    icon: ChartSpline,
-                },
             ],
         },
         {
             title: 'Security',
             href: '/admin/security',
             icon: Lock,
+        },
+        {
+            title: 'Data Management',
+            href: '/admin/data-management',
+            icon: DatabaseBackup,
         },
     ],
     doctor: [
@@ -249,6 +250,11 @@ const navigation: Record<string, Item[]> = {
             icon: LayoutDashboard,
         },
         { title: 'Employee Records', href: '/appointments', icon: FolderHeart },
+        {
+            title: 'Bulk Appointments',
+            href: '/company/bulk-appointments',
+            icon: CalendarClock,
+        },
         { title: 'Inquiries', href: '/my-inquiries', icon: MessagesSquare },
         { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],

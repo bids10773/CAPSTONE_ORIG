@@ -56,6 +56,7 @@ class ReceptionistDashboardController extends Controller
                 'id' => $appointment->id,
                 'queue_number' => 'O-'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT),
                 'patient_name' => $appointment->user?->name ?? 'Unknown patient',
+                'appointment_date' => $appointment->appointment_date->toDateString(),
                 'start_time' => $appointment->start_time?->format('h:i A'),
                 'services' => $appointment->service_types ?? [],
                 'status' => $appointment->status,

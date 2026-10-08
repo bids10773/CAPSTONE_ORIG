@@ -44,6 +44,8 @@ type Event = {
     id: number;
     appointment_date: string;
     event_end_date?: string | null;
+    start_time?: string | null;
+    end_time?: string | null;
     event_address?: string | null;
     status: string;
     company?: {
@@ -223,6 +225,8 @@ export default function Attendance({
                                     {formatEventDateRange(
                                         event.appointment_date,
                                         event.event_end_date,
+                                        event.start_time,
+                                        event.end_time,
                                     )}
                                 </span>
                             </div>

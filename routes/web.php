@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Admin\InquiryController as AdminInquiryController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminDataManagementController;
 use App\Http\Controllers\AdminPatientController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Auth\PatientProfileCompletionController;
 use App\Http\Controllers\Auth\SocialAuthenticationController;
 use App\Http\Controllers\ClinicalDocumentController;
+use App\Http\Controllers\CompanyBulkAppointmentController;
 use App\Http\Controllers\CompanyBulkMedicalReportController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
@@ -121,6 +123,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('role:company')->group(function () {
         Route::get('/company/dashboard', CompanyDashboardController::class)->name('company.dashboard');
+        Route::get('/company/bulk-appointments', [CompanyBulkAppointmentController::class, 'index'])->name('company.bulk-appointments.index');
         Route::post('/company/employees/import/preview', [CompanyEmployeeImportController::class, 'preview'])->name('company.employees.import.preview');
         Route::post('/company/employees/import/confirm', [CompanyEmployeeImportController::class, 'confirm'])->name('company.employees.import.confirm');
         Route::get('/company/employees/import/template', [CompanyEmployeeImportController::class, 'template'])->name('company.employees.import.template');
@@ -209,7 +212,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->prefix('analytics')
         ->name('analytics.')
         ->group(function () {
-            Route::get('/patient-volume', [PatientVisitForecastController::class, 'index'])->name('patient-volume.index');
+            Route::redirect('/patient-volume', '/admin/analytics')->name('patient-volume.index');
             Route::get('/api/patient-volume', [PatientVisitForecastController::class, 'dashboard'])->name('patient-volume.dashboard');
         });
 
@@ -272,16 +275,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('inquiries.reply');
         Route::get('/inquiries/{inquiry}/create-company', [AdminInquiryController::class, 'createCompany'])->name('inquiries.create-company');
 
-        Route::get('/analytics', [AdminDashboardController::class, 'analytics'])->name('analytics');
+        Route::get('/analytics', [PatientVisitForecastController::class, 'index'])->name('analytics');
         Route::get('/forecast', [ForecastController::class, 'index'])->name('forecast.index');
         Route::get('/api/forecast/monthly', [ForecastController::class, 'monthly'])->name('forecast.monthly');
         Route::get('/api/forecast/resources', [ForecastController::class, 'resources'])->name('forecast.resources');
         Route::get('/api/forecast/weather', [ForecastController::class, 'weather'])->name('forecast.weather');
         Route::get('/api/forecast/weather-scenario', [ForecastController::class, 'weatherScenario'])->name('forecast.weather-scenario');
-        Route::redirect('/patient-visits', '/analytics/patient-volume')->name('patient-visits.index');
+        Route::redirect('/patient-visits', '/admin/analytics')->name('patient-visits.index');
         Route::redirect('/api/patient-visits', '/analytics/api/patient-volume')->name('patient-visits.dashboard');
         Route::get('/security', [AdminDashboardController::class, 'security'])->name('security');
+        Route::get('/security/logs/download', [AdminDashboardController::class, 'downloadSecurityLogs'])->name('security.logs.download');
         Route::get('/reports', [AdminDashboardController::class, 'reports'])->name('reports');
+        Route::get('/data-management', [AdminDataManagementController::class, 'index'])->name('data-management.index');
+        Route::patch('/data-management', [AdminDataManagementController::class, 'update'])->name('data-management.update');
+        Route::post('/data-management/backups', [AdminDataManagementController::class, 'backup'])->name('data-management.backups.store');
+        Route::get('/data-management/backups/{backup}', [AdminDataManagementController::class, 'download'])->name('data-management.backups.download');
+        Route::post('/data-management/enforce', [AdminDataManagementController::class, 'enforce'])->name('data-management.enforce');
     });
 });
 
