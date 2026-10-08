@@ -2,16 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Concerns\PasswordValidationRules;
 use App\Models\SecurityAudit;
 use App\Models\User;
 use App\Services\StaffCredentialService;
 use App\Support\SearchTerm;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,8 +21,6 @@ use Throwable;
 
 class StaffController extends Controller
 {
-    use PasswordValidationRules;
-
     /**
      * Display a listing of staff users.
      */
@@ -228,9 +228,18 @@ class StaffController extends Controller
      */
     public function edit(User $staff): Response
     {
+        abort_unless(in_array($staff->role, array_keys(User::getStaffRoles()), true), 404);
+
         return Inertia::render('admin/staff/edit', [
-            'staff' => $staff,
+            'staff' => [
+                ...$staff->toArray(),
+                'has_license_document_front' => filled($staff->license_document_path)
+                    && Storage::disk('local')->exists($staff->license_document_path),
+                'has_license_document_back' => filled($staff->license_document_back_path)
+                    && Storage::disk('local')->exists($staff->license_document_back_path),
+            ],
             'roles' => User::getStaffRoles(),
+            'canChangeRole' => ! $this->hasRecordedActivity($staff),
         ]);
     }
 
@@ -239,6 +248,8 @@ class StaffController extends Controller
      */
     public function update(Request $request, User $staff)
     {
+        abort_unless(in_array($staff->role, array_keys(User::getStaffRoles()), true), 404);
+
         $validator = Validator::make($request->all(), [
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
@@ -246,11 +257,10 @@ class StaffController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.$staff->id],
             'contact' => ['nullable', 'string', 'max:20'],
             'role' => ['required', 'string', 'in:doctor,medtech,radtech,receptionist'],
-            'license_no' => ['nullable', 'string', 'max:255'],
+            'license_no' => ['nullable', 'regex:/^\d{5,7}$/'],
             'specialization' => ['nullable', 'string', 'max:255'],
-            'password' => $this->passwordRules(required: false),
             'is_active' => ['boolean'],
-        ], $this->passwordValidationMessages());
+        ]);
 
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
@@ -258,28 +268,70 @@ class StaffController extends Controller
 
         $data = $validator->validated();
 
-        // Update user data
-        $staff->update([
+        if ($data['role'] !== $staff->role && $this->hasRecordedActivity($staff)) {
+            return back()
+                ->withErrors(['role' => 'The role cannot be changed because this staff member is linked to clinical or operational records.'])
+                ->withInput();
+        }
+
+        $licenseNo = in_array($data['role'], ['doctor', 'medtech', 'radtech'], true)
+            && filled($data['license_no'] ?? null)
+                ? trim($data['license_no'])
+                : null;
+        $credentialChanged = $licenseNo !== $staff->license_no || $data['role'] !== $staff->role;
+        $oldLicenseDocuments = $credentialChanged
+            ? array_filter([$staff->license_document_path, $staff->license_document_back_path])
+            : [];
+        $updates = [
             'first_name' => $data['first_name'],
             'middle_name' => $data['middle_name'] ?? null,
             'last_name' => $data['last_name'],
             'email' => $data['email'],
             'contact' => $data['contact'] ?? null,
             'role' => $data['role'],
-            'license_no' => $data['license_no'] ?? null,
+            'license_no' => $licenseNo,
             'specialization' => $data['specialization'] ?? null,
             'is_active' => $data['is_active'] ?? $staff->is_active,
-        ]);
+        ];
+        if ($credentialChanged) {
+            $updates = [
+                ...$updates,
+                'license_verification_status' => 'not_submitted',
+                'license_document_path' => null,
+                'license_document_back_path' => null,
+                'license_verified_at' => null,
+                'license_verified_by' => null,
+                'license_rejection_reason' => null,
+            ];
+        }
+        $changes = [];
 
-        // Update password if provided
-        if (! empty($data['password'])) {
-            $staff->update([
-                'password' => Hash::make($data['password']),
-            ]);
+        foreach ($updates as $field => $value) {
+            if ($staff->getAttribute($field) !== $value) {
+                $changes[$field] = [
+                    'from' => $staff->getAttribute($field),
+                    'to' => $value,
+                ];
+            }
         }
 
-        // Update role
-        $staff->update(['role' => $data['role']]);
+        DB::transaction(function () use ($changes, $request, $staff, $updates): void {
+            $staff->update($updates);
+
+            if ($changes !== []) {
+                SecurityAudit::create([
+                    'actor_id' => $request->user()->id,
+                    'target_user_id' => $staff->id,
+                    'action' => 'staff_account_updated',
+                    'status' => 'success',
+                    'metadata' => ['changes' => $changes],
+                ]);
+            }
+        });
+
+        if ($oldLicenseDocuments !== []) {
+            Storage::disk('local')->delete(array_values($oldLicenseDocuments));
+        }
 
         return redirect()->route('admin.staff.index')
             ->with('success', "{$staff->name} has been updated successfully.");
@@ -290,12 +342,37 @@ class StaffController extends Controller
      */
     public function destroy(User $staff)
     {
+        abort_unless(in_array($staff->role, array_keys(User::getStaffRoles()), true), 404);
+
         // Prevent deleting own account
         if ($staff->id === auth()->id()) {
             return back()->with('error', 'You cannot delete your own account.');
         }
 
-        return back()->with('error', 'Staff records cannot be permanently deleted because they may be linked to clinical history. Deactivate the account instead.');
+        $name = $staff->name;
+
+        try {
+            DB::transaction(function () use ($staff): void {
+                SecurityAudit::create([
+                    'actor_id' => auth()->id(),
+                    'target_user_id' => $staff->id,
+                    'action' => 'staff_account_deleted',
+                    'status' => 'success',
+                    'metadata' => [
+                        'name' => $staff->name,
+                        'email' => $staff->email,
+                        'role' => $staff->role,
+                    ],
+                ]);
+
+                $staff->delete();
+            });
+        } catch (QueryException) {
+            return back()->with('error', 'This staff account cannot be deleted because it is linked to clinical history. Deactivate the account instead.');
+        }
+
+        return redirect()->route('admin.staff.index')
+            ->with('success', "{$name}'s staff account has been deleted.");
     }
 
     /**
@@ -303,6 +380,8 @@ class StaffController extends Controller
      */
     public function toggleActive(User $staff)
     {
+        abort_unless(in_array($staff->role, array_keys(User::getStaffRoles()), true), 404);
+
         if ($staff->id === auth()->id()) {
             return back()->with('error', 'You cannot deactivate your own account.');
         }
@@ -336,5 +415,118 @@ class StaffController extends Controller
         ]);
 
         return back()->with('success', 'Signature uploaded successfully.');
+    }
+
+    public function downloadLicenseDocument(User $staff, string $side = 'front')
+    {
+        $this->ensureClinicalStaff($staff);
+        $path = $side === 'back'
+            ? $staff->license_document_back_path
+            : $staff->license_document_path;
+        abort_unless(
+            filled($path) && Storage::disk('local')->exists($path),
+            404,
+        );
+
+        $extension = pathinfo($path, PATHINFO_EXTENSION);
+
+        return Storage::disk('local')->download(
+            $path,
+            "prc-id-{$side}".($extension ? ".{$extension}" : ''),
+        );
+    }
+
+    public function updateLicenseVerification(Request $request, User $staff): RedirectResponse
+    {
+        $this->ensureClinicalStaff($staff);
+        abort_unless(
+            filled($staff->license_no)
+                && filled($staff->license_document_path)
+                && filled($staff->license_document_back_path)
+                && Storage::disk('local')->exists($staff->license_document_path)
+                && Storage::disk('local')->exists($staff->license_document_back_path),
+            422,
+        );
+
+        $validated = $request->validate([
+            'status' => ['required', 'in:verified,rejected'],
+            'rejection_reason' => ['nullable', 'required_if:status,rejected', 'string', 'max:1000'],
+        ]);
+
+        $verified = $validated['status'] === 'verified';
+
+        DB::transaction(function () use ($request, $staff, $validated, $verified): void {
+            $staff->update([
+                'license_verification_status' => $validated['status'],
+                'license_verified_at' => $verified ? now() : null,
+                'license_verified_by' => $verified ? $request->user()->id : null,
+                'license_rejection_reason' => $verified ? null : $validated['rejection_reason'],
+            ]);
+
+            SecurityAudit::create([
+                'actor_id' => $request->user()->id,
+                'target_user_id' => $staff->id,
+                'action' => $verified ? 'professional_license_verified' : 'professional_license_rejected',
+                'status' => 'success',
+                'metadata' => $verified ? null : ['reason' => $validated['rejection_reason']],
+            ]);
+        });
+
+        return back()->with('success', $verified
+            ? 'The professional license has been verified.'
+            : 'The professional license submission has been rejected.');
+    }
+
+    private function ensureClinicalStaff(User $staff): void
+    {
+        abort_unless(in_array($staff->role, ['doctor', 'medtech', 'radtech'], true), 404);
+    }
+
+    private function hasRecordedActivity(User $staff): bool
+    {
+        $references = [
+            'appointments' => ['doctor_id', 'checked_in_by', 'processed_by', 'attendance_marked_by'],
+            'physical_exams' => ['doctor_id', 'finalized_by', 'verified_by'],
+            'lab_results' => ['encoded_by', 'verified_by', 'finalized_by'],
+            'xray_reports' => ['radiologist_id', 'verified_by', 'finalized_by'],
+            'medical_examinations' => ['examining_doctor_id', 'finalized_by', 'released_by'],
+            'diagnostic_results' => ['performed_by', 'encoded_by', 'verified_by'],
+            'clinical_form_audits' => ['actor_id'],
+            'onsite_event_staff' => ['user_id'],
+            'onsite_service_queues' => ['assigned_staff_id'],
+            'bulk_medical_reports' => ['generated_by', 'released_by'],
+            'inquiries' => ['responded_by'],
+        ];
+
+        foreach ($references as $table => $columns) {
+            if (! Schema::hasTable($table)) {
+                continue;
+            }
+
+            $availableColumns = array_values(array_filter(
+                $columns,
+                fn (string $column): bool => Schema::hasColumn($table, $column),
+            ));
+
+            if ($availableColumns === []) {
+                continue;
+            }
+
+            $hasReference = DB::table($table)
+                ->where(function ($query) use ($availableColumns, $staff): void {
+                    foreach ($availableColumns as $index => $column) {
+                        $index === 0
+                            ? $query->where($column, $staff->id)
+                            : $query->orWhere($column, $staff->id);
+                    }
+                })
+                ->exists();
+
+            if ($hasReference) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

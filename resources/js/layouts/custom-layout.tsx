@@ -27,6 +27,12 @@ export default function ClinicDashboardLayout({
 }: AppLayoutProps) {
     const { auth, sidebarPinned } = usePage().props as any;
     const user = auth?.user;
+    const showStaffSettings = [
+        'doctor',
+        'medtech',
+        'radtech',
+        'receptionist',
+    ].includes(user?.role);
     const fullName =
         user?.name ||
         [user?.first_name, user?.last_name].filter(Boolean).join(' ') ||
@@ -97,7 +103,10 @@ export default function ClinicDashboardLayout({
                                     align="end"
                                     sideOffset={8}
                                 >
-                                    <UserMenuContent user={user} />
+                                    <UserMenuContent
+                                        user={user}
+                                        showProfileSettings={showStaffSettings}
+                                    />
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>

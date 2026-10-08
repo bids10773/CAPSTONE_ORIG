@@ -3,7 +3,6 @@ import {
     AlertCircle,
     ArrowRight,
     BriefcaseMedical,
-    Building2,
     CalendarDays,
     CheckCircle2,
     ClipboardCheck,
@@ -24,7 +23,6 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { DashboardClinicBadge } from '@/components/dashboard-clinic-badge';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -374,10 +372,7 @@ export default function CompanyDashboard() {
                         <div className="absolute -top-20 -right-16 size-64 rounded-full bg-white/10 blur-3xl" />
                         <div className="absolute -bottom-24 left-1/3 size-48 rounded-full bg-moss-400/20 blur-3xl" />
                         <div className="relative">
-                            <DashboardClinicBadge icon={Building2}>
-                                Company dashboard
-                            </DashboardClinicBadge>
-                            <p className="mt-8 text-sm font-semibold text-moss-200">
+                            <p className="text-sm font-semibold text-moss-200">
                                 Welcome back
                             </p>
                             <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">

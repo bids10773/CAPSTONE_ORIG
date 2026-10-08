@@ -19,6 +19,7 @@ import type { PaginatedResponse } from '@/types/pagination';
 
 type Patient = {
     id: number;
+    patient_reference_code?: string;
     first_name: string;
     middle_name?: string;
     last_name: string;
@@ -33,6 +34,7 @@ const EXAMINATION_PURPOSE_ICONS = {
 };
 type WalkIn = {
     id: number;
+    reference_code: string;
     queue_number: string;
     status:
         | 'pending'
@@ -910,6 +912,12 @@ export default function WalkIns({
                                             {walkIn.user.first_name}{' '}
                                             {walkIn.user.last_name}
                                         </p>
+                                        <p className="mt-0.5 font-mono text-xs font-bold text-moss-700">
+                                            {walkIn.user
+                                                .patient_reference_code ??
+                                                `PAT${String(walkIn.user.id).padStart(4, '0')}`}{' '}
+                                            · {walkIn.reference_code}
+                                        </p>
                                         {walkIn.doctor && walkIn.start_time && (
                                             <p className="mt-1 text-xs font-semibold text-slate-700">
                                                 Dr. {walkIn.doctor.first_name}{' '}
@@ -1163,6 +1171,12 @@ export default function WalkIns({
                                     <span className="font-semibold text-slate-900">
                                         {appointment.user.first_name}{' '}
                                         {appointment.user.last_name}
+                                        <span className="mt-0.5 block font-mono text-xs font-bold text-moss-700">
+                                            {appointment.user
+                                                .patient_reference_code ??
+                                                `PAT${String(appointment.user.id).padStart(4, '0')}`}{' '}
+                                            · {appointment.reference_code}
+                                        </span>
                                     </span>
                                     <span className="text-sm text-slate-500">
                                         {appointment.cancellation_reason ??

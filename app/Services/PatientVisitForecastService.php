@@ -2,152 +2,254 @@
 
 namespace App\Services;
 
-use App\Models\PatientVisitRecord;
-use Illuminate\Support\Facades\Cache;
+use App\Models\Appointment;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use InvalidArgumentException;
 
 class PatientVisitForecastService
 {
-    private const CATEGORIES = [
-        'walk_in' => 'Walk-in Patients',
-        'online_appointments' => 'Online Appointments',
-        'company_referrals' => 'Company Referral Patients',
-        'ape' => 'Annual Physical Examination (APE)',
-        'follow_up' => 'Follow-up Visits',
-        'emergency_walk_ins' => 'Emergency Walk-ins',
+    private const ATTENDED_STATUSES = [
+        'arrived', 'for_physical_examination', 'for_diagnostics', 'for_xray',
+        'awaiting_xray_result', 'verifying_xray', 'verifying_drug_test',
+        'verifying_drug_and_xray', 'for_final_evaluation', 'completed',
     ];
 
-    public function __construct(
-        private readonly DemoPatientVisitGenerator $generator,
-        private readonly ForecastService $forecaster,
-    ) {}
+    public function __construct(private readonly HoltWintersForecastService $forecaster) {}
 
     /** @return array<string, mixed> */
-    public function dashboard(?int $year = null, int $horizon = 12): array
-    {
-        return Cache::remember(
-            "patient-visits:v1:{$year}:{$horizon}",
-            now()->addMinutes(15),
-            fn () => $this->build($year, $horizon),
-        );
-    }
+    public function dashboard(
+        ?string $startDate = null,
+        ?string $endDate = null,
+        int $dailyHorizon = 14,
+        int $monthlyHorizon = 6,
+    ): array {
+        $today = CarbonImmutable::today();
+        $firstVisit = $this->actualVisits()->min('appointment_date');
+        $start = $startDate
+            ? CarbonImmutable::parse($startDate)->startOfDay()
+            : ($firstVisit ? CarbonImmutable::parse($firstVisit)->startOfDay() : $today->subDays(29));
+        $end = $endDate ? CarbonImmutable::parse($endDate)->endOfDay() : $today->endOfDay();
 
-    /** @return array<string, mixed> */
-    private function build(?int $year, int $horizon): array
-    {
-        $records = PatientVisitRecord::query()->orderBy('record_month')->get();
-        $isDemo = $records->isEmpty() || $records->every->is_demo;
-        $history = $records->isEmpty()
-            ? $this->generator->generate()
-            : $records->map(function (PatientVisitRecord $row) {
-                $data = [
-                    'month' => $row->record_month->format('Y-m'),
-                    ...collect($row->only(array_keys(self::CATEGORIES)))->map(fn ($value) => (int) $value)->all(),
-                    'is_demo' => $row->is_demo,
-                ];
-                $data['total_visits'] = $data['walk_in']
-                    + $data['online_appointments']
-                    + $data['company_referrals']
-                    + $data['ape']
-                    + $data['follow_up'];
+        $visits = $this->actualVisits()
+            ->whereDate('appointment_date', '>=', $start->format('Y-m-d'))
+            ->whereDate('appointment_date', '<=', $end->format('Y-m-d'))
+            ->get(['id', 'user_id', 'appointment_date']);
 
-                return $data;
-            })->all();
-
-        $totalForecast = $this->forecaster->forecast(array_map(fn ($row) => [
-            'month' => $row['month'],
-            'cases' => $row['total_visits'],
-        ], $history), $horizon);
-
-        $categoryForecasts = [];
-        foreach (self::CATEGORIES as $key => $label) {
-            $categoryForecasts[$key] = [
-                'label' => $label,
-                'forecast' => $this->forecaster->forecast(array_map(fn ($row) => [
-                    'month' => $row['month'],
-                    'cases' => $row[$key],
-                ], $history), $horizon)['forecast'],
-            ];
-        }
-
-        $display = array_values(array_filter(
-            $history,
-            fn ($row) => ! $year || str_starts_with($row['month'], "{$year}-"),
+        $dailyHistory = $this->dailyHistory($visits, $start, $end);
+        $monthlyHistory = $this->monthlyHistory($visits, $start, $end);
+        $dailyTrainingHistory = array_values(array_filter(
+            $dailyHistory,
+            fn (array $point) => CarbonImmutable::parse($point['period'])->lessThan($today),
         ));
-        $totals = array_column($display, 'total_visits');
-        $highest = $display[array_keys($totals, max($totals))[0]];
-        $lowest = $display[array_keys($totals, min($totals))[0]];
-        $first = $totals[0];
-        $last = $totals[array_key_last($totals)];
-        $change = $first > 0 ? (($last - $first) / $first) * 100 : 0;
+        $monthlyTrainingHistory = array_values(array_filter(
+            $monthlyHistory,
+            function (array $point) use ($start, $end, $today): bool {
+                $month = CarbonImmutable::createFromFormat('!Y-m', $point['period']);
 
-        $distribution = [];
-        foreach (self::CATEGORIES as $key => $label) {
-            $distribution[] = [
-                'key' => $key,
-                'name' => $label,
-                'value' => array_sum(array_column($display, $key)),
-            ];
-        }
-
-        $yearly = [];
-        foreach ($history as $row) {
-            $recordYear = (int) substr($row['month'], 0, 4);
-            $yearly[$recordYear] = ($yearly[$recordYear] ?? 0) + $row['total_visits'];
-        }
-
-        $forecast = $totalForecast['forecast'];
+                return $month->greaterThanOrEqualTo($start->startOfDay())
+                    && $month->endOfMonth()->lessThanOrEqualTo($end)
+                    && $month->endOfMonth()->lessThan($today);
+            },
+        ));
+        $dailyForecast = $this->forecast(
+            $dailyTrainingHistory,
+            $dailyHorizon,
+            'daily',
+            14,
+            array_sum(array_column($dailyTrainingHistory, 'count')),
+        );
+        $monthlyForecast = $this->forecast(
+            $monthlyTrainingHistory,
+            $monthlyHorizon,
+            'monthly',
+            24,
+            array_sum(array_column($monthlyTrainingHistory, 'count')),
+        );
 
         return [
             'meta' => [
-                'is_demo' => $isDemo,
-                'label' => $isDemo ? 'Sample Data · Demo Patient Visits' : 'Aggregated patient visit data',
-                'period' => 'January 2021 – December 2025',
-                'disclaimer' => 'Demonstration data for visualization and resource-planning analysis only. These are not actual clinic or patient records.',
+                'source' => 'Actual attended appointment records',
+                'definition' => 'One attended or clinically processed appointment equals one patient visit. Company event parent bookings, cancellations, rejections, absences, and unarrived bookings are excluded.',
+                'method' => 'Additive Holt-Winters triple exponential smoothing',
+                'disclaimer' => 'Forecasted patient volumes are estimates for operational planning, not guaranteed patient counts.',
                 'generated_at' => now()->toIso8601String(),
             ],
-            'filters' => ['year' => $year, 'horizon' => $horizon, 'years' => array_keys($yearly)],
+            'filters' => [
+                'start_date' => $start->format('Y-m-d'),
+                'end_date' => $end->format('Y-m-d'),
+                'daily_horizon' => $dailyHorizon,
+                'monthly_horizon' => $monthlyHorizon,
+            ],
             'summary' => [
-                'total_visits' => array_sum($totals),
-                'average_monthly_visits' => round(array_sum($totals) / count($totals), 1),
-                'highest_month' => $highest['month'],
-                'highest_month_visits' => $highest['total_visits'],
-                'lowest_month' => $lowest['month'],
-                'lowest_month_visits' => $lowest['total_visits'],
-                'predicted_next_month' => round($forecast[0]['predicted_cases']),
-                'percentage_change' => round($change, 1),
+                'total_patients_today' => $this->countForRange($today, $today),
+                'total_patients_this_month' => $this->countForRange($today->startOfMonth(), $today->endOfMonth()),
+                'selected_period_visits' => $visits->count(),
+                'selected_period_unique_patients' => $visits->pluck('user_id')->filter()->unique()->count(),
             ],
-            'history' => $display,
-            'forecast' => $forecast,
-            'model' => [
-                'metrics' => $totalForecast['metrics'],
-                'seasonal_pattern' => $totalForecast['seasonal_pattern'],
+            'daily' => [
+                'history' => $dailyHistory,
+                'trend' => $this->trend($dailyHistory, 7),
+                'forecast' => $dailyForecast,
             ],
-            'distribution' => $distribution,
-            'yearly_comparison' => array_map(
-                fn ($yearValue, $total) => ['year' => $yearValue, 'total_visits' => $total],
-                array_keys($yearly),
-                array_values($yearly),
-            ),
-            'category_forecasts' => $categoryForecasts,
-            'insights' => $this->insights($forecast, $categoryForecasts),
+            'monthly' => [
+                'history' => $monthlyHistory,
+                'trend' => $this->trend($monthlyHistory, 3),
+                'forecast' => $monthlyForecast,
+            ],
+            'planning' => $this->planning($dailyForecast, $monthlyForecast),
         ];
     }
 
-    /** @return list<string> */
-    private function insights(array $forecast, array $categoryForecasts): array
+    private function actualVisits(): Builder
     {
-        $peak = collect($forecast)->sortByDesc('predicted_cases')->first();
-        $peakMonth = now()->createFromFormat('!Y-m', $peak['month'])->format('F Y');
-        $walkIn = $categoryForecasts['walk_in']['forecast'];
-        $walkInChange = end($walkIn)['predicted_cases'] - $walkIn[0]['predicted_cases'];
+        return Appointment::query()
+            ->whereNotNull('appointment_date')
+            ->where(function (Builder $query): void {
+                $query->where('type', '!=', 'company_bulk')->orWhereNotNull('bulk_appointment_id');
+            })
+            ->whereNotIn('status', ['cancelled', 'rejected', 'absent'])
+            ->where(function (Builder $query): void {
+                $query->whereNotNull('arrived_at')
+                    ->orWhere('attendance_status', 'arrived')
+                    ->orWhereIn('status', self::ATTENDED_STATUSES);
+            });
+    }
+
+    private function countForRange(CarbonImmutable $start, CarbonImmutable $end): int
+    {
+        return $this->actualVisits()
+            ->whereDate('appointment_date', '>=', $start->format('Y-m-d'))
+            ->whereDate('appointment_date', '<=', $end->format('Y-m-d'))
+            ->count();
+    }
+
+    /** @return list<array{period:string, count:int}> */
+    private function dailyHistory(Collection $visits, CarbonImmutable $start, CarbonImmutable $end): array
+    {
+        $counts = $visits->countBy(fn (Appointment $visit) => $visit->appointment_date->format('Y-m-d'));
+        $history = [];
+
+        for ($cursor = $start; $cursor->lessThanOrEqualTo($end); $cursor = $cursor->addDay()) {
+            $period = $cursor->format('Y-m-d');
+            $history[] = ['period' => $period, 'count' => (int) ($counts[$period] ?? 0)];
+        }
+
+        return $history;
+    }
+
+    /** @return list<array{period:string, count:int}> */
+    private function monthlyHistory(Collection $visits, CarbonImmutable $start, CarbonImmutable $end): array
+    {
+        $counts = $visits->countBy(fn (Appointment $visit) => $visit->appointment_date->format('Y-m'));
+        $history = [];
+
+        for ($cursor = $start->startOfMonth(); $cursor->lessThanOrEqualTo($end->startOfMonth()); $cursor = $cursor->addMonth()) {
+            $period = $cursor->format('Y-m');
+            $history[] = ['period' => $period, 'count' => (int) ($counts[$period] ?? 0)];
+        }
+
+        return $history;
+    }
+
+    /** @return array<string, mixed> */
+    private function forecast(array $history, int $horizon, string $frequency, int $required, int $visitCount): array
+    {
+        if ($visitCount === 0) {
+            return $this->unavailableForecast($required, count($history), 'No attended patient visits exist in the selected date range.');
+        }
+        if (count($history) < $required) {
+            return $this->unavailableForecast(
+                $required,
+                count($history),
+                "At least {$required} complete {$frequency} observations are required for a seasonal forecast.",
+            );
+        }
+
+        try {
+            $result = $this->forecaster->forecast(array_map(fn (array $row) => [
+                'period' => $row['period'],
+                'value' => $row['count'],
+            ], $history), $horizon, $frequency);
+        } catch (InvalidArgumentException $exception) {
+            return $this->unavailableForecast($required, count($history), $exception->getMessage());
+        }
 
         return [
-            'Patient visits are expected to increase during historically busy rainy-season and year-end periods.',
-            "The highest patient volume in the selected forecast horizon is projected for {$peakMonth}, based on recurring seasonal demand.",
-            $walkInChange >= 0
-                ? 'Walk-in consultations show an upward projection across the selected horizon.'
-                : 'Walk-in consultations show a short-term decline before the next seasonal cycle.',
-            'Year-end capacity planning should account for historically higher APE and company-referral demand.',
+            'available' => true,
+            'required_observations' => $required,
+            'available_observations' => count($history),
+            'data' => $result['forecast'],
+            'metrics' => $result['metrics'],
+            'parameters' => $result['parameters'],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function unavailableForecast(int $required, int $available, string $reason): array
+    {
+        return [
+            'available' => false,
+            'reason' => $reason,
+            'required_observations' => $required,
+            'available_observations' => $available,
+            'data' => [],
+            'metrics' => null,
+            'parameters' => null,
+        ];
+    }
+
+    /** @return array{direction:string, change_percentage:float, current_average:float, previous_average:float} */
+    private function trend(array $history, int $window): array
+    {
+        $values = array_column($history, 'count');
+        if (count($values) < $window * 2) {
+            return [
+                'direction' => 'stable',
+                'change_percentage' => 0.0,
+                'current_average' => round(array_sum($values) / max(1, count($values)), 1),
+                'previous_average' => 0.0,
+            ];
+        }
+
+        $current = array_sum(array_slice($values, -$window)) / $window;
+        $previous = array_sum(array_slice($values, -($window * 2), $window)) / $window;
+        $change = $previous > 0 ? (($current - $previous) / $previous) * 100 : ($current > 0 ? 100 : 0);
+
+        return [
+            'direction' => $change > 1 ? 'increasing' : ($change < -1 ? 'decreasing' : 'stable'),
+            'change_percentage' => round($change, 1),
+            'current_average' => round($current, 1),
+            'previous_average' => round($previous, 1),
+        ];
+    }
+
+    /** @return list<array{title:string, value:string, detail:string}> */
+    private function planning(array $daily, array $monthly): array
+    {
+        return [
+            [
+                'title' => 'Staff allocation',
+                'value' => $daily['available'] ? round(collect($daily['data'])->avg('estimated_patients')).' patients/day' : 'Awaiting history',
+                'detail' => $daily['available']
+                    ? 'Estimated average daily demand across the selected forecast horizon.'
+                    : $daily['reason'],
+            ],
+            [
+                'title' => 'Appointment scheduling',
+                'value' => $daily['available'] ? round(collect($daily['data'])->max('estimated_patients')).' peak visits' : 'No estimate yet',
+                'detail' => $daily['available']
+                    ? 'Estimated busiest upcoming day; consider protecting capacity around this level.'
+                    : 'More attended daily records are needed before scheduling guidance is shown.',
+            ],
+            [
+                'title' => 'Supplies and resources',
+                'value' => $monthly['available'] ? round(collect($monthly['data'])->avg('estimated_patients')).' patients/month' : 'Awaiting history',
+                'detail' => $monthly['available']
+                    ? 'Estimated average monthly demand for supply and resource planning.'
+                    : $monthly['reason'],
+            ],
         ];
     }
 }

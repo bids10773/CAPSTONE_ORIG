@@ -29,6 +29,7 @@ trait ProfileValidationRules
             'birthdate' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
             'sex' => ['nullable', Rule::in(['Male', 'Female'])],
             'civil_status' => ['nullable', Rule::in(['Single', 'Married', 'Divorced', 'Widowed'])],
+            'address' => ['nullable', 'string', 'max:1000'],
         ];
     }
 

@@ -153,13 +153,6 @@ class PatientMedicalProfileService
                     'impression' => $xray->impression,
                     'url' => route('clinical-forms.xray.pdf', $appointment, false),
                 ] : null,
-                'final_evaluation' => $evaluation?->finalized_at ? [
-                    'classification' => $evaluation->medical_classification,
-                    'fit_to_work' => $evaluation->fit_to_work,
-                    'diagnosis' => $evaluation->final_diagnosis,
-                    'recommendations' => $evaluation->recommendations,
-                    'url' => route('clinical-forms.pe-section.pdf', [$appointment, 'final-evaluation'], false),
-                ] : null,
             ],
             'appointment_url' => route('admin.appointments.show', $appointment, false),
         ];

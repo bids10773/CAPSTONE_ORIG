@@ -303,7 +303,7 @@ export default function PhysicalExamForm({
                         ...(appointment.patient_profile?.employee_number
                             ? [
                                   {
-                                      label: 'Company ID',
+                                      label: 'Company Employee No.',
                                       value: appointment.patient_profile
                                           .employee_number,
                                   },

@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { CalendarDays, Mail, MapPin, Phone, UsersRound } from 'lucide-react';
+import { CalendarDays, Mail, Phone, UsersRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
@@ -18,6 +18,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 type Patient = {
     id: number;
+    patient_reference_code: string;
     first_name: string;
     middle_name: string | null;
     last_name: string;
@@ -29,6 +30,7 @@ type Patient = {
     appointments_count: number;
     is_online: boolean;
     last_active_at: string | null;
+    days_since_active: number | null;
     profile: {
         birthdate: string | null;
         age: number | null;
@@ -41,8 +43,17 @@ type Patient = {
 
 type Props = {
     patients: PaginatedResponse<Patient>;
-    filters: { search: string; presence: string };
+    filters: { search: string; presence: string; active_days: string };
 };
+
+const activeDayTabs = [
+    { value: '', label: 'All patients' },
+    { value: 'today', label: 'Active today' },
+    { value: '7', label: 'Last 7 days' },
+    { value: '30', label: 'Last 30 days' },
+    { value: 'inactive_30', label: 'Inactive 30+ days' },
+    { value: 'never', label: 'Never active' },
+] as const;
 
 function fullName(patient: Patient): string {
     return [patient.first_name, patient.middle_name, patient.last_name]
@@ -68,6 +79,14 @@ function lastActiveLabel(patient: Patient): string {
         hour: 'numeric',
         minute: '2-digit',
     }).format(new Date(patient.last_active_at))}`;
+}
+
+function activeDaysLabel(patient: Patient): string {
+    if (patient.is_online) return 'Active now';
+    if (patient.days_since_active === null) return 'Never active';
+    if (patient.days_since_active === 0) return 'Active today';
+    if (patient.days_since_active === 1) return '1 day ago';
+    return `${patient.days_since_active.toLocaleString()} days ago`;
 }
 
 function TruncatedText({
@@ -97,6 +116,7 @@ function TruncatedText({
 export default function AdminPatientsIndex({ patients, filters }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [presence, setPresence] = useState(filters.presence ?? '');
+    const [activeDays, setActiveDays] = useState(filters.active_days ?? '');
 
     useEffect(() => {
         const debounce = window.setTimeout(() => {
@@ -105,6 +125,7 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                 {
                     search: search || undefined,
                     presence: presence || undefined,
+                    active_days: activeDays || undefined,
                     per_page: patients.per_page,
                     page: 1,
                 },
@@ -117,7 +138,7 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
         }, 300);
 
         return () => window.clearTimeout(debounce);
-    }, [search, presence, patients.per_page]);
+    }, [search, presence, activeDays, patients.per_page]);
 
     useEffect(() => {
         const refresh = window.setInterval(() => {
@@ -138,7 +159,7 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                         value: search,
                         onChange: (event) => setSearch(event.target.value),
                         placeholder:
-                            'Search patient name, email, contact, address, or employee number...',
+                            'Search PAT number, name, email, contact, address, or employee number...',
                         'aria-label': 'Search patients',
                     }}
                     onSubmit={(event) => event.preventDefault()}
@@ -164,11 +185,32 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                     ]}
                 />
 
+                <nav
+                    aria-label="Filter patients by active days"
+                    className="flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm dark:border-border dark:bg-card"
+                >
+                    {activeDayTabs.map((tab) => (
+                        <button
+                            key={tab.value || 'all'}
+                            type="button"
+                            onClick={() => setActiveDays(tab.value)}
+                            aria-pressed={activeDays === tab.value}
+                            className={`shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+                                activeDays === tab.value
+                                    ? 'bg-moss-700 text-white shadow-sm dark:bg-moss-600'
+                                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-muted'
+                            }`}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </nav>
+
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-border dark:bg-card">
                     {patients.data.length > 0 ? (
                         <>
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-[1200px] table-fixed text-left text-sm">
+                                <table className="w-full min-w-[900px] table-fixed text-left text-sm">
                                     <thead className="border-b border-slate-200 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase dark:border-border dark:bg-muted dark:text-slate-400">
                                         <tr>
                                             <th className="w-[7%] px-4 py-3">
@@ -177,14 +219,8 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                             <th className="w-[17%] px-4 py-3">
                                                 Patient
                                             </th>
-                                            <th className="w-[17%] px-4 py-3">
+                                            <th className="w-[27%] px-4 py-3">
                                                 Contact
-                                            </th>
-                                            <th className="w-[14%] px-4 py-3">
-                                                Personal Details
-                                            </th>
-                                            <th className="w-[13%] px-4 py-3">
-                                                Address
                                             </th>
                                             <th className="w-[11%] px-4 py-3 text-center whitespace-nowrap">
                                                 Appointments
@@ -193,7 +229,7 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                                 Account
                                             </th>
                                             <th className="w-[11%] px-4 py-3 whitespace-nowrap">
-                                                Presence
+                                                Active Days
                                             </th>
                                         </tr>
                                     </thead>
@@ -201,13 +237,48 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                         {patients.data.map((patient) => (
                                             <tr
                                                 key={patient.id}
-                                                className="transition-colors hover:bg-moss-50/60 dark:hover:bg-moss-900/25"
+                                                role="link"
+                                                tabIndex={0}
+                                                aria-label={`View ${fullName(patient)}'s patient details and medical records`}
+                                                className="cursor-pointer transition-colors hover:bg-moss-50/60 focus-visible:bg-moss-50/60 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-moss-600 dark:hover:bg-moss-900/25 dark:focus-visible:bg-moss-900/25"
+                                                onClick={(event) => {
+                                                    if (
+                                                        (
+                                                            event.target as HTMLElement
+                                                        ).closest(
+                                                            'a, button, input, select, textarea, [role="button"]',
+                                                        )
+                                                    ) {
+                                                        return;
+                                                    }
+
+                                                    router.visit(
+                                                        `/admin/patients/${patient.id}`,
+                                                    );
+                                                }}
+                                                onKeyDown={(event) => {
+                                                    if (
+                                                        event.target !==
+                                                        event.currentTarget
+                                                    ) {
+                                                        return;
+                                                    }
+
+                                                    if (
+                                                        event.key === 'Enter' ||
+                                                        event.key === ' '
+                                                    ) {
+                                                        event.preventDefault();
+                                                        router.visit(
+                                                            `/admin/patients/${patient.id}`,
+                                                        );
+                                                    }
+                                                }}
                                             >
                                                 <td className="px-4 py-3 font-semibold text-slate-500 dark:text-slate-400">
-                                                    #
-                                                    {String(
-                                                        patient.id,
-                                                    ).padStart(4, '0')}
+                                                    {
+                                                        patient.patient_reference_code
+                                                    }
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex min-w-0 items-center gap-3">
@@ -237,7 +308,7 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                                             <Link
                                                                 href={`/admin/patients/${patient.id}`}
                                                                 className="block truncate font-semibold text-slate-900 hover:text-moss-700 hover:underline dark:text-slate-100 dark:hover:text-moss-300"
-                                                                title="View patient profile and vital signs"
+                                                                title="View patient details and medical records"
                                                             >
                                                                 {fullName(
                                                                     patient,
@@ -253,7 +324,8 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                                                 href={`/admin/patients/${patient.id}`}
                                                                 className="mt-1 inline-block text-[11px] font-semibold text-moss-700 hover:underline dark:text-moss-300"
                                                             >
-                                                                View vital signs
+                                                                View patient
+                                                                record
                                                             </Link>
                                                         </div>
                                                     </div>
@@ -279,28 +351,6 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                                         />
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 text-slate-700 dark:text-slate-200">
-                                                    <TruncatedText
-                                                        value={`${patient.profile?.sex ?? 'Not specified'}${patient.profile?.age ? ` · ${patient.profile.age} years old` : ''}`}
-                                                    />
-                                                    <TruncatedText
-                                                        value={`${patient.profile?.civil_status ?? 'Civil status unavailable'}${patient.profile?.employee_number ? ` · Employee ${patient.profile.employee_number}` : ''}`}
-                                                        className="mt-1 text-xs text-slate-500 dark:text-slate-400"
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex min-w-0 items-start gap-2 text-slate-600 dark:text-slate-300">
-                                                        <MapPin className="mt-0.5 size-3.5 shrink-0 text-moss-600" />
-                                                        <TruncatedText
-                                                            value={
-                                                                patient.profile
-                                                                    ?.address ??
-                                                                'No address provided'
-                                                            }
-                                                            className="min-w-0"
-                                                        />
-                                                    </div>
-                                                </td>
                                                 <td className="px-4 py-3 text-center">
                                                     <span className="inline-flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-100">
                                                         <CalendarDays className="size-4 text-moss-600" />
@@ -309,7 +359,7 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span
-                                                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${
+                                                        className={`status-text-only inline-flex text-xs font-semibold whitespace-nowrap ${
                                                             patient.has_account
                                                                 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                                                                 : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
@@ -322,11 +372,11 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <p
-                                                        className={`font-semibold ${patient.is_online ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
+                                                        className={`font-semibold ${patient.is_online || patient.days_since_active === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}
                                                     >
-                                                        {patient.is_online
-                                                            ? 'Online'
-                                                            : 'Offline'}
+                                                        {activeDaysLabel(
+                                                            patient,
+                                                        )}
                                                     </p>
                                                     <TruncatedText
                                                         value={lastActiveLabel(

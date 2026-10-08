@@ -106,7 +106,7 @@ test('admin can open a patient longitudinal medical profile including unreleased
             ->where('medicalReports.0.assigned_staff.2.id', $radtech->id)
             ->where('medicalReports.0.reports.laboratory.sections.0', 'Complete Blood Count')
             ->where('medicalReports.0.reports.xray.impression', 'Normal chest study')
-            ->where('medicalReports.0.reports.final_evaluation.classification', 'Class A'));
+            ->where('medicalReports.0.reports.physical_exam.classification', 'Class A'));
 });
 
 test('admin medical reports include visits without a physical exam', function () {

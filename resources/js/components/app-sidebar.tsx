@@ -131,6 +131,11 @@ const navigation: Record<string, Item[]> = {
                     href: '/admin/forecast',
                     icon: ChartSpline,
                 },
+                {
+                    title: 'Patient volume',
+                    href: '/analytics/patient-volume',
+                    icon: ChartSpline,
+                },
             ],
         },
         {
@@ -165,7 +170,6 @@ const navigation: Record<string, Item[]> = {
             href: '/doctor/doctor-availability',
             icon: Stethoscope,
         },
-        { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
     medtech: [
         {
@@ -188,7 +192,6 @@ const navigation: Record<string, Item[]> = {
             href: '/medtech/patient-records',
             icon: FolderHeart,
         },
-        { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
     radtech: [
         {
@@ -211,7 +214,6 @@ const navigation: Record<string, Item[]> = {
             href: '/radtech/patient-records',
             icon: FolderHeart,
         },
-        { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],
     receptionist: [
         {
@@ -239,7 +241,6 @@ const navigation: Record<string, Item[]> = {
             href: '/receptionist/patient-records',
             icon: FolderHeart,
         },
-        { title: 'Profile', href: '/settings/profile', icon: Settings },
     ],
     company: [
         {

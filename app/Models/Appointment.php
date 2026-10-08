@@ -272,6 +272,23 @@ class Appointment extends Model
         return $prefix.str_pad((string) $this->getKey(), 4, '0', STR_PAD_LEFT);
     }
 
+    /** @return array{id:int, types:list<string>}|null */
+    public static function parseReferenceCode(string $reference): ?array
+    {
+        if (! preg_match('/^(APT|WLK|REF)0*(\d+)$/i', $reference, $matches)) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $matches[2],
+            'types' => match (strtoupper($matches[1])) {
+                'WLK' => ['walk_in'],
+                'REF' => ['company_referral'],
+                default => ['individual', 'company_bulk'],
+            },
+        ];
+    }
+
     /**
      * Get appointment type options.
      */

@@ -450,7 +450,7 @@ export default function AppointmentRequests({
                             </DialogTitle>
                             {viewingAppointment && (
                                 <span
-                                    className={`rounded-full border px-3 py-1 text-xs font-bold capitalize ${statusStyles[viewingAppointment.status]}`}
+                                    className={`status-text-only text-xs font-bold capitalize ${statusStyles[viewingAppointment.status]}`}
                                 >
                                     {viewingAppointment.status}
                                 </span>

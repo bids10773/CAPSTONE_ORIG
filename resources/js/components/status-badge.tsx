@@ -14,92 +14,92 @@ import { cn } from '@/lib/utils';
 const statusConfig = {
     pending: {
         label: 'Pending',
-        className: 'border-amber-200 bg-amber-50 text-amber-800',
+        className: 'text-amber-700 dark:text-amber-400',
         icon: Clock3,
     },
     accepted: {
         label: 'Accepted',
-        className: 'border-moss-200 bg-moss-50 text-moss-800',
+        className: 'text-moss-700 dark:text-moss-300',
         icon: ShieldCheck,
     },
     arrived: {
         label: 'Arrived',
-        className: 'border-sky-200 bg-sky-50 text-sky-800',
+        className: 'text-sky-700 dark:text-sky-400',
         icon: CircleDot,
     },
     not_arrived: {
         label: 'Not Yet Arrived',
-        className: 'border-amber-200 bg-amber-50 text-amber-800',
+        className: 'text-amber-700 dark:text-amber-400',
         icon: Clock3,
     },
     absent: {
         label: 'Absent',
-        className: 'border-red-200 bg-red-50 text-red-800',
+        className: 'text-red-700 dark:text-red-400',
         icon: XCircle,
     },
     for_diagnostics: {
         label: 'For Diagnostics',
-        className: 'border-violet-200 bg-violet-50 text-violet-800',
+        className: 'text-violet-700 dark:text-violet-400',
         icon: FlaskConical,
     },
     pending_diagnostics: {
         label: 'For Diagnostics',
-        className: 'border-violet-200 bg-violet-50 text-violet-800',
+        className: 'text-violet-700 dark:text-violet-400',
         icon: FlaskConical,
     },
     for_xray: {
         label: 'For X-ray',
-        className: 'border-cyan-200 bg-cyan-50 text-cyan-800',
+        className: 'text-cyan-700 dark:text-cyan-400',
         icon: ScanLine,
     },
     awaiting_xray_result: {
         label: 'X-ray Performed — Awaiting Result',
-        className: 'border-amber-200 bg-amber-50 text-amber-800',
+        className: 'text-amber-700 dark:text-amber-400',
         icon: Clock3,
     },
     verifying_xray: {
         label: 'Verifying X-ray Result',
-        className: 'border-amber-200 bg-amber-50 text-amber-800',
+        className: 'text-amber-700 dark:text-amber-400',
         icon: ScanLine,
     },
     verifying_drug_test: {
         label: 'Verifying Drug Test Result',
-        className: 'border-amber-200 bg-amber-50 text-amber-800',
+        className: 'text-amber-700 dark:text-amber-400',
         icon: FlaskConical,
     },
     pending_xray: {
         label: 'For X-ray',
-        className: 'border-cyan-200 bg-cyan-50 text-cyan-800',
+        className: 'text-cyan-700 dark:text-cyan-400',
         icon: ScanLine,
     },
     for_final_evaluation: {
         label: 'For Final Evaluation',
-        className: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+        className: 'text-indigo-700 dark:text-indigo-400',
         icon: Stethoscope,
     },
     pending_final_evaluation: {
         label: 'For Final Evaluation',
-        className: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+        className: 'text-indigo-700 dark:text-indigo-400',
         icon: Stethoscope,
     },
     completed: {
         label: 'Completed',
-        className: 'border-green-200 bg-green-50 text-green-800',
+        className: 'text-green-700 dark:text-green-400',
         icon: CheckCircle2,
     },
     active: {
         label: 'Active',
-        className: 'border-moss-200 bg-moss-50 text-moss-800',
+        className: 'text-moss-700 dark:text-moss-300',
         icon: CheckCircle2,
     },
     cancelled: {
         label: 'Cancelled',
-        className: 'border-red-200 bg-red-50 text-red-800',
+        className: 'text-red-700 dark:text-red-400',
         icon: XCircle,
     },
     inactive: {
         label: 'Inactive',
-        className: 'border-slate-200 bg-slate-50 text-slate-700',
+        className: 'text-slate-600 dark:text-slate-300',
         icon: CircleDot,
     },
 } as const;
@@ -115,7 +115,7 @@ export function StatusBadge({
     const key = status.toLowerCase() as keyof typeof statusConfig;
     const config = statusConfig[key] ?? {
         label: status.replaceAll('_', ' '),
-        className: 'border-slate-200 bg-slate-50 text-slate-700',
+        className: 'text-slate-600 dark:text-slate-300',
         icon: CircleDot,
     };
     return (

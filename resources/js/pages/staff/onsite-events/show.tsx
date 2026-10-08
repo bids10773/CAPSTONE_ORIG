@@ -356,7 +356,7 @@ export default function StaffOnsiteEvent({
                                             Employee
                                         </th>
                                         <th className="px-5 py-3.5">
-                                            Company ID
+                                            Company Employee No.
                                         </th>
                                         <th className="px-5 py-3.5">Task</th>
                                         <th className="px-5 py-3.5">
@@ -393,7 +393,7 @@ export default function StaffOnsiteEvent({
                                             </td>
                                             <td className="px-5 py-4">
                                                 <span
-                                                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold capitalize ${queueStatusStyles[queue.status] ?? 'border-slate-200 bg-slate-50 text-slate-700 dark:border-border dark:bg-muted dark:text-muted-foreground'}`}
+                                                    className={`status-text-only inline-flex text-xs font-bold capitalize ${queueStatusStyles[queue.status] ?? 'text-slate-700 dark:text-muted-foreground'}`}
                                                 >
                                                     {queue.status.replaceAll(
                                                         '_',

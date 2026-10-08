@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class User extends Authenticatable implements MustVerifyEmail
@@ -32,12 +33,19 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role',
         'license_no',
+        'license_verification_status',
+        'license_document_path',
+        'license_document_back_path',
+        'license_verified_at',
+        'license_verified_by',
+        'license_rejection_reason',
         'specialization',
         'signature_path',
         'company_id',
         'is_active',
         'availability',
         'email_verified_at',
+        'last_active_at',
         'must_change_password',
         'temporary_password_created_at',
         'temporary_password_expires_at',
@@ -55,6 +63,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'remember_token',
         'failed_login_attempts',
         'login_locked_at',
+        'license_document_path',
+        'license_document_back_path',
     ];
 
     /**
@@ -64,6 +74,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected $appends = [
         'name',
+        'patient_reference_code',
     ];
 
     /**
@@ -75,6 +86,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_active_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'is_active' => 'boolean',
@@ -83,6 +95,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'temporary_password_created_at' => 'datetime',
             'temporary_password_expires_at' => 'datetime',
             'login_locked_at' => 'datetime',
+            'license_verified_at' => 'datetime',
         ];
     }
 
@@ -98,11 +111,28 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get the permanent clinic reference shown for patient accounts.
+     */
+    public function getPatientReferenceCodeAttribute(): ?string
+    {
+        if ($this->role !== 'patient' || ! $this->getKey()) {
+            return null;
+        }
+
+        return 'PAT'.str_pad((string) $this->getKey(), 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
      * Get the company that owns the user (if user is associated with a company).
      */
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function licenseVerifier(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'license_verified_by');
     }
 
     /**
@@ -210,6 +240,18 @@ class User extends Authenticatable implements MustVerifyEmail
             'receptionist' => 'Receptionist / Info Staff',
             default => 'Patient',
         };
+    }
+
+    /**
+     * Return the stored PNG signature in a format that DomPDF can embed.
+     */
+    public function signatureDataUri(): ?string
+    {
+        if (! $this->signature_path || ! Storage::disk('public')->exists($this->signature_path)) {
+            return null;
+        }
+
+        return 'data:image/png;base64,'.base64_encode(Storage::disk('public')->get($this->signature_path));
     }
 
     /**

@@ -20,7 +20,6 @@ export type ClinicalDashboardAppointment = {
 };
 
 export function ClinicalStaffDashboard({
-    role,
     name,
     description,
     icon: Icon,
@@ -41,7 +40,6 @@ export function ClinicalStaffDashboard({
     onsiteSummary,
     extraStat,
 }: {
-    role: string;
     name: string;
     description: string;
     icon: LucideIcon;
@@ -65,10 +63,8 @@ export function ClinicalStaffDashboard({
     return (
         <div className="min-h-screen space-y-6 bg-gray-50 p-6">
             <StaffDashboardHero
-                role={role}
                 name={name}
                 description={description}
-                icon={Icon}
                 action={{ label: actionLabel, href: appointmentsHref }}
                 todayLabel={todayLabel}
                 todayValue={todayCount}

@@ -36,22 +36,22 @@ const roleSearchCopy: Record<
     },
     doctor: {
         button: 'Search assigned patients and records...',
-        input: 'Search assigned patients, APT/REF codes, or services...',
+        input: 'Search patients, visit codes, or services...',
         empty: 'Search only patients assigned to you and their records.',
     },
     medtech: {
         button: 'Search laboratory patients and records...',
-        input: 'Search lab patients, reference codes, or tests...',
+        input: 'Search lab patients, visit codes, or tests...',
         empty: 'Search your laboratory queue and records you handled.',
     },
     radtech: {
         button: 'Search radiology patients and records...',
-        input: 'Search X-ray patients, reference codes, or services...',
+        input: 'Search X-ray patients, visit codes, or services...',
         empty: 'Search your radiology queue and records you handled.',
     },
     receptionist: {
         button: "Search today's patients and appointments...",
-        input: 'Search today by patient, reference code, or service...',
+        input: 'Search today by patient, visit code, or service...',
         empty: "Search today's front-desk appointment records.",
     },
     company: {

@@ -154,18 +154,28 @@ class ReceptionistWalkInController extends Controller
             ->whereDate('appointment_date', today())
             ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->when($search !== '', function ($query) use ($search): void {
-                $query->whereHas('user', function ($patient) use ($search): void {
-                    foreach (preg_split('/\s+/', $search) ?: [] as $term) {
-                        $like = '%'.SearchTerm::forLike($term).'%';
-                        $patient->where(function ($match) use ($like): void {
-                            $match
-                                ->where('first_name', 'like', $like)
-                                ->orWhere('middle_name', 'like', $like)
-                                ->orWhere('last_name', 'like', $like)
-                                ->orWhere('email', 'like', $like)
-                                ->orWhere('contact', 'like', $like);
+                $appointmentReference = Appointment::parseReferenceCode($search);
+                preg_match('/^PAT0*(\d+)$/i', $search, $patientMatch);
+
+                $query->where(function ($match) use ($appointmentReference, $patientMatch, $search): void {
+                    $match->where(fn ($reference) => $reference
+                        ->where('appointments.id', (int) ($appointmentReference['id'] ?? 0))
+                        ->when($appointmentReference, fn ($typed) => $typed->whereIn('type', $appointmentReference['types'])))
+                        ->orWhereHas('user', function ($patient) use ($patientMatch, $search): void {
+                            $patient->where(function ($identity) use ($search): void {
+                                foreach (preg_split('/\s+/', $search) ?: [] as $term) {
+                                    $like = '%'.SearchTerm::forLike($term).'%';
+                                    $identity->where(function ($field) use ($like): void {
+                                        $field
+                                            ->where('first_name', 'like', $like)
+                                            ->orWhere('middle_name', 'like', $like)
+                                            ->orWhere('last_name', 'like', $like)
+                                            ->orWhere('email', 'like', $like)
+                                            ->orWhere('contact', 'like', $like);
+                                    });
+                                }
+                            })->orWhere('id', (int) ($patientMatch[1] ?? 0));
                         });
-                    }
                 });
             })
             ->orderByRaw("CASE WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type <> 'walk_in' AND status IN ('pending', 'accepted') THEN 2 WHEN type = 'walk_in' THEN 3 ELSE 4 END")

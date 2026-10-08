@@ -1,6 +1,7 @@
 <?php
 
 use App\Mail\StaffTemporaryCredentials;
+use App\Models\Appointment;
 use App\Models\SecurityAudit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -158,4 +159,85 @@ test('non administrators cannot create staff or resend credentials', function ()
     $this->actingAs($patient)
         ->post(route('admin.staff.resend-credentials', $staff))
         ->assertForbidden();
+});
+
+test('an administrator can edit a staff account', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $staff = User::factory()->create([
+        'role' => 'medtech',
+        'first_name' => 'Maria',
+        'last_name' => 'Santos',
+    ]);
+    $originalPassword = $staff->password;
+
+    $this->actingAs($admin)
+        ->get(route('admin.staff.edit', $staff))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/staff/edit')
+            ->where('staff.id', $staff->id));
+
+    $this->actingAs($admin)
+        ->patch(route('admin.staff.update', $staff), [
+            'first_name' => 'Marielle',
+            'middle_name' => '',
+            'last_name' => 'Santos',
+            'email' => $staff->email,
+            'contact' => '09123456789',
+            'role' => 'medtech',
+            'license_no' => '12345',
+            'specialization' => 'Hematology',
+            'is_active' => true,
+        ])
+        ->assertRedirect(route('admin.staff.index'));
+
+    expect($staff->refresh()->first_name)->toBe('Marielle')
+        ->and($staff->license_no)->toBe('12345')
+        ->and($staff->specialization)->toBe('Hematology')
+        ->and($staff->password)->toBe($originalPassword)
+        ->and(SecurityAudit::where('action', 'staff_account_updated')->exists())->toBeTrue();
+});
+
+test('an administrator cannot change the role of staff linked to clinical work', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $doctor = User::factory()->create(['role' => 'doctor']);
+    $patient = User::factory()->create(['role' => 'patient']);
+
+    Appointment::create([
+        'user_id' => $patient->id,
+        'doctor_id' => $doctor->id,
+        'appointment_date' => today(),
+        'type' => 'individual',
+        'status' => 'accepted',
+        'service_types' => ['CBC'],
+    ]);
+
+    $this->actingAs($admin)
+        ->patch(route('admin.staff.update', $doctor), [
+            'first_name' => $doctor->first_name,
+            'middle_name' => $doctor->middle_name,
+            'last_name' => $doctor->last_name,
+            'email' => $doctor->email,
+            'contact' => $doctor->contact,
+            'role' => 'medtech',
+            'license_no' => $doctor->license_no,
+            'specialization' => $doctor->specialization,
+            'is_active' => true,
+        ])
+        ->assertSessionHasErrors('role');
+
+    expect($doctor->refresh()->role)->toBe('doctor');
+});
+
+test('an administrator can permanently delete an unlinked staff account', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $staff = User::factory()->create(['role' => 'receptionist']);
+
+    $this->actingAs($admin)
+        ->delete(route('admin.staff.destroy', $staff))
+        ->assertRedirect(route('admin.staff.index'))
+        ->assertSessionHas('success');
+
+    $this->assertModelMissing($staff);
+    expect(SecurityAudit::where('action', 'staff_account_deleted')->exists())->toBeTrue();
 });

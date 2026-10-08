@@ -872,6 +872,11 @@
     .auth-shell input::placeholder {
         color: oklch(0.6 0 0) !important;
     }
+    .auth-shell .registration-form input::placeholder {
+        color: oklch(0.72 0 0) !important;
+        -webkit-text-fill-color: oklch(0.72 0 0) !important;
+        opacity: 1;
+    }
     .auth-panel-right .text-muted-foreground {
         color: oklch(0.45 0 0) !important;
     }

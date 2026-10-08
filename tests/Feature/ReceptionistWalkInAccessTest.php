@@ -171,6 +171,11 @@ test('receptionist can register a new patient and create a walk-in appointment',
         'type' => 'walk_in',
         'status' => 'pending',
     ]);
+
+    $walkIn = Appointment::query()->where('user_id', $patient->id)->where('type', 'walk_in')->firstOrFail();
+    expect($patient->patient_reference_code)->toStartWith('PAT')
+        ->and($walkIn->reference_code)->toStartWith('WLK')
+        ->and($walkIn->arrived_at)->not->toBeNull();
 });
 
 test('receptionist cannot register an annual exam as a walk in', function () {

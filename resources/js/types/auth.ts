@@ -12,6 +12,16 @@ export interface User {
     full_name?: string;
     avatar?: string;
     role?: string;
+    license_no?: string | null;
+    license_verification_status?:
+        | 'not_submitted'
+        | 'pending'
+        | 'verified'
+        | 'rejected';
+    license_verified_at?: string | null;
+    license_rejection_reason?: string | null;
+    specialization?: string | null;
+    signature_path?: string | null;
 
     contact?: string;
     company?: {
@@ -25,6 +35,7 @@ export interface User {
         birthdate?: string;
         sex?: string;
         civil_status?: string;
+        address?: string;
     };
 }
 

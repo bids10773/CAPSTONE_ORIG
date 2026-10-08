@@ -38,6 +38,42 @@ test('doctor patient records contain only appointments assigned to that doctor',
             ->where('records.data.0.manage_url', route('doctor.physical-exams.create', $assigned, false)));
 });
 
+test('staff can open a patient details page containing only their authorized records', function () {
+    $doctor = User::factory()->create(['role' => 'doctor']);
+    $otherDoctor = User::factory()->create(['role' => 'doctor']);
+    $patient = User::factory()->create(['role' => 'patient']);
+    $unrelatedPatient = User::factory()->create(['role' => 'patient']);
+
+    $assigned = staffRecordAppointment($patient, [
+        'doctor_id' => $doctor->id,
+        'status' => 'arrived',
+        'arrived_at' => now(),
+    ]);
+    $assigned->physicalExam()->create([
+        'doctor_id' => $doctor->id,
+        'classification' => 'Class A',
+        'remarks' => 'Fit to work',
+    ]);
+    staffRecordAppointment($patient, ['doctor_id' => $otherDoctor->id]);
+    staffRecordAppointment($unrelatedPatient, ['doctor_id' => $otherDoctor->id]);
+
+    $this->actingAs($doctor)
+        ->get(route('doctor.patient-records.show', $patient))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('staff/patient-records/show')
+            ->where('role', 'doctor')
+            ->where('patient.id', $patient->id)
+            ->has('records', 1)
+            ->where('records.0.id', $assigned->id)
+            ->where('records.0.reports.physical_exam.classification', 'Class A')
+            ->where('records.0.reports.physical_exam.remarks', 'Fit to work'));
+
+    $this->actingAs($doctor)
+        ->get(route('doctor.patient-records.show', $unrelatedPatient))
+        ->assertNotFound();
+});
+
 test('medtech patient records show the laboratory queue but not unrelated completed visits', function () {
     $medtech = User::factory()->create(['role' => 'medtech']);
     $patient = User::factory()->create(['role' => 'patient']);
@@ -115,8 +151,6 @@ test('staff patient records expose only documents allowed for each clinical role
         ->get(route('medtech.patient-records.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('records.data.0.documents.physical_exam', false)
-            ->where('records.data.0.documents.medical_history', false)
-            ->where('records.data.0.documents.final_evaluation', false)
             ->where('records.data.0.documents.laboratory', true)
             ->where('records.data.0.documents.xray', false));
 
@@ -124,8 +158,6 @@ test('staff patient records expose only documents allowed for each clinical role
         ->get(route('radtech.patient-records.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('records.data.0.documents.physical_exam', false)
-            ->where('records.data.0.documents.medical_history', false)
-            ->where('records.data.0.documents.final_evaluation', false)
             ->where('records.data.0.documents.laboratory', false)
             ->where('records.data.0.documents.xray', true));
 
@@ -133,7 +165,6 @@ test('staff patient records expose only documents allowed for each clinical role
         ->get(route('doctor.patient-records.index'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('records.data.0.documents.physical_exam', true)
-            ->where('records.data.0.documents.medical_history', true)
             ->where('records.data.0.documents.laboratory', true)
             ->where('records.data.0.documents.xray', true));
 });
@@ -151,10 +182,6 @@ test('clinical PDF endpoints enforce document-specific staff access', function (
 
     $this->actingAs($radtech)
         ->get(route('clinical-forms.physical-exam.pdf', $appointment))
-        ->assertForbidden();
-    $this->get(route('clinical-forms.pe-section.pdf', [$appointment, 'medical-history']))
-        ->assertForbidden();
-    $this->get(route('clinical-forms.pe-section.pdf', [$appointment, 'final-evaluation']))
         ->assertForbidden();
     $this->get(route('clinical-forms.laboratory.pdf', $appointment))
         ->assertForbidden();

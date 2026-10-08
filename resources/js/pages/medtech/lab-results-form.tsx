@@ -284,7 +284,7 @@ export default function LaboratoryResultsForm({
                             />
                             {patientSummary.employee_number && (
                                 <Summary
-                                    label="Company ID"
+                                    label="Company Employee No."
                                     value={patientSummary.employee_number}
                                 />
                             )}

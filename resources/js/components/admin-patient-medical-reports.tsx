@@ -3,17 +3,24 @@ import {
     CalendarDays,
     ChevronDown,
     ClipboardCheck,
-    Download,
+    Eye,
     FlaskConical,
     ScanLine,
     Stethoscope,
     UserRoundCheck,
 } from 'lucide-react';
+import { StatusBadge } from '@/components/status-badge';
 
-type ReportSummary = Record<
+export type ReportSummary = Record<
     string,
     string | number | boolean | string[] | null
 > & { url: string };
+
+export type MedicalReportSet = {
+    physical_exam: ReportSummary | null;
+    laboratory: ReportSummary | null;
+    xray: ReportSummary | null;
+};
 
 export type AdminPatientMedicalReport = {
     id: number;
@@ -29,26 +36,17 @@ export type AdminPatientMedicalReport = {
         role: string;
         responsibilities: string[];
     }>;
-    reports: {
-        physical_exam: ReportSummary | null;
-        laboratory: ReportSummary | null;
-        xray: ReportSummary | null;
-        final_evaluation: ReportSummary | null;
-    };
+    reports: MedicalReportSet;
     appointment_url: string;
 };
 
 const reportMeta = {
     physical_exam: {
-        label: 'Physical Examination Report',
+        label: 'Medical Examination Report',
         icon: Stethoscope,
     },
     laboratory: { label: 'Laboratory Report', icon: FlaskConical },
     xray: { label: 'X-Ray Report', icon: ScanLine },
-    final_evaluation: {
-        label: 'Final Medical Evaluation',
-        icon: ClipboardCheck,
-    },
 } as const;
 
 function formatDate(value: string | null): string {
@@ -71,6 +69,71 @@ function displayValue(value: ReportSummary[string]): string {
     if (value === true) return 'Yes';
     if (value === false) return 'No';
     return value === null || value === '' ? 'Not recorded' : String(value);
+}
+
+export function MedicalReportCards({ reports }: { reports: MedicalReportSet }) {
+    const availableReports = Object.entries(reports).filter(
+        ([, report]) => report !== null,
+    );
+
+    if (availableReports.length === 0) {
+        return (
+            <p className="text-sm text-slate-500">
+                No medical reports are available for this visit yet.
+            </p>
+        );
+    }
+
+    return (
+        <div className="grid gap-3 lg:grid-cols-2">
+            {availableReports.map(([key, report]) => {
+                if (!report) return null;
+                const meta = reportMeta[key as keyof typeof reportMeta];
+                const Icon = meta.icon;
+                const previewUrl = `${report.url}${report.url.includes('?') ? '&' : '?'}preview=1`;
+
+                return (
+                    <article
+                        key={key}
+                        className="rounded-xl border border-slate-200 p-4 dark:border-border"
+                    >
+                        <div className="flex items-start justify-between gap-3">
+                            <h5 className="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
+                                <Icon className="size-4 text-moss-600" />
+                                {meta.label}
+                            </h5>
+                            <a
+                                href={previewUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-moss-700 hover:underline dark:text-moss-300"
+                            >
+                                <Eye className="size-3.5" />
+                                View
+                            </a>
+                        </div>
+                        <dl className="mt-3 space-y-2">
+                            {Object.entries(report)
+                                .filter(([label]) => label !== 'url')
+                                .map(([label, value]) => (
+                                    <div
+                                        key={label}
+                                        className="grid grid-cols-[120px_1fr] gap-3 text-sm"
+                                    >
+                                        <dt className="text-xs font-semibold text-slate-500">
+                                            {humanize(label)}
+                                        </dt>
+                                        <dd className="text-slate-800 dark:text-slate-200">
+                                            {displayValue(value)}
+                                        </dd>
+                                    </div>
+                                ))}
+                        </dl>
+                    </article>
+                );
+            })}
+        </div>
+    );
 }
 
 export function AdminPatientMedicalReports({
@@ -106,9 +169,10 @@ export function AdminPatientMedicalReports({
                                 <span className="rounded-full bg-moss-100 px-2.5 py-1 text-[11px] font-semibold text-moss-700 dark:bg-moss-900 dark:text-moss-200">
                                     {visit.reference_code}
                                 </span>
-                                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:bg-muted dark:text-slate-300">
-                                    {humanize(visit.status)}
-                                </span>
+                                <StatusBadge
+                                    status={visit.status}
+                                    className="text-[11px]"
+                                />
                             </div>
                             <p className="mt-1 truncate text-sm text-slate-500">
                                 {visit.service_types.join(' · ') ||
@@ -157,67 +221,8 @@ export function AdminPatientMedicalReports({
                             <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                 Medical Reports
                             </h4>
-                            <div className="mt-3 grid gap-3 lg:grid-cols-2">
-                                {Object.entries(visit.reports).map(
-                                    ([key, report]) => {
-                                        if (!report) return null;
-                                        const meta =
-                                            reportMeta[
-                                                key as keyof typeof reportMeta
-                                            ];
-                                        const Icon = meta.icon;
-
-                                        return (
-                                            <article
-                                                key={key}
-                                                className="rounded-xl border border-slate-200 p-4 dark:border-border"
-                                            >
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <h5 className="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
-                                                        <Icon className="size-4 text-moss-600" />
-                                                        {meta.label}
-                                                    </h5>
-                                                    <a
-                                                        href={report.url}
-                                                        className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-moss-700 hover:underline dark:text-moss-300"
-                                                    >
-                                                        <Download className="size-3.5" />
-                                                        PDF
-                                                    </a>
-                                                </div>
-                                                <dl className="mt-3 space-y-2">
-                                                    {Object.entries(report)
-                                                        .filter(
-                                                            ([label]) =>
-                                                                label !== 'url',
-                                                        )
-                                                        .map(
-                                                            ([
-                                                                label,
-                                                                value,
-                                                            ]) => (
-                                                                <div
-                                                                    key={label}
-                                                                    className="grid grid-cols-[120px_1fr] gap-3 text-sm"
-                                                                >
-                                                                    <dt className="text-xs font-semibold text-slate-500">
-                                                                        {humanize(
-                                                                            label,
-                                                                        )}
-                                                                    </dt>
-                                                                    <dd className="text-slate-800 dark:text-slate-200">
-                                                                        {displayValue(
-                                                                            value,
-                                                                        )}
-                                                                    </dd>
-                                                                </div>
-                                                            ),
-                                                        )}
-                                                </dl>
-                                            </article>
-                                        );
-                                    },
-                                )}
+                            <div className="mt-3">
+                                <MedicalReportCards reports={visit.reports} />
                             </div>
                         </section>
 

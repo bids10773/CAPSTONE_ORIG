@@ -24,7 +24,6 @@
     .results td.normal { width:30%; text-align:center; color:#008f46; }
     .signatures { width:100%; margin-top:24px; page-break-inside:avoid; }
     .signatures td { width:50%; text-align:center; vertical-align:bottom; padding:0 25px; }
-    .signature-line { border-bottom:1px solid #00a651; min-height:28px; padding-top:12px; font-weight:bold; }
     .role { color:#009b4d; font-weight:bold; font-size:11px; }
     .remarks { border:1px solid #00a651; padding:5px; min-height:30px; }
     .footer { position:fixed; bottom:-12px; width:100%; text-align:center; color:#6b7280; font-size:8px; }
@@ -75,8 +74,8 @@
     $medicalTechnologist = $result->verifiedBy ?? $result->encodedBy;
 @endphp
 <table class="signatures"><tr>
-    <td><div class="signature-line">{{ strtoupper($physician?->name ?? '') }}</div><div>{{ $physician?->license_no ? 'LIC. NO. '.$physician->license_no : '' }}</div><div class="role">{{ $physician?->specialization ?? $physician?->role_label ?? '' }}</div></td>
-    <td><div class="signature-line">{{ strtoupper($medicalTechnologist?->name ?? '') }}</div><div>{{ $medicalTechnologist?->license_no ? 'LIC. NO. '.$medicalTechnologist->license_no : '' }}</div><div class="role">{{ $medicalTechnologist?->specialization ?? $medicalTechnologist?->role_label ?? '' }}</div></td>
+    <td>@include('pdf.partials.electronic-signature', ['staff' => $physician, 'role' => $physician?->specialization ?? 'Physician', 'verifiedAt' => $appointment->medicalExamination?->finalized_at, 'verificationLabel' => 'Reviewed'])</td>
+    <td>@include('pdf.partials.electronic-signature', ['staff' => $medicalTechnologist, 'role' => 'Medical Technologist', 'verifiedAt' => $result->finalized_at])</td>
 </tr></table>
 <div class="footer">Electronically generated LMIC clinical document · {{ $appointment->reference_code }} · {{ now()->format('Y-m-d H:i') }}</div>
 </body>

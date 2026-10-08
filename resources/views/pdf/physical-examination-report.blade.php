@@ -85,7 +85,7 @@
         .bmi-value { height: 17px; border-bottom: .55px solid {{ $green }}; color: #111; font-size: 8.5px; }
         .cert-text { padding: 4px 16px; font-size: 7.4px; line-height: 1.35; }
         .signatures { table-layout: fixed; }
-        .signatures td { height: 31px; text-align: center; vertical-align: bottom; }
+        .signatures td { height: 55px; padding: 1px 3px; text-align: center; vertical-align: bottom; }
         .signature-name { border-bottom: .55px solid {{ $green }}; color: #111; font-size: 7.5px; }
         .signature-role { font-size: 6.8px; }
         .conclusion { padding-top: 7px; color: #244080; text-align: center; font-size: 8px; }
@@ -205,8 +205,8 @@
 
     <table class="ruled signatures">
         <tr>
-            <td><div class="signature-name">{{ strtoupper($examination?->finalizedBy?->name ?? '') }}</div><div class="signature-role">CLASSIFIED BY:</div></td>
-            <td><div class="signature-name">{{ strtoupper($physical->doctor?->name ?? $examination?->examiningDoctor?->name ?? '') }}</div><div class="signature-role">Examining Physician</div></td>
+            <td>@include('pdf.partials.electronic-signature', ['staff' => $examination?->finalizedBy, 'role' => 'Classifying Physician', 'verifiedAt' => $examination?->finalized_at, 'verificationLabel' => 'Finalized', 'compact' => true])</td>
+            <td>@include('pdf.partials.electronic-signature', ['staff' => $physical->doctor ?? $examination?->examiningDoctor, 'role' => 'Examining Physician', 'verifiedAt' => $physical->finalized_at, 'verificationLabel' => 'Examined', 'compact' => true])</td>
             <td><div class="signature-name">{{ strtoupper($appointment->user->name) }}</div><div class="signature-role">Signature Over Printed Name</div></td>
         </tr>
     </table>
@@ -258,7 +258,7 @@
             @endforeach
         </table>
         @if($physical->remarks)<p><b>Remarks:</b> {{ $physical->remarks }}</p>@endif
-        <div class="attachment-signature">{{ $physical->doctor?->name ?? 'Authorized doctor' }}<br>Examining Physician</div>
+        <div class="attachment-signature">@include('pdf.partials.electronic-signature', ['staff' => $physical->doctor, 'role' => 'Examining Physician', 'verifiedAt' => $physical->finalized_at, 'verificationLabel' => 'Examined'])</div>
     </div>
 
     @foreach(($laboratorySections ?? []) as $sectionKey => $section)
@@ -288,7 +288,7 @@
                     @endforeach
                 </table>
                 @if($laboratory->remarks)<p><b>Remarks:</b> {{ $laboratory->remarks }}</p>@endif
-                <div class="attachment-signature">{{ $laboratory->verifiedBy?->name ?? $laboratory->encodedBy?->name ?? 'Medical Technologist' }}<br>Medical Technologist</div>
+                <div class="attachment-signature">@include('pdf.partials.electronic-signature', ['staff' => $laboratory->verifiedBy ?? $laboratory->encodedBy, 'role' => 'Medical Technologist', 'verifiedAt' => $laboratory->finalized_at])</div>
             </div>
         @endif
     @endforeach
@@ -306,7 +306,7 @@
                 <tr><th style="width:25%">Findings</th><td>{{ $xray->findings ?: '—' }}</td></tr>
                 <tr><th>Impression</th><td>{{ $xray->impression ?: '—' }}</td></tr>
             </table>
-            <div class="attachment-signature">{{ $xray->radiologist?->name ?? $xray->verifiedBy?->name ?? 'Authorized Clinical Staff' }}<br>Authorized Clinical Staff</div>
+            <div class="attachment-signature">@include('pdf.partials.electronic-signature', ['staff' => $xray->verifiedBy ?? $xray->radiologist, 'role' => 'Radiologic Technologist', 'verifiedAt' => $xray->verified_at])</div>
         </div>
     @endif
 
@@ -323,7 +323,7 @@
                 <tr><th>Recommendations</th><td>{{ $examination->recommendations ?? '—' }}</td></tr>
                 <tr><th>Finalized on</th><td>{{ $examination->finalized_at->format('F j, Y') }}</td></tr>
             </table>
-            <div class="attachment-signature">{{ $examination->finalizedBy?->name ?? 'Authorized doctor' }}<br>Classifying Physician</div>
+            <div class="attachment-signature">@include('pdf.partials.electronic-signature', ['staff' => $examination->finalizedBy, 'role' => 'Classifying Physician', 'verifiedAt' => $examination->finalized_at, 'verificationLabel' => 'Finalized'])</div>
         </div>
     @endif
 </body>

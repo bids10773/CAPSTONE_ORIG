@@ -118,7 +118,7 @@ class GlobalSearchController extends Controller
         $items = $query->orderBy('last_name')->limit(6)->get()->map(function (User $person) use ($user): array {
             $url = match ($user->role) {
                 'admin' => $person->role === 'patient'
-                    ? route('admin.appointments.index', ['search' => $person->email ?: $person->name])
+                    ? route('admin.patients.show', $person)
                     : route('admin.staff.index', ['search' => $person->email ?: $person->name]),
                 'receptionist' => route('receptionist.queue.index', ['search' => $person->name]),
                 default => route('company.dashboard'),
@@ -181,28 +181,24 @@ class GlobalSearchController extends Controller
 
     private function referenceParts(string $term): ?array
     {
-        if (! preg_match('/^(APT|WLK|REF)0*(\d+)$/i', $term, $matches)) {
-            return null;
-        }
-
-        return [
-            'id' => (int) $matches[2],
-            'types' => match (strtoupper($matches[1])) {
-                'WLK' => ['walk_in'],
-                'REF' => ['company_referral'],
-                default => ['individual', 'company_bulk'],
-            },
-        ];
+        return Appointment::parseReferenceCode($term);
     }
 
     private function matchUser(Builder $query, string $term): void
     {
         $likeTerm = SearchTerm::forLike($term);
-        $query->where(fn (Builder $query) => $query
-            ->where('first_name', 'like', "%{$likeTerm}%")
-            ->orWhere('middle_name', 'like', "%{$likeTerm}%")
-            ->orWhere('last_name', 'like', "%{$likeTerm}%")
-            ->orWhere('email', 'like', "%{$likeTerm}%"));
+        $query->where(function (Builder $query) use ($term, $likeTerm): void {
+            $query->where('first_name', 'like', "%{$likeTerm}%")
+                ->orWhere('middle_name', 'like', "%{$likeTerm}%")
+                ->orWhere('last_name', 'like', "%{$likeTerm}%")
+                ->orWhere('email', 'like', "%{$likeTerm}%");
+
+            if (preg_match('/^PAT0*(\d+)$/i', $term, $matches) === 1) {
+                $query->orWhere(fn (Builder $patient) => $patient
+                    ->where('role', 'patient')
+                    ->whereKey((int) $matches[1]));
+            }
+        });
     }
 
     private function appointmentUrl(User $user, Appointment $appointment): string

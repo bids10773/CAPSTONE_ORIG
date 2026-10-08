@@ -31,25 +31,6 @@ class ClinicalDocumentController extends Controller
         return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
     }
 
-    public function peSection(Request $request, Appointment $appointment, string $section, ClinicalFormWorkflowService $workflow): Response
-    {
-        $this->loadPeAppointment($request, $appointment);
-        abort_if($section === 'medical-history' && ! $appointment->medicalHistory, 404, 'No medical history exists.');
-        abort_if($section === 'final-evaluation' && ! $appointment->medicalExamination?->finalized_at, 404, 'No final evaluation exists.');
-        $workflow->auditDocumentAccess($appointment, $request->user(), $section, $request);
-
-        $pdf = Pdf::loadView('pdf.pe-section', [
-            'appointment' => $appointment,
-            'section' => $section,
-            'physical' => $appointment->physicalExam,
-            'history' => $appointment->medicalHistory,
-            'examination' => $appointment->medicalExamination,
-        ])->setPaper('letter', 'portrait');
-        $filename = 'LMIC-'.str($section)->title()."-{$appointment->id}.pdf";
-
-        return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
-    }
-
     private function loadPeAppointment(Request $request, Appointment $appointment): void
     {
         Gate::authorize('viewPhysicalExam', $appointment);
@@ -68,7 +49,7 @@ class ClinicalDocumentController extends Controller
     {
         Gate::authorize('viewXray', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment);
-        $appointment->load(['user.patientProfile', 'company', 'xrayReport.radiologist']);
+        $appointment->load(['user.patientProfile', 'company', 'xrayReport.radiologist', 'xrayReport.verifiedBy']);
         abort_unless($appointment->xrayReport, 404, 'No X-ray report exists.');
         $workflow->auditDocumentAccess($appointment, $request->user(), 'xray', $request);
 

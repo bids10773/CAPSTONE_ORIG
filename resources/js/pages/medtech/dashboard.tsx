@@ -33,7 +33,6 @@ export default function MedTechDashboard({
         <>
             <Head title="MedTech Dashboard" />
             <ClinicalStaffDashboard
-                role="MedTech"
                 name={auth?.user?.name ?? 'MedTech'}
                 description="Review laboratory requests and keep diagnostic results moving."
                 icon={FlaskConical}

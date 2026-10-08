@@ -5,7 +5,6 @@ import {
     CalendarClock,
     CheckCircle2,
     CircleX,
-    ClipboardList,
     Clock3,
     ListOrdered,
     Users,
@@ -53,10 +52,8 @@ export default function ReceptionistDashboard({
             <Head title="Receptionist Dashboard" />
             <div className="min-h-screen space-y-6 bg-gray-50 p-6">
                 <StaffDashboardHero
-                    role="Receptionist"
                     name={auth?.user?.name ?? 'Receptionist'}
                     description="Keep today's online appointments and walk-in queue moving."
-                    icon={ClipboardList}
                     action={{
                         label: 'Register walk-in',
                         href: '/receptionist/walk-ins',

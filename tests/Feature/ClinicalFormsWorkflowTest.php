@@ -124,7 +124,7 @@ test('finalized laboratory reports cannot be overwritten by medical staff', func
 
 test('patient can download completed laboratory PDF but receptionist cannot access clinical forms', function () {
     $appointment = clinicalAppointment();
-    $medtech = User::factory()->create(['role' => 'medtech', 'license_no' => 'RMT-123']);
+    $medtech = User::factory()->create(['role' => 'medtech', 'license_no' => '12345']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
 
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.pdf', $appointment))

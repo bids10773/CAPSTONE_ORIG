@@ -18,10 +18,12 @@ class AdminPatientController extends Controller
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'presence' => ['nullable', Rule::in(['online', 'offline'])],
+            'active_days' => ['nullable', Rule::in(['today', '7', '30', 'inactive_30', 'never'])],
             'per_page' => ['nullable', 'integer'],
         ]);
         $search = trim((string) ($filters['search'] ?? ''));
         $presence = (string) ($filters['presence'] ?? '');
+        $activeDays = (string) ($filters['active_days'] ?? '');
         $onlineThreshold = now()->subMinutes(5)->timestamp;
 
         $latestSessions = DB::table(config('session.table', 'sessions'))
@@ -57,6 +59,10 @@ class AdminPatientController extends Controller
                                     ->where('employee_number', 'like', $like)
                                     ->orWhere('address', 'like', $like);
                             });
+
+                        if (preg_match('/^PAT0*(\d+)$/i', $term, $matches) === 1) {
+                            $patientQuery->orWhere('users.id', (int) $matches[1]);
+                        }
                     });
                 }
             })
@@ -66,6 +72,43 @@ class AdminPatientController extends Controller
                     ->whereNull('patient_sessions.last_activity')
                     ->orWhere('patient_sessions.last_activity', '<', $onlineThreshold);
             }))
+            ->when(in_array($activeDays, ['today', '7', '30'], true), function ($query) use ($activeDays): void {
+                $cutoff = match ($activeDays) {
+                    'today' => now()->startOfDay(),
+                    '7' => now()->subDays(7),
+                    default => now()->subDays(30),
+                };
+                $query->where(function ($activityQuery) use ($cutoff): void {
+                    $activityQuery
+                        ->where('users.last_active_at', '>=', $cutoff)
+                        ->orWhere('patient_sessions.last_activity', '>=', $cutoff->timestamp);
+                });
+            })
+            ->when($activeDays === 'inactive_30', function ($query): void {
+                $cutoff = now()->subDays(30);
+                $query
+                    ->where(function ($knownActivity): void {
+                        $knownActivity
+                            ->whereNotNull('users.last_active_at')
+                            ->orWhereNotNull('patient_sessions.last_activity');
+                    })
+                    ->where(function ($activityQuery) use ($cutoff): void {
+                        $activityQuery
+                            ->where(function ($storedActivity) use ($cutoff): void {
+                                $storedActivity
+                                    ->whereNull('users.last_active_at')
+                                    ->orWhere('users.last_active_at', '<', $cutoff);
+                            })
+                            ->where(function ($sessionActivity) use ($cutoff): void {
+                                $sessionActivity
+                                    ->whereNull('patient_sessions.last_activity')
+                                    ->orWhere('patient_sessions.last_activity', '<', $cutoff->timestamp);
+                            });
+                    });
+            })
+            ->when($activeDays === 'never', fn ($query) => $query
+                ->whereNull('users.last_active_at')
+                ->whereNull('patient_sessions.last_activity'))
             ->orderByRaw('CASE WHEN patient_sessions.last_activity >= ? THEN 0 ELSE 1 END', [$onlineThreshold])
             ->orderBy('users.last_name')
             ->orderBy('users.first_name')
@@ -73,10 +116,19 @@ class AdminPatientController extends Controller
             ->withQueryString()
             ->through(function (User $patient) use ($onlineThreshold): array {
                 $lastActivity = $patient->getAttribute('last_activity');
+                $sessionActivity = $lastActivity !== null
+                    ? Carbon::createFromTimestamp((int) $lastActivity)
+                    : null;
+                $storedActivity = $patient->last_active_at;
+                $latestActivity = collect([$sessionActivity, $storedActivity])
+                    ->filter()
+                    ->sortByDesc(fn ($activity) => $activity->timestamp)
+                    ->first();
                 $profile = $patient->patientProfile;
 
                 return [
                     'id' => $patient->id,
+                    'patient_reference_code' => $patient->patient_reference_code,
                     'first_name' => $patient->first_name,
                     'middle_name' => $patient->middle_name,
                     'last_name' => $patient->last_name,
@@ -87,8 +139,9 @@ class AdminPatientController extends Controller
                     'has_account' => $patient->password !== null || $patient->social_accounts_exists,
                     'appointments_count' => $patient->appointments_count,
                     'is_online' => $lastActivity !== null && (int) $lastActivity >= $onlineThreshold,
-                    'last_active_at' => $lastActivity !== null
-                        ? Carbon::createFromTimestamp((int) $lastActivity)->toIso8601String()
+                    'last_active_at' => $latestActivity?->toIso8601String(),
+                    'days_since_active' => $latestActivity
+                        ? (int) $latestActivity->copy()->startOfDay()->diffInDays(today())
                         : null,
                     'profile' => $profile ? [
                         'birthdate' => $profile->birthdate?->format('Y-m-d'),
@@ -106,6 +159,7 @@ class AdminPatientController extends Controller
             'filters' => [
                 'search' => $search,
                 'presence' => $presence,
+                'active_days' => $activeDays,
             ],
         ]);
     }

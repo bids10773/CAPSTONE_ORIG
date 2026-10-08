@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ExternalLink, FileHeart, FolderHeart, UserRound } from 'lucide-react';
+import { ExternalLink, FolderHeart, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
@@ -18,23 +18,11 @@ type RecordItem = {
     type: string;
     service_types: string[];
     patient: {
+        id: number;
         name: string;
-        email: string;
-        contact?: string | null;
-        birthdate?: string | null;
-        age?: number | null;
-        sex?: string | null;
-        civil_status?: string | null;
-        employee_number?: string | null;
+        patient_reference_code: string;
     };
     company?: string | null;
-    documents: {
-        physical_exam: boolean;
-        medical_history: boolean;
-        final_evaluation: boolean;
-        laboratory: boolean;
-        xray: boolean;
-    };
     manage_url?: string | null;
 };
 
@@ -50,14 +38,6 @@ const roleHome: Record<Role, string> = {
     radtech: '/radtech/dashboard',
     receptionist: '/receptionist/dashboard',
 };
-
-const documentDefinitions = [
-    ['physical_exam', 'Physical exam', 'physical-exam'],
-    ['medical_history', 'Medical history', 'medical-history'],
-    ['final_evaluation', 'Final evaluation', 'final-evaluation'],
-    ['laboratory', 'Laboratory', 'laboratory'],
-    ['xray', 'X-ray', 'xray'],
-] as const;
 
 export default function StaffPatientRecords({ records, filters, role }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
@@ -90,7 +70,8 @@ export default function StaffPatientRecords({ records, filters, role }: Props) {
                     search={{
                         value: search,
                         onChange: (event) => setSearch(event.target.value),
-                        placeholder: 'Search patient name or email...',
+                        placeholder:
+                            'Search patient or visit code, name, email, or employee number...',
                         'aria-label': 'Search assigned patient records',
                     }}
                     onSubmit={(event) => event.preventDefault()}
@@ -131,7 +112,7 @@ export default function StaffPatientRecords({ records, filters, role }: Props) {
 
                 <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[980px]">
+                        <table className="w-full min-w-[760px]">
                             <thead className="border-b border-slate-200 bg-slate-50">
                                 <tr>
                                     <th className="px-5 py-3 text-left text-xs font-bold tracking-wider text-slate-500 uppercase">
@@ -143,163 +124,125 @@ export default function StaffPatientRecords({ records, filters, role }: Props) {
                                     <th className="px-5 py-3 text-left text-xs font-bold tracking-wider text-slate-500 uppercase">
                                         Services
                                     </th>
-                                    <th className="px-5 py-3 text-left text-xs font-bold tracking-wider text-slate-500 uppercase">
-                                        Available records
-                                    </th>
                                     <th className="px-5 py-3 text-right text-xs font-bold tracking-wider text-slate-500 uppercase">
                                         Actions
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {records.data.map((record) => (
-                                    <tr
-                                        key={record.id}
-                                        className="align-top hover:bg-slate-50/70"
-                                    >
-                                        <td className="px-5 py-4">
-                                            <div className="flex gap-3">
-                                                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-moss-100 text-moss-700">
-                                                    <UserRound className="size-5" />
-                                                </span>
-                                                <div>
-                                                    <p className="font-bold text-slate-900">
-                                                        {record.patient.name}
-                                                    </p>
-                                                    <p className="text-xs text-slate-500">
-                                                        {record.patient.email}
-                                                    </p>
-                                                    {record.patient.contact && (
-                                                        <p className="text-xs text-slate-500">
+                                {records.data.map((record) => {
+                                    const destination = `${path}/${record.patient.id}`;
+
+                                    return (
+                                        <tr
+                                            key={record.id}
+                                            role="link"
+                                            tabIndex={0}
+                                            aria-label={`Open ${record.patient.name}'s patient details and medical records`}
+                                            className="cursor-pointer align-top transition-colors hover:bg-slate-50/70 focus-visible:bg-moss-50/60 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-moss-600"
+                                            onClick={(event) => {
+                                                if (
+                                                    (
+                                                        event.target as HTMLElement
+                                                    ).closest(
+                                                        'a, button, input, select, textarea, [role="button"]',
+                                                    )
+                                                ) {
+                                                    return;
+                                                }
+
+                                                router.visit(destination);
+                                            }}
+                                            onKeyDown={(event) => {
+                                                if (
+                                                    event.target !==
+                                                    event.currentTarget
+                                                ) {
+                                                    return;
+                                                }
+
+                                                if (
+                                                    event.key === 'Enter' ||
+                                                    event.key === ' '
+                                                ) {
+                                                    event.preventDefault();
+                                                    router.visit(destination);
+                                                }
+                                            }}
+                                        >
+                                            <td className="px-5 py-4">
+                                                <div className="flex gap-3">
+                                                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-moss-100 text-moss-700">
+                                                        <UserRound className="size-5" />
+                                                    </span>
+                                                    <div>
+                                                        <p className="font-bold text-slate-900">
                                                             {
                                                                 record.patient
-                                                                    .contact
+                                                                    .name
                                                             }
                                                         </p>
-                                                    )}
-                                                    <p className="mt-1 text-xs text-slate-500">
-                                                        {[
-                                                            record.patient.age
-                                                                ? `${record.patient.age} years old`
-                                                                : null,
-                                                            record.patient.sex,
-                                                        ]
-                                                            .filter(Boolean)
-                                                            .join(' · ') ||
-                                                            'Profile details unavailable'}
-                                                    </p>
-                                                    {record.patient
-                                                        .employee_number && (
-                                                        <p className="mt-1 font-mono text-xs font-bold text-moss-700">
-                                                            Company ID:{' '}
+                                                        <p className="font-mono text-xs font-bold text-moss-700">
                                                             {
                                                                 record.patient
-                                                                    .employee_number
+                                                                    .patient_reference_code
                                                             }
                                                         </p>
-                                                    )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-4 text-sm">
-                                            <p className="font-semibold text-slate-800">
-                                                {new Intl.DateTimeFormat(
-                                                    'en-PH',
-                                                    { dateStyle: 'medium' },
-                                                ).format(
-                                                    new Date(
-                                                        `${record.appointment_date}T00:00:00`,
-                                                    ),
-                                                )}
-                                            </p>
-                                            <p className="mt-1 font-mono text-xs font-bold text-moss-700">
-                                                {record.reference_code}
-                                            </p>
-                                            <div className="mt-2">
-                                                <StatusBadge
-                                                    status={record.status}
-                                                />
-                                            </div>
-                                            {record.company && (
-                                                <p className="mt-2 text-xs text-slate-500">
-                                                    {record.company}
+                                            </td>
+                                            <td className="px-5 py-4 text-sm">
+                                                <p className="font-semibold text-slate-800">
+                                                    {new Intl.DateTimeFormat(
+                                                        'en-PH',
+                                                        { dateStyle: 'medium' },
+                                                    ).format(
+                                                        new Date(
+                                                            `${record.appointment_date}T00:00:00`,
+                                                        ),
+                                                    )}
                                                 </p>
-                                            )}
-                                        </td>
-                                        <td className="max-w-64 px-5 py-4 text-sm text-slate-700">
-                                            {record.service_types.join(', ') ||
-                                                'General consultation'}
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <div className="flex max-w-md flex-wrap gap-2">
-                                                {documentDefinitions.map(
-                                                    ([key, label, section]) => {
-                                                        if (
-                                                            !record.documents[
-                                                                key
-                                                            ]
-                                                        )
-                                                            return null;
-                                                        const href =
-                                                            section ===
-                                                            'laboratory'
-                                                                ? `/clinical-forms/${record.id}/laboratory.pdf?preview=1`
-                                                                : section ===
-                                                                    'xray'
-                                                                  ? `/clinical-forms/${record.id}/xray.pdf?preview=1`
-                                                                  : section ===
-                                                                      'physical-exam'
-                                                                    ? `/clinical-forms/${record.id}/physical-exam.pdf?preview=1`
-                                                                    : `/clinical-forms/${record.id}/${section}.pdf?preview=1`;
-                                                        return (
-                                                            <a
-                                                                key={key}
-                                                                href={href}
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:border-moss-300 hover:bg-moss-50 hover:text-moss-800"
-                                                            >
-                                                                <FileHeart className="size-3.5" />
-                                                                {label}
-                                                            </a>
-                                                        );
-                                                    },
+                                                <p className="mt-1 font-mono text-xs font-bold text-moss-700">
+                                                    {record.reference_code}
+                                                </p>
+                                                <div className="mt-2">
+                                                    <StatusBadge
+                                                        status={record.status}
+                                                    />
+                                                </div>
+                                                {record.company && (
+                                                    <p className="mt-2 text-xs text-slate-500">
+                                                        {record.company}
+                                                    </p>
                                                 )}
-                                                {role === 'receptionist' ? (
-                                                    <span className="text-xs font-semibold text-slate-500">
-                                                        Clinical records
-                                                        restricted
+                                            </td>
+                                            <td className="max-w-64 px-5 py-4 text-sm text-slate-700">
+                                                {record.service_types.join(
+                                                    ', ',
+                                                ) || 'General consultation'}
+                                            </td>
+                                            <td className="px-5 py-4 text-right">
+                                                {record.manage_url ? (
+                                                    <Link
+                                                        href={record.manage_url}
+                                                        className="inline-flex items-center gap-1.5 rounded-xl bg-moss-700 px-3 py-2 text-xs font-bold text-white hover:bg-moss-800"
+                                                    >
+                                                        Manage record
+                                                        <ExternalLink className="size-3.5" />
+                                                    </Link>
+                                                ) : (
+                                                    <span className="text-xs font-semibold text-slate-400">
+                                                        Read only
                                                     </span>
-                                                ) : !Object.values(
-                                                      record.documents,
-                                                  ).some(Boolean) ? (
-                                                    <span className="text-xs text-slate-400">
-                                                        No forms recorded yet
-                                                    </span>
-                                                ) : null}
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-4 text-right">
-                                            {record.manage_url ? (
-                                                <Link
-                                                    href={record.manage_url}
-                                                    className="inline-flex items-center gap-1.5 rounded-xl bg-moss-700 px-3 py-2 text-xs font-bold text-white hover:bg-moss-800"
-                                                >
-                                                    Manage record
-                                                    <ExternalLink className="size-3.5" />
-                                                </Link>
-                                            ) : (
-                                                <span className="text-xs font-semibold text-slate-400">
-                                                    Read only
-                                                </span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                                 {!records.data.length && (
                                     <tr>
                                         <td
-                                            colSpan={5}
+                                            colSpan={4}
                                             className="px-6 py-14 text-center"
                                         >
                                             <FolderHeart className="mx-auto size-10 text-slate-300" />

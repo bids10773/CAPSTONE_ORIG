@@ -19,6 +19,7 @@ use App\Services\OnsiteEventWorkflowService;
 use App\Services\OnsiteStaffAvailabilityService;
 use App\Support\ClinicHours;
 use App\Support\SearchTerm;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -878,17 +879,23 @@ class AppointmentController extends Controller
         );
 
         if ($search) {
+            $appointmentReference = Appointment::parseReferenceCode($search);
+            preg_match('/^PAT0*(\d+)$/i', $search, $patientMatch);
+
             if ($bulkOnly) {
                 $statusSearch = SearchTerm::forLike(str_replace(' ', '_', strtolower($search)));
-                $query->where(function ($query) use ($likeSearch, $statusSearch) {
+                $query->where(function ($query) use ($appointmentReference, $likeSearch, $statusSearch) {
                     $query->whereHas('company', fn ($company) => $company->where('company_name', 'like', "%{$likeSearch}%"))
                         ->orWhere('company_name', 'like', "%{$likeSearch}%")
-                        ->orWhere('status', 'like', "%{$statusSearch}%");
+                        ->orWhere('status', 'like', "%{$statusSearch}%")
+                        ->orWhere(fn ($reference) => $reference
+                            ->where('appointments.id', (int) ($appointmentReference['id'] ?? 0))
+                            ->when($appointmentReference, fn ($typed) => $typed->whereIn('type', $appointmentReference['types'])));
                 });
             } else {
                 $nameTokens = array_map(SearchTerm::forLike(...), preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [$search]);
-                $query->where(function ($query) use ($search, $likeSearch, $nameTokens) {
-                    $query->whereHas('user', function ($user) use ($likeSearch, $nameTokens) {
+                $query->where(function ($query) use ($search, $appointmentReference, $patientMatch, $likeSearch, $nameTokens) {
+                    $query->whereHas('user', function ($user) use ($patientMatch, $likeSearch, $nameTokens) {
                         $user->where(function ($identity) use ($likeSearch, $nameTokens) {
                             $identity->where('email', 'like', "%{$likeSearch}%")
                                 ->orWhere('contact', 'like', "%{$likeSearch}%")
@@ -902,6 +909,9 @@ class AppointmentController extends Controller
                                     }
                                 });
                         });
+                        if (isset($patientMatch[1])) {
+                            $user->orWhereKey((int) $patientMatch[1]);
+                        }
                     })
                         ->orWhereHas('doctor', function ($doctor) use ($nameTokens) {
                             foreach ($nameTokens as $token) {
@@ -915,7 +925,14 @@ class AppointmentController extends Controller
                         ->orWhereHas('company', fn ($company) => $company->where('company_name', 'like', "%{$likeSearch}%"))
                         ->orWhere('company_name', 'like', "%{$likeSearch}%")
                         ->orWhere('referral_code', 'like', "%{$likeSearch}%")
-                        ->when(ctype_digit($search), fn ($appointment) => $appointment->orWhere('appointments.id', (int) $search));
+                        ->when(
+                            ctype_digit($search) || $appointmentReference,
+                            fn ($appointment) => $appointment->orWhere(fn ($reference) => $reference
+                                ->where('appointments.id', ctype_digit($search)
+                                    ? (int) $search
+                                    : (int) $appointmentReference['id'])
+                                ->when($appointmentReference, fn ($typed) => $typed->whereIn('type', $appointmentReference['types']))),
+                        );
                 });
             }
         }
@@ -1051,20 +1068,28 @@ class AppointmentController extends Controller
         ]);
 
         if ($search !== '') {
+            $appointmentReference = Appointment::parseReferenceCode($search);
+            preg_match('/^PAT0*(\d+)$/i', $search, $patientMatch);
             $nameTokens = array_map(SearchTerm::forLike(...), preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [$search]);
-            $query->whereHas('user', function ($patient) use ($likeSearch, $nameTokens): void {
-                $patient->where(function ($identity) use ($likeSearch, $nameTokens): void {
-                    $identity->where('email', 'like', "%{$likeSearch}%")
-                        ->orWhere('contact', 'like', "%{$likeSearch}%")
-                        ->orWhere(function ($name) use ($nameTokens): void {
-                            foreach ($nameTokens as $token) {
-                                $name->where(fn ($part) => $part
-                                    ->where('first_name', 'like', "%{$token}%")
-                                    ->orWhere('middle_name', 'like', "%{$token}%")
-                                    ->orWhere('last_name', 'like', "%{$token}%"));
-                            }
+            $query->where(function (Builder $match) use ($appointmentReference, $patientMatch, $likeSearch, $nameTokens): void {
+                $match->where(fn (Builder $reference) => $reference
+                    ->where('appointments.id', (int) ($appointmentReference['id'] ?? 0))
+                    ->when($appointmentReference, fn (Builder $typed) => $typed->whereIn('type', $appointmentReference['types'])))
+                    ->orWhereHas('user', function ($patient) use ($patientMatch, $likeSearch, $nameTokens): void {
+                        $patient->where(function ($identity) use ($patientMatch, $likeSearch, $nameTokens): void {
+                            $identity->where('id', (int) ($patientMatch[1] ?? 0))
+                                ->orWhere('email', 'like', "%{$likeSearch}%")
+                                ->orWhere('contact', 'like', "%{$likeSearch}%")
+                                ->orWhere(function ($name) use ($nameTokens): void {
+                                    foreach ($nameTokens as $token) {
+                                        $name->where(fn ($part) => $part
+                                            ->where('first_name', 'like', "%{$token}%")
+                                            ->orWhere('middle_name', 'like', "%{$token}%")
+                                            ->orWhere('last_name', 'like', "%{$token}%"));
+                                    }
+                                });
                         });
-                });
+                    });
             });
         }
 

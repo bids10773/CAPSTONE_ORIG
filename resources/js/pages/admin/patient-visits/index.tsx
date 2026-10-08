@@ -1,27 +1,21 @@
 import { Head } from '@inertiajs/react';
 import {
     Activity,
-    ArrowUpRight,
-    Calendar,
+    CalendarDays,
     CalendarRange,
-    Info,
     RefreshCw,
+    TrendingDown,
     TrendingUp,
     Users,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
-    Area,
-    AreaChart,
     Bar,
     BarChart,
     CartesianGrid,
-    Cell,
-    ComposedChart,
     Legend,
     Line,
-    Pie,
-    PieChart,
+    LineChart,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -37,225 +31,375 @@ import {
 } from '@/components/analytics/chart-ui';
 import AppLayout from '@/layouts/app-layout';
 
-type VisitRow = {
-    month: string;
-    walk_in: number;
-    online_appointments: number;
-    company_referrals: number;
-    ape: number;
-    follow_up: number;
-    emergency_walk_ins: number;
-    total_visits: number;
+type Frequency = 'daily' | 'monthly';
+type HistoryPoint = { period: string; count: number };
+type ForecastPoint = {
+    period: string;
+    estimated_patients: number;
+    lower_bound: number;
+    upper_bound: number;
 };
-
-type PatientVisitData = {
+type Trend = {
+    direction: 'increasing' | 'decreasing' | 'stable';
+    change_percentage: number;
+    current_average: number;
+    previous_average: number;
+};
+type Forecast = {
+    available: boolean;
+    reason?: string;
+    required_observations: number;
+    available_observations: number;
+    data: ForecastPoint[];
+    metrics: null | {
+        rmse: number;
+        trend_per_period: number;
+        projected_change_percentage: number;
+        direction: string;
+    };
+    parameters: null | {
+        method: string;
+        season_length: number;
+        horizon: number;
+    };
+};
+type PatientVolumeData = {
     meta: {
-        is_demo: boolean;
-        label: string;
-        period: string;
+        source: string;
+        definition: string;
+        method: string;
         disclaimer: string;
+        generated_at: string;
     };
-    filters: { year: number | null; horizon: number; years: number[] };
+    filters: {
+        start_date: string;
+        end_date: string;
+        daily_horizon: number;
+        monthly_horizon: number;
+    };
     summary: {
-        total_visits: number;
-        average_monthly_visits: number;
-        highest_month: string;
-        highest_month_visits: number;
-        lowest_month: string;
-        lowest_month_visits: number;
-        predicted_next_month: number;
-        percentage_change: number;
+        total_patients_today: number;
+        total_patients_this_month: number;
+        selected_period_visits: number;
+        selected_period_unique_patients: number;
     };
-    history: VisitRow[];
-    forecast: {
-        month: string;
-        predicted_cases: number;
-        lower_bound: number;
-        upper_bound: number;
-    }[];
-    model: {
-        metrics: {
-            trend: number;
-            direction: string;
-            growth_percentage: number;
-            rmse: number;
-        };
-        seasonal_pattern: { month_index: number; effect: number }[];
-    };
-    distribution: { key: string; name: string; value: number }[];
-    yearly_comparison: { year: number; total_visits: number }[];
-    category_forecasts: Record<
-        string,
-        {
-            label: string;
-            forecast: { month: string; predicted_cases: number }[];
-        }
-    >;
-    insights: string[];
+    daily: { history: HistoryPoint[]; trend: Trend; forecast: Forecast };
+    monthly: { history: HistoryPoint[]; trend: Trend; forecast: Forecast };
+    planning: { title: string; value: string; detail: string }[];
 };
 
-const COLORS = [
-    '#237a57',
-    '#2563eb',
-    '#7c3aed',
-    '#d97706',
-    '#e11d48',
-    '#0891b2',
-];
-const MONTHS = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-];
-const formatMonth = (value: string) =>
-    new Intl.DateTimeFormat('en', {
+const formatPeriod = (period: string, frequency: Frequency) => {
+    const value = frequency === 'monthly' ? `${period}-01` : period;
+    return new Intl.DateTimeFormat('en-PH', {
         month: 'short',
-        year: 'numeric',
+        day: frequency === 'daily' ? 'numeric' : undefined,
+        year: frequency === 'monthly' ? 'numeric' : undefined,
         timeZone: 'UTC',
-    }).format(new Date(`${value}-01T00:00:00Z`));
-const formatNumber = (value: number) => Math.round(value).toLocaleString();
+    }).format(new Date(`${value}T00:00:00Z`));
+};
 
-function DemoLabel() {
-    return (
-        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold tracking-wide text-amber-800 uppercase">
-            Sample Data
-        </span>
-    );
-}
-
-function Panel({
-    title,
-    subtitle,
-    children,
-}: {
-    title: string;
-    subtitle: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <ChartCard title={title} description={subtitle} action={<DemoLabel />}>
-            {children}
-        </ChartCard>
-    );
-}
-
-function Stat({
+function StatCard({
     label,
     value,
     detail,
     icon: Icon,
 }: {
     label: string;
-    value: string;
-    detail?: string;
+    value: number | string;
+    detail: string;
     icon: typeof Activity;
 }) {
     return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between">
-                <div className="min-w-0">
-                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
                         {label}
                     </p>
-                    <p className="mt-2 truncate text-xl font-bold text-slate-950">
-                        {value}
+                    <p className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">
+                        {typeof value === 'number'
+                            ? value.toLocaleString()
+                            : value}
                     </p>
-                    {detail && (
-                        <p className="mt-1 text-xs text-slate-500">{detail}</p>
-                    )}
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {detail}
+                    </p>
                 </div>
-                <span className="rounded-xl bg-moss-50 p-2.5 text-moss-700">
+                <span className="rounded-xl bg-emerald-50 p-3 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                     <Icon className="size-5" />
                 </span>
             </div>
-        </div>
+        </article>
+    );
+}
+
+function TrendBadge({ trend }: { trend: Trend }) {
+    const Icon = trend.direction === 'decreasing' ? TrendingDown : TrendingUp;
+    const tone =
+        trend.direction === 'increasing'
+            ? 'bg-emerald-50 text-emerald-700'
+            : trend.direction === 'decreasing'
+              ? 'bg-rose-50 text-rose-700'
+              : 'bg-slate-100 text-slate-600';
+
+    return (
+        <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${tone}`}
+        >
+            {trend.direction !== 'stable' && <Icon className="size-3.5" />}
+            {trend.direction === 'stable'
+                ? 'Stable'
+                : `${Math.abs(trend.change_percentage)}% ${trend.direction}`}
+        </span>
+    );
+}
+
+function HistoryChart({
+    title,
+    frequency,
+    history,
+    trend,
+}: {
+    title: string;
+    frequency: Frequency;
+    history: HistoryPoint[];
+    trend: Trend;
+}) {
+    const visible =
+        frequency === 'daily' ? history.slice(-90) : history.slice(-36);
+
+    return (
+        <ChartCard
+            title={title}
+            description={`Actual attended patient visits${history.length > visible.length ? ` · latest ${visible.length} periods shown` : ''}`}
+            action={<TrendBadge trend={trend} />}
+        >
+            {visible.length ? (
+                <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                            data={visible}
+                            margin={{ top: 8, right: 8, left: -18, bottom: 8 }}
+                        >
+                            <CartesianGrid {...chartGridProps} />
+                            <XAxis
+                                {...chartAxisProps}
+                                dataKey="period"
+                                minTickGap={28}
+                                tickFormatter={(value) =>
+                                    formatPeriod(value, frequency)
+                                }
+                            />
+                            <YAxis {...chartAxisProps} allowDecimals={false} />
+                            <Tooltip
+                                content={
+                                    <ChartTooltip
+                                        labelFormatter={(value) =>
+                                            formatPeriod(
+                                                String(value),
+                                                frequency,
+                                            )
+                                        }
+                                        unit="patients"
+                                    />
+                                }
+                            />
+                            <Bar
+                                dataKey="count"
+                                name="Actual patients"
+                                fill="#287454"
+                                radius={[5, 5, 0, 0]}
+                            />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            ) : (
+                <ChartEmptyState message="No attended patient visits were found in this date range." />
+            )}
+        </ChartCard>
+    );
+}
+
+function ForecastChart({
+    title,
+    frequency,
+    history,
+    forecast,
+}: {
+    title: string;
+    frequency: Frequency;
+    history: HistoryPoint[];
+    forecast: Forecast;
+}) {
+    const combined = useMemo(() => {
+        const actualLimit = frequency === 'daily' ? 30 : 18;
+        const firstForecastPeriod = forecast.data[0]?.period;
+        const actual = history
+            .filter(
+                (point) =>
+                    !firstForecastPeriod || point.period < firstForecastPeriod,
+            )
+            .slice(-actualLimit)
+            .map((point) => ({
+                period: point.period,
+                actual: point.count,
+                forecast: null as number | null,
+                lower: null as number | null,
+                upper: null as number | null,
+            }));
+        const bridge = actual.at(-1);
+        if (bridge) bridge.forecast = bridge.actual;
+
+        return [
+            ...actual,
+            ...forecast.data.map((point) => ({
+                period: point.period,
+                actual: null,
+                forecast: point.estimated_patients,
+                lower: point.lower_bound,
+                upper: point.upper_bound,
+            })),
+        ];
+    }, [forecast.data, frequency, history]);
+
+    return (
+        <ChartCard
+            title={title}
+            description="Actual patient counts compared with Holt-Winters estimates"
+            action={
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                    Estimate
+                </span>
+            }
+            footer={
+                forecast.available
+                    ? `Approximate 95% forecast range · RMSE ${forecast.metrics?.rmse ?? 0}`
+                    : undefined
+            }
+        >
+            {forecast.available ? (
+                <div className="h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                            data={combined}
+                            margin={{ top: 8, right: 14, left: -18, bottom: 8 }}
+                        >
+                            <CartesianGrid {...chartGridProps} />
+                            <XAxis
+                                {...chartAxisProps}
+                                dataKey="period"
+                                minTickGap={24}
+                                tickFormatter={(value) =>
+                                    formatPeriod(value, frequency)
+                                }
+                            />
+                            <YAxis {...chartAxisProps} allowDecimals={false} />
+                            <Tooltip
+                                content={
+                                    <ChartTooltip
+                                        labelFormatter={(value) =>
+                                            formatPeriod(
+                                                String(value),
+                                                frequency,
+                                            )
+                                        }
+                                        unit="patients"
+                                    />
+                                }
+                            />
+                            <Legend {...chartLegendProps} />
+                            <Line
+                                type="monotone"
+                                dataKey="actual"
+                                name="Actual"
+                                stroke="#287454"
+                                strokeWidth={3}
+                                dot={false}
+                                connectNulls={false}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="forecast"
+                                name="Forecast estimate"
+                                stroke="#2563eb"
+                                strokeWidth={3}
+                                strokeDasharray="7 5"
+                                dot={false}
+                                connectNulls={false}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="lower"
+                                name="Lower estimate"
+                                stroke="#93c5fd"
+                                strokeWidth={1.5}
+                                strokeDasharray="3 4"
+                                dot={false}
+                                connectNulls={false}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="upper"
+                                name="Upper estimate"
+                                stroke="#93c5fd"
+                                strokeWidth={1.5}
+                                strokeDasharray="3 4"
+                                dot={false}
+                                connectNulls={false}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            ) : (
+                <ChartEmptyState
+                    message={`${forecast.reason} Available: ${forecast.available_observations}; required: ${forecast.required_observations}.`}
+                />
+            )}
+        </ChartCard>
     );
 }
 
 export default function PatientVisitDashboard({
     initialData,
 }: {
-    initialData: PatientVisitData;
+    initialData: PatientVolumeData;
 }) {
     const [data, setData] = useState(initialData);
-    const [year, setYear] = useState(
-        initialData.filters.year?.toString() ?? '',
-    );
-    const [horizon, setHorizon] = useState(
-        initialData.filters.horizon.toString(),
-    );
+    const [frequency, setFrequency] = useState<Frequency>('daily');
+    const [filters, setFilters] = useState(initialData.filters);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const selected = data[frequency];
 
-    const combined = useMemo(() => {
-        const historical = data.history.map((row) => ({
-            month: row.month,
-            historical: row.total_visits,
-        }));
-        const last = historical.at(-1);
-        return [
-            ...historical,
-            ...data.forecast.map((row, index) => ({
-                month: row.month,
-                forecast: row.predicted_cases,
-                lower: row.lower_bound,
-                upper: row.upper_bound,
-                ...(index === 0 && last ? { historical: last.historical } : {}),
-            })),
-        ];
-    }, [data]);
-
-    const categoryComparison = useMemo(
-        () =>
-            data.forecast.map((point, index) => ({
-                month: point.month,
-                ...Object.fromEntries(
-                    Object.values(data.category_forecasts).map((category) => [
-                        category.label,
-                        category.forecast[index]?.predicted_cases,
-                    ]),
-                ),
-            })),
-        [data],
-    );
-
-    const apply = async () => {
+    const applyFilters = async () => {
         setLoading(true);
         setError('');
-        const params = new URLSearchParams({ horizon });
-        if (year) params.set('year', year);
+        const params = new URLSearchParams({
+            start_date: filters.start_date,
+            end_date: filters.end_date,
+            daily_horizon: String(filters.daily_horizon),
+            monthly_horizon: String(filters.monthly_horizon),
+        });
+
         try {
             const response = await fetch(
-                `/admin/api/patient-visits?${params}`,
+                `/analytics/api/patient-volume?${params}`,
                 {
                     headers: { Accept: 'application/json' },
                 },
             );
-            const body = await response.json();
-            if (!response.ok)
+            if (!response.ok) {
+                const body = await response.json();
                 throw new Error(
-                    body.message || 'Unable to load patient visit analytics.',
+                    body.message || 'Unable to load patient volume analytics.',
                 );
-            setData(body);
-            window.history.replaceState(
-                {},
-                '',
-                `/admin/patient-visits?${params}`,
-            );
-        } catch (exception) {
+            }
+            setData(await response.json());
+        } catch (reason) {
             setError(
-                exception instanceof Error
-                    ? exception.message
-                    : 'Unable to load analytics.',
+                reason instanceof Error
+                    ? reason.message
+                    : 'Unable to load patient volume analytics.',
             );
         } finally {
             setLoading(false);
@@ -264,475 +408,251 @@ export default function PatientVisitDashboard({
 
     return (
         <>
-            <Head title="Demo Patient Visit Forecast" />
-            <div className="min-h-screen bg-slate-50/70 p-4 md:p-6">
-                <div className="mx-auto max-w-[1600px] space-y-6">
-                    <header className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-                        <div>
-                            <div className="mb-2 flex flex-wrap gap-2">
-                                <span className="rounded-full bg-moss-100 px-3 py-1 text-xs font-bold text-moss-800">
-                                    Holt-Winters · Patient Visits
-                                </span>
-                                <DemoLabel />
-                            </div>
-                            <h1 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
-                                Patient visit forecast
-                            </h1>
-                            <p className="mt-1 text-sm text-slate-500">
-                                {data.meta.period} · Capacity-planning
-                                demonstration
-                            </p>
-                        </div>
-                        <div className="flex max-w-xl gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
-                            <Info className="mt-0.5 size-4 shrink-0" />
-                            <span>{data.meta.disclaimer}</span>
-                        </div>
+            <Head title="Patient Volume Analytics" />
+            <main className="min-h-screen bg-slate-50/70 px-4 py-6 sm:px-6 lg:px-8 dark:bg-slate-950">
+                <div className="mx-auto w-full max-w-[1800px] space-y-6">
+                    <header className="rounded-3xl bg-gradient-to-br from-[#173f31] to-[#2f7256] p-6 text-white shadow-lg sm:p-8">
+                        <p className="text-xs font-bold tracking-[0.2em] text-emerald-100 uppercase">
+                            Operations analytics
+                        </p>
+                        <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+                            Patient Volume Summaries & Forecasting
+                        </h1>
+                        <p className="mt-3 max-w-4xl text-sm leading-6 text-emerald-50 sm:text-base">
+                            Monitor actual attended visits and use Holt-Winters
+                            seasonal estimates to support staffing, scheduling,
+                            and resource planning.
+                        </p>
                     </header>
 
-                    <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_1fr_auto]">
-                        <label className="text-xs font-semibold text-slate-600">
-                            Historical year
-                            <select
-                                value={year}
-                                onChange={(event) =>
-                                    setYear(event.target.value)
-                                }
-                                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-                            >
-                                <option value="">All years (2021–2025)</option>
-                                {data.filters.years.map((value) => (
-                                    <option key={value}>{value}</option>
-                                ))}
-                            </select>
-                        </label>
-                        <label className="text-xs font-semibold text-slate-600">
-                            Forecast horizon
-                            <select
-                                value={horizon}
-                                onChange={(event) =>
-                                    setHorizon(event.target.value)
-                                }
-                                className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-                            >
-                                <option value="3">Next 3 months</option>
-                                <option value="6">Next 6 months</option>
-                                <option value="12">Next 12 months</option>
-                            </select>
-                        </label>
-                        <button
-                            onClick={apply}
-                            disabled={loading}
-                            className="mt-auto flex h-10 items-center justify-center gap-2 rounded-lg bg-moss-700 px-5 text-sm font-semibold text-white disabled:opacity-60"
-                        >
-                            <RefreshCw
-                                className={`size-4 ${loading ? 'animate-spin' : ''}`}
-                            />
-                            {loading ? 'Calculating…' : 'Apply filters'}
-                        </button>
-                    </div>
-
-                    {error && (
-                        <div
-                            role="alert"
-                            className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
-                        >
-                            {error}
+                    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-700 dark:bg-slate-900">
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                Start date
+                                <input
+                                    type="date"
+                                    value={filters.start_date}
+                                    max={filters.end_date}
+                                    onChange={(event) =>
+                                        setFilters({
+                                            ...filters,
+                                            start_date: event.target.value,
+                                        })
+                                    }
+                                    className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                                />
+                            </label>
+                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                End date
+                                <input
+                                    type="date"
+                                    value={filters.end_date}
+                                    min={filters.start_date}
+                                    max={new Date().toISOString().slice(0, 10)}
+                                    onChange={(event) =>
+                                        setFilters({
+                                            ...filters,
+                                            end_date: event.target.value,
+                                        })
+                                    }
+                                    className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                                />
+                            </label>
+                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                Daily forecast
+                                <select
+                                    value={filters.daily_horizon}
+                                    onChange={(event) =>
+                                        setFilters({
+                                            ...filters,
+                                            daily_horizon: Number(
+                                                event.target.value,
+                                            ),
+                                        })
+                                    }
+                                    className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                                >
+                                    {[7, 14, 30, 60].map((value) => (
+                                        <option key={value} value={value}>
+                                            {value} days
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                Monthly forecast
+                                <select
+                                    value={filters.monthly_horizon}
+                                    onChange={(event) =>
+                                        setFilters({
+                                            ...filters,
+                                            monthly_horizon: Number(
+                                                event.target.value,
+                                            ),
+                                        })
+                                    }
+                                    className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                                >
+                                    {[3, 6, 12].map((value) => (
+                                        <option key={value} value={value}>
+                                            {value} months
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <div className="flex items-end md:col-span-2">
+                                <button
+                                    type="button"
+                                    onClick={applyFilters}
+                                    disabled={loading}
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#287454] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1f6045] disabled:opacity-60"
+                                >
+                                    <RefreshCw
+                                        className={`size-4 ${loading ? 'animate-spin' : ''}`}
+                                    />
+                                    {loading ? 'Updating…' : 'Apply filters'}
+                                </button>
+                            </div>
                         </div>
-                    )}
+                        {error && (
+                            <p className="mt-3 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                                {error}
+                            </p>
+                        )}
+                    </section>
 
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-                        <Stat
-                            label="Total patient visits"
-                            value={formatNumber(data.summary.total_visits)}
-                            icon={Users}
+                    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <StatCard
+                            label="Total patients today"
+                            value={data.summary.total_patients_today}
+                            detail="Attended visits today"
+                            icon={CalendarDays}
                         />
-                        <Stat
-                            label="Monthly average"
-                            value={formatNumber(
-                                data.summary.average_monthly_visits,
-                            )}
-                            icon={Activity}
-                        />
-                        <Stat
-                            label="Highest month"
-                            value={formatMonth(data.summary.highest_month)}
-                            detail={`${formatNumber(data.summary.highest_month_visits)} visits`}
-                            icon={TrendingUp}
-                        />
-                        <Stat
-                            label="Lowest month"
-                            value={formatMonth(data.summary.lowest_month)}
-                            detail={`${formatNumber(data.summary.lowest_month_visits)} visits`}
-                            icon={Calendar}
-                        />
-                        <Stat
-                            label="Next month forecast"
-                            value={formatNumber(
-                                data.summary.predicted_next_month,
-                            )}
+                        <StatCard
+                            label="Patients this month"
+                            value={data.summary.total_patients_this_month}
+                            detail="Attended visits this calendar month"
                             icon={CalendarRange}
                         />
-                        <Stat
-                            label="Period change"
-                            value={`${data.summary.percentage_change > 0 ? '+' : ''}${data.summary.percentage_change}%`}
-                            icon={ArrowUpRight}
+                        <StatCard
+                            label="Selected period visits"
+                            value={data.summary.selected_period_visits}
+                            detail="One count per attended appointment"
+                            icon={Activity}
                         />
-                    </div>
+                        <StatCard
+                            label="Unique patients"
+                            value={data.summary.selected_period_unique_patients}
+                            detail="Within the selected date range"
+                            icon={Users}
+                        />
+                    </section>
 
-                    <Panel
-                        title="Historical vs forecast visits"
-                        subtitle="Monthly totals with approximate 95% forecast interval"
-                    >
-                        {combined.length ? (
-                            <div className="h-[280px] w-full sm:h-[330px] lg:h-[380px]">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <ComposedChart
-                                        data={combined}
-                                        margin={{ left: -15, right: 10 }}
-                                    >
-                                        <CartesianGrid {...chartGridProps} />
-                                        <XAxis
-                                            dataKey="month"
-                                            tickFormatter={formatMonth}
-                                            minTickGap={38}
-                                            {...chartAxisProps}
-                                        />
-                                        <YAxis
-                                            allowDecimals={false}
-                                            width={40}
-                                            {...chartAxisProps}
-                                        />
-                                        <Tooltip
-                                            content={
-                                                <ChartTooltip
-                                                    labelFormatter={(value) =>
-                                                        formatMonth(
-                                                            String(value),
-                                                        )
-                                                    }
-                                                    valueFormatter={(value) =>
-                                                        formatNumber(
-                                                            Number(value),
-                                                        )
-                                                    }
-                                                    unit="visits"
-                                                />
-                                            }
-                                            cursor={{
-                                                stroke: '#94a3b8',
-                                                strokeDasharray: '3 3',
-                                            }}
-                                        />
-                                        <Legend {...chartLegendProps} />
-                                        <Area
-                                            dataKey="upper"
-                                            name="95% upper bound"
-                                            stroke="none"
-                                            fill="#bfdbfe"
-                                            fillOpacity={0.45}
-                                        />
-                                        <Area
-                                            dataKey="lower"
-                                            name="95% lower bound"
-                                            stroke="none"
-                                            fill="white"
-                                            fillOpacity={1}
-                                        />
-                                        <Line
-                                            dataKey="historical"
-                                            name="Historical visits"
-                                            stroke="#237a57"
-                                            strokeWidth={2.5}
-                                            dot={false}
-                                            connectNulls
-                                        />
-                                        <Line
-                                            dataKey="forecast"
-                                            name="Forecast visits"
-                                            stroke="#2563eb"
-                                            strokeWidth={2.5}
-                                            strokeDasharray="7 4"
-                                            dot={{ r: 3 }}
-                                            connectNulls
-                                        />
-                                    </ComposedChart>
-                                </ResponsiveContainer>
-                            </div>
-                        ) : (
-                            <ChartEmptyState message="Not enough historical data to generate this forecast." />
-                        )}
-                    </Panel>
-
-                    <div className="grid gap-6 xl:grid-cols-2">
-                        <Panel
-                            title="Patient visit distribution"
-                            subtitle="Visit-type share for the selected historical period"
-                        >
-                            <ResponsiveContainer width="100%" height={300}>
-                                <PieChart>
-                                    <Pie
-                                        data={data.distribution}
-                                        dataKey="value"
-                                        nameKey="name"
-                                        innerRadius={62}
-                                        outerRadius={105}
-                                        paddingAngle={2}
-                                    >
-                                        {data.distribution.map(
-                                            (item, index) => (
-                                                <Cell
-                                                    key={item.key}
-                                                    fill={
-                                                        COLORS[
-                                                            index %
-                                                                COLORS.length
-                                                        ]
-                                                    }
-                                                />
-                                            ),
-                                        )}
-                                    </Pie>
-                                    <Tooltip
-                                        content={
-                                            <ChartTooltip
-                                                valueFormatter={(value) =>
-                                                    formatNumber(Number(value))
-                                                }
-                                                unit="visits"
-                                            />
-                                        }
-                                    />
-                                    <Legend {...chartLegendProps} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </Panel>
-
-                        <Panel
-                            title="Year-over-year comparison"
-                            subtitle="Annual patient visit totals"
-                        >
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={data.yearly_comparison}>
-                                    <CartesianGrid {...chartGridProps} />
-                                    <XAxis dataKey="year" {...chartAxisProps} />
-                                    <YAxis
-                                        allowDecimals={false}
-                                        {...chartAxisProps}
-                                    />
-                                    <Tooltip
-                                        content={
-                                            <ChartTooltip
-                                                valueFormatter={(value) =>
-                                                    formatNumber(Number(value))
-                                                }
-                                                unit="visits"
-                                            />
-                                        }
-                                        cursor={{ fill: '#f1f5f9' }}
-                                    />
-                                    <Bar
-                                        dataKey="total_visits"
-                                        name="Total visits"
-                                        fill="#237a57"
-                                        radius={[6, 6, 0, 0]}
-                                    />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </Panel>
-                    </div>
-
-                    <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-                        <Panel
-                            title="Visit type forecast comparison"
-                            subtitle="Projected demand by visit category"
-                        >
-                            <ResponsiveContainer width="100%" height={320}>
-                                <AreaChart data={categoryComparison}>
-                                    <CartesianGrid {...chartGridProps} />
-                                    <XAxis
-                                        dataKey="month"
-                                        tickFormatter={formatMonth}
-                                        {...chartAxisProps}
-                                    />
-                                    <YAxis
-                                        allowDecimals={false}
-                                        {...chartAxisProps}
-                                    />
-                                    <Tooltip
-                                        content={
-                                            <ChartTooltip
-                                                labelFormatter={(value) =>
-                                                    formatMonth(String(value))
-                                                }
-                                                valueFormatter={(value) =>
-                                                    formatNumber(Number(value))
-                                                }
-                                                unit="visits"
-                                            />
-                                        }
-                                    />
-                                    <Legend {...chartLegendProps} />
-                                    {Object.values(data.category_forecasts).map(
-                                        (category, index) => (
-                                            <Area
-                                                key={category.label}
-                                                dataKey={category.label}
-                                                stackId="visits"
-                                                stroke={
-                                                    COLORS[
-                                                        index % COLORS.length
-                                                    ]
-                                                }
-                                                fill={
-                                                    COLORS[
-                                                        index % COLORS.length
-                                                    ]
-                                                }
-                                                fillOpacity={0.65}
-                                            />
-                                        ),
-                                    )}
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </Panel>
-
-                        <Panel
-                            title="Seasonal trend analysis"
-                            subtitle="Monthly additive seasonal effect"
-                        >
-                            <ResponsiveContainer width="100%" height={320}>
-                                <BarChart data={data.model.seasonal_pattern}>
-                                    <CartesianGrid {...chartGridProps} />
-                                    <XAxis
-                                        dataKey="month_index"
-                                        tickFormatter={(value) =>
-                                            MONTHS[Number(value) - 1]
-                                        }
-                                        {...chartAxisProps}
-                                    />
-                                    <YAxis {...chartAxisProps} />
-                                    <Tooltip
-                                        content={
-                                            <ChartTooltip
-                                                labelFormatter={(value) =>
-                                                    MONTHS[Number(value) - 1]
-                                                }
-                                                valueFormatter={(value) =>
-                                                    Number(value).toFixed(1)
-                                                }
-                                            />
-                                        }
-                                        cursor={{ fill: '#f1f5f9' }}
-                                    />
-                                    <Bar
-                                        dataKey="effect"
-                                        name="Seasonal effect"
-                                        radius={[5, 5, 0, 0]}
-                                    >
-                                        {data.model.seasonal_pattern.map(
-                                            (item) => (
-                                                <Cell
-                                                    key={item.month_index}
-                                                    fill={
-                                                        item.effect >= 0
-                                                            ? '#237a57'
-                                                            : '#94a3b8'
-                                                    }
-                                                />
-                                            ),
-                                        )}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </Panel>
-                    </div>
-
-                    <Panel
-                        title="Forecast interpretation"
-                        subtitle="Automatically generated capacity-planning observations"
-                    >
-                        <div className="grid gap-3 md:grid-cols-2">
-                            {data.insights.map((insight) => (
-                                <div
-                                    key={insight}
-                                    className="flex gap-3 rounded-xl border border-moss-100 bg-moss-50 p-4 text-sm leading-6 text-moss-950"
-                                >
-                                    <TrendingUp className="mt-0.5 size-4 shrink-0 text-moss-700" />
-                                    {insight}
-                                </div>
-                            ))}
+                    <section className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-950 dark:text-white">
+                                Patient volume trends
+                            </h2>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                                Switch between daily and monthly summaries.
+                            </p>
                         </div>
-                    </Panel>
-
-                    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                        <div className="flex items-center justify-between border-b border-slate-100 p-5">
-                            <div>
-                                <h2 className="font-bold text-slate-950">
-                                    Monthly patient visit dataset
-                                </h2>
-                                <p className="text-xs text-slate-500">
-                                    Total excludes optional emergency walk-ins,
-                                    as specified.
-                                </p>
-                            </div>
-                            <DemoLabel />
-                        </div>
-                        <div className="max-h-[560px] overflow-auto">
-                            <table className="w-full min-w-[1000px] text-left text-sm">
-                                <thead className="sticky top-0 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
-                                    <tr>
-                                        <th className="px-4 py-3">Month</th>
-                                        <th className="px-4 py-3">Walk-in</th>
-                                        <th className="px-4 py-3">Online</th>
-                                        <th className="px-4 py-3">
-                                            Company referral
-                                        </th>
-                                        <th className="px-4 py-3">APE</th>
-                                        <th className="px-4 py-3">Follow-up</th>
-                                        <th className="px-4 py-3">Emergency</th>
-                                        <th className="px-4 py-3">
-                                            Total visits
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {data.history.map((row) => (
-                                        <tr
-                                            key={row.month}
-                                            className="hover:bg-slate-50"
-                                        >
-                                            <td className="px-4 py-3 font-semibold">
-                                                {formatMonth(row.month)}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {row.walk_in}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {row.online_appointments}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {row.company_referrals}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {row.ape}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {row.follow_up}
-                                            </td>
-                                            <td className="px-4 py-3 text-slate-500">
-                                                {row.emergency_walk_ins}
-                                            </td>
-                                            <td className="px-4 py-3 font-bold text-moss-800">
-                                                {row.total_visits}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                            {(['daily', 'monthly'] as Frequency[]).map(
+                                (value) => (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        onClick={() => setFrequency(value)}
+                                        className={`rounded-lg px-5 py-2 text-sm font-semibold capitalize ${frequency === value ? 'bg-[#287454] text-white' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+                                    >
+                                        {value}
+                                    </button>
+                                ),
+                            )}
                         </div>
                     </section>
+
+                    <HistoryChart
+                        title={`${frequency === 'daily' ? 'Daily' : 'Monthly'} Patient Volume Chart`}
+                        frequency={frequency}
+                        history={selected.history}
+                        trend={selected.trend}
+                    />
+
+                    <section className="grid gap-6 xl:grid-cols-2">
+                        <HistoryChart
+                            title="Daily Patient Volume"
+                            frequency="daily"
+                            history={data.daily.history}
+                            trend={data.daily.trend}
+                        />
+                        <HistoryChart
+                            title="Monthly Patient Volume"
+                            frequency="monthly"
+                            history={data.monthly.history}
+                            trend={data.monthly.trend}
+                        />
+                    </section>
+
+                    <section>
+                        <h2 className="text-xl font-bold text-slate-950 dark:text-white">
+                            Actual vs. forecasted patient volume
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                            Forecast lines are planning estimates and include an
+                            approximate uncertainty range.
+                        </p>
+                    </section>
+                    <section className="grid gap-6 xl:grid-cols-2">
+                        <ForecastChart
+                            title="Daily Patient Volume Forecast"
+                            frequency="daily"
+                            history={data.daily.history}
+                            forecast={data.daily.forecast}
+                        />
+                        <ForecastChart
+                            title="Monthly Patient Volume Forecast"
+                            frequency="monthly"
+                            history={data.monthly.history}
+                            forecast={data.monthly.forecast}
+                        />
+                    </section>
+
+                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900">
+                        <h2 className="text-lg font-bold text-slate-950 dark:text-white">
+                            Clinic planning support
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                            Use these estimates as one input to operational
+                            decisions.
+                        </p>
+                        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+                            {data.planning.map((item) => (
+                                <article
+                                    key={item.title}
+                                    className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800"
+                                >
+                                    <p className="text-xs font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                                        {item.title}
+                                    </p>
+                                    <p className="mt-2 text-xl font-bold text-slate-950 dark:text-white">
+                                        {item.value}
+                                    </p>
+                                    <p className="mt-2 text-sm leading-5 text-slate-600 dark:text-slate-300">
+                                        {item.detail}
+                                    </p>
+                                </article>
+                            ))}
+                        </div>
+                    </section>
+
+                    <aside className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100">
+                        <strong>{data.meta.source}.</strong>{' '}
+                        {data.meta.definition} {data.meta.disclaimer}
+                    </aside>
                 </div>
-            </div>
+            </main>
         </>
     );
 }

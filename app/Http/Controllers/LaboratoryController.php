@@ -59,7 +59,7 @@ class LaboratoryController extends Controller
     {
         Gate::authorize('viewLaboratory', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment);
-        $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'labResult.verifiedBy']);
+        $appointment->load(['user.patientProfile', 'company', 'doctor', 'medicalExamination', 'labResult.encodedBy', 'labResult.verifiedBy']);
         abort_unless($appointment->labResult, 404, 'No laboratory report exists for this appointment.');
         $workflow->auditDocumentAccess($appointment, $request->user(), 'laboratory', $request);
 
@@ -84,7 +84,7 @@ class LaboratoryController extends Controller
     ): HttpResponse {
         Gate::authorize('viewLaboratory', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment);
-        $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'labResult.verifiedBy']);
+        $appointment->load(['user.patientProfile', 'company', 'doctor', 'medicalExamination', 'labResult.encodedBy', 'labResult.verifiedBy']);
 
         $availableSections = $definitions->sectionsFor($appointment);
         abort_unless(array_key_exists($section, $availableSections), 404, 'This laboratory test was not selected for the appointment.');

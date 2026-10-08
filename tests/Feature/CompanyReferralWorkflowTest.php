@@ -169,6 +169,7 @@ test('new referred patient continues to scheduling automatically after registrat
         'birthdate' => '1995-05-10',
         'sex' => 'Female',
         'civil_status' => 'Single',
+        'address' => '123 Sample Street, Quezon City',
         'password' => 'Secure123!',
         'password_confirmation' => 'Secure123!',
     ])->assertRedirect($acceptUrl);

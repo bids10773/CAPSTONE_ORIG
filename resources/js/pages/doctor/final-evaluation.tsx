@@ -181,7 +181,7 @@ export default function FinalEvaluation({
                             />
                             {profile?.employee_number && (
                                 <Meta
-                                    label="Company ID"
+                                    label="Company Employee No."
                                     value={profile.employee_number}
                                 />
                             )}

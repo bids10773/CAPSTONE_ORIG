@@ -6,6 +6,7 @@ import {
     EyeOff,
     LockKeyhole,
     Mail,
+    MapPin,
     Phone,
     ShieldCheck,
     UserRound,
@@ -34,6 +35,7 @@ type ValidatedField =
     | 'last_name'
     | 'middle_name'
     | 'contact'
+    | 'address'
     | 'sex'
     | 'civil_status'
     | 'email';
@@ -57,6 +59,11 @@ function validateField(field: ValidatedField, value: string): string {
             return /^09\d{9}$/.test(value)
                 ? ''
                 : 'Enter an 11-digit Philippine mobile number starting with 09.';
+        case 'address':
+            if (!trimmed) return 'Address is required.';
+            return value.length > 1000
+                ? 'Address must be 1,000 characters or fewer.'
+                : '';
         case 'sex':
             return ['Male', 'Female'].includes(value)
                 ? ''
@@ -86,7 +93,9 @@ export default function Register() {
     >({});
 
     const validateOnBlur = (
-        event: FocusEvent<HTMLInputElement | HTMLSelectElement>,
+        event: FocusEvent<
+            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+        >,
     ) => {
         const field = event.currentTarget.name as ValidatedField;
         const value = event.currentTarget.value;
@@ -97,7 +106,9 @@ export default function Register() {
     };
 
     const validateOnChange = (
-        event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+        event: ChangeEvent<
+            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+        >,
     ) => {
         const field = event.currentTarget.name as ValidatedField;
         const value = event.currentTarget.value;
@@ -131,7 +142,7 @@ export default function Register() {
                 <Form
                     {...store.form()}
                     resetOnSuccess={['password', 'password_confirmation']}
-                    className="space-y-5"
+                    className="registration-form space-y-5"
                 >
                     {({ processing, errors }) => (
                         <>
@@ -318,6 +329,30 @@ export default function Register() {
                                     </div>
                                 </Field>
                             </div>
+
+                            <Field
+                                label="Address"
+                                error={fieldErrors.address || errors.address}
+                            >
+                                <div className="auth-input-wrap">
+                                    <MapPin className="auth-input-icon" />
+                                    <input
+                                        name="address"
+                                        type="text"
+                                        aria-invalid={Boolean(
+                                            fieldErrors.address ||
+                                            errors.address,
+                                        )}
+                                        onBlur={validateOnBlur}
+                                        onChange={validateOnChange}
+                                        required
+                                        maxLength={1000}
+                                        autoComplete="street-address"
+                                        placeholder="House number, street, barangay, city, and province"
+                                        className={`auth-input ${fieldErrors.address ? 'auth-input-error' : ''}`}
+                                    />
+                                </div>
+                            </Field>
 
                             <Field
                                 label="Email address"

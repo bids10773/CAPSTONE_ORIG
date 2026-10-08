@@ -7,7 +7,6 @@ import {
     Stethoscope,
     ArrowRight,
 } from 'lucide-react';
-import { DashboardClinicBadge } from '@/components/dashboard-clinic-badge';
 import { OnsiteOverviewCard } from '@/components/onsite-overview-card';
 import type { OnsiteOverview } from '@/components/onsite-overview-card';
 import AppLayout from '@/layouts/app-layout';
@@ -144,10 +143,7 @@ export default function DoctorDashboard(props: Props) {
                         <div className="absolute -top-20 -right-16 size-64 rounded-full bg-white/10 blur-3xl" />
                         <div className="absolute -bottom-24 left-1/3 size-48 rounded-full bg-moss-400/20 blur-3xl" />
                         <div className="relative grid min-h-52 gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-stretch">
-                            <div className="flex flex-col justify-between gap-8">
-                                <DashboardClinicBadge icon={Stethoscope}>
-                                    Doctor dashboard
-                                </DashboardClinicBadge>
+                            <div className="flex flex-col justify-end">
                                 <div>
                                     <p className="text-sm font-semibold text-moss-200">
                                         Welcome back

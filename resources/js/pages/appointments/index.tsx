@@ -17,6 +17,7 @@ import type { BreadcrumbItem } from '@/types';
 
 interface AppointmentData {
     id: number;
+    reference_code: string;
     appointment_date: string;
     start_time?: string | null;
     type: string;
@@ -190,7 +191,9 @@ export default function AppointmentsIndex() {
                             <thead>
                                 <tr className="border-b border-gray-200 bg-gray-50/50">
                                     <th className="px-6 py-4 text-xs font-bold tracking-wider whitespace-nowrap text-gray-500 uppercase">
-                                        Employee ID
+                                        {isCompanyView
+                                            ? 'Company Employee No.'
+                                            : 'Appointment'}
                                     </th>
                                     <th className="px-6 py-4 text-xs font-bold tracking-wider text-gray-500 uppercase">
                                         Patient Details
@@ -241,10 +244,13 @@ export default function AppointmentsIndex() {
                                                 >
                                                     <td className="px-6 py-4">
                                                         <span className="font-mono text-sm font-bold whitespace-nowrap text-moss-700">
-                                                            {appointment.user
-                                                                .patient_profile
-                                                                ?.employee_number ||
-                                                                '—'}
+                                                            {isCompanyView
+                                                                ? appointment
+                                                                      .user
+                                                                      .patient_profile
+                                                                      ?.employee_number ||
+                                                                  '—'
+                                                                : appointment.reference_code}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4">

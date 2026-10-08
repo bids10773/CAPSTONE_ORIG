@@ -71,16 +71,6 @@ export default function AdminSecurity({ securityAlerts, securityLogs }: Props) {
             <Head title="Booking & Security Alerts" />
 
             <main className="space-y-6 p-4 sm:p-6 lg:p-8">
-                <header>
-                    <h1 className="text-2xl font-semibold tracking-[-.03em] text-slate-950 dark:text-slate-100">
-                        Booking &amp; Security Alerts
-                    </h1>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                        Informational signals for administrator review; accounts
-                        are not automatically suspended.
-                    </p>
-                </header>
-
                 <section className="grid gap-4 md:grid-cols-3">
                     {signals.map((signal) => (
                         <article

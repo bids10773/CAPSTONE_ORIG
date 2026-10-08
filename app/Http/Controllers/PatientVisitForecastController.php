@@ -18,8 +18,10 @@ class PatientVisitForecastController extends Controller
 
         return Inertia::render('admin/patient-visits/index', [
             'initialData' => $this->service->dashboard(
-                isset($filters['year']) ? (int) $filters['year'] : null,
-                (int) ($filters['horizon'] ?? 12),
+                $filters['start_date'] ?? null,
+                $filters['end_date'] ?? null,
+                (int) ($filters['daily_horizon'] ?? 14),
+                (int) ($filters['monthly_horizon'] ?? 6),
             ),
         ]);
     }
@@ -29,8 +31,10 @@ class PatientVisitForecastController extends Controller
         $filters = $request->validated();
 
         return response()->json($this->service->dashboard(
-            isset($filters['year']) ? (int) $filters['year'] : null,
-            (int) ($filters['horizon'] ?? 12),
+            $filters['start_date'] ?? null,
+            $filters['end_date'] ?? null,
+            (int) ($filters['daily_horizon'] ?? 14),
+            (int) ($filters['monthly_horizon'] ?? 6),
         ));
     }
 }

@@ -1,6 +1,15 @@
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Plus, ToggleLeft, Clock, RefreshCw } from 'lucide-react';
+import {
+    Clock,
+    Pencil,
+    Plus,
+    RefreshCw,
+    Trash2,
+    UserCheck,
+    Users,
+    UserX,
+} from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
@@ -83,7 +92,7 @@ export default function StaffIndex() {
             <Head title="Staff Management" />
 
             <motion.div
-                className="mx-auto max-w-7xl space-y-4 p-6"
+                className="mx-auto w-full max-w-[1500px] space-y-4 p-4 sm:p-6 lg:p-8"
                 variants={container}
                 initial="hidden"
                 animate="show"
@@ -271,7 +280,7 @@ export default function StaffIndex() {
                                                     <td className="px-6 py-4 text-center">
                                                         <div
                                                             className={cn(
-                                                                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-tight uppercase',
+                                                                'status-text-only inline-flex items-center gap-1.5 text-[10px] font-bold tracking-tight uppercase',
                                                                 member.is_active
                                                                     ? 'border-green-200 bg-green-50 text-green-700'
                                                                     : 'border-red-200 bg-red-50 text-red-700',
@@ -334,17 +343,83 @@ export default function StaffIndex() {
                                                             <Button
                                                                 asChild
                                                                 variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8 text-amber-500 hover:bg-amber-100/50"
-                                                                title="Toggle Status"
+                                                                size="sm"
+                                                                className="h-8 gap-1.5 px-2.5 text-moss-700 hover:bg-moss-100/50"
                                                             >
                                                                 <Link
-                                                                    method="patch"
-                                                                    href={`/admin/staff/${member.id}/toggle-active`}
+                                                                    href={`/admin/staff/${member.id}/edit`}
                                                                 >
-                                                                    <ToggleLeft className="h-4 w-4" />
+                                                                    <Pencil className="h-3.5 w-3.5" />
+                                                                    Edit
                                                                 </Link>
                                                             </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className={cn(
+                                                                    'h-8 gap-1.5 px-2.5',
+                                                                    member.is_active
+                                                                        ? 'text-red-600 hover:bg-red-50 hover:text-red-700'
+                                                                        : 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700',
+                                                                )}
+                                                                title={
+                                                                    member.is_active
+                                                                        ? 'Deactivate account'
+                                                                        : 'Activate account'
+                                                                }
+                                                                onClick={() => {
+                                                                    const action =
+                                                                        member.is_active
+                                                                            ? 'deactivate'
+                                                                            : 'activate';
+
+                                                                    if (
+                                                                        confirm(
+                                                                            `Are you sure you want to ${action} ${member.first_name} ${member.last_name}'s account?`,
+                                                                        )
+                                                                    ) {
+                                                                        router.patch(
+                                                                            `/admin/staff/${member.id}/toggle-active`,
+                                                                        );
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {member.is_active ? (
+                                                                    <UserX className="h-4 w-4" />
+                                                                ) : (
+                                                                    <UserCheck className="h-4 w-4" />
+                                                                )}
+                                                                {member.is_active
+                                                                    ? 'Deactivate'
+                                                                    : 'Activate'}
+                                                            </Button>
+                                                            {member.id !==
+                                                                auth.user
+                                                                    .id && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-8 gap-1.5 px-2.5 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                                                    title="Delete account"
+                                                                    onClick={() => {
+                                                                        if (
+                                                                            confirm(
+                                                                                `Permanently delete ${member.first_name} ${member.last_name}'s account? This cannot be undone.`,
+                                                                            )
+                                                                        ) {
+                                                                            router.delete(
+                                                                                `/admin/staff/${member.id}`,
+                                                                                {
+                                                                                    preserveScroll: true,
+                                                                                },
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                    Delete
+                                                                </Button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </motion.tr>

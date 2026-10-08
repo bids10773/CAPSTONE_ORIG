@@ -162,7 +162,7 @@ export default function Attendance({
     function mark(employee: Employee, status: 'arrived' | 'absent') {
         if (
             !confirm(
-                `Verify employee: ${employeeName(employee)}\nEmployee No.: ${employee.user.patient_profile?.employee_number ?? 'Not provided'}\n\nMark this employee ${status.toUpperCase()}?`,
+                `Verify employee: ${employeeName(employee)}\nCompany Employee No.: ${employee.user.patient_profile?.employee_number ?? 'Not provided'}\n\nMark this employee ${status.toUpperCase()}?`,
             )
         ) {
             return;

@@ -289,7 +289,7 @@ test('PE PDF shows individual patient company fallback and each saved drug test 
         ->toContain('NOT REQUESTED');
 });
 
-test('released PE provides a combined PDF and its individual clinical forms', function () {
+test('released PE provides the consolidated medical examination PDF', function () {
     $appointment = delayedPeAppointment(['PE', 'CBC', 'X-Ray']);
     $examination = app(MedicalExaminationService::class)->forAppointment($appointment);
     $appointment->physicalExam()->create([
@@ -328,7 +328,7 @@ test('released PE provides a combined PDF and its individual clinical forms', fu
     ]);
 
     $this->actingAs($appointment->user)
-        ->get(route('clinical-forms.pe-section.pdf', [$appointment, 'medical-history']))
+        ->get(route('clinical-forms.physical-exam.pdf', $appointment))
         ->assertForbidden();
 
     $examination->update(['released_at' => now(), 'released_by' => $appointment->doctor_id]);
@@ -352,18 +352,12 @@ test('released PE provides a combined PDF and its individual clinical forms', fu
         ->toContain('Clear lung fields')
         ->toContain('Final Medical Evaluation');
 
-    foreach (['medical-history', 'physical-findings', 'final-evaluation'] as $section) {
-        $this->get(route('clinical-forms.pe-section.pdf', [$appointment, $section]))
-            ->assertOk()
-            ->assertHeader('content-type', 'application/pdf');
-    }
-
     $this->get(route('clinical-forms.physical-exam.pdf', $appointment))
         ->assertOk()
         ->assertHeader('content-type', 'application/pdf');
 
     $otherPatient = User::factory()->create(['role' => 'patient']);
     $this->actingAs($otherPatient)
-        ->get(route('clinical-forms.pe-section.pdf', [$appointment, 'medical-history']))
+        ->get(route('clinical-forms.physical-exam.pdf', $appointment))
         ->assertForbidden();
 });

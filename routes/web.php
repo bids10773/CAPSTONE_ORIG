@@ -146,6 +146,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/patients', [ReceptionistWalkInController::class, 'patients'])->name('patients.index');
         Route::get('/patients/search', [ReceptionistWalkInController::class, 'searchPatients'])->name('patients.search');
         Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
+        Route::get('/patient-records/{patient}', [StaffPatientRecordController::class, 'show'])->name('patient-records.show');
         Route::get('/onsite-events', [OnsiteEventController::class, 'receptionistIndex'])->name('onsite-events.index');
         Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'receptionistShow'])->name('onsite-events.show');
         Route::patch('/onsite-employees/{employee}/attendance', [OnsiteEventController::class, 'attendance'])->name('onsite-employees.attendance');
@@ -158,6 +159,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', DoctorDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor')->name('appointments');
         Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
+        Route::get('/patient-records/{patient}', [StaffPatientRecordController::class, 'show'])->name('patient-records.show');
         Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
         Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
         Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'doctorSubmit'])->name('doctor-availability.update');
@@ -176,6 +178,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', MedTechDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'medtech')->name('appointments');
         Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
+        Route::get('/patient-records/{patient}', [StaffPatientRecordController::class, 'show'])->name('patient-records.show');
         Route::get('/lab-results/{appointment}', [LaboratoryController::class, 'create'])->name('lab-results.create');
         Route::post('/lab-results/{appointment}', [LaboratoryController::class, 'store'])->name('lab-results.store');
     });
@@ -187,9 +190,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('clinical-forms.laboratory.section.pdf');
     Route::get('/clinical-forms/{appointment}/physical-exam.pdf', [ClinicalDocumentController::class, 'physicalExam'])
         ->name('clinical-forms.physical-exam.pdf');
-    Route::get('/clinical-forms/{appointment}/{section}.pdf', [ClinicalDocumentController::class, 'peSection'])
-        ->where('section', 'medical-history|physical-findings|final-evaluation')
-        ->name('clinical-forms.pe-section.pdf');
     Route::get('/clinical-forms/{appointment}/xray.pdf', [ClinicalDocumentController::class, 'xray'])
         ->name('clinical-forms.xray.pdf');
 
@@ -200,9 +200,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', RadTechDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'radtech')->name('appointments');
         Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
+        Route::get('/patient-records/{patient}', [StaffPatientRecordController::class, 'show'])->name('patient-records.show');
         Route::get('/xrays/{appointment}', [XrayController::class, 'create'])->name('xrays.create');
         Route::post('/xrays/{appointment}', [XrayController::class, 'store'])->name('xrays.store');
     });
+
+    Route::middleware('role:admin')
+        ->prefix('analytics')
+        ->name('analytics.')
+        ->group(function () {
+            Route::get('/patient-volume', [PatientVisitForecastController::class, 'index'])->name('patient-volume.index');
+            Route::get('/api/patient-volume', [PatientVisitForecastController::class, 'dashboard'])->name('patient-volume.dashboard');
+        });
 
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'adminShow'])->name('onsite-events.show');
@@ -224,6 +233,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/patients/{patient}', [AdminPatientController::class, 'show'])->name('patients.show');
         Route::patch('/staff/{staff}/toggle-active', [StaffController::class, 'toggleActive'])->name('staff.toggle-active');
         Route::post('/staff/{staff}/signature', [StaffController::class, 'uploadSignature'])->name('staff.signature');
+        Route::get('/staff/{staff}/license-document/{side?}', [StaffController::class, 'downloadLicenseDocument'])
+            ->where('side', 'front|back')
+            ->name('staff.license-document.download');
+        Route::patch('/staff/{staff}/license-verification', [StaffController::class, 'updateLicenseVerification'])->name('staff.license-verification.update');
         Route::post('/staff/{staff}/resend-credentials', [StaffController::class, 'resendCredentials'])
             ->middleware('throttle:6,1')
             ->name('staff.resend-credentials');
@@ -265,8 +278,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/api/forecast/resources', [ForecastController::class, 'resources'])->name('forecast.resources');
         Route::get('/api/forecast/weather', [ForecastController::class, 'weather'])->name('forecast.weather');
         Route::get('/api/forecast/weather-scenario', [ForecastController::class, 'weatherScenario'])->name('forecast.weather-scenario');
-        Route::get('/patient-visits', [PatientVisitForecastController::class, 'index'])->name('patient-visits.index');
-        Route::get('/api/patient-visits', [PatientVisitForecastController::class, 'dashboard'])->name('patient-visits.dashboard');
+        Route::redirect('/patient-visits', '/analytics/patient-volume')->name('patient-visits.index');
+        Route::redirect('/api/patient-visits', '/analytics/api/patient-volume')->name('patient-visits.dashboard');
         Route::get('/security', [AdminDashboardController::class, 'security'])->name('security');
         Route::get('/reports', [AdminDashboardController::class, 'reports'])->name('reports');
     });

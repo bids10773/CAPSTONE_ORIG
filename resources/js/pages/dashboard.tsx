@@ -7,12 +7,10 @@ import {
     Download,
     FileHeart,
     FlaskConical,
-    HeartPulse,
     Plus,
     ScanLine,
     Stethoscope,
 } from 'lucide-react';
-import { DashboardClinicBadge } from '@/components/dashboard-clinic-badge';
 import AppLayout from '@/layouts/app-layout';
 
 type Patient = { first_name?: string; name?: string };
@@ -208,18 +206,15 @@ export default function PatientDashboard() {
     return (
         <>
             <Head title="My Health" />
-            <div className="mx-auto max-w-6xl space-y-7 p-4 sm:p-6 lg:p-8">
-                <section className="relative overflow-hidden rounded-[2rem] bg-moss-800 px-6 py-8 text-white shadow-xl sm:px-9 sm:py-10">
+            <div className="mx-auto max-w-[1500px] space-y-4 px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6 lg:px-8 lg:pt-4 lg:pb-8">
+                <section className="relative overflow-hidden rounded-[2rem] bg-moss-800 px-6 py-6 text-white shadow-xl sm:px-8 sm:py-7">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(190,215,185,.25),transparent_25rem)]" />
-                    <div className="relative flex flex-col justify-between gap-7 md:flex-row md:items-end">
+                    <div className="relative flex flex-col justify-between gap-4 md:flex-row md:items-end">
                         <div>
-                            <DashboardClinicBadge icon={HeartPulse}>
-                                My health portal
-                            </DashboardClinicBadge>
-                            <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
+                            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
                                 Hello, {firstName}.
                             </h1>
-                            <p className="mt-3 max-w-xl text-sm leading-6 text-moss-100 sm:text-base">
+                            <p className="mt-2 max-w-xl text-sm leading-6 text-moss-100 sm:text-base">
                                 See what comes next in your clinic visit and
                                 access your completed medical documents.
                             </p>
@@ -234,7 +229,7 @@ export default function PatientDashboard() {
                 </section>
 
                 <section className="grid gap-4 lg:grid-cols-2">
-                    <article className="rounded-2xl border border-moss-100 bg-moss-50/70 p-5 sm:p-6">
+                    <article className="rounded-2xl border border-moss-100 bg-moss-50/70 p-4 sm:p-5">
                         <div className="flex items-start gap-3">
                             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-moss-700 shadow-sm">
                                 <CalendarDays className="size-5" />
@@ -252,7 +247,7 @@ export default function PatientDashboard() {
                         </div>
                     </article>
 
-                    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                         <div className="flex items-center justify-between gap-4">
                             <h2 className="font-black text-slate-950">
                                 Your Upcoming Appointments
