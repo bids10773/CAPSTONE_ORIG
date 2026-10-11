@@ -155,6 +155,7 @@ class StaffPatientRecordController extends Controller
                 'medicalExamination',
                 'labResult',
                 'xrayReport',
+                'vitalSigns.recordedBy:id,first_name,middle_name,last_name',
             ])
             ->where('type', '!=', 'company_bulk')
             ->whereHas('user', fn (Builder $query) => $query->where('role', 'patient'))
@@ -237,6 +238,14 @@ class StaffPatientRecordController extends Controller
                 'employee_number' => $profile?->employee_number,
             ],
             'company' => $appointment->company?->company_name ?? $appointment->company_name,
+            'vital_signs' => $appointment->vitalSigns->sortByDesc('measured_at')->map(fn ($vital): array => [
+                'id' => $vital->id, 'systolic_pressure' => $vital->systolic_pressure,
+                'diastolic_pressure' => $vital->diastolic_pressure, 'heart_rate' => $vital->heart_rate,
+                'respiratory_rate' => $vital->respiratory_rate, 'temperature' => $vital->temperature,
+                'oxygen_saturation' => $vital->oxygen_saturation, 'height' => $vital->height,
+                'weight' => $vital->weight, 'bmi' => $vital->bmi, 'measurement_type' => $vital->measurement_type,
+                'measured_at' => $vital->measured_at?->toIso8601String(), 'recorded_by' => $vital->recordedBy?->name,
+            ])->values()->all(),
             'documents' => [
                 'physical_exam' => $role === 'doctor' && $appointment->physicalExam !== null,
                 'laboratory' => in_array($role, ['doctor', 'medtech'], true) && $appointment->labResult !== null,

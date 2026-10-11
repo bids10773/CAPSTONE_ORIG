@@ -125,7 +125,7 @@ export function StatusBadge({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: reduceMotion ? 0 : 0.18 }}
             className={cn(
-                'status-text-only motion-status inline-flex text-xs font-bold capitalize',
+                'status-text-only motion-status inline-flex items-center justify-center text-xs font-bold',
                 config.className,
                 className,
             )}

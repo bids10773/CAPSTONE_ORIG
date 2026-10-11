@@ -256,6 +256,24 @@ class Appointment extends Model
         return $this->hasMany(MedicalDocument::class);
     }
 
+    public function vitalSigns(): HasMany
+    {
+        return $this->hasMany(VitalSign::class);
+    }
+
+    public function latestVitalSign(): HasOne
+    {
+        return $this->hasOne(VitalSign::class)->ofMany([
+            'measured_at' => 'max',
+            'id' => 'max',
+        ]);
+    }
+
+    public function vitalSignRecheckRequests(): HasMany
+    {
+        return $this->hasMany(VitalSignRecheckRequest::class);
+    }
+
     /**
      * Get status badge color.
      */

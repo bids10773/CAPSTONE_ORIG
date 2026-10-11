@@ -148,7 +148,8 @@ class ReceptionistWalkInController extends Controller
             ->map(fn ($appointments) => $appointments->pluck('id')->flip());
 
         $walkIns = Appointment::query()
-            ->with(['user.patientProfile', 'doctor:id,first_name,last_name'])
+            ->with(['user.patientProfile', 'doctor:id,first_name,last_name', 'latestVitalSign',
+                'vitalSignRecheckRequests' => fn ($query) => $query->where('status', 'pending')])
             ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
             ->whereHas('user', fn ($query) => $query->where('role', 'patient'))
             ->whereDate('appointment_date', today())
@@ -190,6 +191,12 @@ class ReceptionistWalkInController extends Controller
                 $appointment->setAttribute('queue_number', $prefix.'-'.str_pad((string) $position, 3, '0', STR_PAD_LEFT));
                 $appointment->setAttribute('arrival_status', $this->scheduling->arrivalStatus($appointment));
                 $appointment->setAttribute('grace_ends_at', $this->scheduling->graceEndsAt($appointment)?->toIso8601String());
+                $appointment->setAttribute('intake_status', ! $appointment->arrived_at
+                    ? 'waiting_check_in'
+                    : ($appointment->vitalSignRecheckRequests->isNotEmpty()
+                        ? 'recheck_requested'
+                        : ($appointment->latestVitalSign ? 'ready_for_consultation' : 'for_vital_signs')));
+                $appointment->setAttribute('vital_signs_url', route('receptionist.vital-signs.create', $appointment));
 
                 return $appointment;
             });

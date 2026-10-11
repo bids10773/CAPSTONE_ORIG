@@ -163,6 +163,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(MedicalDocument::class, 'patient_id');
     }
 
+    public function vitalSigns(): HasMany
+    {
+        return $this->hasMany(VitalSign::class, 'patient_id');
+    }
+
+    public function recordedVitalSigns(): HasMany
+    {
+        return $this->hasMany(VitalSign::class, 'recorded_by');
+    }
+
     public function attendingMedicalCertificates(): HasMany
     {
         return $this->hasMany(MedicalCertificate::class, 'attending_physician_id');

@@ -602,7 +602,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 function StatusBadge({ status }: { status: string }) {
     return (
         <span
-            className={`inline-flex text-xs font-bold whitespace-nowrap ${statusStyles[status] ?? 'text-slate-700 dark:text-slate-300'}`}
+            className={`status-text-only inline-flex text-xs font-bold whitespace-nowrap ${statusStyles[status] ?? 'text-slate-700 dark:text-slate-300'}`}
         >
             {appointmentStatusLabel(status)}
         </span>

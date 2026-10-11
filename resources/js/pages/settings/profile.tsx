@@ -317,17 +317,6 @@ export default function Profile({
                                                 title="Online"
                                             />
                                         </div>
-                                        <div>
-                                            <h2 className="font-semibold text-slate-950 dark:text-slate-100">
-                                                {user.name}
-                                            </h2>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400">
-                                                {user.email}
-                                            </p>
-                                            <p className="mt-1 text-xs font-medium text-moss-700 capitalize dark:text-moss-400">
-                                                {user.role ?? 'patient'}
-                                            </p>
-                                        </div>
                                     </div>
                                     {!editing && (
                                         <Button
@@ -924,18 +913,28 @@ export default function Profile({
                                     id="vital-signs"
                                     className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-border dark:bg-card"
                                 >
-                                    <div className="mb-3">
+                                    <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                                         <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">
                                             Vital Signs History
                                         </h2>
-                                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                            Your latest vital signs from the
-                                            most recently completed and released
-                                            physical examination.
-                                        </p>
+                                        {medicalRecords.length > 0 && (
+                                            <div className="flex flex-wrap items-baseline gap-x-2">
+                                                <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
+                                                    Latest vital signs
+                                                </span>
+                                                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                                    {friendlyDate(
+                                                        medicalRecords[0]
+                                                            ?.examination_date ??
+                                                            undefined,
+                                                    )}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     <PatientMedicalHistory
                                         records={medicalRecords}
+                                        showRecordHeader={false}
                                     />
                                 </section>
                             )}

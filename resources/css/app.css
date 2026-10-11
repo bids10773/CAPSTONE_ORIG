@@ -1385,15 +1385,25 @@
 }
 
 @layer components {
-    /* Statuses are intentionally plain colored text across every workspace. */
+    /* Compact outlined status pills shared across every workspace. */
     .status-text-only {
-        min-height: 0 !important;
+        min-height: 1.35rem !important;
         width: fit-content;
-        padding: 0 !important;
-        border: 0 !important;
-        border-radius: 0 !important;
+        padding: 0.15rem 0.55rem !important;
+        border: 1px solid currentColor !important;
+        border-radius: 9999px !important;
         background: transparent !important;
         box-shadow: none !important;
-        line-height: 1.25rem;
+        font-size: 0.625rem !important;
+        line-height: 0.85rem;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .status-text-only > svg {
+        display: none;
     }
 }

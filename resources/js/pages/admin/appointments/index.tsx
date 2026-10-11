@@ -336,7 +336,7 @@ function isPastAppointment(appointment: Appointment): boolean {
 function StatusBadge({ status }: { status: string }) {
     return (
         <span
-            className={`text-xs font-semibold whitespace-nowrap ${statusStyles[status] ?? 'text-slate-600 dark:text-slate-300'}`}
+            className={`status-text-only inline-flex text-xs font-semibold whitespace-nowrap ${statusStyles[status] ?? 'text-slate-600 dark:text-slate-300'}`}
         >
             {statusLabels[status] ?? status.replaceAll('_', ' ')}
         </span>

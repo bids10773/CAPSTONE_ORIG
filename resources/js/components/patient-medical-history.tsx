@@ -36,8 +36,10 @@ function formatDate(value: string | null): string {
 
 export function PatientMedicalHistory({
     records,
+    showRecordHeader = true,
 }: {
     records: PatientMedicalRecord[];
+    showRecordHeader?: boolean;
 }) {
     if (!records.length) {
         return (
@@ -61,14 +63,16 @@ export function PatientMedicalHistory({
                     key={record.id}
                     className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-border dark:bg-card"
                 >
-                    <div className="border-b border-slate-100 px-5 py-4 dark:border-border">
-                        <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                            Latest vital signs
-                        </p>
-                        <p className="mt-1 font-semibold text-slate-950 dark:text-slate-100">
-                            {formatDate(record.examination_date)}
-                        </p>
-                    </div>
+                    {showRecordHeader && (
+                        <div className="border-b border-slate-100 px-5 py-4 dark:border-border">
+                            <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                                Latest vital signs
+                            </p>
+                            <p className="mt-1 font-semibold text-slate-950 dark:text-slate-100">
+                                {formatDate(record.examination_date)}
+                            </p>
+                        </div>
+                    )}
 
                     {record.vital_signs && (
                         <div className="p-5 sm:p-6">

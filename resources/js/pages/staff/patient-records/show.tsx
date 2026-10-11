@@ -47,6 +47,21 @@ type RecordItem = {
     company?: string | null;
     reports: MedicalReportSet;
     manage_url?: string | null;
+    vital_signs: Array<{
+        id: number;
+        systolic_pressure: number | null;
+        diastolic_pressure: number | null;
+        heart_rate: number | null;
+        respiratory_rate: number | null;
+        temperature: string | null;
+        oxygen_saturation: string | null;
+        height: string | null;
+        weight: string | null;
+        bmi: string | null;
+        measurement_type: string;
+        measured_at: string;
+        recorded_by: string | null;
+    }>;
 };
 
 const roleHome: Record<Role, string> = {
@@ -223,6 +238,66 @@ export default function StaffPatientRecordShow({
                                     </div>
 
                                     <div className="mt-4 border-t border-slate-100 pt-4 dark:border-border">
+                                        <details
+                                            className="mb-4 rounded-xl bg-slate-50 p-3"
+                                            open={record.vital_signs.length > 0}
+                                        >
+                                            <summary className="cursor-pointer text-sm font-bold text-slate-800">
+                                                Vital Signs History (
+                                                {record.vital_signs.length})
+                                            </summary>
+                                            {record.vital_signs.length === 0 ? (
+                                                <p className="mt-2 text-sm text-slate-500">
+                                                    No vital signs recorded for
+                                                    this consultation.
+                                                </p>
+                                            ) : (
+                                                <div className="mt-3 space-y-2">
+                                                    {record.vital_signs.map(
+                                                        (vital) => (
+                                                            <p
+                                                                key={vital.id}
+                                                                className="rounded-lg bg-white p-3 text-xs text-slate-700"
+                                                            >
+                                                                {new Date(
+                                                                    vital.measured_at,
+                                                                ).toLocaleString()}{' '}
+                                                                · BP{' '}
+                                                                {vital.systolic_pressure ??
+                                                                    '—'}
+                                                                /
+                                                                {vital.diastolic_pressure ??
+                                                                    '—'}{' '}
+                                                                · Pulse{' '}
+                                                                {vital.heart_rate ??
+                                                                    '—'}{' '}
+                                                                bpm · RR{' '}
+                                                                {vital.respiratory_rate ??
+                                                                    '—'}{' '}
+                                                                · Temp{' '}
+                                                                {vital.temperature ??
+                                                                    '—'}
+                                                                °C · SpO₂{' '}
+                                                                {vital.oxygen_saturation ??
+                                                                    '—'}
+                                                                % ·{' '}
+                                                                {vital.height ??
+                                                                    '—'}{' '}
+                                                                cm ·{' '}
+                                                                {vital.weight ??
+                                                                    '—'}{' '}
+                                                                kg · BMI{' '}
+                                                                {vital.bmi ??
+                                                                    '—'}{' '}
+                                                                · Recorded by{' '}
+                                                                {vital.recorded_by ??
+                                                                    'Staff unavailable'}
+                                                            </p>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            )}
+                                        </details>
                                         {role === 'receptionist' ? (
                                             <p className="text-sm text-slate-500">
                                                 Clinical documents are

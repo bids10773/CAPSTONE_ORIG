@@ -5,6 +5,7 @@ import {
     Check,
     ClipboardCheck,
     History,
+    HeartPulse,
     Printer,
     Search,
     UserPlus,
@@ -40,6 +41,10 @@ type WalkIn = {
         | 'pending'
         | 'accepted'
         | 'arrived'
+        | 'for_diagnostics'
+        | 'for_xray'
+        | 'awaiting_xray_result'
+        | 'for_final_evaluation'
         | 'completed'
         | 'rejected'
         | 'cancelled';
@@ -63,12 +68,22 @@ type WalkIn = {
     notes?: string;
     user: Patient;
     doctor?: { id: number; first_name: string; last_name: string } | null;
+    intake_status?:
+        | 'waiting_check_in'
+        | 'for_vital_signs'
+        | 'ready_for_consultation'
+        | 'recheck_requested';
+    vital_signs_url?: string;
 };
 
 const statusLabels = {
     pending: 'Waiting',
     accepted: 'Scheduled',
     arrived: 'Processing',
+    for_diagnostics: 'Diagnostics',
+    for_xray: 'For X-ray',
+    awaiting_xray_result: 'Awaiting X-ray',
+    for_final_evaluation: 'Final evaluation',
     completed: 'Completed',
     rejected: 'Rejected',
     cancelled: 'Cancelled',
@@ -77,6 +92,10 @@ const statusStyles = {
     pending: 'bg-amber-50 text-amber-700',
     accepted: 'bg-sky-50 text-sky-700',
     arrived: 'bg-violet-50 text-violet-700',
+    for_diagnostics: 'bg-violet-50 text-violet-700',
+    for_xray: 'bg-sky-50 text-sky-700',
+    awaiting_xray_result: 'bg-amber-50 text-amber-700',
+    for_final_evaluation: 'bg-orange-50 text-orange-700',
     completed: 'bg-emerald-50 text-emerald-700',
     rejected: 'bg-rose-50 text-rose-700',
     cancelled: 'bg-rose-50 text-rose-700',
@@ -144,6 +163,11 @@ function isReady(walkIn: WalkIn, now: number): boolean {
 
 function queueStageLabel(walkIn: WalkIn, now: number): string {
     if (isReady(walkIn, now)) return 'Ready';
+    if (walkIn.intake_status === 'for_vital_signs') return 'For Vital Signs';
+    if (walkIn.intake_status === 'recheck_requested')
+        return 'Vital Signs Recheck';
+    if (walkIn.intake_status === 'ready_for_consultation')
+        return 'Ready for Consultation';
 
     return statusLabels[walkIn.status];
 }
@@ -155,7 +179,7 @@ function queueDetailLabel(walkIn: WalkIn, now: number): string {
     if (walkIn.status === 'accepted') {
         return `Scheduled for ${formatTime(walkIn.start_time)}`;
     }
-    if (walkIn.status === 'arrived') return 'Procedures in progress';
+    if (walkIn.status === 'arrived') return queueStageLabel(walkIn, now);
 
     return statusLabels[walkIn.status];
 }
@@ -1066,6 +1090,32 @@ export default function WalkIns({
                                                         </button>
                                                     </div>
                                                 </div>
+                                            )}
+                                        {walkIn.arrived_at &&
+                                            ![
+                                                'completed',
+                                                'cancelled',
+                                                'rejected',
+                                            ].includes(walkIn.status) &&
+                                            walkIn.vital_signs_url && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        router.visit(
+                                                            walkIn.vital_signs_url!,
+                                                        )
+                                                    }
+                                                    className="inline-flex items-center gap-1 rounded-xl border border-moss-300 px-3 py-2 text-xs font-bold text-moss-800 hover:bg-moss-50"
+                                                >
+                                                    <HeartPulse className="size-3.5" />
+                                                    {walkIn.intake_status ===
+                                                    'for_vital_signs'
+                                                        ? 'Record Vital Signs'
+                                                        : walkIn.intake_status ===
+                                                            'recheck_requested'
+                                                          ? 'Recheck Vital Signs'
+                                                          : 'Add New Measurement'}
+                                                </button>
                                             )}
                                     </div>
                                     <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:justify-end sm:self-start xl:col-start-4">

@@ -13,11 +13,11 @@ const labels: Record<string, string> = {
     voided: 'Void',
 };
 const colors: Record<string, string> = {
-    ready_for_pickup: 'bg-emerald-100 text-emerald-800',
-    released: 'bg-slate-200 text-slate-700',
-    approved: 'bg-blue-100 text-blue-800',
-    cancelled: 'bg-red-100 text-red-800',
-    voided: 'bg-red-100 text-red-800',
+    ready_for_pickup: 'text-emerald-700',
+    released: 'text-emerald-700',
+    approved: 'text-blue-700',
+    cancelled: 'text-red-600',
+    voided: 'text-red-600',
 };
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'My Medical Documents', href: '/my-medical-documents' },
@@ -77,7 +77,7 @@ export default function PatientDocuments({
                                         </p>
                                     </div>
                                     <span
-                                        className={`rounded-full px-3 py-1 text-xs font-semibold ${colors[doc.status] ?? 'bg-amber-100 text-amber-800'}`}
+                                        className={`status-text-only inline-flex text-xs font-bold ${colors[doc.status] ?? 'text-amber-600'}`}
                                     >
                                         {labels[doc.status] ?? doc.status}
                                     </span>

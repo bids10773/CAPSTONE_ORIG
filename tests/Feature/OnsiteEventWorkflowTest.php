@@ -425,6 +425,7 @@ test('onsite physical examination returns the doctor to the company onsite event
         'height' => 170, 'weight' => 65, 'blood_pressure' => '120/80',
         'pulse_rate' => 72, 'respiration_rate' => 16, 'temperature' => 36.7,
         'visual_acuity' => '20/20 OU', 'hearing' => 'Normal bilateral',
+        'vital_signs_override_reason' => 'Onsite urgent workflow proceeded before separate intake capture.',
     ];
     foreach (['head_scalp', 'eyes', 'ears', 'nose_sinuses', 'mouth_throat', 'neck_thyroid', 'chest_breast', 'lungs', 'heart', 'abdomen', 'back', 'anus', 'genitals', 'extremities', 'skin', 'dental'] as $part) {
         $payload["{$part}_status"] = 'normal';

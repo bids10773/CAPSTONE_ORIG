@@ -193,7 +193,9 @@ export default function DocumentManagement({
                                     </td>
                                     <td className="p-4">{doc.patient?.name}</td>
                                     <td className="p-4">
-                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">
+                                        <span
+                                            className={`status-text-only inline-flex text-xs font-bold ${doc.status === 'released' || doc.status === 'ready_for_pickup' ? 'text-emerald-700' : doc.status === 'cancelled' || doc.status === 'voided' ? 'text-red-600' : 'text-amber-600'}`}
+                                        >
                                             {label(doc.status)}
                                         </span>
                                     </td>

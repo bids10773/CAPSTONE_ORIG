@@ -34,6 +34,10 @@ interface Appointment {
         company_name: string;
     } | null;
     physical_exam?: any; // Changed to match common Laravel snake_case relationship naming
+    latest_vital_sign?: {
+        measured_at: string;
+        recorded_by?: { name: string };
+    } | null;
     medical_examination?: {
         finalized_at?: string | null;
         released_at?: string | null;
@@ -227,6 +231,16 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                 <StatusBadge
                                                     status={appointment.status}
                                                 />
+                                                {appointment.status ===
+                                                    'arrived' && (
+                                                    <p
+                                                        className={`mt-1 text-xs font-semibold ${appointment.latest_vital_sign ? 'text-emerald-700' : 'text-amber-700'}`}
+                                                    >
+                                                        {appointment.latest_vital_sign
+                                                            ? 'Vital signs recorded'
+                                                            : 'Awaiting vital signs'}
+                                                    </p>
+                                                )}
                                             </td>
                                             <td className="space-x-1 px-4 py-3 text-right whitespace-nowrap">
                                                 <Link

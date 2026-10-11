@@ -302,6 +302,13 @@ test('doctor records structured physical findings and final approval locks the e
     $appointment = clinicalAppointment(config('medical.pe_package.pre_employment_services'));
     $doctor = User::factory()->create(['role' => 'doctor']);
     $appointment->update(['doctor_id' => $doctor->id]);
+    $appointment->vitalSigns()->create([
+        'patient_id' => $appointment->user_id, 'recorded_by' => User::factory()->create(['role' => 'receptionist'])->id,
+        'submission_key' => (string) \Illuminate\Support\Str::uuid(), 'measurement_type' => 'initial',
+        'systolic_pressure' => 120, 'diastolic_pressure' => 80, 'heart_rate' => 72,
+        'respiratory_rate' => 16, 'temperature' => 36.7, 'oxygen_saturation' => 98,
+        'height' => 170, 'weight' => 65, 'bmi' => 22.5, 'measured_at' => now(),
+    ]);
     $parts = ['head_scalp', 'eyes', 'ears', 'nose_sinuses', 'mouth_throat', 'neck_thyroid', 'chest_breast', 'lungs', 'heart', 'abdomen', 'back', 'anus', 'genitals', 'extremities', 'skin', 'dental'];
     $payload = [
         'height' => 170, 'weight' => 65, 'blood_pressure' => '120 / 80',

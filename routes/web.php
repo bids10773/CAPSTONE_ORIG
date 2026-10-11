@@ -34,6 +34,7 @@ use App\Http\Controllers\ReceptionistWalkInController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StaffPatientRecordController;
 use App\Http\Controllers\TemporaryPasswordController;
+use App\Http\Controllers\VitalSignController;
 use App\Http\Controllers\XrayController;
 use App\Support\ClinicHours;
 use App\Support\RoleDashboard;
@@ -180,6 +181,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/walk-ins', [ReceptionistWalkInController::class, 'store'])->name('walk-ins.store');
         Route::patch('/walk-ins/{appointment}/doctor', [ReceptionistWalkInController::class, 'assignDoctor'])->name('walk-ins.doctor');
         Route::patch('/walk-ins/{appointment}/status', [ReceptionistWalkInController::class, 'updateStatus'])->name('walk-ins.status');
+        Route::get('/appointments/{appointment}/vital-signs', [VitalSignController::class, 'create'])->name('vital-signs.create');
+        Route::post('/appointments/{appointment}/vital-signs', [VitalSignController::class, 'store'])
+            ->middleware('throttle:30,1')->name('vital-signs.store');
         Route::get('/queue', [ReceptionistWalkInController::class, 'queue'])->name('queue.index');
         Route::get('/appointment-requests', [ReceptionistWalkInController::class, 'appointmentRequests'])->name('appointment-requests.index');
         Route::patch('/appointment-requests/{appointment}/approve', [ReceptionistWalkInController::class, 'approveAppointment'])->name('appointment-requests.approve');
@@ -209,6 +213,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'doctorSubmit'])->name('doctor-availability.update');
         Route::get('/physical-exam-form/{appointment}', [PhysicalExamController::class, 'create'])->name('physical-exams.create');
         Route::post('/physical-exam-form/{appointment}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
+        Route::post('/appointments/{appointment}/vital-signs/recheck', [VitalSignController::class, 'requestRecheck'])->name('vital-signs.recheck');
         Route::get('/final-evaluation/{appointment}', [PhysicalExamController::class, 'final'])->name('final-evaluation');
         Route::post('/final-evaluation/{appointment}', [PhysicalExamController::class, 'finalStore'])->name('final-evaluation.store');
         Route::post('/final-evaluation/{appointment}/drug-test', [\App\Http\Controllers\DoctorDiagnosticResultController::class, 'drugTest'])->name('diagnostics.drug-test.verify');

@@ -1424,7 +1424,7 @@ class AppointmentController extends Controller
         $date = (string) $request->get('date', '');
         $batch = (string) $request->get('batch', '');
 
-        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport', 'medicalExamination', 'serviceQueues'])
+        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport', 'medicalExamination', 'serviceQueues', 'latestVitalSign.recordedBy'])
             ->where('type', '!=', 'company_bulk')
             ->whereHas('user', fn ($user) => $user->where('role', 'patient'))
             ->where(function ($access) use ($request, $role) {
