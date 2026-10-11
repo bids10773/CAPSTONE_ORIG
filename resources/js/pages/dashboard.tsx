@@ -4,7 +4,6 @@ import {
     CalendarDays,
     Check,
     Clock3,
-    Download,
     FileHeart,
     FlaskConical,
     Plus,
@@ -37,6 +36,13 @@ type PageProps = {
     appointments?: Appointment[];
     upcomingAppointments?: Appointment[];
     stats?: { total?: number; completed?: number };
+    medicalDocuments?: Array<{
+        id: number;
+        title: string;
+        status: string;
+        requested_at: string | null;
+    }>;
+    releaseInstructions?: string;
 };
 
 const statusLabels: Record<string, string> = {
@@ -135,7 +141,7 @@ function nextAction(appointment?: Appointment) {
             for_final_evaluation:
                 'Your results are ready for the doctor’s final evaluation.',
             completed:
-                'Your visit is complete. You may view and download your medical forms.',
+                'Your visit is complete. Track document release status in My Medical Documents.',
         }[appointment.status] ??
         'Check your appointment details for the latest update.'
     );
@@ -185,24 +191,12 @@ export default function PatientDashboard() {
         appointments = [],
         upcomingAppointments = [],
         stats = {},
+        medicalDocuments = [],
+        releaseInstructions = '',
     } = usePage<PageProps>().props;
     const firstName =
         auth.user.first_name || auth.user.name?.split(' ')[0] || 'there';
     const nextAppointment = upcomingAppointments[0];
-    const records = appointments.filter((appointment) => {
-        const hasRecord =
-            appointment.physical_exam ||
-            appointment.lab_result ||
-            appointment.xray_report;
-        const isPe = appointment.service_types?.includes('PE');
-
-        return (
-            appointment.status === 'completed' &&
-            hasRecord &&
-            (!isPe || appointment.medical_workflow?.report_available)
-        );
-    });
-
     return (
         <>
             <Head title="My Health" />
@@ -216,7 +210,7 @@ export default function PatientDashboard() {
                             </h1>
                             <p className="mt-2 max-w-xl text-sm leading-6 text-moss-100 sm:text-base">
                                 See what comes next in your clinic visit and
-                                access your completed medical documents.
+                                track your medical document release status.
                             </p>
                         </div>
                         <Link
@@ -447,17 +441,27 @@ export default function PatientDashboard() {
                                 Medical documents
                             </p>
                             <h2 className="mt-1 text-xl font-black text-slate-950">
-                                Your available records
+                                Release status
                             </h2>
                         </div>
-                        <Download className="size-5 text-moss-700" />
+                        <FileHeart className="size-5 text-moss-700" />
                     </div>
-                    {records.length ? (
+                    <Link
+                        href="/my-medical-documents"
+                        className="mt-5 flex items-center justify-between rounded-2xl border border-moss-200 bg-moss-50 p-4 font-bold text-moss-900"
+                    >
+                        View My Medical Documents{' '}
+                        <ArrowRight className="size-4" />
+                    </Link>
+                    <p className="mt-3 text-sm text-slate-600">
+                        {releaseInstructions}
+                    </p>
+                    {medicalDocuments.length ? (
                         <div className="mt-5 grid gap-3 md:grid-cols-2">
-                            {records.slice(0, 4).map((appointment) => (
+                            {medicalDocuments.map((document) => (
                                 <Link
-                                    key={appointment.id}
-                                    href={`/appointments/${appointment.id}`}
+                                    key={document.id}
+                                    href="/my-medical-documents"
                                     className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-moss-300 hover:bg-moss-50"
                                 >
                                     <span className="rounded-xl bg-moss-100 p-2 text-moss-700">
@@ -465,18 +469,19 @@ export default function PatientDashboard() {
                                     </span>
                                     <span className="min-w-0 flex-1">
                                         <span className="block font-bold text-slate-900">
-                                            {appointment.reference_code}
+                                            {document.title}
                                         </span>
                                         <span className="block truncate text-xs text-slate-500">
-                                            {
-                                                dateDetails(
-                                                    appointment.appointment_date,
-                                                ).short
-                                            }{' '}
+                                            {document.requested_at
+                                                ? dateDetails(
+                                                      document.requested_at,
+                                                  ).short
+                                                : 'Date unavailable'}{' '}
                                             ·{' '}
-                                            {(
-                                                appointment.service_types ?? []
-                                            ).join(', ')}
+                                            {document.status.replaceAll(
+                                                '_',
+                                                ' ',
+                                            )}
                                         </span>
                                     </span>
                                     <ArrowRight className="size-4 text-slate-400" />
@@ -487,7 +492,7 @@ export default function PatientDashboard() {
                         <div className="mt-5 rounded-2xl bg-slate-50 p-7 text-center">
                             <FileHeart className="mx-auto size-8 text-slate-300" />
                             <p className="mt-3 text-sm font-semibold text-slate-600">
-                                Completed medical forms will appear here.
+                                Document status updates will appear here.
                             </p>
                         </div>
                     )}

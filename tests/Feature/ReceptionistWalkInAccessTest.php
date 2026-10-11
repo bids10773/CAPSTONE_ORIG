@@ -147,6 +147,8 @@ test('opening the receptionist queue releases a late online slot to the earliest
 });
 
 test('receptionist can register a new patient and create a walk-in appointment', function () {
+    $this->travelTo(Carbon::parse('2026-09-18 09:00:00', 'Asia/Manila'));
+
     $this->actingAs(receptionist())
         ->post(route('receptionist.walk-ins.store'), [
             'patient_type' => 'new',
@@ -197,6 +199,8 @@ test('receptionist cannot register an annual exam as a walk in', function () {
 });
 
 test('receptionist can find and queue an existing patient', function () {
+    $this->travelTo(Carbon::parse('2026-09-18 09:00:00', 'Asia/Manila'));
+
     $staff = receptionist();
     $patient = User::factory()->create([
         'role' => 'patient',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\MedicalCertificate;
 use App\Models\User;
 use App\Services\LaboratoryFormDefinition;
 use App\Support\SearchTerm;
@@ -107,8 +108,39 @@ class StaffPatientRecordController extends Controller
             'records' => $appointments
                 ->map(fn (Appointment $appointment): array => $this->recordPayload($appointment, $staff->role))
                 ->values(),
+            'medicalCertificates' => $this->medicalCertificatesFor($patient, $staff),
             'role' => $staff->role,
         ]);
+    }
+
+    private function medicalCertificatesFor(User $patient, User $staff): array
+    {
+        if (! in_array($staff->role, ['doctor', 'receptionist'], true)) {
+            return [];
+        }
+
+        return MedicalCertificate::query()
+            ->where('patient_id', $patient->id)
+            ->whereIn('status', ['issued', 'void'])
+            ->when($staff->role === 'doctor', fn (Builder $query) => $query
+                ->where('attending_physician_id', $staff->id))
+            ->latest('issued_at')
+            ->latest('id')
+            ->get()
+            ->map(fn (MedicalCertificate $certificate): array => [
+                'id' => $certificate->id,
+                'certificate_number' => $certificate->certificate_number,
+                'date_issued' => $certificate->date_issued?->toDateString(),
+                'physician_name' => $certificate->physician_name,
+                'status' => $certificate->status,
+                'issued_at' => $certificate->issued_at?->toIso8601String(),
+                'view_url' => route('medical-certificates.show', $certificate, false),
+                'pdf_url' => $certificate->status === 'issued'
+                    ? route('medical-certificates.pdf', $certificate, false)
+                    : null,
+            ])
+            ->values()
+            ->all();
     }
 
     private function recordsQuery(User $staff): Builder

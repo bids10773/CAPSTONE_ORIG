@@ -3,17 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\SecurityAudit;
 use App\Services\ClinicalFormWorkflowService;
 use App\Services\LaboratoryFormDefinition;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class ClinicalDocumentController extends Controller
 {
     public function physicalExam(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow, LaboratoryFormDefinition $definitions): Response
     {
+        $this->denyPatientAccess($request, $appointment, 'physical_exam');
         $this->loadPeAppointment($request, $appointment);
         $workflow->auditDocumentAccess($appointment, $request->user(), 'physical_exam', $request);
 
@@ -28,7 +31,7 @@ class ClinicalDocumentController extends Controller
         ])->setPaper('letter', 'portrait');
         $filename = "LMIC-Complete-PE-{$appointment->id}.pdf";
 
-        return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
+        return $this->secure($request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename));
     }
 
     private function loadPeAppointment(Request $request, Appointment $appointment): void
@@ -47,6 +50,7 @@ class ClinicalDocumentController extends Controller
 
     public function xray(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow): Response
     {
+        $this->denyPatientAccess($request, $appointment, 'xray');
         Gate::authorize('viewXray', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment);
         $appointment->load(['user.patientProfile', 'company', 'xrayReport.radiologist', 'xrayReport.verifiedBy']);
@@ -64,7 +68,30 @@ class ClinicalDocumentController extends Controller
         $pdf = Pdf::loadView('pdf.clinical-report', compact('appointment', 'title', 'fields'))->setPaper('letter');
         $filename = "LMIC-{$slug}-{$appointment->id}.pdf";
 
-        return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
+        return $this->secure($request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename));
+    }
+
+    private function denyPatientAccess(Request $request, Appointment $appointment, string $type): void
+    {
+        if ($request->user()?->role !== 'patient') {
+            return;
+        }
+        Log::warning('Blocked patient medical document access', ['user_id' => $request->user()->id,
+            'appointment_id' => $appointment->id, 'document_type' => $type, 'ip_address' => $request->ip()]);
+        SecurityAudit::create(['actor_id' => $request->user()->id, 'target_user_id' => $appointment->user_id,
+            'action' => 'patient_medical_document_access_denied', 'status' => 'denied',
+            'metadata' => ['appointment_id' => $appointment->id, 'document_type' => $type]]);
+        abort(403, 'Medical documents are released by authorized clinic personnel.');
+    }
+
+    private function secure(Response $response): Response
+    {
+        $response->headers->set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
+        $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+
+        return $response;
     }
 
     private function ensurePatientResultIsReleased(Request $request, Appointment $appointment): void

@@ -11,6 +11,8 @@ import {
 import { useState } from 'react';
 import { AdminPatientMedicalReports } from '@/components/admin-patient-medical-reports';
 import type { AdminPatientMedicalReport } from '@/components/admin-patient-medical-reports';
+import { PatientMedicalCertificates } from '@/components/patient-medical-certificates';
+import type { PatientMedicalCertificateSummary } from '@/components/patient-medical-certificates';
 import { PatientMedicalHistory } from '@/components/patient-medical-history';
 import type { PatientMedicalRecord } from '@/components/patient-medical-history';
 import AppLayout from '@/layouts/app-layout';
@@ -48,10 +50,12 @@ export default function AdminPatientMedicalProfile({
     patient,
     medicalRecords,
     medicalReports,
+    medicalCertificates,
 }: {
     patient: Patient;
     medicalRecords: PatientMedicalRecord[];
     medicalReports: AdminPatientMedicalReport[];
+    medicalCertificates: PatientMedicalCertificateSummary[];
 }) {
     const profile = patient.patient_profile;
     const [activeTab, setActiveTab] = useState<'details' | 'records'>(
@@ -176,6 +180,11 @@ export default function AdminPatientMedicalProfile({
                                 reports={medicalReports}
                             />
                         </section>
+
+                        <PatientMedicalCertificates
+                            certificates={medicalCertificates}
+                            createUrl={`/medical-certificates/create?patient_id=${patient.id}`}
+                        />
                     </>
                 )}
             </main>

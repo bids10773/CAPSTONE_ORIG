@@ -478,8 +478,18 @@ class AppointmentController extends Controller
         ]);
         $appointment->user?->patientProfile?->append('age');
 
+        $appointmentPayload = $appointment;
+        if ($request->user()->role === 'patient') {
+            $appointmentPayload = $appointment->toArray();
+            $appointmentPayload['medical_history'] = null;
+            $appointmentPayload['physical_exam'] = $appointment->physicalExam ? ['is_completed' => (bool) $appointment->physicalExam->is_completed] : null;
+            $appointmentPayload['lab_result'] = $appointment->labResult ? ['status' => $appointment->labResult->status, 'finalized_at' => $appointment->labResult->finalized_at] : null;
+            $appointmentPayload['xray_report'] = $appointment->xrayReport ? ['status' => $appointment->xrayReport->status, 'performed_at' => $appointment->xrayReport->performed_at, 'verified_at' => $appointment->xrayReport->verified_at] : null;
+            $appointmentPayload['medical_examination'] = $appointment->medicalExamination ? ['status' => $appointment->medicalExamination->status, 'finalized_at' => $appointment->medicalExamination->finalized_at, 'released_at' => $appointment->medicalExamination->released_at] : null;
+        }
+
         return Inertia::render('appointments/show', [
-            'appointment' => $appointment,
+            'appointment' => $appointmentPayload,
             'appointmentsIndexUrl' => match ($request->user()->role) {
                 'admin' => '/admin/appointments',
                 'doctor' => '/doctor/appointments',

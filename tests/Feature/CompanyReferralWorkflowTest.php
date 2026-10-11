@@ -203,9 +203,7 @@ test('referred employee can download the referral code from a signed invitation 
     $url = URL::temporarySignedRoute('company-referrals.download', $referral->valid_until->endOfDay(), ['token' => $token]);
 
     $this->get($url)
-        ->assertOk()
-        ->assertHeader('content-type', 'application/pdf')
-        ->assertHeader('content-disposition', 'attachment; filename=medical-referral-REF-DOWNLOAD-001.pdf');
+        ->assertForbidden();
     $this->get(route('company-referrals.download', ['token' => $token]))->assertForbidden();
 });
 

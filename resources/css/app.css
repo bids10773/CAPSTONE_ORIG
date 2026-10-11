@@ -842,6 +842,485 @@
     }
 }
 
+/* Medical certificate preview and browser-print surface. The document is kept
+   deliberately independent from dashboard theme rules so its paper output is
+   always a white, A4 clinic form. */
+.medical-certificate-preview-shell {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: #e8ece8;
+    box-shadow: var(--shadow-sm);
+}
+
+.medical-certificate-preview-toolbar {
+    display: flex;
+    min-height: 4rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+    padding: 0.75rem 1rem;
+}
+
+.medical-certificate-preview-toolbar p {
+    color: var(--foreground);
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.medical-certificate-preview-toolbar span {
+    display: block;
+    margin-top: 0.125rem;
+    color: var(--muted-foreground);
+    font-size: 0.6875rem;
+}
+
+.medical-certificate-zoom-controls {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--background);
+}
+
+.medical-certificate-zoom-controls button {
+    display: inline-flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted-foreground);
+}
+
+.medical-certificate-zoom-controls button:hover:not(:disabled) {
+    background: var(--accent);
+    color: var(--foreground);
+}
+
+.medical-certificate-zoom-controls button:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+}
+
+.medical-certificate-zoom-controls svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.medical-certificate-zoom-controls output {
+    min-width: 3.25rem;
+    border-right: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    color: var(--foreground);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 2.25rem;
+    text-align: center;
+}
+
+.medical-certificate-scroll-region {
+    min-height: 28rem;
+    max-height: calc(100vh - 10rem);
+    overflow: auto;
+    padding: 1.25rem;
+    outline: none;
+}
+
+.medical-certificate-scroll-region:focus-visible {
+    box-shadow: inset 0 0 0 3px rgb(107 143 113 / 0.28);
+}
+
+.medical-certificate-stage {
+    position: relative;
+    margin: 0 auto;
+    transition:
+        width 180ms ease-out,
+        height 180ms ease-out;
+}
+
+.medical-certificate-document {
+    position: relative;
+    display: flex;
+    width: 210mm;
+    height: 297mm;
+    box-sizing: border-box;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+    transform-origin: top left;
+    background: #ffffff !important;
+    box-shadow: 0 12px 40px rgb(15 23 42 / 0.18);
+    color: #111111 !important;
+    color-scheme: light;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11.25pt;
+    font-weight: 400;
+    line-height: 1.38;
+    padding: 12mm 16mm 11mm;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
+
+.medical-certificate-document :where(h1, h2, h3, p) {
+    margin: 0;
+}
+
+.medical-certificate-document > :not(.medical-certificate-watermark) {
+    position: relative;
+    z-index: 1;
+}
+
+.medical-certificate-watermark {
+    position: absolute;
+    top: 49%;
+    left: 50%;
+    z-index: 0;
+    width: 185mm;
+    transform: translate(-50%, -50%) rotate(-31deg);
+    color: rgb(71 85 105 / 0.105) !important;
+    font-size: 34pt;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.medical-certificate-watermark-pending_approval,
+.medical-certificate-watermark-changes_requested,
+.medical-certificate-watermark-approved {
+    color: rgb(146 64 14 / 0.09) !important;
+}
+
+.medical-certificate-watermark-void {
+    color: rgb(185 28 28 / 0.12) !important;
+    font-size: 54pt;
+}
+
+.medical-certificate-letterhead {
+    display: grid;
+    min-height: 20mm;
+    grid-template-columns: 31mm minmax(0, 1fr) 9mm;
+    align-items: center;
+    gap: 3mm;
+}
+
+.medical-certificate-logo {
+    width: 29mm;
+    height: 19mm;
+    object-fit: contain;
+}
+
+.medical-certificate-clinic-copy {
+    color: #5f9c68 !important;
+    text-align: center;
+}
+
+.medical-certificate-clinic-copy h1 {
+    color: #5f9c68 !important;
+    font-size: 22.5pt;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.medical-certificate-clinic-copy p {
+    margin-top: 1.4mm;
+    color: #5f9c68 !important;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 9pt;
+    line-height: 1.15;
+}
+
+.medical-certificate-header-rule {
+    height: 0.45mm;
+    margin-top: 2.5mm;
+    background: #222222 !important;
+}
+
+.medical-certificate-title-row {
+    display: grid;
+    min-height: 17mm;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 4mm;
+}
+
+.medical-certificate-title-row h2 {
+    color: #111111 !important;
+    font-size: 13.5pt;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: underline;
+    text-underline-offset: 1.2mm;
+}
+
+.medical-certificate-title-row p {
+    display: flex;
+    align-items: baseline;
+    justify-self: end;
+    color: #111111 !important;
+    font-size: 10.5pt;
+    white-space: nowrap;
+}
+
+.medical-certificate-inline-value {
+    display: inline-block;
+    min-height: 1.25em;
+    border-bottom: 0.35mm solid #222222;
+    color: #111111 !important;
+    padding: 0 1.5mm 0.2mm;
+    text-align: center;
+    vertical-align: baseline;
+}
+
+.medical-certificate-date-value {
+    width: 36mm;
+}
+
+.medical-certificate-copy {
+    color: #111111 !important;
+}
+
+.medical-certificate-greeting {
+    margin-top: 11mm !important;
+    margin-bottom: 8mm !important;
+}
+
+.medical-certificate-patient-statement p + p {
+    margin-top: 1.3mm;
+}
+
+.medical-certificate-salutation-value {
+    min-width: 13mm;
+}
+
+.medical-certificate-name-value {
+    min-width: 74mm;
+    max-width: 100mm;
+}
+
+.medical-certificate-short-value {
+    min-width: 12mm;
+}
+
+.medical-certificate-sex-value {
+    min-width: 23mm;
+}
+
+.medical-certificate-status-value {
+    min-width: 29mm;
+}
+
+.medical-certificate-ruled-text {
+    overflow: hidden;
+    box-sizing: border-box;
+    color: #111111 !important;
+    line-height: 7mm;
+    overflow-wrap: anywhere;
+    padding: 0 1mm;
+    white-space: pre-wrap;
+    background-image: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent calc(7mm - 0.3mm),
+        #222222 calc(7mm - 0.3mm),
+        #222222 7mm
+    ) !important;
+}
+
+.medical-certificate-reason-lines {
+    height: 21mm;
+    margin-top: 1.5mm;
+}
+
+.medical-certificate-findings-section {
+    margin-top: 5mm;
+}
+
+.medical-certificate-findings-section h3 {
+    color: #111111 !important;
+    font-size: 11.5pt;
+    font-style: italic;
+    font-weight: 500;
+}
+
+.medical-certificate-impression-lines {
+    height: 14mm;
+    margin-top: -5.3mm;
+    padding-left: 36mm;
+}
+
+.medical-certificate-recommendation-lines {
+    height: 21mm;
+    margin-top: -5.3mm;
+    padding-left: 48mm;
+}
+
+.medical-certificate-rest-line {
+    margin-top: 7mm !important;
+    white-space: nowrap;
+}
+
+.medical-certificate-rest-value {
+    min-width: 44mm;
+}
+
+.medical-certificate-issued-line {
+    max-width: 158mm;
+    margin-top: 8mm !important;
+}
+
+.medical-certificate-issued-day-value {
+    min-width: 33mm;
+}
+
+.medical-certificate-issued-month-value {
+    min-width: 45mm;
+}
+
+.medical-certificate-signature-block {
+    position: absolute !important;
+    right: 16mm;
+    bottom: 30mm;
+    width: 77mm;
+    color: #111111 !important;
+    font-size: 10.5pt;
+    line-height: 1.3;
+    text-align: center;
+}
+
+.medical-certificate-signature-line {
+    position: relative;
+    height: 19mm;
+    border-bottom: 0.35mm solid #222222;
+}
+
+.medical-certificate-signature-line strong {
+    position: absolute;
+    right: 0;
+    bottom: 0.4mm;
+    font-weight: 500;
+}
+
+.medical-certificate-signature-name {
+    overflow: hidden;
+    margin-top: 1mm;
+    font-size: 9.5pt;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.medical-certificate-signature-role {
+    font-weight: 700;
+}
+
+.medical-certificate-license-value {
+    display: inline-block;
+    min-width: 42mm;
+    border-bottom: 0.35mm solid #222222;
+    padding: 0 1mm 0.2mm;
+    text-align: center;
+}
+
+.medical-certificate-footer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 6mm;
+    margin-top: auto;
+    color: #111111 !important;
+    font-size: 10.25pt;
+}
+
+.medical-certificate-footer strong {
+    font-style: italic;
+}
+
+@media (max-width: 639px) {
+    .medical-certificate-preview-toolbar {
+        align-items: flex-start;
+    }
+
+    .medical-certificate-preview-toolbar span {
+        display: none;
+    }
+
+    .medical-certificate-scroll-region {
+        min-height: 24rem;
+        padding: 0.75rem;
+    }
+}
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 0;
+    }
+
+    html:has(.medical-certificate-print-area),
+    body:has(.medical-certificate-print-area) {
+        width: 210mm !important;
+        min-width: 210mm !important;
+        height: 297mm !important;
+        min-height: 297mm !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        background: #ffffff !important;
+    }
+
+    body:has(.medical-certificate-print-area) * {
+        visibility: hidden !important;
+    }
+
+    body:has(.medical-certificate-print-area) .medical-certificate-print-area,
+    body:has(.medical-certificate-print-area)
+        .medical-certificate-print-area
+        * {
+        visibility: visible !important;
+    }
+
+    body:has(.medical-certificate-print-area) .certificate-no-print {
+        display: none !important;
+    }
+
+    body:has(.medical-certificate-print-area)
+        .medical-certificate-preview-shell,
+    body:has(.medical-certificate-print-area)
+        .medical-certificate-scroll-region,
+    body:has(.medical-certificate-print-area) .medical-certificate-stage {
+        width: 210mm !important;
+        height: 297mm !important;
+        max-height: none !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    body:has(.medical-certificate-print-area) .medical-certificate-print-area {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        margin: 0 !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

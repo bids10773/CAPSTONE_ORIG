@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MedicalCertificate;
 use App\Models\User;
 use App\Services\PatientMedicalProfileService;
 use Illuminate\Http\Request;
@@ -174,6 +175,31 @@ class AdminPatientController extends Controller
             'patient' => $patient,
             'medicalRecords' => $medicalProfile->recordsFor($patient, releasedOnly: false),
             'medicalReports' => $medicalProfile->adminReportsFor($patient),
+            'medicalCertificates' => $this->medicalCertificatesFor($patient),
         ]);
+    }
+
+    private function medicalCertificatesFor(User $patient): array
+    {
+        return MedicalCertificate::query()
+            ->where('patient_id', $patient->id)
+            ->whereIn('status', ['issued', 'void'])
+            ->latest('issued_at')
+            ->latest('id')
+            ->get()
+            ->map(fn (MedicalCertificate $certificate): array => [
+                'id' => $certificate->id,
+                'certificate_number' => $certificate->certificate_number,
+                'date_issued' => $certificate->date_issued?->toDateString(),
+                'physician_name' => $certificate->physician_name,
+                'status' => $certificate->status,
+                'issued_at' => $certificate->issued_at?->toIso8601String(),
+                'view_url' => route('medical-certificates.show', $certificate, false),
+                'pdf_url' => $certificate->status === 'issued'
+                    ? route('medical-certificates.pdf', $certificate, false)
+                    : null,
+            ])
+            ->values()
+            ->all();
     }
 }

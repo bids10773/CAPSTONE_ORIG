@@ -163,8 +163,7 @@ test('patient cannot download PE records until finalized report is explicitly re
 
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.physical-exam.pdf', $appointment))
-        ->assertOk()
-        ->assertHeader('content-type', 'application/pdf');
+        ->assertForbidden();
 });
 
 test('finalized unreleased PE remains visible in the assigned doctor release queue', function () {
@@ -353,8 +352,7 @@ test('released PE provides the consolidated medical examination PDF', function (
         ->toContain('Final Medical Evaluation');
 
     $this->get(route('clinical-forms.physical-exam.pdf', $appointment))
-        ->assertOk()
-        ->assertHeader('content-type', 'application/pdf');
+        ->assertForbidden();
 
     $otherPatient = User::factory()->create(['role' => 'patient']);
     $this->actingAs($otherPatient)

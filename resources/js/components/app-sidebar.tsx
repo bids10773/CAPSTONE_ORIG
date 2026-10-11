@@ -17,6 +17,8 @@ import {
     ListOrdered,
     MessagesSquare,
     FolderHeart,
+    FileBadge2,
+    FileText,
     DatabaseBackup,
     Lock,
     Unlock,
@@ -84,6 +86,16 @@ const navigation: Record<string, Item[]> = {
                     icon: UsersRound,
                 },
             ],
+        },
+        {
+            title: 'Medical Certificates',
+            href: '/medical-certificates',
+            icon: FileBadge2,
+        },
+        {
+            title: 'Document Management',
+            href: '/medical-documents',
+            icon: FileText,
         },
         {
             title: 'Management',
@@ -167,6 +179,16 @@ const navigation: Record<string, Item[]> = {
             icon: FolderHeart,
         },
         {
+            title: 'Medical Certificates',
+            href: '/medical-certificates',
+            icon: FileBadge2,
+        },
+        {
+            title: 'Document Management',
+            href: '/medical-documents',
+            icon: FileText,
+        },
+        {
             title: 'Availability',
             href: '/doctor/doctor-availability',
             icon: Stethoscope,
@@ -193,6 +215,11 @@ const navigation: Record<string, Item[]> = {
             href: '/medtech/patient-records',
             icon: FolderHeart,
         },
+        {
+            title: 'Document Management',
+            href: '/medical-documents',
+            icon: FileText,
+        },
     ],
     radtech: [
         {
@@ -214,6 +241,11 @@ const navigation: Record<string, Item[]> = {
             title: 'Patient Records',
             href: '/radtech/patient-records',
             icon: FolderHeart,
+        },
+        {
+            title: 'Document Management',
+            href: '/medical-documents',
+            icon: FileText,
         },
     ],
     receptionist: [
@@ -242,6 +274,16 @@ const navigation: Record<string, Item[]> = {
             href: '/receptionist/patient-records',
             icon: FolderHeart,
         },
+        {
+            title: 'Medical Certificates',
+            href: '/medical-certificates',
+            icon: FileBadge2,
+        },
+        {
+            title: 'Document Management',
+            href: '/medical-documents',
+            icon: FileText,
+        },
     ],
     company: [
         {
@@ -265,6 +307,11 @@ const navigation: Record<string, Item[]> = {
             icon: LayoutDashboard,
         },
         { title: 'Appointments', href: '/appointments', icon: CalendarDays },
+        {
+            title: 'My Medical Documents',
+            href: '/my-medical-documents',
+            icon: FileText,
+        },
         { title: 'Inquiries', href: '/my-inquiries', icon: MessagesSquare },
         { title: 'Settings', href: '/settings/profile', icon: Settings },
     ],

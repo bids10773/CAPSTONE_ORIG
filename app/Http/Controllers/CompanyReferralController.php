@@ -55,11 +55,7 @@ class CompanyReferralController extends Controller
                 $referral->valid_until->endOfDay(),
                 ['token' => $token],
             ),
-            'downloadUrl' => URL::temporarySignedRoute(
-                'company-referrals.download',
-                $referral->valid_until->endOfDay(),
-                ['token' => $token],
-            ),
+            'downloadUrl' => null,
             'authenticated' => $request->user()?->role === 'patient',
         ]);
     }
@@ -67,6 +63,14 @@ class CompanyReferralController extends Controller
     public function download(Request $request, string $token): HttpResponse
     {
         $referral = $this->fromToken($token)->load('company:id,company_name');
+        $allowed = $request->user()?->role === 'admin'
+            || ($request->user()?->role === 'company' && $request->user()->company_id === $referral->company_id);
+        if (! $allowed) {
+            SecurityAudit::create(['actor_id' => $request->user()?->id, 'target_user_id' => $referral->patient_id,
+                'action' => 'company_referral_download_denied', 'status' => 'denied',
+                'metadata' => ['referral_id' => $referral->id]]);
+            abort(403, 'Medical documents are released by authorized clinic personnel.');
+        }
         SecurityAudit::create([
             'actor_id' => $request->user()?->id,
             'target_user_id' => $referral->patient_id,
@@ -75,8 +79,12 @@ class CompanyReferralController extends Controller
             'metadata' => ['referral_id' => $referral->id, 'referral_number' => $referral->referral_number],
         ]);
 
-        return Pdf::loadView('pdf.company-referral', ['referral' => $referral])
+        $response = Pdf::loadView('pdf.company-referral', ['referral' => $referral])
             ->download('medical-referral-'.$referral->referral_number.'.pdf');
+        $response->headers->set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+
+        return $response;
     }
 
     public function accept(Request $request, string $token): RedirectResponse

@@ -246,6 +246,16 @@ class Appointment extends Model
         return $this->hasOne(MedicalHistory::class, 'appointment_id');
     }
 
+    public function medicalCertificates(): HasMany
+    {
+        return $this->hasMany(MedicalCertificate::class);
+    }
+
+    public function medicalDocuments(): HasMany
+    {
+        return $this->hasMany(MedicalDocument::class);
+    }
+
     /**
      * Get status badge color.
      */

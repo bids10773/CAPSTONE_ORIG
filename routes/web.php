@@ -20,6 +20,8 @@ use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\LaboratoryController;
+use App\Http\Controllers\MedicalCertificateController;
+use App\Http\Controllers\MedicalDocumentController;
 use App\Http\Controllers\MedTechDashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnsiteEventController;
@@ -84,6 +86,18 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/my-medical-documents', [MedicalDocumentController::class, 'patientIndex'])
+        ->middleware(['role:patient', 'profile.complete'])->name('medical-documents.patient');
+
+    Route::middleware('role:admin,receptionist,doctor,medtech,radtech')
+        ->prefix('medical-documents')->name('medical-documents.')->controller(MedicalDocumentController::class)
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::patch('/{medicalDocument}/ready', 'markReady')->name('ready');
+            Route::post('/{medicalDocument}/release', 'release')->name('release');
+            Route::patch('/{medicalDocument}/release/reverse', 'reverseRelease')->name('release.reverse');
+        });
+
     Route::get('/my-inquiries', [InquiryController::class, 'index'])->name('inquiries.index');
     Route::get('/complete-patient-profile', [PatientProfileCompletionController::class, 'edit'])
         ->name('patient-profile.complete');
@@ -101,6 +115,33 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/api/global-search', GlobalSearchController::class)
         ->middleware('throttle:30,1')
         ->name('api.global-search');
+
+    Route::middleware('role:admin,receptionist,doctor')
+        ->prefix('medical-certificates')
+        ->name('medical-certificates.')
+        ->controller(MedicalCertificateController::class)
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::get('/patients/search', 'patientSearch')
+                ->middleware('throttle:30,1')
+                ->name('patients.search');
+            Route::get('/patients/{patient}/consultations', 'consultations')
+                ->whereNumber('patient')
+                ->middleware('throttle:30,1')
+                ->name('patients.consultations');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{medicalCertificate}', 'show')->whereNumber('medicalCertificate')->name('show');
+            Route::get('/{medicalCertificate}/edit', 'edit')->whereNumber('medicalCertificate')->name('edit');
+            Route::patch('/{medicalCertificate}', 'update')->whereNumber('medicalCertificate')->name('update');
+            Route::patch('/{medicalCertificate}/submit', 'submit')->whereNumber('medicalCertificate')->name('submit');
+            Route::patch('/{medicalCertificate}/approve', 'approve')->whereNumber('medicalCertificate')->name('approve');
+            Route::patch('/{medicalCertificate}/request-changes', 'requestChanges')->whereNumber('medicalCertificate')->name('request-changes');
+            Route::patch('/{medicalCertificate}/issue', 'issue')->whereNumber('medicalCertificate')->name('issue');
+            Route::patch('/{medicalCertificate}/void', 'void')->whereNumber('medicalCertificate')->name('void');
+            Route::get('/{medicalCertificate}/print', 'print')->whereNumber('medicalCertificate')->name('print');
+            Route::get('/{medicalCertificate}/pdf', 'pdf')->whereNumber('medicalCertificate')->name('pdf');
+        });
 
     Route::get('/dashboard', PatientDashboardController::class)
         ->middleware(['patient.only', 'profile.complete'])

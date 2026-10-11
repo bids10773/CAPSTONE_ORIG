@@ -135,9 +135,9 @@ test('patient can download completed laboratory PDF but receptionist cannot acce
     $appointment->update(['status' => 'completed']);
 
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.pdf', $appointment))
-        ->assertOk()->assertHeader('content-type', 'application/pdf');
+        ->assertForbidden();
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'cbc']))
-        ->assertOk()->assertHeader('content-type', 'application/pdf');
+        ->assertForbidden();
 
     $receptionist = User::factory()->create(['role' => 'receptionist']);
     $this->actingAs($receptionist)->get(route('clinical-forms.laboratory.pdf', $appointment))->assertForbidden();
@@ -151,7 +151,7 @@ test('patient cannot download a laboratory form that was not selected for the ap
 
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'urinalysis']))
-        ->assertNotFound();
+        ->assertForbidden();
 });
 
 test('patient can download every selected laboratory service form', function () {
@@ -186,8 +186,7 @@ test('patient can download every selected laboratory service form', function () 
     foreach (array_keys($sections) as $section) {
         $this->actingAs($appointment->user)
             ->get(route('clinical-forms.laboratory.section.pdf', [$appointment, $section]))
-            ->assertOk()
-            ->assertHeader('content-type', 'application/pdf');
+            ->assertForbidden();
     }
 });
 
@@ -267,8 +266,7 @@ test('patient cannot download an xray report before radtech verification', funct
     $appointment->update(['status' => 'completed']);
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.xray.pdf', $appointment))
-        ->assertOk()
-        ->assertHeader('content-type', 'application/pdf');
+        ->assertForbidden();
 });
 
 test('patient cannot access another patients appointment or clinical document by changing the id', function () {

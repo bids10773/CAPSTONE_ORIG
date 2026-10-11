@@ -348,6 +348,7 @@ export default function AppointmentRecord({
                                 <DocumentCard
                                     key={key}
                                     {...document}
+                                    patientViewer={isPatientViewer}
                                     unavailableLabel={unavailableDocumentLabel}
                                 />
                             ))}
@@ -457,6 +458,7 @@ function DocumentCard({
     ready,
     href,
     unavailableLabel,
+    patientViewer,
 }: {
     icon: React.ReactNode;
     title: string;
@@ -464,6 +466,7 @@ function DocumentCard({
     ready: boolean;
     href: string;
     unavailableLabel?: string;
+    patientViewer: boolean;
 }) {
     return (
         <article
@@ -517,7 +520,14 @@ function DocumentCard({
                 {description}
             </p>
             <div className="mt-auto pt-5">
-                {ready ? (
+                {patientViewer ? (
+                    <Link
+                        href="/my-medical-documents"
+                        className="inline-flex w-full items-center justify-center rounded-xl border border-moss-300 px-4 py-2.5 text-sm font-semibold text-moss-800"
+                    >
+                        Track release status
+                    </Link>
+                ) : ready ? (
                     <a
                         href={href}
                         target="_blank"

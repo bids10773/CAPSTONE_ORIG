@@ -13,6 +13,8 @@ import {
 import { useState } from 'react';
 import { MedicalReportCards } from '@/components/admin-patient-medical-reports';
 import type { MedicalReportSet } from '@/components/admin-patient-medical-reports';
+import { PatientMedicalCertificates } from '@/components/patient-medical-certificates';
+import type { PatientMedicalCertificateSummary } from '@/components/patient-medical-certificates';
 import { StatusBadge } from '@/components/status-badge';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -65,10 +67,12 @@ function formatDate(value?: string | null): string {
 export default function StaffPatientRecordShow({
     patient,
     records,
+    medicalCertificates,
     role,
 }: {
     patient: Patient;
     records: RecordItem[];
+    medicalCertificates: PatientMedicalCertificateSummary[];
     role: Role;
 }) {
     const [activeTab, setActiveTab] = useState<'details' | 'records'>(
@@ -234,6 +238,13 @@ export default function StaffPatientRecordShow({
                                 </article>
                             );
                         })}
+
+                        {(role === 'doctor' || role === 'receptionist') && (
+                            <PatientMedicalCertificates
+                                certificates={medicalCertificates}
+                                createUrl={`/medical-certificates/create?patient_id=${patient.id}`}
+                            />
+                        )}
                     </section>
                 )}
             </main>
