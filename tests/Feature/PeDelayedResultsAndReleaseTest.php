@@ -310,6 +310,12 @@ test('released PE provides the consolidated medical examination PDF', function (
         'is_completed' => true,
         'finalized_at' => now(),
     ]);
+    $examination->diagnosticResults()->where('service_key', 'cbc')->update([
+        'status' => 'verified',
+        'interpretation' => 'with_findings',
+        'findings' => 'Hemoglobin outside the reviewed reference range.',
+        'verified_at' => now(),
+    ]);
     $appointment->xrayReport()->create([
         'medical_examination_id' => $examination->id,
         'radiologist_id' => User::factory()->create(['role' => 'radtech'])->id,
@@ -348,6 +354,8 @@ test('released PE provides the consolidated medical examination PDF', function (
 
     expect($html)->toContain('Complete Blood Count Result')
         ->toContain('14.2')
+        ->toMatch('/Complete Blood Count.*?\[ {3}\] Normal.*?\[ \/ \] Findings/s')
+        ->toContain('Hemoglobin outside the reviewed reference range.')
         ->toContain('Clear lung fields')
         ->toContain('Final Medical Evaluation');
 

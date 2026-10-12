@@ -152,11 +152,37 @@ test('guests cannot open the medical certificate module', function () {
     $this->get(route('medical-certificates.index'))->assertRedirect(route('login'));
 });
 
+test('receptionists and administrators cannot author or submit medical certificate drafts', function (string $role) {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $appointment = medicalCertificateConsultation($patient, $doctor);
+    $actor = User::factory()->create(['role' => $role]);
+    $certificate = medicalCertificateRecord($patient, $doctor);
+
+    $this->actingAs($actor)
+        ->get(route('medical-certificates.create'))
+        ->assertForbidden();
+    $this->post(
+        route('medical-certificates.store'),
+        medicalCertificatePayload($patient, $doctor, $appointment),
+    )->assertForbidden();
+    $this->patch(
+        route('medical-certificates.update', $certificate),
+        medicalCertificatePayload($patient, $doctor, $appointment),
+    )->assertForbidden();
+    $this->patch(route('medical-certificates.submit', $certificate))
+        ->assertForbidden();
+
+    expect($certificate->fresh()->status)->toBe('draft');
+})->with([
+    'receptionist' => 'receptionist',
+    'administrator' => 'admin',
+]);
+
 test('draft creation snapshots trusted patient physician and consultation data', function () {
     $patient = medicalCertificatePatient();
     $doctor = medicalCertificateDoctor();
     $appointment = medicalCertificateConsultation($patient, $doctor);
-    $receptionist = User::factory()->create(['role' => 'receptionist']);
 
     $payload = medicalCertificatePayload($patient, $doctor, $appointment, [
         // Omit the three clinical narratives so the selected consultation supplies them.
@@ -169,7 +195,7 @@ test('draft creation snapshots trusted patient physician and consultation data',
     $this->withServerVariables([
         'REMOTE_ADDR' => '203.0.113.10',
         'HTTP_USER_AGENT' => 'LMIC certificate feature test',
-    ])->actingAs($receptionist)
+    ])->actingAs($doctor)
         ->post(route('medical-certificates.store'), $payload)
         ->assertRedirect();
 
@@ -190,7 +216,7 @@ test('draft creation snapshots trusted patient physician and consultation data',
 
     $this->assertDatabaseHas('medical_certificate_audits', [
         'medical_certificate_id' => $certificate->id,
-        'actor_id' => $receptionist->id,
+        'actor_id' => $doctor->id,
         'action' => 'created',
         'old_status' => null,
         'new_status' => 'draft',
@@ -211,7 +237,7 @@ test('draft creation snapshots trusted patient physician and consultation data',
         ->reason_for_consultation->toBe('Persistent fever and headache.');
 });
 
-test('authorized staff can complete missing demographic and license details on a draft', function () {
+test('attending physician can complete missing demographic and license details on a draft', function () {
     $patient = medicalCertificatePatient(
         ['sex' => null],
         ['birthdate' => null, 'sex' => null, 'civil_status' => null],
@@ -220,9 +246,9 @@ test('authorized staff can complete missing demographic and license details on a
         'license_no' => null,
         'license_verification_status' => 'not_submitted',
     ]);
-    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    medicalCertificateConsultation($patient, $doctor);
 
-    $this->actingAs($receptionist)
+    $this->actingAs($doctor)
         ->post(route('medical-certificates.store'), medicalCertificatePayload($patient, $doctor, null, [
             'patient_age' => 40,
             'patient_sex' => 'Female',
@@ -247,9 +273,8 @@ test('certificate validation rejects another patients consultation and invalid r
     ]);
     $doctor = medicalCertificateDoctor();
     $otherAppointment = medicalCertificateConsultation($otherPatient, $doctor);
-    $receptionist = User::factory()->create(['role' => 'receptionist']);
 
-    $this->actingAs($receptionist)
+    $this->actingAs($doctor)
         ->post(route('medical-certificates.store'), medicalCertificatePayload($patient, $doctor, null, [
             'appointment_id' => $otherAppointment->id,
             'rest_start_date' => '2026-10-13',
@@ -287,11 +312,10 @@ test('only the assigned attending physician can approve a submitted certificate'
         'first_name' => 'Other',
         'license_no' => 'PRC-7654321',
     ]);
-    $receptionist = User::factory()->create(['role' => 'receptionist']);
     $admin = User::factory()->create(['role' => 'admin']);
     $certificate = medicalCertificateRecord($patient, $doctor);
 
-    $this->actingAs($receptionist)
+    $this->actingAs($doctor)
         ->patch(route('medical-certificates.submit', $certificate))
         ->assertSessionHas('success');
 

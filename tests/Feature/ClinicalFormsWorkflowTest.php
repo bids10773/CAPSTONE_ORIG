@@ -23,12 +23,14 @@ function clinicalAppointment(array $services = ['CBC']): Appointment
 
 function cbcPayload(bool $finalize = true): array
 {
-    return ['finalize' => $finalize, 'remarks' => 'Specimen acceptable.', 'results' => ['cbc' => [
-        'hemoglobin' => '14.2', 'hematocrit' => '0.42', 'rbc_count' => '4.8', 'wbc_count' => '7.1',
-        'segmenters' => '0.60', 'lymphocytes' => '0.32', 'monocytes' => '0.04',
-        'eosinophils' => '0.03', 'basophils' => '0.01', 'stab' => '0.02', 'meta' => '0.00',
-        'differential_others' => 'None', 'platelet_count' => '250', 'verification_note' => 'Repeated and verified',
-    ]]];
+    return ['finalize' => $finalize, 'remarks' => 'Specimen acceptable.',
+        'interpretations' => ['cbc' => ['interpretation' => 'normal', 'findings' => '']],
+        'results' => ['cbc' => [
+            'hemoglobin' => '14.2', 'hematocrit' => '0.42', 'rbc_count' => '4.8', 'wbc_count' => '7.1',
+            'segmenters' => '0.60', 'lymphocytes' => '0.32', 'monocytes' => '0.04',
+            'eosinophils' => '0.03', 'basophils' => '0.01', 'stab' => '0.02', 'meta' => '0.00',
+            'differential_others' => 'None', 'platelet_count' => '250', 'verification_note' => 'Repeated and verified',
+        ]]];
 }
 
 function peLaboratoryPayload(): array
@@ -39,6 +41,11 @@ function peLaboratoryPayload(): array
     return [
         'finalize' => true,
         'remarks' => 'PE package laboratory examinations completed.',
+        'interpretations' => collect($sections)
+            ->filter(fn (array $section): bool => $section['requires_interpretation'] ?? false)
+            ->mapWithKeys(fn (array $section, string $key): array => [
+                $key => ['interpretation' => 'normal', 'findings' => ''],
+            ])->all(),
         'results' => collect($sections)->mapWithKeys(fn (array $section, string $key): array => [
             $key => collect($section['fields'])->mapWithKeys(fn (array $field): array => [
                 $field['key'] => $field['type'] === 'number'
@@ -98,8 +105,44 @@ test('medtech saves structured laboratory results and finalization advances work
     expect($result->cbc_results['hemoglobin'])->toBe('14.2')
         ->and($result->isFinalized())->toBeTrue()
         ->and($appointment->fresh()->status)->toBe('for_final_evaluation');
+    $this->assertDatabaseHas('diagnostic_results', [
+        'appointment_id' => $appointment->id,
+        'service_key' => 'cbc',
+        'status' => 'verified',
+        'interpretation' => 'normal',
+        'findings' => null,
+    ]);
     $this->assertDatabaseHas('clinical_form_audits', [
         'appointment_id' => $appointment->id, 'form_type' => 'laboratory', 'action' => 'created',
+    ]);
+});
+
+test('laboratory finalization requires an explicit section interpretation and findings text when abnormal', function () {
+    $appointment = clinicalAppointment();
+    $medtech = User::factory()->create(['role' => 'medtech']);
+    $payload = cbcPayload();
+    unset($payload['interpretations']);
+
+    $this->actingAs($medtech)
+        ->post(route('medtech.lab-results.store', $appointment), $payload)
+        ->assertSessionHasErrors('interpretations.cbc.interpretation');
+
+    $payload = cbcPayload();
+    $payload['interpretations']['cbc'] = ['interpretation' => 'with_findings', 'findings' => ''];
+    $this->actingAs($medtech)
+        ->post(route('medtech.lab-results.store', $appointment), $payload)
+        ->assertSessionHasErrors('interpretations.cbc.findings');
+
+    $payload['interpretations']['cbc']['findings'] = 'Elevated hemoglobin; correlate clinically.';
+    $this->actingAs($medtech)
+        ->post(route('medtech.lab-results.store', $appointment), $payload)
+        ->assertSessionHasNoErrors();
+
+    $this->assertDatabaseHas('diagnostic_results', [
+        'appointment_id' => $appointment->id,
+        'service_key' => 'cbc',
+        'interpretation' => 'with_findings',
+        'findings' => 'Elevated hemoglobin; correlate clinically.',
     ]);
 });
 

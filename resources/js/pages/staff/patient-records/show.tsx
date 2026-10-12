@@ -317,7 +317,11 @@ export default function StaffPatientRecordShow({
                         {(role === 'doctor' || role === 'receptionist') && (
                             <PatientMedicalCertificates
                                 certificates={medicalCertificates}
-                                createUrl={`/medical-certificates/create?patient_id=${patient.id}`}
+                                createUrl={
+                                    role === 'doctor'
+                                        ? `/medical-certificates/create?patient_id=${patient.id}`
+                                        : undefined
+                                }
                             />
                         )}
                     </section>

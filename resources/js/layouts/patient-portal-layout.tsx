@@ -31,7 +31,9 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
         if (href === '/dashboard') return currentPath === '/dashboard';
 
         return (
-            href === '/appointments' && currentPath.startsWith('/appointments')
+            (href === '/appointments' &&
+                currentPath.startsWith('/appointments')) ||
+            currentPath === href
         );
     };
     const fullName =
@@ -71,7 +73,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                     </Link>
 
                     <nav
-                        className="ml-5 hidden items-center gap-1 xl:flex"
+                        className="ml-5 hidden items-center gap-1 lg:flex"
                         aria-label="Patient navigation"
                     >
                         {links.map(({ title, href, icon: Icon }) => {
@@ -98,7 +100,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                     <button
                         type="button"
                         onClick={() => setMobileOpen((open) => !open)}
-                        className="rounded-xl p-2 text-slate-600 hover:bg-moss-50 xl:hidden dark:text-moss-200"
+                        className="rounded-xl p-2 text-slate-600 hover:bg-moss-50 lg:hidden dark:text-moss-200"
                         aria-label="Toggle patient navigation"
                         aria-expanded={mobileOpen}
                     >
@@ -160,10 +162,10 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
 
                 {mobileOpen && (
                     <nav
-                        className="border-t border-slate-100 bg-white p-3 xl:hidden"
+                        className="border-t border-slate-100 bg-white p-3 lg:hidden"
                         aria-label="Mobile patient navigation"
                     >
-                        <div className="mx-auto grid max-w-[1500px] gap-1 sm:grid-cols-3">
+                        <div className="mx-auto grid max-w-[1500px] gap-1 sm:grid-cols-2">
                             {links.map(({ title, href, icon: Icon }) => {
                                 const active = isLinkActive(href);
 

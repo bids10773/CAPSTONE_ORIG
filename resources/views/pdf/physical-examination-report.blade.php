@@ -8,6 +8,7 @@
     $diagnostics = $examination?->diagnosticResults?->keyBy('service_key') ?? collect();
     $diagnostic = fn (string $key) => $diagnostics->get($key);
     $verified = fn (string $key) => $diagnostic($key)?->status === 'verified';
+    $interpretation = fn (string $key) => $diagnostic($key)?->interpretation;
     $tick = fn (bool $condition) => $condition ? '/' : ' ';
     $labValue = function ($data, string $key) {
         return is_array($data) && filled($data[$key] ?? null) ? $data[$key] : null;
@@ -162,9 +163,9 @@
 
     <div class="section">III. LABORATORY</div>
     <table class="ruled diagnostic">
-        <tr><td class="test">A. Complete Blood Count</td><td class="choice">[ {{ $tick($verified('cbc')) }} ] Normal</td><td class="choice">[ {{ $tick(false) }} ] Findings</td><td class="notes">{{ $verified('cbc') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
-        <tr><td class="test">B. Urinalysis</td><td class="choice">[ {{ $tick($verified('urinalysis')) }} ] Normal</td><td class="choice">[ {{ $tick(false) }} ] Findings</td><td class="notes">{{ $verified('urinalysis') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
-        <tr><td class="test">C. Fecalysis</td><td class="choice">[ {{ $tick($verified('fecalysis')) }} ] Normal</td><td class="choice">[ {{ $tick(false) }} ] Findings</td><td class="notes">{{ $verified('fecalysis') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
+        <tr><td class="test">A. Complete Blood Count</td><td class="choice">[ {{ $tick($interpretation('cbc') === 'normal') }} ] Normal</td><td class="choice">[ {{ $tick($interpretation('cbc') === 'with_findings') }} ] Findings</td><td class="notes">{{ $verified('cbc') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
+        <tr><td class="test">B. Urinalysis</td><td class="choice">[ {{ $tick($interpretation('urinalysis') === 'normal') }} ] Normal</td><td class="choice">[ {{ $tick($interpretation('urinalysis') === 'with_findings') }} ] Findings</td><td class="notes">{{ $verified('urinalysis') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
+        <tr><td class="test">C. Fecalysis</td><td class="choice">[ {{ $tick($interpretation('fecalysis') === 'normal') }} ] Normal</td><td class="choice">[ {{ $tick($interpretation('fecalysis') === 'with_findings') }} ] Findings</td><td class="notes">{{ $verified('fecalysis') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
         @php $hbsag = strtolower((string) $labValue($laboratory?->serology_results, 'hbsag')); $hav = strtolower((string) $labValue($laboratory?->serology_results, 'anti_hav_igm')); @endphp
         <tr><td class="test">D. Hepatitis B (HBs Ag)</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && str_contains($hbsag, 'non')) }} ] Non-reactive</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && $hbsag === 'reactive') }} ] Reactive</td><td class="notes">{{ ! $isRequested('Hepatitis') ? 'NOT REQUESTED' : ($verified('serology') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
         <tr><td class="test">E. Hepatitis A (Anti-HAV IgM)</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && str_contains($hav, 'non')) }} ] Non-reactive</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && $hav === 'reactive') }} ] Reactive</td><td class="notes">{{ ! $isRequested('Hepatitis') ? 'NOT REQUESTED' : ($verified('serology') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
@@ -185,7 +186,7 @@
     </table>
 
     <div class="section">VI. OTHERS</div>
-    <table class="ruled diagnostic"><tr><td class="test bold">BLOOD CHEM</td><td class="choice">[ {{ $tick($verified('blood_chemistry')) }} ] Normal</td><td class="choice">[ ] Findings</td><td class="notes">{{ $verified('blood_chemistry') ? 'SEE ATTACHED RESULT' : '' }}</td></tr></table>
+    <table class="ruled diagnostic"><tr><td class="test bold">BLOOD CHEM</td><td class="choice">[ {{ $tick($interpretation('blood_chemistry') === 'normal') }} ] Normal</td><td class="choice">[ {{ $tick($interpretation('blood_chemistry') === 'with_findings') }} ] Findings</td><td class="notes">{{ $verified('blood_chemistry') ? 'SEE ATTACHED RESULT' : '' }}</td></tr></table>
 
     <table class="ruled class-area"><tr>
         <td class="class-list">
@@ -287,6 +288,12 @@
                         </tr>
                     @endforeach
                 </table>
+                @if($interpretation($sectionKey))
+                    <p><b>Clinical interpretation:</b> {{ $interpretation($sectionKey) === 'normal' ? 'Normal' : 'With findings' }}</p>
+                @endif
+                @if($interpretation($sectionKey) === 'with_findings' && filled($diagnostic($sectionKey)?->findings))
+                    <p><b>Findings:</b> {{ $diagnostic($sectionKey)->findings }}</p>
+                @endif
                 @if($laboratory->remarks)<p><b>Remarks:</b> {{ $laboratory->remarks }}</p>@endif
                 <div class="attachment-signature">@include('pdf.partials.electronic-signature', ['staff' => $laboratory->verifiedBy ?? $laboratory->encodedBy, 'role' => 'Medical Technologist', 'verifiedAt' => $laboratory->finalized_at])</div>
             </div>

@@ -1,12 +1,13 @@
 <?php
 
+use App\Models\Appointment;
 use App\Models\MedicalDocument;
 use App\Models\User;
 use App\Notifications\MedicalDocumentStatusChanged;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 
-function releaseDocument(User $patient, string $status = 'approved'): MedicalDocument
+function releaseDocument(User $patient, string $status = 'approved', ?Appointment $appointment = null): MedicalDocument
 {
     return MedicalDocument::create([
         'document_number' => 'DOC-TEST-'.fake()->unique()->numerify('####'),
@@ -14,6 +15,7 @@ function releaseDocument(User $patient, string $status = 'approved'): MedicalDoc
         'source_type' => 'test',
         'source_id' => fake()->numberBetween(1, 100000),
         'patient_id' => $patient->id,
+        'appointment_id' => $appointment?->id,
         'document_type' => 'laboratory_report',
         'title' => 'Laboratory Report',
         'related_service' => 'CBC',
@@ -38,6 +40,53 @@ test('patient portal exposes only the patients document status metadata', functi
             ->missing('documents.0.pdf_url')
             ->missing('documents.0.findings')
             ->missing('documents.0.results'));
+});
+
+test('patient can scope medical records to one owned appointment', function () {
+    $patient = User::factory()->create(['role' => 'patient', 'email_verified_at' => now()]);
+    $selected = Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => today()->subDay(),
+        'type' => 'individual',
+        'status' => 'completed',
+        'service_types' => [],
+    ]);
+    $other = Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => today(),
+        'type' => 'individual',
+        'status' => 'completed',
+        'service_types' => [],
+    ]);
+    $selectedDocument = releaseDocument($patient, 'released', $selected);
+    releaseDocument($patient, 'released', $other);
+
+    $this->actingAs($patient)
+        ->get(route('medical-documents.patient', ['appointment' => $selected]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('medical-documents/patient')
+            ->has('documents', 1)
+            ->where('documents.0.id', $selectedDocument->id)
+            ->where('documents.0.appointment.id', $selected->id)
+            ->where('selectedAppointment.id', $selected->id)
+            ->where('selectedAppointment.reference_code', $selected->reference_code));
+});
+
+test('patient cannot scope medical records to another patients appointment', function () {
+    $patient = User::factory()->create(['role' => 'patient', 'email_verified_at' => now()]);
+    $otherPatient = User::factory()->create(['role' => 'patient', 'email_verified_at' => now()]);
+    $otherAppointment = Appointment::create([
+        'user_id' => $otherPatient->id,
+        'appointment_date' => today(),
+        'type' => 'individual',
+        'status' => 'completed',
+        'service_types' => [],
+    ]);
+
+    $this->actingAs($patient)
+        ->get(route('medical-documents.patient', ['appointment' => $otherAppointment]))
+        ->assertNotFound();
 });
 
 test('receptionist records pickup and representative verification with notifications', function () {

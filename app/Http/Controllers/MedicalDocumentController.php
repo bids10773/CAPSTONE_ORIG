@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Appointment;
 use App\Models\MedicalDocument;
 use App\Services\MedicalDocumentService;
 use Illuminate\Http\RedirectResponse;
@@ -18,9 +19,39 @@ class MedicalDocumentController extends Controller
         abort_unless($request->user()->role === 'patient', 403);
         $service->synchronizePatient($request->user());
 
+        $appointmentId = $request->integer('appointment');
+        $selectedAppointment = $appointmentId > 0
+            ? Appointment::query()
+                ->where('user_id', $request->user()->id)
+                ->findOrFail($appointmentId)
+            : null;
+
+        $documents = MedicalDocument::query()
+            ->where('patient_id', $request->user()->id)
+            ->with('appointment:id,reference_code,appointment_date,start_time,status')
+            ->when(
+                $selectedAppointment,
+                fn ($query, Appointment $appointment) => $query->where('appointment_id', $appointment->id)
+            )
+            ->orderByDesc(
+                Appointment::query()
+                    ->select('appointment_date')
+                    ->whereColumn('appointments.id', 'medical_documents.appointment_id')
+            )
+            ->latest('requested_at')
+            ->latest('id')
+            ->get()
+            ->map(fn (MedicalDocument $document) => $this->patientPayload($document));
+
         return Inertia::render('medical-documents/patient', [
-            'documents' => MedicalDocument::query()->where('patient_id', $request->user()->id)
-                ->latest('requested_at')->get()->map(fn (MedicalDocument $document) => $this->patientPayload($document)),
+            'documents' => $documents,
+            'selectedAppointment' => $selectedAppointment ? [
+                'id' => $selectedAppointment->id,
+                'reference_code' => $selectedAppointment->reference_code,
+                'appointment_date' => $selectedAppointment->appointment_date?->toDateString(),
+                'start_time' => $selectedAppointment->start_time,
+                'status' => $selectedAppointment->status,
+            ] : null,
             'releaseInstructions' => config('medical.document_release.instructions'),
         ]);
     }
@@ -99,7 +130,14 @@ class MedicalDocumentController extends Controller
             'document_type' => $document->document_type, 'title' => $document->title,
             'related_service' => $document->related_service, 'status' => $document->status,
             'requested_at' => $document->requested_at?->toIso8601String(), 'ready_at' => $document->ready_at?->toIso8601String(),
-            'released_at' => $document->released_at?->toIso8601String(), 'release_instructions' => $document->release_instructions];
+            'released_at' => $document->released_at?->toIso8601String(), 'release_instructions' => $document->release_instructions,
+            'appointment' => $document->appointment ? [
+                'id' => $document->appointment->id,
+                'reference_code' => $document->appointment->reference_code,
+                'appointment_date' => $document->appointment->appointment_date?->toDateString(),
+                'start_time' => $document->appointment->start_time,
+                'status' => $document->appointment->status,
+            ] : null];
     }
 
     private function staffPayload(MedicalDocument $document, Request $request): array

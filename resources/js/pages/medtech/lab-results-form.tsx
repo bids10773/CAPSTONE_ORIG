@@ -29,7 +29,13 @@ type Field = {
     validation?: { min: number; max: number; decimals: number } | null;
     reference?: Record<string, [number | null, number | null]>;
 };
-type Section = { label: string; column: string; fields: Field[] };
+type Section = {
+    label: string;
+    column: string;
+    fields: Field[];
+    requires_interpretation?: boolean;
+};
+type Interpretation = { interpretation: string; findings: string };
 type Props = {
     appointment: { id: number; reference_code: string };
     patientSummary: {
@@ -43,6 +49,7 @@ type Props = {
         doctor?: string;
     };
     sections: Record<string, Section>;
+    interpretations: Record<string, Partial<Interpretation>>;
     labResult?: Record<string, any> | null;
     locked: boolean;
     drugVerificationPending: boolean;
@@ -77,6 +84,7 @@ export default function LaboratoryResultsForm({
     appointment,
     patientSummary,
     sections,
+    interpretations,
     labResult,
     locked,
     drugVerificationPending,
@@ -84,6 +92,18 @@ export default function LaboratoryResultsForm({
 }: Props) {
     const form = useForm({
         results: initialResults(sections, labResult),
+        interpretations: Object.fromEntries(
+            Object.entries(sections)
+                .filter(([, section]) => section.requires_interpretation)
+                .map(([key]) => [
+                    key,
+                    {
+                        interpretation:
+                            interpretations[key]?.interpretation ?? '',
+                        findings: interpretations[key]?.findings ?? '',
+                    },
+                ]),
+        ) as Record<string, Interpretation>,
         remarks: labResult?.remarks ?? '',
         finalize: false,
         drug_workflow_action: 'complete',
@@ -100,6 +120,17 @@ export default function LaboratoryResultsForm({
                         ([section, values]) => [
                             section,
                             { ...values, ...(draft.results?.[section] ?? {}) },
+                        ],
+                    ),
+                ),
+                interpretations: Object.fromEntries(
+                    Object.entries(form.data.interpretations).map(
+                        ([section, value]) => [
+                            section,
+                            {
+                                ...value,
+                                ...(draft.interpretations?.[section] ?? {}),
+                            },
                         ],
                     ),
                 ),
@@ -168,6 +199,20 @@ export default function LaboratoryResultsForm({
                 );
                 if (message) nextErrors[key] = message;
             });
+            if (finalize && section.requires_interpretation) {
+                const interpretation = form.data.interpretations[sectionKey];
+                if (!interpretation?.interpretation) {
+                    nextErrors[`interpretations.${sectionKey}.interpretation`] =
+                        'Select Normal or With findings before finalizing this result.';
+                }
+                if (
+                    interpretation?.interpretation === 'with_findings' &&
+                    !interpretation.findings.trim()
+                ) {
+                    nextErrors[`interpretations.${sectionKey}.findings`] =
+                        'Describe the findings before finalizing this result.';
+                }
+            }
         });
         setLocalErrors(nextErrors);
         return Object.keys(nextErrors).length === 0;
@@ -501,6 +546,154 @@ export default function LaboratoryResultsForm({
                                     );
                                 })}
                             </div>
+                            {section.requires_interpretation && (
+                                <div className="border-t border-moss-100 bg-slate-50 p-5">
+                                    <label
+                                        htmlFor={`${sectionKey}-interpretation`}
+                                        className="text-sm font-bold text-slate-900"
+                                    >
+                                        Clinical interpretation
+                                        <span className="ml-1 text-red-600">
+                                            *
+                                        </span>
+                                    </label>
+                                    <p className="mt-1 text-xs text-slate-600">
+                                        Confirm the section-level interpretation
+                                        after reviewing all results and
+                                        reference ranges.
+                                    </p>
+                                    <select
+                                        id={`${sectionKey}-interpretation`}
+                                        data-lab-field
+                                        disabled={
+                                            locked || drugVerificationPending
+                                        }
+                                        className={`${inputClass} sm:max-w-sm`}
+                                        value={
+                                            form.data.interpretations[
+                                                sectionKey
+                                            ]?.interpretation ?? ''
+                                        }
+                                        onChange={(event) => {
+                                            const interpretation =
+                                                event.target.value;
+                                            form.setData('interpretations', {
+                                                ...form.data.interpretations,
+                                                [sectionKey]: {
+                                                    interpretation,
+                                                    findings:
+                                                        interpretation ===
+                                                        'with_findings'
+                                                            ? (form.data
+                                                                  .interpretations[
+                                                                  sectionKey
+                                                              ]?.findings ?? '')
+                                                            : '',
+                                                },
+                                            });
+                                            setLocalErrors((current) => ({
+                                                ...current,
+                                                [`interpretations.${sectionKey}.interpretation`]:
+                                                    '',
+                                            }));
+                                        }}
+                                    >
+                                        <option value="">
+                                            Select interpretation
+                                        </option>
+                                        <option value="normal">Normal</option>
+                                        <option value="with_findings">
+                                            With findings
+                                        </option>
+                                    </select>
+                                    <InputError
+                                        message={
+                                            localErrors[
+                                                `interpretations.${sectionKey}.interpretation`
+                                            ] ||
+                                            (
+                                                form.errors as Record<
+                                                    string,
+                                                    string
+                                                >
+                                            )[
+                                                `interpretations.${sectionKey}.interpretation`
+                                            ]
+                                        }
+                                    />
+                                    {form.data.interpretations[sectionKey]
+                                        ?.interpretation ===
+                                        'with_findings' && (
+                                        <div className="mt-4">
+                                            <label
+                                                htmlFor={`${sectionKey}-findings`}
+                                                className="text-sm font-semibold text-slate-700"
+                                            >
+                                                Findings
+                                                <span className="ml-1 text-red-600">
+                                                    *
+                                                </span>
+                                            </label>
+                                            <textarea
+                                                id={`${sectionKey}-findings`}
+                                                data-lab-field
+                                                disabled={
+                                                    locked ||
+                                                    drugVerificationPending
+                                                }
+                                                rows={3}
+                                                className={inputClass}
+                                                value={
+                                                    form.data.interpretations[
+                                                        sectionKey
+                                                    ]?.findings ?? ''
+                                                }
+                                                onChange={(event) => {
+                                                    form.setData(
+                                                        'interpretations',
+                                                        {
+                                                            ...form.data
+                                                                .interpretations,
+                                                            [sectionKey]: {
+                                                                ...form.data
+                                                                    .interpretations[
+                                                                    sectionKey
+                                                                ],
+                                                                findings:
+                                                                    event.target
+                                                                        .value,
+                                                            },
+                                                        },
+                                                    );
+                                                    setLocalErrors(
+                                                        (current) => ({
+                                                            ...current,
+                                                            [`interpretations.${sectionKey}.findings`]:
+                                                                '',
+                                                        }),
+                                                    );
+                                                }}
+                                                placeholder="Describe the clinically significant findings"
+                                            />
+                                            <InputError
+                                                message={
+                                                    localErrors[
+                                                        `interpretations.${sectionKey}.findings`
+                                                    ] ||
+                                                    (
+                                                        form.errors as Record<
+                                                            string,
+                                                            string
+                                                        >
+                                                    )[
+                                                        `interpretations.${sectionKey}.findings`
+                                                    ]
+                                                }
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </section>
                     ))}
                     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

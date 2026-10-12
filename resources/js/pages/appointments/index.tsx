@@ -42,7 +42,7 @@ export default function AppointmentsIndex() {
     const pageTitle = isCompanyView
         ? 'Employee Records'
         : auth?.user?.role === 'patient'
-          ? 'Medical Records'
+          ? 'My Appointments'
           : 'Appointments';
 
     const [search, setSearch] = useState(filters?.search || '');
@@ -392,7 +392,7 @@ AppointmentsIndex.layout = (page: any) => {
     const title = page.props.isCompanyView
         ? 'Employee Records'
         : page.props.auth?.user?.role === 'patient'
-          ? 'Medical Records'
+          ? 'My Appointments'
           : 'Appointments';
     const breadcrumbs: BreadcrumbItem[] = [{ title, href: '' }];
 

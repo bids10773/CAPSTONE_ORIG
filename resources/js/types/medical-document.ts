@@ -18,6 +18,13 @@ export interface MedicalDocument {
     ready_at: string | null;
     released_at: string | null;
     release_instructions: string | null;
+    appointment?: {
+        id: number;
+        reference_code: string;
+        appointment_date: string | null;
+        start_time: string | null;
+        status: string;
+    } | null;
     patient?: { id: number; name: string };
     pdf_url?: string | null;
     can?: { mark_ready: boolean; release: boolean; reverse: boolean };

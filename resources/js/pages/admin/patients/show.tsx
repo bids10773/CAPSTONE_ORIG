@@ -183,7 +183,6 @@ export default function AdminPatientMedicalProfile({
 
                         <PatientMedicalCertificates
                             certificates={medicalCertificates}
-                            createUrl={`/medical-certificates/create?patient_id=${patient.id}`}
                         />
                     </>
                 )}

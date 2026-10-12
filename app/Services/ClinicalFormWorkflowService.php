@@ -72,7 +72,7 @@ class ClinicalFormWorkflowService
                 $existingDiagnostic = $medicalExamination->diagnosticResults()
                     ->where('service_key', $key)
                     ->first();
-                $medicalExamination->diagnosticResults()->updateOrCreate(['service_key' => $key], [
+                $diagnosticAttributes = [
                     'appointment_id' => $appointment->id,
                     'patient_id' => $appointment->user_id,
                     'company_id' => $appointment->company_id,
@@ -93,7 +93,15 @@ class ClinicalFormWorkflowService
                     'verified_at' => $finalize && ! $drugVerifying ? now() : $existingDiagnostic?->verified_at,
                     'sent_for_verification_by' => $drugVerifying ? $actor->id : $existingDiagnostic?->sent_for_verification_by,
                     'sent_for_verification_at' => $drugVerifying ? now() : $existingDiagnostic?->sent_for_verification_at,
-                ]);
+                ];
+                if ($definition['requires_interpretation'] ?? false) {
+                    $interpretation = data_get($data, "interpretations.{$key}.interpretation");
+                    $diagnosticAttributes['interpretation'] = $interpretation;
+                    $diagnosticAttributes['findings'] = $interpretation === 'with_findings'
+                        ? data_get($data, "interpretations.{$key}.findings")
+                        : null;
+                }
+                $medicalExamination->diagnosticResults()->updateOrCreate(['service_key' => $key], $diagnosticAttributes);
                 if ($drugVerifying) {
                     ClinicalFormAudit::create([
                         'appointment_id' => $appointment->id, 'actor_id' => $actor->id,

@@ -91,7 +91,9 @@ class AppointmentController extends Controller
             $query->where('type', $type);
         }
 
-        $appointments = $query->orderBy('appointment_date', 'desc')
+        $appointments = $query->orderByDesc('appointment_date')
+            ->orderByDesc('start_time')
+            ->orderByDesc('id')
             ->paginate($this->perPage($request))
             ->withQueryString();
 

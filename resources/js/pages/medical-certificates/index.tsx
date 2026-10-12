@@ -171,9 +171,9 @@ export default function MedicalCertificatesIndex({
                                 Medical Certificates
                             </h1>
                             <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-                                Prepare drafts, coordinate physician approval,
-                                and access issued certificate records without
-                                deleting their history.
+                                Coordinate physician-reviewed certificates and
+                                access issued records without deleting their
+                                history.
                             </p>
                         </div>
                         {can?.create && (

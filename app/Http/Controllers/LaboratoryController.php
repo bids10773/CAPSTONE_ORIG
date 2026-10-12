@@ -25,11 +25,18 @@ class LaboratoryController extends Controller
         $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'medicalExamination.diagnosticResults']);
         $drugResult = $appointment->medicalExamination?->diagnosticResults->firstWhere('service_key', 'drug_test');
         $drugVerificationPending = in_array($drugResult?->status, ['verifying', 'awaiting_official_result', 'official_result_received'], true);
+        $interpretations = $appointment->medicalExamination?->diagnosticResults
+            ->mapWithKeys(fn ($result): array => [$result->service_key => [
+                'interpretation' => $result->interpretation,
+                'findings' => $result->findings,
+            ]])
+            ->all() ?? [];
 
         return Inertia::render('medtech/lab-results-form', [
             'appointment' => $appointment,
             'labResult' => $appointment->labResult,
             'sections' => $definitions->sectionsFor($appointment),
+            'interpretations' => $interpretations,
             'patientSummary' => $this->patientSummary($appointment),
             'locked' => $appointment->labResult?->isFinalized() && ! $drugVerificationPending && request()->user()->role !== 'admin',
             'drugVerificationPending' => $drugVerificationPending,

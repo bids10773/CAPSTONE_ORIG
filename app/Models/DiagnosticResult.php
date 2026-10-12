@@ -9,7 +9,7 @@ class DiagnosticResult extends Model
 {
     protected $fillable = [
         'medical_examination_id', 'appointment_id', 'patient_id', 'company_id', 'batch_id',
-        'service_key', 'status', 'result_data', 'findings', 'remarks',
+        'service_key', 'status', 'result_data', 'interpretation', 'findings', 'remarks',
         'official_reference_number', 'official_result_date', 'supporting_document_path',
         'performed_by', 'performed_at', 'encoded_by', 'encoded_at', 'verified_by', 'verified_at',
         'sent_for_verification_by', 'sent_for_verification_at',

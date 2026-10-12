@@ -348,6 +348,7 @@ export default function AppointmentRecord({
                                 <DocumentCard
                                     key={key}
                                     {...document}
+                                    appointmentId={appointment.id}
                                     patientViewer={isPatientViewer}
                                     unavailableLabel={unavailableDocumentLabel}
                                 />
@@ -457,6 +458,7 @@ function DocumentCard({
     description,
     ready,
     href,
+    appointmentId,
     unavailableLabel,
     patientViewer,
 }: {
@@ -465,6 +467,7 @@ function DocumentCard({
     description: string;
     ready: boolean;
     href: string;
+    appointmentId: number;
     unavailableLabel?: string;
     patientViewer: boolean;
 }) {
@@ -522,7 +525,7 @@ function DocumentCard({
             <div className="mt-auto pt-5">
                 {patientViewer ? (
                     <Link
-                        href="/my-medical-documents"
+                        href={`/my-medical-documents?appointment=${appointmentId}`}
                         className="inline-flex w-full items-center justify-center rounded-xl border border-moss-300 px-4 py-2.5 text-sm font-semibold text-moss-800"
                     >
                         Track release status

@@ -20,14 +20,13 @@ class MedicalCertificatePolicy
 
     public function create(User $user): bool
     {
-        return in_array($user->role, ['admin', 'receptionist', 'doctor'], true);
+        return $user->role === 'doctor';
     }
 
     public function update(User $user, MedicalCertificate $medicalCertificate): bool
     {
         return in_array($medicalCertificate->status, ['draft', 'changes_requested'], true)
-            && (in_array($user->role, ['admin', 'receptionist'], true)
-                || $this->isAttendingPhysician($user, $medicalCertificate));
+            && $this->isAttendingPhysician($user, $medicalCertificate);
     }
 
     public function submit(User $user, MedicalCertificate $medicalCertificate): bool
@@ -52,7 +51,7 @@ class MedicalCertificatePolicy
     public function issue(User $user, MedicalCertificate $medicalCertificate): bool
     {
         return $medicalCertificate->status === 'approved'
-            && (in_array($user->role, ['admin', 'receptionist'], true)
+            && ($user->role === 'receptionist'
                 || $this->isAttendingPhysician($user, $medicalCertificate));
     }
 
