@@ -70,6 +70,7 @@ class AppointmentPolicy
     private function canViewOwnOrAdmin(User $user, Appointment $appointment): bool
     {
         return $user->role === 'admin'
+            || ($user->role === 'patient' && $appointment->user_id === $user->id)
             || $this->companyOwnsAppointment($user, $appointment);
     }
 

@@ -397,6 +397,10 @@ export default function MedicalCertificateFormPage({
             certificate?.certificate_number ||
             certificate?.certificate_id ||
             certificate?.reference_code,
+        patientReference:
+            selectedPatient?.patient_reference_code ||
+            certificate?.patient_reference_code,
+        consultationDate: form.data.consultation_date,
         status: certificate?.status || 'draft',
         salutation: form.data.salutation,
         patientName:

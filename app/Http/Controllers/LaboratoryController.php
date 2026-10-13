@@ -4,14 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\SaveLaboratoryResultRequest;
 use App\Models\Appointment;
-use App\Models\SecurityAudit;
 use App\Services\ClinicalFormWorkflowService;
 use App\Services\LaboratoryFormDefinition;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
@@ -66,7 +64,6 @@ class LaboratoryController extends Controller
 
     public function pdf(Request $request, Appointment $appointment, LaboratoryFormDefinition $definitions, ClinicalFormWorkflowService $workflow): HttpResponse
     {
-        $this->denyPatientAccess($request, $appointment, 'laboratory');
         Gate::authorize('viewLaboratory', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment);
         $appointment->load(['user.patientProfile', 'company', 'doctor', 'medicalExamination', 'labResult.encodedBy', 'labResult.verifiedBy']);
@@ -92,7 +89,6 @@ class LaboratoryController extends Controller
         LaboratoryFormDefinition $definitions,
         ClinicalFormWorkflowService $workflow,
     ): HttpResponse {
-        $this->denyPatientAccess($request, $appointment, "laboratory_{$section}");
         Gate::authorize('viewLaboratory', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment);
         $appointment->load(['user.patientProfile', 'company', 'doctor', 'medicalExamination', 'labResult.encodedBy', 'labResult.verifiedBy']);
@@ -159,19 +155,6 @@ class LaboratoryController extends Controller
                 ->firstWhere('service_key', 'drug_test');
             abort_unless($drugTest?->isVerified(), 403, 'The official Drug Test result has not been verified yet.');
         }
-    }
-
-    private function denyPatientAccess(Request $request, Appointment $appointment, string $type): void
-    {
-        if ($request->user()?->role !== 'patient') {
-            return;
-        }
-        Log::warning('Blocked patient medical document access', ['user_id' => $request->user()->id,
-            'appointment_id' => $appointment->id, 'document_type' => $type, 'ip_address' => $request->ip()]);
-        SecurityAudit::create(['actor_id' => $request->user()->id, 'target_user_id' => $appointment->user_id,
-            'action' => 'patient_medical_document_access_denied', 'status' => 'denied',
-            'metadata' => ['appointment_id' => $appointment->id, 'document_type' => $type]]);
-        abort(403, 'Medical documents are released by authorized clinic personnel.');
     }
 
     private function secure(HttpResponse $response): HttpResponse

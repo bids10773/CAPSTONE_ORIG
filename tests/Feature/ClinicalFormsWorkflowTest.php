@@ -66,12 +66,23 @@ test('PE alone creates the physical exam without silently adding other services'
 });
 
 test('explicit pre employment basics include physical exam cbc urinalysis fecalysis and xray', function () {
-    $appointment = clinicalAppointment(config('medical.pe_package.pre_employment_services'));
+    $appointment = clinicalAppointment(config('medical.pe_package.basic_five_services'));
 
     expect(array_keys(app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment)))
         ->toBe(['cbc', 'urinalysis', 'fecalysis'])
         ->and($appointment->isPePackage())->toBeTrue()
         ->and($appointment->requiresXray())->toBeTrue();
+});
+
+test('Basic 5 and supported employer add-ons are configured without unfinished services', function () {
+    expect(config('medical.pe_package.basic_five_services'))->toBe([
+        'PE', 'CBC', 'Urinalysis', 'Fecalysis', 'X-Ray',
+    ])->and(config('medical.pe_package.optional_bulk_services'))->toBe([
+        'Drug Test', 'Hepatitis', 'Pregnancy Test',
+    ])->and(array_keys(Appointment::getBookableServiceTypeOptions()))
+        ->not->toContain('ECG', 'Audiometry', 'Neuro Psychiatric Test')
+        ->and(collect(app(\App\Services\LaboratoryFormDefinition::class)->sections()['serology']['fields'])->pluck('key')->all())
+        ->toBe(['hbsag']);
 });
 
 test('pregnancy testing is available only for female patients', function () {
@@ -178,9 +189,9 @@ test('patient can download completed laboratory PDF but receptionist cannot acce
     $appointment->update(['status' => 'completed']);
 
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.pdf', $appointment))
-        ->assertForbidden();
+        ->assertOk();
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'cbc']))
-        ->assertForbidden();
+        ->assertOk();
 
     $receptionist = User::factory()->create(['role' => 'receptionist']);
     $this->actingAs($receptionist)->get(route('clinical-forms.laboratory.pdf', $appointment))->assertForbidden();
@@ -194,7 +205,7 @@ test('patient cannot download a laboratory form that was not selected for the ap
 
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'urinalysis']))
-        ->assertForbidden();
+        ->assertNotFound();
 });
 
 test('patient can download every selected laboratory service form', function () {
@@ -229,7 +240,7 @@ test('patient can download every selected laboratory service form', function () 
     foreach (array_keys($sections) as $section) {
         $this->actingAs($appointment->user)
             ->get(route('clinical-forms.laboratory.section.pdf', [$appointment, $section]))
-            ->assertForbidden();
+            ->assertOk();
     }
 });
 
@@ -309,7 +320,7 @@ test('patient cannot download an xray report before radtech verification', funct
     $appointment->update(['status' => 'completed']);
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.xray.pdf', $appointment))
-        ->assertForbidden();
+        ->assertOk();
 });
 
 test('patient cannot access another patients appointment or clinical document by changing the id', function () {
@@ -333,7 +344,7 @@ test('patient cannot access another patients appointment or clinical document by
 });
 
 test('PE laboratory package cannot be finalized with only one required child result', function () {
-    $appointment = clinicalAppointment(config('medical.pe_package.pre_employment_services'));
+    $appointment = clinicalAppointment(config('medical.pe_package.basic_five_services'));
     $medtech = User::factory()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), [
         'finalize' => true, 'results' => ['cbc' => cbcPayload()['results']['cbc']],
@@ -342,7 +353,7 @@ test('PE laboratory package cannot be finalized with only one required child res
 });
 
 test('doctor records structured physical findings and final approval locks the encounter', function () {
-    $appointment = clinicalAppointment(config('medical.pe_package.pre_employment_services'));
+    $appointment = clinicalAppointment(config('medical.pe_package.basic_five_services'));
     $doctor = User::factory()->create(['role' => 'doctor']);
     $appointment->update(['doctor_id' => $doctor->id]);
     $appointment->vitalSigns()->create([

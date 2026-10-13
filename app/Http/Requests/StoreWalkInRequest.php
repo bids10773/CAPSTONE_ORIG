@@ -41,7 +41,7 @@ class StoreWalkInRequest extends FormRequest
             'civil_status' => ['nullable', Rule::in(['Single', 'Married', 'Divorced', 'Widowed', 'Separated'])],
             'examination_purpose' => ['required', 'string', Rule::in(['pre_employment', 'medical_clearance'])],
             'service_types' => ['required', 'array', 'min:1'],
-            'service_types.*' => ['required', 'string', Rule::in(array_keys(\App\Models\Appointment::getServiceTypeOptions()))],
+            'service_types.*' => ['required', 'string', Rule::in(array_keys(\App\Models\Appointment::getBookableServiceTypeOptions()))],
             'doctor_id' => ['nullable', 'required_with:start_time', 'integer', Rule::exists(User::class, 'id')->where('role', 'doctor')->where('is_active', true)],
             'start_time' => ['nullable', 'required_with:doctor_id', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:500'],

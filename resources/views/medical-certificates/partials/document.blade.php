@@ -18,6 +18,7 @@
     };
 
     $issuedDate = $asDate($certificate->date_issued);
+    $consultationDate = $asDate($certificate->consultation_date);
     $restStart = $asDate($certificate->rest_start_date);
     $restEnd = $asDate($certificate->rest_end_date);
     $salutation = filled($certificate->salutation) ? $certificate->salutation : 'Mr./Ms.';
@@ -117,6 +118,17 @@
     .medical-certificate-date-row {
         margin-top: 2.5mm;
         text-align: right;
+    }
+
+    .medical-certificate-reference-row {
+        margin-top: 1.5mm;
+        color: #333;
+        font-size: 8.5pt;
+        text-align: center;
+    }
+
+    .medical-certificate-reference-row span + span {
+        margin-left: 5mm;
     }
 
     .medical-certificate-inline-line {
@@ -358,6 +370,11 @@
     </table>
 
     <div class="medical-certificate-title">MEDICAL CERTIFICATE</div>
+    <div class="medical-certificate-reference-row">
+        <span><b>Certificate No.:</b> {{ $display($certificate->certificate_number, 'Pending') }}</span>
+        <span><b>Patient Ref.:</b> {{ $display($certificate->patient_reference_code, 'N/A') }}</span>
+        <span><b>Consultation:</b> {{ $consultationDate?->format('F j, Y') ?? 'N/A' }}</span>
+    </div>
     <div class="medical-certificate-date-row">
         Date:
         <span class="medical-certificate-inline-line medical-certificate-date-line">

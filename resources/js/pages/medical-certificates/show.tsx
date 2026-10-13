@@ -114,6 +114,10 @@ export default function MedicalCertificateShow({ certificate, can }: Props) {
     ];
     const previewData: MedicalCertificateDocumentData = {
         certificateNumber: number,
+        patientReference:
+            certificate.patient_reference_code ||
+            certificate.patient?.patient_reference_code,
+        consultationDate: certificate.consultation_date,
         status: certificate.status,
         salutation: certificate.salutation,
         patientName: patientName(certificate),

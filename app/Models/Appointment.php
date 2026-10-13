@@ -365,6 +365,18 @@ class Appointment extends Model
         ];
     }
 
+    public static function getUnavailableServiceTypes(): array
+    {
+        return ['ECG', 'Audiometry', 'Neuro Psychiatric Test'];
+    }
+
+    public static function getBookableServiceTypeOptions(): array
+    {
+        return collect(self::getServiceTypeOptions())
+            ->except(self::getUnavailableServiceTypes())
+            ->all();
+    }
+
     // ✅ helper for display
     public function getServiceTypesListAttribute(): string
     {

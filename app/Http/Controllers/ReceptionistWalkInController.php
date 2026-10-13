@@ -140,8 +140,10 @@ class ReceptionistWalkInController extends Controller
             ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
             ->whereHas('user', fn ($query) => $query->where('role', 'patient'))
             ->whereDate('appointment_date', today())
-            ->orderByRaw("CASE WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type <> 'walk_in' THEN 2 WHEN type = 'walk_in' THEN 3 ELSE 4 END")
-            ->orderByRaw('COALESCE(start_time, arrived_at, created_at)')
+            ->orderByRaw("CASE WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type = 'walk_in' THEN 2 WHEN type <> 'walk_in' THEN 3 ELSE 4 END")
+            ->orderByRaw("CASE WHEN type = 'walk_in' THEN COALESCE(arrived_at, created_at) END")
+            ->orderBy('start_time')
+            ->orderByRaw('COALESCE(arrived_at, created_at)')
             ->orderBy('id')
             ->get(['id', 'type'])
             ->groupBy(fn (Appointment $appointment): string => $appointment->type === 'walk_in' ? 'walk_in' : 'online')
@@ -179,8 +181,10 @@ class ReceptionistWalkInController extends Controller
                         });
                 });
             })
-            ->orderByRaw("CASE WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type <> 'walk_in' AND status IN ('pending', 'accepted') THEN 2 WHEN type = 'walk_in' THEN 3 ELSE 4 END")
-            ->orderByRaw('COALESCE(start_time, arrived_at, created_at)')
+            ->orderByRaw("CASE WHEN status IN ('completed', 'cancelled', 'rejected') THEN 4 WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type = 'walk_in' THEN 2 WHEN type <> 'walk_in' AND status IN ('pending', 'accepted') THEN 3 ELSE 4 END")
+            ->orderByRaw("CASE WHEN type = 'walk_in' THEN COALESCE(arrived_at, created_at) END")
+            ->orderBy('start_time')
+            ->orderByRaw('COALESCE(arrived_at, created_at)')
             ->orderBy('id')
             ->paginate($this->perPage($request))
             ->withQueryString()
@@ -203,7 +207,7 @@ class ReceptionistWalkInController extends Controller
 
         return Inertia::render('receptionist/walk-ins', [
             'walkIns' => $walkIns,
-            'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'serviceTypes' => Appointment::getBookableServiceTypeOptions(),
             'filters' => compact('status', 'search'),
             'mode' => $mode,
             'clinicClosed' => today()->isWeekend(),

@@ -112,7 +112,10 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                     </button>
 
                     <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                        <LiveDateTime className="hidden lg:flex" />
+                        <LiveDateTime
+                            dateBesideTime
+                            className="hidden lg:flex"
+                        />
                         <ThemeToggle />
                         <NotificationBell />
 

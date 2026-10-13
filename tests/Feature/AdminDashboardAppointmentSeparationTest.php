@@ -97,7 +97,7 @@ test('admin security page shows booking and security alert counts', function () 
     $this->actingAs($admin)->get(route('admin.security'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('admin/reports')
+            ->component('admin/security')
             ->where('securityAlerts.possibleDuplicateAccounts', 1)
             ->where('securityAlerts.repeatedBookingAttempts', 1)
             ->where('securityAlerts.highCancellationActivity', 0)

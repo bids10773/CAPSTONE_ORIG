@@ -173,7 +173,7 @@ class AdminDashboardController extends Controller
             ? (int) $request->query('per_page')
             : 15;
 
-        return Inertia::render('admin/reports', [
+        return Inertia::render('admin/security', [
             'securityAlerts' => [
                 'possibleDuplicateAccounts' => SecurityAudit::where('action', 'possible_duplicate_account')->where('status', 'review')->count(),
                 'repeatedBookingAttempts' => SecurityAudit::where('action', 'rapid_booking_attempts')->where('status', 'review')->count(),

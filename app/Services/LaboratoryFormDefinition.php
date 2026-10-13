@@ -74,9 +74,8 @@ class LaboratoryFormDefinition
                 $this->field('methamphetamine', 'Methamphetamine', 'select', null, null, ['Negative', 'Positive', 'Pending']),
                 $this->field('tetrahydrocannabinol', 'Marijuana / THC', 'select', null, null, ['Negative', 'Positive', 'Pending']),
             ]],
-            'serology' => ['label' => 'Serology', 'column' => 'serology_results', 'services' => ['Hepatitis'], 'fields' => [
+            'serology' => ['label' => 'Hepatitis B Screening', 'column' => 'serology_results', 'services' => ['Hepatitis'], 'fields' => [
                 $this->field('hbsag', 'Hepatitis B Surface Antigen', 'select', null, null, ['Non-reactive', 'Reactive']),
-                $this->field('anti_hav_igm', 'Hepatitis A Anti-HAV IgM', 'select', null, null, ['Non-reactive', 'Reactive']),
             ]],
             'pregnancy' => ['label' => 'Pregnancy Test', 'column' => 'pregnancy_test', 'services' => ['Pregnancy Test'], 'fields' => [
                 $this->field('pregnancy_test', 'Urine Pregnancy Test', 'select', null, null, ['Negative', 'Positive']),

@@ -50,6 +50,7 @@ const PRE_EMPLOYMENT_SERVICES = [
     'Fecalysis',
     'X-Ray',
 ];
+const COMMON_ADD_ONS = ['Drug Test', 'Hepatitis', 'Pregnancy Test'];
 
 interface Appointment {
     id: number;
@@ -682,6 +683,18 @@ export default function CompanyDashboard() {
                             <p className="text-xs font-semibold text-slate-700">
                                 Required medical services
                             </p>
+                            {referralForm.data.examination_purpose ===
+                                'pre_employment' && (
+                                <div className="mt-1.5 rounded-xl border border-moss-200 bg-moss-50 px-3 py-2 text-[11px] leading-5 text-moss-800">
+                                    <strong>Basic 5 is included:</strong> CBC,
+                                    routine urinalysis, fecalysis, chest X-ray,
+                                    and physical examination. Drug Test,
+                                    Hepatitis B Screening, and Pregnancy Test
+                                    are optional employer-requested add-ons. ECG
+                                    is unavailable while its result integration
+                                    is pending.
+                                </div>
+                            )}
                             <div className="mt-1.5 grid gap-1.5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
                                 {Object.entries(serviceTypes).map(
                                     ([value, label]) => (
@@ -720,7 +733,26 @@ export default function CompanyDashboard() {
                                                     )
                                                 }
                                             />
-                                            {label}
+                                            <span>
+                                                {label}
+                                                {PRE_EMPLOYMENT_SERVICES.includes(
+                                                    value,
+                                                ) &&
+                                                    referralForm.data
+                                                        .examination_purpose ===
+                                                        'pre_employment' && (
+                                                        <small className="block font-semibold text-moss-700">
+                                                            Basic 5
+                                                        </small>
+                                                    )}
+                                                {COMMON_ADD_ONS.includes(
+                                                    value,
+                                                ) && (
+                                                    <small className="block font-semibold text-amber-700">
+                                                        Optional add-on
+                                                    </small>
+                                                )}
+                                            </span>
                                         </label>
                                     ),
                                 )}

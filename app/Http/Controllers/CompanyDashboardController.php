@@ -159,9 +159,7 @@ class CompanyDashboardController extends Controller
                 'completed' => $referrals->where('status', 'completed')->count(),
                 'expired' => $referrals->where('status', 'expired')->count(),
             ],
-            'serviceTypes' => collect(Appointment::getServiceTypeOptions())
-                ->except(['ECG', 'Audiometry', 'Neuro Psychiatric Test'])
-                ->all(),
+            'serviceTypes' => Appointment::getBookableServiceTypeOptions(),
         ];
     }
 }

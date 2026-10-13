@@ -3,20 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
-use App\Models\SecurityAudit;
 use App\Services\ClinicalFormWorkflowService;
 use App\Services\LaboratoryFormDefinition;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class ClinicalDocumentController extends Controller
 {
     public function physicalExam(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow, LaboratoryFormDefinition $definitions): Response
     {
-        $this->denyPatientAccess($request, $appointment, 'physical_exam');
         $this->loadPeAppointment($request, $appointment);
         $workflow->auditDocumentAccess($appointment, $request->user(), 'physical_exam', $request);
 
@@ -37,7 +34,7 @@ class ClinicalDocumentController extends Controller
     private function loadPeAppointment(Request $request, Appointment $appointment): void
     {
         Gate::authorize('viewPhysicalExam', $appointment);
-        $this->ensurePatientResultIsReleased($request, $appointment);
+        $this->ensurePatientResultIsReleased($request, $appointment, 'physical_exam');
         abort_unless($appointment->isPePackage(), 404, 'This appointment has no PE form.');
         $appointment->load([
             'user.patientProfile', 'company', 'medicalExamination.examiningDoctor',
@@ -50,9 +47,8 @@ class ClinicalDocumentController extends Controller
 
     public function xray(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow): Response
     {
-        $this->denyPatientAccess($request, $appointment, 'xray');
         Gate::authorize('viewXray', $appointment);
-        $this->ensurePatientResultIsReleased($request, $appointment);
+        $this->ensurePatientResultIsReleased($request, $appointment, 'xray');
         $appointment->load(['user.patientProfile', 'company', 'xrayReport.radiologist', 'xrayReport.verifiedBy']);
         abort_unless($appointment->xrayReport, 404, 'No X-ray report exists.');
         $workflow->auditDocumentAccess($appointment, $request->user(), 'xray', $request);
@@ -60,6 +56,10 @@ class ClinicalDocumentController extends Controller
         return $this->render($request, $appointment, 'Chest X-Ray Report', [
             'Findings' => $appointment->xrayReport->findings,
             'Impression' => $appointment->xrayReport->impression,
+            'Recommendation' => $appointment->xrayReport->recommendation,
+            'Remarks' => $appointment->xrayReport->remarks,
+            'Performed date' => $appointment->xrayReport->performed_at?->format('F j, Y g:i A'),
+            'Verification date' => $appointment->xrayReport->verified_at?->format('F j, Y g:i A'),
         ], 'xray');
     }
 
@@ -69,19 +69,6 @@ class ClinicalDocumentController extends Controller
         $filename = "LMIC-{$slug}-{$appointment->id}.pdf";
 
         return $this->secure($request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename));
-    }
-
-    private function denyPatientAccess(Request $request, Appointment $appointment, string $type): void
-    {
-        if ($request->user()?->role !== 'patient') {
-            return;
-        }
-        Log::warning('Blocked patient medical document access', ['user_id' => $request->user()->id,
-            'appointment_id' => $appointment->id, 'document_type' => $type, 'ip_address' => $request->ip()]);
-        SecurityAudit::create(['actor_id' => $request->user()->id, 'target_user_id' => $appointment->user_id,
-            'action' => 'patient_medical_document_access_denied', 'status' => 'denied',
-            'metadata' => ['appointment_id' => $appointment->id, 'document_type' => $type]]);
-        abort(403, 'Medical documents are released by authorized clinic personnel.');
     }
 
     private function secure(Response $response): Response
@@ -94,7 +81,7 @@ class ClinicalDocumentController extends Controller
         return $response;
     }
 
-    private function ensurePatientResultIsReleased(Request $request, Appointment $appointment): void
+    private function ensurePatientResultIsReleased(Request $request, Appointment $appointment, string $documentType): void
     {
         if (! in_array($request->user()->role, ['patient', 'company'], true)) {
             return;
@@ -106,10 +93,12 @@ class ClinicalDocumentController extends Controller
             $appointment->loadMissing('medicalExamination');
             abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final PE report has not been released yet.');
 
-            return;
+            if ($documentType === 'physical_exam') {
+                return;
+            }
         }
 
-        if ($appointment->requiresXray()) {
+        if ($documentType === 'xray') {
             $appointment->loadMissing('xrayReport');
             abort_unless($appointment->xrayReport?->isVerified(), 403, 'The official X-ray result has not been verified yet.');
         }

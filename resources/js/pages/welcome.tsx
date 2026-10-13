@@ -57,7 +57,7 @@ const services = [
         icon: Activity,
         title: 'Laboratory & Diagnostics',
         short: 'LAB',
-        text: 'In-house laboratory, X-ray, ECG and diagnostic services.',
+        text: 'In-house laboratory, X-ray, and integrated diagnostic services.',
     },
     {
         icon: Syringe,
@@ -909,7 +909,7 @@ export default function Welcome() {
                                 [
                                     '02',
                                     'We schedule your team',
-                                    'Choose in-clinic, on-site, or a hybrid setup.',
+                                    'Choose an in-clinic or on-site setup.',
                                 ],
                                 [
                                     '03',

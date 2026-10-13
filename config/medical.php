@@ -18,8 +18,8 @@ return [
         'working_days' => ['mon', 'tue', 'wed', 'thu', 'fri'],
     ],
     'pe_package' => [
-        'pre_employment_services' => ['PE', 'CBC', 'Urinalysis', 'Fecalysis', 'X-Ray'],
-        'optional_bulk_services' => ['Drug Test', 'Pregnancy Test'],
+        'basic_five_services' => ['PE', 'CBC', 'Urinalysis', 'Fecalysis', 'X-Ray'],
+        'optional_bulk_services' => ['Drug Test', 'Hepatitis', 'Pregnancy Test'],
     ],
     'document_release' => [
         'instructions' => env(

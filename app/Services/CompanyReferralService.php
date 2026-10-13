@@ -15,7 +15,7 @@ class CompanyReferralService
     public function create(User $creator, array $data): CompanyReferral
     {
         if ($data['examination_purpose'] === 'pre_employment') {
-            $data['service_types'] = collect(config('medical.pe_package.pre_employment_services', []))
+            $data['service_types'] = collect(config('medical.pe_package.basic_five_services', []))
                 ->merge($data['service_types'])
                 ->unique()
                 ->values()

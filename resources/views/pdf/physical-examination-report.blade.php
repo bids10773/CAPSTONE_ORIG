@@ -19,7 +19,10 @@
     $drugResult = is_array($drugResult) ? $drugResult : ($laboratory?->drug_test_results ?? []);
     $methamphetamine = strtolower((string) $labValue($drugResult, 'methamphetamine'));
     $marijuana = strtolower((string) $labValue($drugResult, 'tetrahydrocannabinol'));
-    $xrayNormal = $xray?->isVerified() && str_contains(strtolower((string) $xray->impression), 'normal');
+    $xrayImpression = strtolower(trim((string) $xray?->impression));
+    $xrayNormal = $xray?->isVerified()
+        && preg_match('/\bnormal\b/u', $xrayImpression) === 1
+        && preg_match('/\b(?:abnormal|not\s+normal)\b/u', $xrayImpression) !== 1;
     $xrayFindings = $xray?->isVerified() && ! $xrayNormal;
     $classification = $examination?->medical_classification;
     $systemFindings = [
@@ -166,12 +169,11 @@
         <tr><td class="test">A. Complete Blood Count</td><td class="choice">[ {{ $tick($interpretation('cbc') === 'normal') }} ] Normal</td><td class="choice">[ {{ $tick($interpretation('cbc') === 'with_findings') }} ] Findings</td><td class="notes">{{ $verified('cbc') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
         <tr><td class="test">B. Urinalysis</td><td class="choice">[ {{ $tick($interpretation('urinalysis') === 'normal') }} ] Normal</td><td class="choice">[ {{ $tick($interpretation('urinalysis') === 'with_findings') }} ] Findings</td><td class="notes">{{ $verified('urinalysis') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
         <tr><td class="test">C. Fecalysis</td><td class="choice">[ {{ $tick($interpretation('fecalysis') === 'normal') }} ] Normal</td><td class="choice">[ {{ $tick($interpretation('fecalysis') === 'with_findings') }} ] Findings</td><td class="notes">{{ $verified('fecalysis') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
-        @php $hbsag = strtolower((string) $labValue($laboratory?->serology_results, 'hbsag')); $hav = strtolower((string) $labValue($laboratory?->serology_results, 'anti_hav_igm')); @endphp
+        @php $hbsag = strtolower((string) $labValue($laboratory?->serology_results, 'hbsag')); @endphp
         <tr><td class="test">D. Hepatitis B (HBs Ag)</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && str_contains($hbsag, 'non')) }} ] Non-reactive</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && $hbsag === 'reactive') }} ] Reactive</td><td class="notes">{{ ! $isRequested('Hepatitis') ? 'NOT REQUESTED' : ($verified('serology') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
-        <tr><td class="test">E. Hepatitis A (Anti-HAV IgM)</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && str_contains($hav, 'non')) }} ] Non-reactive</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && $hav === 'reactive') }} ] Reactive</td><td class="notes">{{ ! $isRequested('Hepatitis') ? 'NOT REQUESTED' : ($verified('serology') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
         @php $pregnancy = strtolower((string) (is_array($laboratory?->pregnancy_test) ? data_get($laboratory->pregnancy_test, 'pregnancy_test') : $laboratory?->pregnancy_test)); @endphp
-        <tr><td class="test">F. Pregnancy Test</td><td class="choice">[ {{ $tick($isRequested('Pregnancy Test') && $pregnancy === 'negative') }} ] Negative</td><td class="choice">[ {{ $tick($isRequested('Pregnancy Test') && $pregnancy === 'positive') }} ] Positive</td><td class="notes">{{ ! $isRequested('Pregnancy Test') ? 'NOT REQUESTED' : ($verified('pregnancy') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
-        <tr><td colspan="4">G. Drug Test</td></tr>
+        <tr><td class="test">E. Pregnancy Test</td><td class="choice">[ {{ $tick($isRequested('Pregnancy Test') && $pregnancy === 'negative') }} ] Negative</td><td class="choice">[ {{ $tick($isRequested('Pregnancy Test') && $pregnancy === 'positive') }} ] Positive</td><td class="notes">{{ ! $isRequested('Pregnancy Test') ? 'NOT REQUESTED' : ($verified('pregnancy') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
+        <tr><td colspan="4">F. Drug Test</td></tr>
         <tr><td class="test" style="padding-left:14px">a. Methamphetamine (Shabu)</td><td class="choice">[ {{ $tick($isRequested('Drug Test') && $methamphetamine === 'negative') }} ] Negative</td><td class="choice">[ {{ $tick($isRequested('Drug Test') && $methamphetamine === 'positive') }} ] Positive</td><td class="notes">{{ ! $isRequested('Drug Test') ? 'NOT REQUESTED' : ($verified('drug_test') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
         <tr><td class="test" style="padding-left:14px">b. Marijuana</td><td class="choice">[ {{ $tick($isRequested('Drug Test') && $marijuana === 'negative') }} ] Negative</td><td class="choice">[ {{ $tick($isRequested('Drug Test') && $marijuana === 'positive') }} ] Positive</td><td class="notes">{{ ! $isRequested('Drug Test') ? 'NOT REQUESTED' : ($verified('drug_test') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
     </table>
@@ -181,8 +183,8 @@
 
     <div class="section">V. ELECTROCARDIOGRAM / AUDIOMETRY</div>
     <table class="ruled diagnostic">
-        <tr><td class="test bold">Electrocardiogram (ECG)</td><td class="choice">[ ] Normal</td><td class="choice">[ ] Findings</td><td class="notes">{{ $isRequested('ECG') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
-        <tr><td class="test bold">Audiometry</td><td class="choice">[ ] Normal</td><td class="choice">[ ] Findings</td><td class="notes">{{ $isRequested('Audiometry') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
+        <tr><td class="test bold">Electrocardiogram (ECG)</td><td class="choice">[ ] Normal</td><td class="choice">[ ] Findings</td><td class="notes">{{ $isRequested('ECG') ? 'PENDING' : 'NOT REQUESTED' }}</td></tr>
+        <tr><td class="test bold">Audiometry</td><td class="choice">[ ] Normal</td><td class="choice">[ ] Findings</td><td class="notes">{{ $isRequested('Audiometry') ? 'PENDING' : 'NOT REQUESTED' }}</td></tr>
     </table>
 
     <div class="section">VI. OTHERS</div>

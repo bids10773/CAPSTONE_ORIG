@@ -11,7 +11,12 @@ function partsFromValue(value: string): DateParts {
         : { day: '', month: '', year: '' };
 }
 
-function validationMessage(parts: DateParts, min?: string, max?: string) {
+function validationMessage(
+    parts: DateParts,
+    min?: string,
+    max?: string,
+    minErrorMessage?: string,
+) {
     if (!parts.day || !parts.month || !parts.year) {
         return 'Please complete the appointment date.';
     }
@@ -32,7 +37,8 @@ function validationMessage(parts: DateParts, min?: string, max?: string) {
     }
 
     const value = `${parts.year}-${parts.month}-${parts.day}`;
-    if (min && value < min) return 'Appointment date cannot be in the past.';
+    if (min && value < min)
+        return minErrorMessage ?? 'Appointment date cannot be in the past.';
     if (max && value > max)
         return 'Appointment date is outside the available booking period.';
     if (candidate.getUTCDay() === 0 || candidate.getUTCDay() === 6)
@@ -44,6 +50,7 @@ type Props = {
     error?: string;
     min?: string;
     max?: string;
+    minErrorMessage?: string;
     onChange: (value: string) => void;
     slotCounts?: Record<string, number>;
     slotCountContext?: string;
@@ -74,6 +81,7 @@ export default function AppointmentDateInput({
     error,
     min,
     max,
+    minErrorMessage,
     onChange,
     slotCounts,
     slotCountContext = 'across all doctors',
@@ -146,7 +154,7 @@ export default function AppointmentDateInput({
             next.month.length === 2 &&
             next.year.length === 4;
         const message = complete
-            ? validationMessage(next, min, max)
+            ? validationMessage(next, min, max, minErrorMessage)
             : undefined;
         const nextValue =
             complete && !message
@@ -205,7 +213,7 @@ export default function AppointmentDateInput({
                                     maxLength={field.length}
                                     value={parts[field.key]}
                                     placeholder={field.placeholder}
-                                    aria-invalid={Boolean(error || localError)}
+                                    aria-invalid={Boolean(localError || error)}
                                     aria-describedby={errorId}
                                     onChange={(event) =>
                                         update(field.key, event.target.value)
@@ -221,6 +229,7 @@ export default function AppointmentDateInput({
                                                     parts,
                                                     min,
                                                     max,
+                                                    minErrorMessage,
                                                 ),
                                             );
                                         }
@@ -236,7 +245,7 @@ export default function AppointmentDateInput({
                 </>
             )}
             <div id={errorId} aria-live="polite">
-                <InputError message={error || localError} />
+                <InputError message={localError || error} />
             </div>
             {slotCounts && (
                 <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">

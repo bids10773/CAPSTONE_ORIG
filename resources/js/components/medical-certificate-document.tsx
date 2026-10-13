@@ -7,6 +7,8 @@ const A4_HEIGHT_PX = (297 / 25.4) * 96;
 
 export type MedicalCertificateDocumentData = {
     certificateNumber?: string | null;
+    patientReference?: string | null;
+    consultationDate?: string | null;
     salutation?: string | null;
     patientName?: string | null;
     patientAge?: number | string | null;
@@ -130,6 +132,20 @@ export function MedicalCertificateDocument({
                         {valueOrSpace(formatDate(data.dateIssued))}
                     </span>
                 </p>
+            </div>
+            <div className="medical-certificate-reference-row">
+                <span>
+                    <strong>Certificate No.:</strong>{' '}
+                    {valueOrSpace(data.certificateNumber || 'Pending')}
+                </span>
+                <span>
+                    <strong>Patient Ref.:</strong>{' '}
+                    {valueOrSpace(data.patientReference || 'N/A')}
+                </span>
+                <span>
+                    <strong>Consultation:</strong>{' '}
+                    {valueOrSpace(formatDate(data.consultationDate) || 'N/A')}
+                </span>
             </div>
 
             <div className="medical-certificate-copy">

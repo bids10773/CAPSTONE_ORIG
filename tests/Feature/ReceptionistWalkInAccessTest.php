@@ -90,14 +90,15 @@ test('receptionist dashboard includes todays active online queue only', function
             ->where('onlineQueue.0.services', ['PE', 'Pregnancy Test']));
 });
 
-test('online appointments have priority and receptionist cannot manually cancel them', function () {
+test('waiting walk ins are listed FCFS ahead of scheduled patients who have not arrived', function () {
     $this->travelTo(today()->setTime(9, 0));
     $patient = User::factory()->create(['role' => 'patient']);
-    $walkIn = Appointment::create([
+    $laterWalkIn = Appointment::create([
         'user_id' => $patient->id,
         'appointment_date' => today(),
         'type' => 'walk_in',
         'status' => 'pending',
+        'arrived_at' => today()->setTime(8, 45),
         'service_types' => ['CBC'],
     ]);
     $online = Appointment::create([
@@ -108,21 +109,62 @@ test('online appointments have priority and receptionist cannot manually cancel 
         'status' => 'accepted',
         'service_types' => ['PE'],
     ]);
+    $earlierWalkIn = Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => today(),
+        'type' => 'walk_in',
+        'status' => 'pending',
+        'arrived_at' => today()->setTime(8, 30),
+        'service_types' => ['CBC'],
+    ]);
     $staff = receptionist();
 
     $this->actingAs($staff)
         ->get(route('receptionist.queue.index'))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('walkIns.data.0.id', $online->id)
-            ->where('walkIns.data.0.queue_number', 'O-001')
-            ->where('walkIns.data.1.id', $walkIn->id)
-            ->where('walkIns.data.1.queue_number', 'W-001'));
+            ->where('walkIns.data.0.id', $earlierWalkIn->id)
+            ->where('walkIns.data.0.queue_number', 'W-001')
+            ->where('walkIns.data.1.id', $laterWalkIn->id)
+            ->where('walkIns.data.1.queue_number', 'W-002')
+            ->where('walkIns.data.2.id', $online->id)
+            ->where('walkIns.data.2.queue_number', 'O-001'));
 
     $this->actingAs($staff)
         ->patch(route('receptionist.walk-ins.status', $online), ['status' => 'cancelled'])
         ->assertSessionHasErrors('status');
 
     expect($online->refresh()->status)->toBe('accepted');
+});
+
+test('an arrived scheduled patient retains priority for the reserved slot', function () {
+    $this->travelTo(today()->setTime(9, 0));
+    $patient = User::factory()->create(['role' => 'patient']);
+    $walkIn = Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => today(),
+        'type' => 'walk_in',
+        'status' => 'pending',
+        'arrived_at' => today()->setTime(8, 30),
+        'service_types' => ['CBC'],
+    ]);
+    $scheduled = Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => today(),
+        'start_time' => '09:00',
+        'end_time' => '09:30',
+        'type' => 'individual',
+        'status' => 'arrived',
+        'arrived_at' => today()->setTime(8, 45),
+        'service_types' => ['PE'],
+    ]);
+
+    $this->actingAs(receptionist())
+        ->get(route('receptionist.queue.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('walkIns.data.0.id', $scheduled->id)
+            ->where('walkIns.data.0.queue_number', 'O-001')
+            ->where('walkIns.data.1.id', $walkIn->id)
+            ->where('walkIns.data.1.queue_number', 'W-001'));
 });
 
 test('opening the receptionist queue releases a late online slot to the earliest waiting walk in', function () {

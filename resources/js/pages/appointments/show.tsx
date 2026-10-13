@@ -153,6 +153,15 @@ export default function AppointmentRecord({
                       description: 'Radiographic findings and impression',
                       ready:
                           Boolean(appointment.xray_report) &&
+                          (!isPortalRecordViewer ||
+                              (appointment.xray_report?.status ===
+                                  'completed' &&
+                                  Boolean(
+                                      appointment.xray_report?.is_completed,
+                                  ) &&
+                                  Boolean(
+                                      appointment.xray_report?.verified_at,
+                                  ))) &&
                           peDocumentsAvailable,
                       href: `/clinical-forms/${appointment.id}/xray.pdf`,
                   },

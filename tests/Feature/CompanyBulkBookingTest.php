@@ -6,7 +6,10 @@ use App\Models\OnsiteEventStaff;
 use App\Models\User;
 use App\Services\BulkAppointmentEnrollmentService;
 use App\Services\LaboratoryFormDefinition;
+use Carbon\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
+
+afterEach(fn () => Carbon::setTestNow());
 
 function createBulkApprovalAssignments(array $staffCounts): array
 {
@@ -29,7 +32,7 @@ test('company accounts always create company bulk appointments', function () {
         'role' => 'company',
         'company_id' => $company->id,
     ]);
-    $date = today()->nextWeekday();
+    $date = today()->addMonthNoOverflow()->nextWeekday();
 
     $this->actingAs($representative)
         ->post(route('appointments.store'), [
@@ -51,9 +54,131 @@ test('company accounts always create company bulk appointments', function () {
         'examination_purpose' => 'annual_pe',
         'doctor_id' => null,
         'start_time' => '08:00',
+        'service_location' => 'onsite',
+        'event_address' => 'Acme Plant',
         'event_contact_name' => $representative->name,
         'event_contact_number' => $representative->contact,
     ]);
+
+    expect(Appointment::query()->latest('id')->firstOrFail()->service_types)
+        ->toBe(config('medical.pe_package.basic_five_services'));
+});
+
+test('partnered companies schedule annual examinations at least one calendar month ahead', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-13 09:00:00', 'Asia/Manila'));
+
+    $company = Company::create([
+        'company_name' => 'Advance Booking Partner',
+        'status' => 'active',
+        'is_partnered' => true,
+    ]);
+    $account = User::factory()->create([
+        'role' => 'company',
+        'company_id' => $company->id,
+    ]);
+
+    $this->actingAs($account)
+        ->get(route('appointments.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('bookingPolicy.companyAnnualExamMinimumDate', '2026-11-13'));
+
+    $appointment = [
+        'appointment_date' => '2026-11-12',
+        'service_types' => ['PE'],
+        'service_location' => 'clinic',
+        'event_contact_name' => 'Ana Cruz',
+        'event_contact_number' => '09171234567',
+        'expected_employee_count' => 100,
+    ];
+
+    $this->actingAs($account)
+        ->post(route('appointments.store'), $appointment)
+        ->assertSessionHasErrors('appointment_date');
+
+    $this->assertDatabaseCount('appointments', 0);
+
+    $this->actingAs($account)
+        ->post(route('appointments.store'), [
+            ...$appointment,
+            'appointment_date' => '2026-11-13',
+        ])
+        ->assertSessionDoesntHaveErrors()
+        ->assertRedirectContains('/company/dashboard?bulk_upload=');
+
+    $this->assertDatabaseHas('appointments', [
+        'company_id' => $company->id,
+        'appointment_date' => '2026-11-13 00:00:00',
+        'type' => 'company_bulk',
+        'examination_purpose' => 'annual_pe',
+    ]);
+});
+
+test('company address is available to prefill onsite booking and hybrid setup is rejected', function () {
+    $company = Company::create([
+        'company_name' => 'Address Prefill Partner',
+        'address' => '789 Partner Avenue, Cabuyao, Laguna',
+        'status' => 'active',
+        'is_partnered' => true,
+    ]);
+    $account = User::factory()->create([
+        'role' => 'company',
+        'company_id' => $company->id,
+    ]);
+
+    $this->actingAs($account)
+        ->get(route('appointments.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('companies.0.id', $company->id)
+            ->where('companyAddress', '789 Partner Avenue, Cabuyao, Laguna'));
+
+    $this->actingAs($account)->post(route('appointments.store'), [
+        'appointment_date' => today()->addMonthNoOverflow()->nextWeekday()->toDateString(),
+        'service_types' => ['PE'],
+        'service_location' => 'hybrid',
+        'event_address' => $company->address,
+        'event_contact_name' => $account->name,
+        'event_contact_number' => $account->contact,
+        'expected_employee_count' => 100,
+    ])->assertSessionHasErrors('service_location');
+
+    $this->assertDatabaseCount('appointments', 0);
+});
+
+test('existing company accounts receive the lead time when a legacy partnership flag is unset', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-13 09:00:00', 'Asia/Manila'));
+
+    $company = Company::create([
+        'company_name' => 'Legacy Company Account',
+        'status' => 'active',
+        'is_partnered' => false,
+    ]);
+    $account = User::factory()->create([
+        'role' => 'company',
+        'company_id' => $company->id,
+    ]);
+
+    $this->actingAs($account)
+        ->get(route('appointments.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('bookingPolicy.companyAnnualExamMinimumDate', '2026-11-13'));
+
+    $this->actingAs($account)
+        ->post(route('appointments.store'), [
+            'appointment_date' => '2026-10-20',
+            'service_types' => ['PE'],
+            'service_location' => 'clinic',
+            'event_contact_name' => 'Ana Cruz',
+            'event_contact_number' => '09171234567',
+            'expected_employee_count' => 100,
+        ])
+        ->assertSessionHasErrors([
+            'appointment_date' => 'Partnered companies must schedule their annual medical examinations at least one month in advance.',
+        ]);
+
+    $this->assertDatabaseCount('appointments', 0);
 });
 
 test('company has a dedicated status page containing only its own bulk appointments', function () {
@@ -112,7 +237,7 @@ test('company has a dedicated status page containing only its own bulk appointme
         ->assertForbidden();
 });
 
-test('company bulk appointments always use annual examination while selected services remain available', function () {
+test('company annual examinations include only the Basic 5 and explicitly selected add-ons', function () {
     $company = Company::create([
         'company_name' => 'Optional Services Company',
         'status' => 'active',
@@ -121,7 +246,7 @@ test('company bulk appointments always use annual examination while selected ser
     $account = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
 
     $this->actingAs($account)->post(route('appointments.store'), [
-        'appointment_date' => today()->nextWeekday()->toDateString(),
+        'appointment_date' => today()->addMonthNoOverflow()->nextWeekday()->toDateString(),
         'service_types' => ['PE'],
         'examination_purpose' => 'pre_employment',
         'service_location' => 'clinic', 'event_contact_name' => 'Ana Cruz',
@@ -130,11 +255,11 @@ test('company bulk appointments always use annual examination while selected ser
 
     $standard = Appointment::query()->latest('id')->firstOrFail();
     expect($standard->examination_purpose)->toBe('annual_pe')
-        ->and($standard->service_types)->toBe(['PE']);
+        ->and($standard->service_types)->toBe(config('medical.pe_package.basic_five_services'));
 
     $this->actingAs($account)->post(route('appointments.store'), [
-        'appointment_date' => today()->nextWeekday()->addWeekday()->toDateString(),
-        'service_types' => ['PE', 'Drug Test', 'Pregnancy Test'],
+        'appointment_date' => today()->addMonthNoOverflow()->nextWeekday()->addWeekday()->toDateString(),
+        'service_types' => ['PE', 'Drug Test', 'Hepatitis', 'Pregnancy Test'],
         'examination_purpose' => 'pre_employment',
         'service_location' => 'clinic', 'event_contact_name' => 'Ana Cruz',
         'event_contact_number' => '09171234567', 'expected_employee_count' => 100,
@@ -142,8 +267,36 @@ test('company bulk appointments always use annual examination while selected ser
 
     $withAddOns = Appointment::query()->latest('id')->firstOrFail();
     expect($withAddOns->examination_purpose)->toBe('annual_pe')
+        ->and($withAddOns->service_types)->toBe([
+            ...config('medical.pe_package.basic_five_services'),
+            'Drug Test',
+            'Hepatitis',
+            'Pregnancy Test',
+        ])
         ->and(array_keys(app(LaboratoryFormDefinition::class)->sectionsFor($withAddOns)))
-        ->toBe(['drug_test', 'pregnancy']);
+        ->toBe(['cbc', 'urinalysis', 'fecalysis', 'drug_test', 'serology', 'pregnancy']);
+});
+
+test('company booking rejects services without integrated clinical result forms', function () {
+    $company = Company::create([
+        'company_name' => 'Unsupported Service Company',
+        'status' => 'active',
+        'is_partnered' => true,
+    ]);
+    $account = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
+
+    $this->actingAs($account)->post(route('appointments.store'), [
+        'appointment_date' => today()->addMonthNoOverflow()->nextWeekday()->toDateString(),
+        'service_types' => ['ECG'],
+        'service_location' => 'clinic',
+        'event_contact_name' => 'Ana Cruz',
+        'event_contact_number' => '09171234567',
+        'expected_employee_count' => 100,
+    ])->assertSessionHasErrors([
+        'service_types' => 'These services are unavailable until their clinical result forms are integrated: ECG.',
+    ]);
+
+    $this->assertDatabaseCount('appointments', 0);
 });
 
 test('the clinic decides whether a company bulk appointment needs one or two full days', function () {
@@ -153,7 +306,7 @@ test('the clinic decides whether a company bulk appointment needs one or two ful
         'is_partnered' => true,
     ]);
     $account = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
-    $startDate = today()->next('Monday');
+    $startDate = today()->addMonthNoOverflow()->next('Monday');
 
     $this->actingAs($account)->post(route('appointments.store'), [
         'appointment_date' => $startDate->toDateString(),
@@ -186,6 +339,7 @@ test('the clinic decides whether a company bulk appointment needs one or two ful
             'staff_assignments' => createBulkApprovalAssignments([
                 'doctor' => 3,
                 'medtech' => 2,
+                'radtech' => 1,
                 'receptionist' => 1,
             ]),
         ])
@@ -196,7 +350,7 @@ test('the clinic decides whether a company bulk appointment needs one or two ful
         ->and($employeeAppointment->refresh()->event_end_date->toDateString())
         ->toBe($startDate->copy()->addDay()->toDateString())
         ->and($appointment->onsiteStaff()->where('is_active', true)->count())
-        ->toBe(6);
+        ->toBe(7);
 });
 
 test('bulk requests have a separate admin approval queue and do not require patient demographics', function () {

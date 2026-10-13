@@ -163,7 +163,7 @@ test('patient cannot download PE records until finalized report is explicitly re
 
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.physical-exam.pdf', $appointment))
-        ->assertForbidden();
+        ->assertOk();
 });
 
 test('finalized unreleased PE remains visible in the assigned doctor release queue', function () {
@@ -359,11 +359,51 @@ test('released PE provides the consolidated medical examination PDF', function (
         ->toContain('Clear lung fields')
         ->toContain('Final Medical Evaluation');
 
-    $this->get(route('clinical-forms.physical-exam.pdf', $appointment))
-        ->assertForbidden();
+    $this->actingAs($appointment->user)
+        ->get(route('clinical-forms.physical-exam.pdf', $appointment))
+        ->assertOk();
 
     $otherPatient = User::factory()->create(['role' => 'patient']);
     $this->actingAs($otherPatient)
         ->get(route('clinical-forms.physical-exam.pdf', $appointment))
         ->assertForbidden();
+});
+
+test('PE report does not classify an abnormal xray impression as normal', function () {
+    $appointment = delayedPeAppointment(['PE', 'X-Ray', 'ECG', 'Audiometry']);
+    $examination = app(MedicalExaminationService::class)->forAppointment($appointment);
+    $physical = PhysicalExam::create([
+        'appointment_id' => $appointment->id,
+        'medical_examination_id' => $examination->id,
+        'doctor_id' => $appointment->doctor_id,
+        'classification' => 'Pending',
+        'is_completed' => true,
+    ]);
+    $xray = XrayReport::create([
+        'appointment_id' => $appointment->id,
+        'medical_examination_id' => $examination->id,
+        'radiologist_id' => User::factory()->create(['role' => 'radtech'])->id,
+        'findings' => 'Opacity in the right lower lobe.',
+        'impression' => 'Abnormal finding requiring follow-up.',
+        'status' => 'completed',
+        'is_completed' => true,
+        'verified_at' => now(),
+    ]);
+    $appointment->load(['user.patientProfile', 'company', 'medicalExamination.diagnosticResults']);
+
+    $html = view('pdf.physical-examination-report', [
+        'appointment' => $appointment,
+        'examination' => $appointment->medicalExamination,
+        'physical' => $physical,
+        'history' => null,
+        'laboratory' => null,
+        'xray' => $xray,
+        'laboratorySections' => [],
+    ])->render();
+
+    expect($html)
+        ->toMatch('/Chest X-ray.*?\[ {3}\] Normal Chest.*?\[ \/ \] Findings/s')
+        ->toMatch('/Electrocardiogram \(ECG\).*?PENDING/s')
+        ->toMatch('/Audiometry.*?PENDING/s')
+        ->not->toMatch('/Electrocardiogram \(ECG\).*?SEE ATTACHED RESULT/s');
 });

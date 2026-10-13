@@ -158,6 +158,18 @@ class AppointmentController extends Controller
             ]);
 
         $user = $request->user()->load('patientProfile'); // ✅ LOAD RELATION
+        $companyAddress = $user->role === 'company'
+            ? $user->company()->where('status', 'active')->value('address')
+            : null;
+        $companyAnnualExamMinimumDate = null;
+        if ($user->role === 'company') {
+            $companyAnnualExamMinimumDate = $user->company()
+                ->where('status', 'active')
+                ->exists()
+                    ? ClinicHours::partneredCompanyMinimumAppointmentDate()
+                    : null;
+        }
+
         $upcomingAppointments = collect();
         if ($user->role === 'patient') {
             $upcomingAppointments = Appointment::query()
@@ -171,9 +183,10 @@ class AppointmentController extends Controller
         return Inertia::render('appointments/create', [
             'clinicHours' => ClinicHours::publicSettings(),
             'companies' => $companies,
-            'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'companyAddress' => $companyAddress,
+            'serviceTypes' => Appointment::getBookableServiceTypeOptions(),
             'pePackage' => [
-                'preEmploymentServices' => config('medical.pe_package.pre_employment_services', []),
+                'preEmploymentServices' => config('medical.pe_package.basic_five_services', []),
                 'optionalBulkServices' => config('medical.pe_package.optional_bulk_services', []),
             ],
             'appointmentTypes' => collect(Appointment::getTypeOptions())
@@ -186,6 +199,7 @@ class AppointmentController extends Controller
                 'maximumUpcoming' => (int) config('medical.booking_security.max_active_future_appointments', 1),
                 'upcomingAppointments' => $upcomingAppointments,
                 'bookedDates' => $upcomingAppointments->pluck('appointment_date')->map->toDateString()->unique()->values(),
+                'companyAnnualExamMinimumDate' => $companyAnnualExamMinimumDate,
             ],
             'referral' => $referral ? [
                 'id' => $referral->id,
@@ -206,6 +220,7 @@ class AppointmentController extends Controller
     {
         $user = $request->user();
         $referral = null;
+        $company = null;
 
         if ($request->filled('company_referral_id')) {
             abort_unless($user->role === 'patient', 403);
@@ -243,8 +258,17 @@ class AppointmentController extends Controller
                 'examination_purpose' => 'annual_pe',
                 'event_contact_name' => $user->name,
                 'event_contact_number' => $user->contact,
+                'service_types' => collect(config('medical.pe_package.basic_five_services', []))
+                    ->merge($request->input('service_types', []))
+                    ->unique()
+                    ->values()
+                    ->all(),
             ]);
         }
+
+        $minimumAppointmentDate = $company
+            ? ClinicHours::partneredCompanyMinimumAppointmentDate()
+            : ClinicHours::today();
 
         $rules = [
             'doctor_id' => ['nullable', Rule::requiredIf(fn () => in_array($request->type, ['individual', 'company_referral'], true)), 'exists:users,id'],
@@ -252,13 +276,13 @@ class AppointmentController extends Controller
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
             'company_id' => ['nullable', 'exists:companies,id'],
             'company_name' => ['nullable', 'string', 'max:255'],
-            'appointment_date' => ['required', 'date', 'after_or_equal:'.ClinicHours::today(), new Weekday],
+            'appointment_date' => ['required', 'date', 'after_or_equal:'.$minimumAppointmentDate, new Weekday],
             'examination_purpose' => ['nullable', 'string', Rule::in(['pre_employment', 'annual_pe', 'medical_clearance'])],
             'service_types' => ['required', 'array'],
             'service_types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(Appointment::getServiceTypeOptions()))],
             'notes' => ['nullable', 'string', 'max:500'],
-            'service_location' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), Rule::in(['onsite', 'clinic', 'hybrid'])],
-            'event_address' => [Rule::requiredIf(fn () => $request->type === 'company_bulk' && in_array($request->service_location, ['onsite', 'hybrid'], true)), 'nullable', 'string', 'max:500'],
+            'service_location' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), Rule::in(['onsite', 'clinic'])],
+            'event_address' => ['exclude_unless:service_location,onsite', Rule::requiredIf(fn () => $request->type === 'company_bulk'), 'string', 'max:500'],
             'event_contact_name' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), 'nullable', 'string', 'max:255'],
             'event_contact_number' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), 'nullable', 'string', 'max:30'],
             'expected_employee_count' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), 'nullable', 'integer', 'min:1', 'max:5000'],
@@ -275,7 +299,13 @@ class AppointmentController extends Controller
             $rules['appointment_date'][] = 'before_or_equal:'.$referral->valid_until->toDateString();
         }
 
-        $validator = Validator::make($request->all(), $rules);
+        $messages = [];
+        if ($company) {
+            $messages['appointment_date.after_or_equal'] =
+                'Partnered companies must schedule their annual medical examinations at least one month in advance.';
+        }
+
+        $validator = Validator::make($request->all(), $rules, $messages);
 
         $validator->after(function ($validator) use ($request): void {
             if ($request->filled('appointment_date') && ! ClinicHours::isBookableDate($request->input('appointment_date'))) {
@@ -288,15 +318,11 @@ class AppointmentController extends Controller
                 );
             }
 
-            if ($request->type !== 'company_bulk') {
-                return;
-            }
-
             $unsupported = collect($request->input('service_types', []))
-                ->intersect(['ECG', 'Audiometry', 'Neuro Psychiatric Test']);
+                ->intersect(Appointment::getUnavailableServiceTypes());
             if ($unsupported->isNotEmpty()) {
                 $validator->errors()->add('service_types',
-                    'These services cannot be selected for bulk events until their clinical result forms are available: '.$unsupported->join(', ').'.');
+                    'These services are unavailable until their clinical result forms are integrated: '.$unsupported->join(', ').'.');
             }
         });
 
@@ -325,7 +351,7 @@ class AppointmentController extends Controller
         }
 
         if (($data['examination_purpose'] ?? null) === 'pre_employment') {
-            $data['service_types'] = collect(config('medical.pe_package.pre_employment_services', []))
+            $data['service_types'] = collect(config('medical.pe_package.basic_five_services', []))
                 ->merge($data['service_types'])
                 ->unique()
                 ->values()
@@ -1106,7 +1132,8 @@ class AppointmentController extends Controller
         }
 
         $appointments = $query
-            ->orderByRaw('CASE WHEN start_time IS NULL THEN 1 ELSE 0 END')
+            ->orderByRaw("CASE WHEN status = 'completed' THEN 4 WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type = 'walk_in' THEN 2 WHEN type <> 'walk_in' THEN 3 ELSE 4 END")
+            ->orderByRaw("CASE WHEN type = 'walk_in' THEN COALESCE(arrived_at, created_at) END")
             ->orderBy('start_time')
             ->orderByRaw('COALESCE(arrived_at, created_at)')
             ->orderBy('id')
@@ -1151,7 +1178,7 @@ class AppointmentController extends Controller
             'companies' => $companies,
             'doctors' => $doctors,
             'patients' => $patients,
-            'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'serviceTypes' => Appointment::getBookableServiceTypeOptions(),
             'appointmentTypes' => Appointment::getTypeOptions(),
         ]);
     }
@@ -1166,7 +1193,7 @@ class AppointmentController extends Controller
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
             'company_id' => ['nullable', 'exists:companies,id'],
             'appointment_date' => ['required', 'date', new Weekday],
-            'service_type' => ['required', 'string'],
+            'service_type' => ['required', 'string', Rule::in(array_keys(Appointment::getBookableServiceTypeOptions()))],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
 
@@ -1227,7 +1254,7 @@ class AppointmentController extends Controller
             'appointments' => $query,
             'doctors' => User::where('role', 'doctor')->where('is_active', true)
                 ->get(['id', 'first_name', 'last_name']),
-            'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'serviceTypes' => Appointment::getBookableServiceTypeOptions(),
             'statusOptions' => ['pending', 'accepted', 'arrived', 'for_diagnostics', 'for_xray', 'for_final_evaluation', 'completed', 'cancelled'],
             'filters' => compact('search', 'status', 'type'),
         ]);
@@ -1260,6 +1287,7 @@ class AppointmentController extends Controller
                 'appointment_date' => ['required', 'date', 'after_or_equal:today', new Weekday],
                 'start_time' => ['required', 'date_format:H:i'],
                 'service_types' => ['required', 'array', 'min:1'],
+                'service_types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(Appointment::getBookableServiceTypeOptions()))],
                 'notes' => ['nullable', 'string', 'max:500'],
             ]);
 
@@ -1367,6 +1395,7 @@ class AppointmentController extends Controller
             'appointment_date' => ['required', 'date', new Weekday],
             'start_time' => ['required', 'date_format:H:i'],
             'service_types' => ['required', 'array', 'min:1'],
+            'service_types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(Appointment::getBookableServiceTypeOptions()))],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 

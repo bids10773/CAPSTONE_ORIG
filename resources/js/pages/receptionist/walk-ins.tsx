@@ -363,8 +363,9 @@ export default function WalkIns({
                                 : 'Today’s patients'}
                         </h1>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                            Track today’s patients and assign care from one
-                            place.
+                            Reserved appointment slots remain protected. Waiting
+                            walk-ins are handled FCFS using the next available
+                            slot.
                         </p>
                     </div>
                     <button

@@ -64,6 +64,7 @@ test('admin report detail table is paginated without changing aggregate totals',
         ->get(route('admin.reports', ['per_page' => 10, 'page' => 2]))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
+            ->component('admin/reports')
             ->where('totalAppointments', 26)
             ->where('recentAppointments.total', 26)
             ->where('recentAppointments.current_page', 2)

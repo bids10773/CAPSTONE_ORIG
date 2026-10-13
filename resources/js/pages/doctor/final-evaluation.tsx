@@ -25,7 +25,7 @@ const laboratoryMapping: Record<string, { label: string; column: string }> = {
     Urinalysis: { label: 'Urinalysis', column: 'urinalysis_results' },
     Fecalysis: { label: 'Fecalysis', column: 'fecalysis_results' },
     'Drug Test': { label: 'Drug Test', column: 'drug_test_results' },
-    Hepatitis: { label: 'Hepatitis Screening', column: 'serology_results' },
+    Hepatitis: { label: 'Hepatitis B Screening', column: 'serology_results' },
     'Pregnancy Test': { label: 'Pregnancy Test', column: 'pregnancy_test' },
     FBS: { label: 'Fasting Blood Sugar', column: 'blood_chemistry_results' },
     'Blood Chemistry': {

@@ -1071,6 +1071,16 @@
     white-space: nowrap;
 }
 
+.medical-certificate-reference-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px 18px;
+    margin-top: 6px;
+    color: #374151;
+    font-size: 11px;
+}
+
 .medical-certificate-inline-value {
     display: inline-block;
     min-height: 1.25em;
