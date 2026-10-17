@@ -1,8 +1,6 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
-    BriefcaseMedical,
-    Building2,
     CalendarDays,
     CheckCircle2,
     CircleX,
@@ -17,10 +15,7 @@ import {
 } from 'lucide-react';
 
 import AppLayout from '@/layouts/app-layout';
-import {
-    appointmentStatusLabel,
-    examinationPurposeLabel,
-} from '@/lib/appointment-status';
+import { appointmentStatusLabel } from '@/lib/appointment-status';
 
 type LaboratorySection = {
     label: string;
@@ -30,42 +25,14 @@ type LaboratorySection = {
 type AppointmentRecordProps = {
     appointment: any;
     appointmentsIndexUrl: string;
+    completePeReadyForPickup: boolean;
     laboratorySections: Record<string, LaboratorySection>;
 };
-
-function formatDate(value: string): string {
-    return new Intl.DateTimeFormat('en-US', {
-        weekday: 'short',
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-    }).format(new Date(value));
-}
-
-function formatTime(value?: string | null): string {
-    if (!value) return 'Time not assigned';
-
-    const [hours, minutes] = value.split(':').map(Number);
-    return new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-    }).format(new Date(2000, 0, 1, hours, minutes));
-}
-
-function visitTypeLabel(value: string): string {
-    const labels: Record<string, string> = {
-        individual: 'Individual appointment',
-        company_referral: 'Company referral',
-        company_bulk: 'Company bulk appointment',
-        walk_in: 'Walk-in',
-    };
-
-    return labels[value] ?? value.replaceAll('_', ' ');
-}
 
 export default function AppointmentRecord({
     appointment,
     appointmentsIndexUrl,
+    completePeReadyForPickup,
     laboratorySections = {},
 }: AppointmentRecordProps) {
     const patient = appointment.user;
@@ -78,6 +45,7 @@ export default function AppointmentRecord({
         ? 'Company Employee No.'
         : 'Appointment';
     const services: string[] = appointment.service_types ?? [];
+    const includesPe = services.includes('PE');
     const laboratoryEntries = Object.entries(laboratorySections);
     const isPatientViewer = auth.user.role === 'patient';
     const isPortalRecordViewer = ['patient', 'company'].includes(
@@ -98,40 +66,28 @@ export default function AppointmentRecord({
         .filter(Boolean)
         .join(' ');
     const documents = [
-        ...(services.includes('PE')
+        ...(includesPe
             ? [
                   {
                       key: 'physical-exam',
                       icon: <Stethoscope />,
-                      title: 'Complete PE Report',
+                      title: 'Complete Medical Examination Report',
                       description:
-                          'PE summary and completed diagnostic results',
-                      ready:
-                          Boolean(appointment.physical_exam) &&
-                          peDocumentsAvailable,
+                          'Complete examination summary and diagnostic results',
+                      ready: isPatientViewer
+                          ? completePeReadyForPickup
+                          : Boolean(appointment.physical_exam) &&
+                            peDocumentsAvailable,
                       href: `/clinical-forms/${appointment.id}/physical-exam.pdf`,
                   },
               ]
             : []),
-        ...laboratoryEntries.map(([key, section]) => ({
-            key: `laboratory-${key}`,
-            icon: <FlaskConical />,
-            title: `${section.label} Result`,
-            description: 'Verified laboratory findings and remarks',
-            ready:
-                Boolean(appointment.lab_result?.[section.column]) &&
-                (!isPortalRecordViewer ||
-                    Boolean(appointment.lab_result?.finalized_at) ||
-                    appointment.lab_result?.status === 'finalized') &&
-                peDocumentsAvailable,
-            href: `/clinical-forms/${appointment.id}/laboratory/${key}.pdf`,
-        })),
-        ...(laboratoryEntries.length > 1
+        ...(!includesPe && laboratoryEntries.length > 0
             ? [
                   {
-                      key: 'combined-laboratory',
+                      key: 'laboratory',
                       icon: <FlaskConical />,
-                      title: 'Combined Laboratory Report',
+                      title: 'Laboratory Report',
                       description:
                           'All requested laboratory results in one file',
                       ready:
@@ -144,7 +100,7 @@ export default function AppointmentRecord({
                   },
               ]
             : []),
-        ...(services.includes('X-Ray')
+        ...(!includesPe && services.includes('X-Ray')
             ? [
                   {
                       key: 'xray',
@@ -268,73 +224,6 @@ export default function AppointmentRecord({
                     </div>
                 </header>
 
-                <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-border dark:bg-card">
-                    <div className="mb-3 flex items-center gap-3">
-                        <span className="grid size-9 place-items-center rounded-xl bg-moss-100 text-moss-700 dark:bg-moss-950 dark:text-moss-300">
-                            <BriefcaseMedical className="size-5" />
-                        </span>
-                        <div>
-                            <h2 className="font-bold text-slate-950 dark:text-slate-100">
-                                Visit overview
-                            </h2>
-                            <p className="text-sm text-slate-500">
-                                Scheduling and examination details
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="grid gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 sm:grid-cols-2 lg:grid-cols-4 dark:border-border dark:bg-border">
-                        <InfoItem
-                            icon={<CalendarDays />}
-                            label="Scheduled date"
-                            value={formatDate(appointment.appointment_date)}
-                            detail={formatTime(appointment.start_time)}
-                        />
-                        <InfoItem
-                            icon={<Stethoscope />}
-                            label="Examination purpose"
-                            value={examinationPurposeLabel(
-                                appointment.examination_purpose,
-                            )}
-                        />
-                        <InfoItem
-                            icon={<UserRound />}
-                            label="Visit type"
-                            value={visitTypeLabel(appointment.type)}
-                        />
-                        <InfoItem
-                            icon={<Building2 />}
-                            label="Company"
-                            value={
-                                appointment.company?.company_name ??
-                                'Not applicable'
-                            }
-                        />
-                    </div>
-
-                    <div className="mt-3">
-                        <p className="text-xs font-bold tracking-wider text-slate-500 uppercase">
-                            Requested services
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                            {services.length ? (
-                                services.map((service) => (
-                                    <span
-                                        key={service}
-                                        className="rounded-full border border-moss-200 bg-moss-50 px-3 py-1.5 text-xs font-semibold text-moss-800 dark:border-moss-800 dark:bg-moss-950/50 dark:text-moss-200"
-                                    >
-                                        {service}
-                                    </span>
-                                ))
-                            ) : (
-                                <span className="text-sm text-slate-500">
-                                    No services recorded
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                </section>
-
                 <section>
                     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                         <div>
@@ -425,38 +314,6 @@ function HeroStat({
                 {label}
             </p>
             <p className="mt-1 text-sm font-bold capitalize">{value}</p>
-        </div>
-    );
-}
-
-function InfoItem({
-    icon,
-    label,
-    value,
-    detail,
-}: {
-    icon: React.ReactNode;
-    label: string;
-    value: string;
-    detail?: string;
-}) {
-    return (
-        <div className="min-w-0 bg-white p-3 dark:bg-card">
-            <span className="text-moss-600 dark:text-moss-300 [&>svg]:size-4">
-                {icon}
-            </span>
-            <p className="mt-2 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-                {label}
-            </p>
-            <p
-                className="mt-1 truncate text-sm font-bold text-slate-900 dark:text-slate-100"
-                title={value}
-            >
-                {value}
-            </p>
-            {detail && (
-                <p className="mt-0.5 text-xs text-slate-500">{detail}</p>
-            )}
         </div>
     );
 }

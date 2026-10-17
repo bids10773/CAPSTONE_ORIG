@@ -27,7 +27,14 @@ export interface MedicalDocument {
     } | null;
     patient?: { id: number; name: string };
     pdf_url?: string | null;
-    can?: { mark_ready: boolean; release: boolean; reverse: boolean };
+    can?: {
+        mark_ready: boolean;
+        release: boolean;
+        reverse: boolean;
+        grouped_pe_release: boolean;
+        review: boolean;
+        reviewed: boolean;
+    };
     releases?: Array<{
         id: number;
         recipient_type: string;

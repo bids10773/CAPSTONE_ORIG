@@ -27,6 +27,7 @@ class MedicalDocumentController extends Controller
             : null;
 
         $documents = MedicalDocument::query()
+            ->releaseVisible()
             ->where('patient_id', $request->user()->id)
             ->with('appointment:id,reference_code,appointment_date,start_time,status')
             ->when(
@@ -71,7 +72,7 @@ class MedicalDocumentController extends Controller
         $search = trim((string) ($filters['search'] ?? ''));
 
         $documents = MedicalDocument::query()->visibleTo($request->user())
-            ->with(['patient:id,first_name,middle_name,last_name', 'medicalCertificate',
+            ->with(['patient:id,first_name,middle_name,last_name', 'appointment:id,service_types', 'medicalCertificate',
                 'releases' => fn ($query) => $query->with(['releasedBy:id,first_name,middle_name,last_name', 'reversedBy:id,first_name,middle_name,last_name'])->latest('released_at')])
             ->when($search, fn ($query) => $query->where(fn ($nested) => $nested
                 ->where('document_number', 'like', "%{$search}%")
@@ -98,6 +99,26 @@ class MedicalDocumentController extends Controller
         $service->markReady($medicalDocument, $request->user(), $request);
 
         return back()->with('success', 'Document marked ready for pickup.');
+    }
+
+    public function review(Request $request, MedicalDocument $medicalDocument): RedirectResponse
+    {
+        Gate::authorize('view', $medicalDocument);
+        abort_unless(in_array($request->user()->role, ['admin', 'receptionist'], true), 403);
+        abort_unless($medicalDocument->status === 'approved', 422, 'Only approved documents can be reviewed for release.');
+
+        $medicalDocument->audits()->firstOrCreate([
+            'actor_id' => $request->user()->id,
+            'action' => 'reviewed',
+        ], [
+            'old_status' => $medicalDocument->status,
+            'new_status' => $medicalDocument->status,
+            'metadata' => ['reviewed_for_release' => true],
+            'ip_address' => $request->ip(),
+            'user_agent' => str($request->userAgent())->limit(1000),
+        ]);
+
+        return back()->with('success', 'Report review recorded. You may now mark it ready.');
     }
 
     public function release(Request $request, MedicalDocument $medicalDocument, MedicalDocumentService $service): RedirectResponse
@@ -142,6 +163,13 @@ class MedicalDocumentController extends Controller
 
     private function staffPayload(MedicalDocument $document, Request $request): array
     {
+        $isPeBundle = $document->appointment?->isPePackage() ?? false;
+        $isPeBundleRoot = $isPeBundle && $document->document_type === 'physical_examination';
+        $isPeBundleChild = $isPeBundle && in_array($document->document_type, ['laboratory_report', 'xray_report'], true);
+        $reviewedByUser = $document->audits()
+            ->where('action', 'reviewed')
+            ->where('actor_id', $request->user()->id)
+            ->exists();
         $pdfUrl = null;
         if ($document->medicalCertificate && $request->user()->can('downloadPdf', $document->medicalCertificate)) {
             $pdfUrl = route('medical-certificates.pdf', $document->medicalCertificate);
@@ -158,7 +186,17 @@ class MedicalDocumentController extends Controller
         }
 
         return [...$this->patientPayload($document), 'patient' => ['id' => $document->patient_id, 'name' => $document->patient?->name],
-            'pdf_url' => $pdfUrl, 'can' => ['mark_ready' => $request->user()->can('markReady', $document), 'release' => $request->user()->can('release', $document), 'reverse' => $request->user()->can('reverseRelease', $document)],
+            'pdf_url' => $pdfUrl, 'can' => [
+                'mark_ready' => ! $isPeBundleChild && $request->user()->can('markReady', $document),
+                'release' => ! $isPeBundleChild && $request->user()->can('release', $document),
+                'reverse' => ! $isPeBundleChild && $request->user()->can('reverseRelease', $document),
+                'grouped_pe_release' => $isPeBundleRoot,
+                'review' => ! $isPeBundleChild
+                    && in_array($request->user()->role, ['admin', 'receptionist'], true)
+                    && $document->status === 'approved'
+                    && $pdfUrl !== null,
+                'reviewed' => $reviewedByUser,
+            ],
             'releases' => $document->releases->map(fn ($release) => ['id' => $release->id, 'recipient_type' => $release->recipient_type,
                 'recipient_name' => $release->recipient_name, 'representative_verification' => $release->representative_verification,
                 'release_method' => $release->release_method, 'remarks' => $release->remarks, 'released_at' => $release->released_at?->toIso8601String(),

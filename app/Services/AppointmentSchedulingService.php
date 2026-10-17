@@ -7,6 +7,7 @@ use App\Models\SecurityAudit;
 use App\Models\User;
 use App\Notifications\AppointmentAutoCancelled;
 use App\Notifications\AppointmentRejected;
+use App\Support\ClinicHours;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -83,8 +84,15 @@ class AppointmentSchedulingService
     {
         $at = Carbon::instance(($at ?? now())->toDateTime());
         $ids = Appointment::query()
-            ->whereIn('type', ['individual', 'company_referral'])
-            ->whereIn('status', ['pending', 'accepted'])
+            ->where(function ($query) {
+                $query->where(fn ($clinic) => $clinic
+                    ->whereIn('type', ['individual', 'company_referral'])
+                    ->whereIn('status', ['pending', 'accepted']))
+                    ->orWhere(fn ($bulk) => $bulk
+                        ->where('type', 'company_bulk')
+                        ->whereNull('bulk_appointment_id')
+                        ->where('status', 'pending'));
+            })
             ->whereNull('arrived_at')
             ->whereNotNull('start_time')
             ->whereDate('appointment_date', '<=', $at->toDateString())
@@ -115,6 +123,17 @@ class AppointmentSchedulingService
 
     private function shouldRejectPendingRequest(Appointment $appointment, CarbonInterface $at): bool
     {
+        if ($appointment->type === 'company_bulk'
+            && $appointment->bulk_appointment_id === null
+            && $appointment->status === 'pending') {
+            $eventEndsAt = Carbon::parse(
+                $appointment->appointment_date->format('Y-m-d').' '.($appointment->end_time?->format('H:i:s') ?? '23:59:59'),
+                ClinicHours::timezone(),
+            );
+
+            return $at->greaterThan($eventEndsAt);
+        }
+
         $scheduledAt = $this->scheduledAt($appointment);
 
         return $appointment->type === 'individual'
@@ -125,10 +144,14 @@ class AppointmentSchedulingService
 
     private function rejectExpiredRequest(Appointment $appointment): void
     {
+        $isBulkEvent = $appointment->type === 'company_bulk'
+            && $appointment->bulk_appointment_id === null;
         $appointment->update([
             'status' => 'rejected',
             'rejection_reason' => 'schedule_expired',
-            'rejection_details' => 'The requested appointment time passed before clinic confirmation.',
+            'rejection_details' => $isBulkEvent
+                ? 'The requested onsite event date passed before clinic approval.'
+                : 'The requested appointment time passed before clinic confirmation.',
             'processed_by' => null,
             'processed_at' => now(),
         ]);

@@ -26,7 +26,7 @@ class ClinicalDocumentController extends Controller
             'xray' => $appointment->xrayReport,
             'laboratorySections' => $definitions->sectionsFor($appointment),
         ])->setPaper('letter', 'portrait');
-        $filename = "LMIC-Complete-PE-{$appointment->id}.pdf";
+        $filename = "medicalexam-pdf-{$appointment->reference_code}.pdf";
 
         return $this->secure($request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename));
     }
@@ -91,7 +91,7 @@ class ClinicalDocumentController extends Controller
 
         if ($appointment->isPePackage()) {
             $appointment->loadMissing('medicalExamination');
-            abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final PE report has not been released yet.');
+            abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final medical examination report has not been released yet.');
 
             if ($documentType === 'physical_exam') {
                 return;

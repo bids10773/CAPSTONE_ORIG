@@ -357,7 +357,8 @@ test('released PE provides the consolidated medical examination PDF', function (
         ->toMatch('/Complete Blood Count.*?\[ {3}\] Normal.*?\[ \/ \] Findings/s')
         ->toContain('Hemoglobin outside the reviewed reference range.')
         ->toContain('Clear lung fields')
-        ->toContain('Final Medical Evaluation');
+        ->toContain('FIT TO WORK')
+        ->not->toContain('Final Medical Evaluation');
 
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.physical-exam.pdf', $appointment))

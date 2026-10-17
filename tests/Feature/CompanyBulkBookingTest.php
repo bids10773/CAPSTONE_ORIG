@@ -417,6 +417,39 @@ test('bulk requests have a separate admin approval queue and do not require pati
     expect($bulk->refresh()->status)->toBe('accepted');
 });
 
+test('admin bulk queue expires past pending events and rejects stale direct approval', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $company = Company::create(['company_name' => 'Expired Bulk Company']);
+    $representative = User::factory()->create(['role' => 'company', 'company_id' => $company->id]);
+    $past = Appointment::create([
+        'user_id' => $representative->id,
+        'company_id' => $company->id,
+        'appointment_date' => today()->subDay(),
+        'start_time' => '08:00',
+        'end_time' => '17:00',
+        'type' => 'company_bulk',
+        'status' => 'pending',
+        'service_types' => ['PE'],
+    ]);
+    $employee = User::factory()->create(['role' => 'patient', 'company_id' => $company->id]);
+    app(BulkAppointmentEnrollmentService::class)->enroll($past, $employee);
+
+    $this->actingAs($admin)
+        ->patch(route('admin.appointments.update-status', $past), [
+            'status' => 'accepted',
+            'event_duration_days' => 1,
+            'staff_assignments' => [],
+        ])
+        ->assertSessionHasErrors('event');
+
+    $this->actingAs($admin)
+        ->get(route('admin.bulk-appointments.index', ['status' => 'pending']))
+        ->assertInertia(fn (Assert $page) => $page->has('appointments.data', 0));
+
+    expect($past->refresh()->status)->toBe('rejected')
+        ->and($past->rejection_reason)->toBe('schedule_expired');
+});
+
 test('draft bulk requests stay hidden until a masterlist is attached and empty requests cannot be approved', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     $company = Company::create(['company_name' => 'Draft Masterlist Company']);

@@ -13,8 +13,10 @@ use App\Notifications\AppointmentCancelled;
 use App\Notifications\OnsiteStaffAssigned;
 use App\Rules\Weekday;
 use App\Services\AppointmentApprovalService;
+use App\Services\AppointmentSchedulingService;
 use App\Services\IndividualAppointmentBookingService;
 use App\Services\LaboratoryFormDefinition;
+use App\Services\MedicalDocumentService;
 use App\Services\OnsiteEventWorkflowService;
 use App\Services\OnsiteStaffAvailabilityService;
 use App\Support\ClinicHours;
@@ -491,8 +493,12 @@ class AppointmentController extends Controller
     /**
      * Display the specified appointment.
      */
-    public function show(Request $request, Appointment $appointment, LaboratoryFormDefinition $definitions): Response
-    {
+    public function show(
+        Request $request,
+        Appointment $appointment,
+        LaboratoryFormDefinition $definitions,
+        MedicalDocumentService $documents,
+    ): Response {
         Gate::authorize('view', $appointment);
 
         $appointment->load([
@@ -505,6 +511,18 @@ class AppointmentController extends Controller
             'xrayReport',
         ]);
         $appointment->user?->patientProfile?->append('age');
+
+        $laboratorySections = $definitions->sectionsFor($appointment);
+        $documents->synchronizeAppointment($appointment);
+        $completePeDocumentStatus = $appointment->medicalDocuments()
+            ->where('document_type', 'physical_examination')
+            ->value('status');
+        $completePeReadyForPickup = $appointment->isPePackage()
+            && in_array(
+                $completePeDocumentStatus,
+                ['ready_for_pickup', 'released'],
+                true,
+            );
 
         $appointmentPayload = $appointment;
         if ($request->user()->role === 'patient') {
@@ -523,7 +541,8 @@ class AppointmentController extends Controller
                 'doctor' => '/doctor/appointments',
                 default => '/appointments',
             },
-            'laboratorySections' => collect($definitions->sectionsFor($appointment))
+            'completePeReadyForPickup' => $completePeReadyForPickup,
+            'laboratorySections' => collect($laboratorySections)
                 ->map(fn (array $section): array => [
                     'label' => $section['label'],
                     'column' => $section['column'],
@@ -879,6 +898,9 @@ class AppointmentController extends Controller
     public function adminIndex(AdminAppointmentIndexRequest $request): Response
     {
         $bulkOnly = $request->routeIs('admin.bulk-appointments.index');
+        if ($bulkOnly) {
+            app(AppointmentSchedulingService::class)->expireLateAppointments();
+        }
         $filters = $request->validated();
         $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
         $likeSearch = SearchTerm::forLike($search);

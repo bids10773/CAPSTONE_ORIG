@@ -24,7 +24,11 @@ class MedicalDocumentPolicy
     public function markReady(User $user, MedicalDocument $document): bool
     {
         return in_array($user->role, ['admin', 'receptionist'], true)
-            && $document->status === 'approved';
+            && $document->status === 'approved'
+            && $document->audits()
+                ->where('action', 'reviewed')
+                ->where('actor_id', $user->id)
+                ->exists();
     }
 
     public function release(User $user, MedicalDocument $document): bool

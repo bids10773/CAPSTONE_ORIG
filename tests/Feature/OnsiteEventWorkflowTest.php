@@ -165,6 +165,43 @@ test('future onsite events show their exact schedule but keep staff workspaces l
         ->assertForbidden();
 });
 
+test('past onsite events are removed from receptionist and clinical workspaces', function () {
+    extract(onsiteFixture());
+    $event->update(['appointment_date' => today()->subDays(2), 'event_end_date' => today()->subDay()]);
+    $admin = User::factory()->create(['role' => 'admin']);
+    $receptionist = User::factory()->create(['role' => 'receptionist', 'is_active' => true]);
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
+    $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
+    $workflow = app(OnsiteEventWorkflowService::class);
+    $workflow->assignStaff($event, $receptionist, 'receptionist', 10, $admin);
+    foreach ([[$doctor, 'doctor'], [$medtech, 'medtech'], [$radtech, 'radtech']] as [$staff, $role]) {
+        $workflow->assignStaff($event, $staff, $role, 10, $admin);
+    }
+
+    $this->actingAs($receptionist)
+        ->get(route('receptionist.onsite-events.index'))
+        ->assertInertia(fn ($page) => $page->has('events.data', 0));
+    $this->actingAs($receptionist)
+        ->get(route('receptionist.onsite-events.show', $event))
+        ->assertForbidden();
+    $this->actingAs($receptionist)
+        ->patch(route('receptionist.onsite-employees.attendance', $child), ['attendance_status' => 'arrived'])
+        ->assertForbidden();
+
+    foreach ([[$doctor, 'doctor'], [$medtech, 'medtech'], [$radtech, 'radtech']] as [$staff, $role]) {
+        $this->actingAs($staff)
+            ->get(route("{$role}.onsite-events.index"))
+            ->assertInertia(fn ($page) => $page->has('events.data', 0));
+        $this->actingAs($staff)
+            ->get(route("{$role}.onsite-events.show", $event))
+            ->assertForbidden();
+        $this->actingAs($staff)
+            ->get(route("{$role}.onsite-events.queue", $event))
+            ->assertForbidden();
+    }
+});
+
 test('receptionist employee search is scoped to one bulk event and supports employee number', function () {
     extract(onsiteFixture());
     $admin = User::factory()->create(['role' => 'admin']);

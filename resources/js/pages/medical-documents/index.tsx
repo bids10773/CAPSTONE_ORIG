@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Download, FileCheck2, RotateCcw } from 'lucide-react';
+import { Download, Eye, FileCheck2, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import AppLayout from '@/layouts/app-layout';
@@ -58,6 +58,20 @@ export default function DocumentManagement({
             release_method: Object.keys(releaseMethods)[0],
             remarks: window.prompt('Remarks (optional)'),
         });
+    };
+    const review = (doc: MedicalDocument) => {
+        if (!doc.pdf_url) return;
+        const separator = doc.pdf_url.includes('?') ? '&' : '?';
+        window.open(
+            `${doc.pdf_url}${separator}preview=1`,
+            '_blank',
+            'noopener,noreferrer',
+        );
+        router.patch(
+            `/medical-documents/${doc.id}/review`,
+            {},
+            { preserveScroll: true },
+        );
     };
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -210,6 +224,17 @@ export default function DocumentManagement({
                                                     <Download className="size-4" />
                                                 </a>
                                             )}
+                                            {doc.can?.review && (
+                                                <button
+                                                    onClick={() => review(doc)}
+                                                    className="rounded-lg border border-blue-300 px-3 py-2 text-xs font-semibold text-blue-700"
+                                                >
+                                                    <Eye className="mr-1 inline size-4" />
+                                                    {doc.can.reviewed
+                                                        ? 'Review details again'
+                                                        : 'Review report details'}
+                                                </button>
+                                            )}
                                             {doc.can?.mark_ready && (
                                                 <button
                                                     onClick={() =>
@@ -220,15 +245,26 @@ export default function DocumentManagement({
                                                     className="rounded-lg bg-emerald-700 px-3 py-2 text-xs text-white"
                                                 >
                                                     <FileCheck2 className="mr-1 inline size-4" />
-                                                    Mark ready
+                                                    {doc.can.grouped_pe_release
+                                                        ? 'Mark examination report ready'
+                                                        : 'Mark ready'}
                                                 </button>
                                             )}
+                                            {doc.can?.review &&
+                                                !doc.can.reviewed && (
+                                                    <span className="self-center text-xs font-medium text-amber-700">
+                                                        Review required before
+                                                        marking ready
+                                                    </span>
+                                                )}
                                             {doc.can?.release && (
                                                 <button
                                                     onClick={() => release(doc)}
                                                     className="rounded-lg bg-blue-700 px-3 py-2 text-xs text-white"
                                                 >
-                                                    Record release
+                                                    {doc.can.grouped_pe_release
+                                                        ? 'Release examination report'
+                                                        : 'Record release'}
                                                 </button>
                                             )}
                                             {doc.can?.reverse && (
@@ -247,7 +283,9 @@ export default function DocumentManagement({
                                                     className="rounded-lg border border-red-300 px-3 py-2 text-xs text-red-700"
                                                 >
                                                     <RotateCcw className="mr-1 inline size-4" />
-                                                    Reverse
+                                                    {doc.can.grouped_pe_release
+                                                        ? 'Reverse report release'
+                                                        : 'Reverse'}
                                                 </button>
                                             )}
                                         </div>

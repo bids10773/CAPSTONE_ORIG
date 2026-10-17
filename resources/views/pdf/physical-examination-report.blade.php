@@ -319,7 +319,7 @@
         </div>
     @endif
 
-    @if($examination?->finalized_at)
+    {{-- Final evaluation is already represented in the main medical examination form.
         <div class="attachment-page">
             <h1>Living Myth Medical Clinic</h1>
             <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
@@ -334,6 +334,6 @@
             </table>
             <div class="attachment-signature">@include('pdf.partials.electronic-signature', ['staff' => $examination->finalizedBy, 'role' => 'Classifying Physician', 'verifiedAt' => $examination->finalized_at, 'verificationLabel' => 'Finalized'])</div>
         </div>
-    @endif
+    --}}
 </body>
 </html>

@@ -94,6 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->prefix('medical-documents')->name('medical-documents.')->controller(MedicalDocumentController::class)
         ->group(function () {
             Route::get('/', 'index')->name('index');
+            Route::patch('/{medicalDocument}/review', 'review')->name('review');
             Route::patch('/{medicalDocument}/ready', 'markReady')->name('ready');
             Route::post('/{medicalDocument}/release', 'release')->name('release');
             Route::patch('/{medicalDocument}/release/reverse', 'reverseRelease')->name('release.reverse');

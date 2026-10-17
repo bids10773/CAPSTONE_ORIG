@@ -7,6 +7,7 @@ use App\Models\OnsiteEventStaff;
 use App\Models\OnsiteServiceQueue;
 use App\Models\SecurityAudit;
 use App\Models\User;
+use App\Support\ClinicHours;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -25,6 +26,12 @@ class OnsiteEventWorkflowService
         return DB::transaction(function () use ($event, $durationDays, $assignments, $actor): array {
             $event = Appointment::query()->lockForUpdate()->findOrFail($event->id);
             $this->assertParent($event);
+
+            if ($event->appointment_date?->toDateString() < ClinicHours::today()) {
+                throw ValidationException::withMessages([
+                    'event' => 'This bulk request cannot be approved because its scheduled event date has passed.',
+                ]);
+            }
 
             $recommendations = app(OnsiteStaffingRecommendationService::class)->for($event);
             $assignmentsByRole = collect($assignments)->groupBy('service_role');

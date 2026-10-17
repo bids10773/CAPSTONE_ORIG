@@ -70,8 +70,19 @@ class MedicalDocument extends Model
         return $this->hasMany(MedicalDocumentAudit::class);
     }
 
+    public function scopeReleaseVisible(Builder $query): Builder
+    {
+        return $query->where(function (Builder $visible): void {
+            $visible->whereNotIn('document_type', ['laboratory_report', 'xray_report'])
+                ->orWhereDoesntHave('appointment', fn (Builder $appointment) => $appointment
+                    ->whereJsonContains('service_types', 'PE'));
+        });
+    }
+
     public function scopeVisibleTo(Builder $query, User $actor): Builder
     {
+        $query->releaseVisible();
+
         if (in_array($actor->role, ['admin', 'receptionist'], true)) {
             return $query;
         }

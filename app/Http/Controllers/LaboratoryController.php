@@ -144,7 +144,7 @@ class LaboratoryController extends Controller
 
         if ($appointment->isPePackage()) {
             $appointment->loadMissing('medicalExamination');
-            abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final PE report has not been released yet.');
+            abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final medical examination report has not been released yet.');
 
             return;
         }

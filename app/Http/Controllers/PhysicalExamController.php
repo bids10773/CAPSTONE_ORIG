@@ -210,7 +210,7 @@ class PhysicalExamController extends Controller
             DB::afterCommit(fn () => $appointment->user?->notify(new MedicalReportReleased));
         });
 
-        return back()->with('success', 'Final PE report released to the patient.');
+        return back()->with('success', 'Final medical examination report released to the patient.');
     }
 
     private function audit(Request $request, Appointment $appointment, string $form, string $action, array $changes): void

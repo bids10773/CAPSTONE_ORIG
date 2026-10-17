@@ -30,6 +30,13 @@ class AppointmentPolicy
             return true;
         }
 
+        if ($user->role === 'receptionist') {
+            $appointment->loadMissing('medicalExamination');
+
+            return $appointment->isPePackage()
+                && $appointment->medicalExamination?->finalized_at !== null;
+        }
+
         return $user->role === 'doctor' && $this->doctorHasRecordAccess($user, $appointment);
     }
 

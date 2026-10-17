@@ -37,13 +37,20 @@ class MedicalDocumentService
 
     public function synchronizeAppointment(Appointment $appointment): void
     {
-        $services = $appointment->service_types ?? [];
         if ($appointment->isPePackage()) {
-            $this->upsert($appointment, 'physical_examination', 'Physical Examination Report', 'Physical Examination',
+            $this->upsert($appointment, 'physical_examination', 'Complete Medical Examination Report', 'Medical Examination',
                 $appointment->medicalExamination?->finalized_at ? 'approved' : ($appointment->physicalExam ? 'for_review' : 'pending'));
+
+            return;
         }
-        if (app(LaboratoryFormDefinition::class)->sectionsFor($appointment) !== []) {
-            $this->upsert($appointment, 'laboratory_report', 'Laboratory Report', implode(', ', $services),
+        $laboratorySections = app(LaboratoryFormDefinition::class)->sectionsFor($appointment);
+        if ($laboratorySections !== []) {
+            $laboratoryServices = collect($appointment->service_types ?? [])
+                ->filter(fn (string $service): bool => collect($laboratorySections)
+                    ->contains(fn (array $section): bool => in_array($service, $section['services'], true)))
+                ->unique()
+                ->implode(', ');
+            $this->upsert($appointment, 'laboratory_report', 'Laboratory Report', $laboratoryServices,
                 $appointment->labResult?->isFinalized() ? 'approved' : ($appointment->labResult ? 'for_review' : 'pending'));
         }
         if ($appointment->requiresXray()) {

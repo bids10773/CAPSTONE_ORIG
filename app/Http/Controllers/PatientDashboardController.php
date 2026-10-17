@@ -132,7 +132,7 @@ class PatientDashboardController extends Controller
             'appointments' => $appointments,
             'upcomingAppointments' => $upcomingAppointments,
             'stats' => $stats,
-            'medicalDocuments' => MedicalDocument::query()->where('patient_id', $user->id)
+            'medicalDocuments' => MedicalDocument::query()->releaseVisible()->where('patient_id', $user->id)
                 ->latest('requested_at')->limit(4)->get()->map(fn (MedicalDocument $document): array => [
                     'id' => $document->id, 'title' => $document->title, 'status' => $document->status,
                     'requested_at' => $document->requested_at?->toIso8601String(),

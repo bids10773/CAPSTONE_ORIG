@@ -64,7 +64,7 @@ export default function PatientDocuments({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={pageTitle} />
-            <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-8">
+            <div className="flex w-full flex-col gap-6 p-4 md:p-8">
                 {selectedAppointment && (
                     <div>
                         <Link
