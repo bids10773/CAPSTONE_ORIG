@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\MedicalCertificate;
 use App\Models\User;
 use App\Services\PatientMedicalProfileService;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -44,7 +46,7 @@ class AdminPatientController extends Controller
             ->select('users.*')
             ->addSelect('patient_sessions.last_activity')
             ->withExists('socialAccounts')
-            ->withCount('appointments')
+            ->withCount(['appointments', 'medicalCertificates', 'medicalDocuments', 'vitalSigns'])
             ->when($search !== '', function ($query) use ($search): void {
                 foreach (preg_split('/\s+/', $search) ?: [] as $term) {
                     $query->where(function ($patientQuery) use ($term): void {
@@ -139,6 +141,10 @@ class AdminPatientController extends Controller
                     'email_verified_at' => $patient->email_verified_at,
                     'has_account' => $patient->password !== null || $patient->social_accounts_exists,
                     'appointments_count' => $patient->appointments_count,
+                    'can_delete' => $patient->appointments_count === 0
+                        && $patient->medical_certificates_count === 0
+                        && $patient->medical_documents_count === 0
+                        && $patient->vital_signs_count === 0,
                     'is_online' => $lastActivity !== null && (int) $lastActivity >= $onlineThreshold,
                     'last_active_at' => $latestActivity?->toIso8601String(),
                     'days_since_active' => $latestActivity
@@ -177,6 +183,77 @@ class AdminPatientController extends Controller
             'medicalReports' => $medicalProfile->adminReportsFor($patient),
             'medicalCertificates' => $this->medicalCertificatesFor($patient),
         ]);
+    }
+
+    public function edit(User $patient): Response
+    {
+        abort_unless($patient->role === 'patient', 404);
+        $patient->load('patientProfile');
+
+        return Inertia::render('admin/patients/edit', ['patient' => $patient]);
+    }
+
+    public function update(Request $request, User $patient): RedirectResponse
+    {
+        abort_unless($patient->role === 'patient', 404);
+        $data = $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($patient->id)],
+            'contact' => ['nullable', 'string', 'max:30'],
+            'birthdate' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'sex' => ['nullable', Rule::in(['Male', 'Female'])],
+            'civil_status' => ['nullable', Rule::in(['Single', 'Married', 'Divorced', 'Widowed'])],
+            'address' => ['nullable', 'string', 'max:1000'],
+            'employee_number' => ['nullable', 'string', 'max:80'],
+        ]);
+
+        DB::transaction(function () use ($patient, $data): void {
+            $patient->update([
+                'first_name' => $data['first_name'],
+                'middle_name' => $data['middle_name'] ?? null,
+                'last_name' => $data['last_name'],
+                'email' => $data['email'],
+                'contact' => $data['contact'] ?? null,
+            ]);
+            $patient->patientProfile()->updateOrCreate([], [
+                'birthdate' => $data['birthdate'] ?? null,
+                'sex' => $data['sex'] ?? null,
+                'civil_status' => $data['civil_status'] ?? null,
+                'address' => $data['address'] ?? null,
+                'employee_number' => $data['employee_number'] ?? null,
+            ]);
+        });
+
+        return redirect()->route('admin.patients.index')->with('success', 'Patient updated successfully.');
+    }
+
+    public function destroy(User $patient): RedirectResponse
+    {
+        abort_unless($patient->role === 'patient', 404);
+
+        if ($patient->appointments()->exists()
+            || $patient->medicalCertificates()->exists()
+            || $patient->medicalDocuments()->exists()
+            || $patient->vitalSigns()->exists()) {
+            return back()->with('error', 'This patient cannot be deleted because medical or appointment history is linked to the account.');
+        }
+
+        $name = $patient->name;
+
+        try {
+            DB::transaction(function () use ($patient): void {
+                DB::table(config('session.table', 'sessions'))->where('user_id', $patient->id)->delete();
+                $patient->socialAccounts()->delete();
+                $patient->patientProfile()->delete();
+                $patient->delete();
+            });
+        } catch (QueryException) {
+            return back()->with('error', 'This patient cannot be deleted because other records are linked to the account.');
+        }
+
+        return redirect()->route('admin.patients.index')->with('success', "{$name}'s patient account has been deleted.");
     }
 
     private function medicalCertificatesFor(User $patient): array

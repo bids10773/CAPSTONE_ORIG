@@ -59,10 +59,7 @@ export default function ClinicDashboardLayout({
                         <GlobalSearch />
 
                         <div className="ml-auto flex items-center gap-1.5">
-                            <LiveDateTime
-                                dateBesideTime
-                                className="mr-1 hidden lg:flex"
-                            />
+                            <LiveDateTime className="mr-1 hidden lg:flex" />
                             <ThemeToggle />
                             <NotificationBell />
                             <DropdownMenu>

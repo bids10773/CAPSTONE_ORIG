@@ -260,8 +260,9 @@
 
     /* Shared enterprise workspace treatment. Existing pages retain their logic
        while receiving one consistent, accessible component language. */
-    .app-workspace main {
-        @apply text-slate-700;
+    .app-workspace main,
+    .patient-portal main {
+        color: var(--foreground);
     }
 
     .app-workspace main > div > div[class*='p-6'],
@@ -416,6 +417,21 @@
         color: var(--foreground) !important;
     }
 
+    /* Dialogs render in a portal outside the workspace wrapper, so mirror the
+       shared foreground treatment for their light-theme utility classes. */
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-slate-950,
+            .text-slate-900,
+            .text-slate-800,
+            .text-gray-950,
+            .text-gray-900,
+            .text-gray-800
+        ) {
+        color: var(--foreground) !important;
+    }
+
     .dark .app-workspace .text-slate-700,
     .dark .app-workspace .text-slate-600,
     .dark .app-workspace .text-slate-500,
@@ -429,6 +445,120 @@
     .dark .patient-portal .text-gray-600,
     .dark .patient-portal .text-gray-500 {
         color: var(--muted-foreground) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-slate-700,
+            .text-slate-600,
+            .text-slate-500,
+            .text-gray-700,
+            .text-gray-600,
+            .text-gray-500
+        ) {
+        color: var(--muted-foreground) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .bg-white,
+            .bg-slate-50,
+            .bg-slate-100,
+            .bg-gray-50,
+            .bg-gray-100,
+            .bg-moss-50,
+            .bg-moss-100
+        ) {
+        background-color: var(--muted) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .border-slate-100,
+            .border-slate-200,
+            .border-slate-300,
+            .border-gray-100,
+            .border-gray-200,
+            .border-gray-300,
+            .border-moss-100,
+            .border-moss-200,
+            .border-moss-300
+        ) {
+        border-color: var(--border) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-moss-950,
+            .text-moss-900,
+            .text-moss-800,
+            .text-moss-700,
+            .text-moss-600,
+            .text-moss-500
+        ) {
+        color: var(--color-moss-200) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-amber-600,
+            .text-amber-700,
+            .text-amber-800,
+            .text-amber-900,
+            .text-amber-950
+        ) {
+        color: rgb(252 211 77) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-emerald-600,
+            .text-emerald-700,
+            .text-emerald-800,
+            .text-green-600,
+            .text-green-700,
+            .text-green-800
+        ) {
+        color: rgb(110 231 183) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-red-600,
+            .text-red-700,
+            .text-red-800,
+            .text-rose-600,
+            .text-rose-700,
+            .text-rose-800
+        ) {
+        color: rgb(253 164 175) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-blue-600,
+            .text-blue-700,
+            .text-blue-800,
+            .text-sky-600,
+            .text-sky-700,
+            .text-cyan-600,
+            .text-cyan-700,
+            .text-indigo-600,
+            .text-indigo-700,
+            .text-violet-600,
+            .text-violet-700,
+            .text-purple-600,
+            .text-purple-700
+        ) {
+        color: rgb(165 180 252) !important;
     }
 
     .dark
@@ -458,13 +588,19 @@
 
     .dark
         :where(.app-workspace, .patient-portal)
-        :is(.bg-amber-50, .bg-amber-100, [class~='bg-amber-50/70']) {
+        :is(
+            .bg-amber-50,
+            .bg-amber-100,
+            [class~='bg-amber-50/70'],
+            [class~='bg-amber-100/70']
+        ) {
         background-color: rgb(120 53 15 / 0.3) !important;
     }
 
     .dark
         :where(.app-workspace, .patient-portal)
         :is(
+            .text-amber-600,
             .text-amber-700,
             .text-amber-800,
             .text-amber-900,
@@ -488,10 +624,12 @@
     .dark
         :where(.app-workspace, .patient-portal)
         :is(
+            .text-emerald-600,
             .text-emerald-700,
             .text-emerald-800,
             .text-emerald-900,
             .text-emerald-950,
+            .text-green-600,
             .text-green-700,
             .text-green-800,
             .text-green-900
@@ -507,13 +645,20 @@
 
     .dark
         :where(.app-workspace, .patient-portal)
-        :is(.bg-red-50, .bg-red-100, .bg-rose-50) {
+        :is(.bg-red-50, .bg-red-100, .bg-rose-50, [class~='bg-red-50/60']) {
         background-color: rgb(127 29 29 / 0.3) !important;
     }
 
     .dark
         :where(.app-workspace, .patient-portal)
-        :is(.text-red-700, .text-red-800, .text-rose-700, .text-rose-800) {
+        :is(
+            .text-red-600,
+            .text-red-700,
+            .text-red-800,
+            .text-rose-600,
+            .text-rose-700,
+            .text-rose-800
+        ) {
         color: rgb(253 164 175) !important;
     }
 
@@ -531,7 +676,7 @@
 
     .dark
         :where(.app-workspace, .patient-portal)
-        :is(.text-indigo-700, .text-indigo-800) {
+        :is(.text-indigo-600, .text-indigo-700, .text-indigo-800) {
         color: rgb(165 180 252) !important;
     }
 
@@ -556,15 +701,20 @@
     .dark
         :where(.app-workspace, .patient-portal)
         :is(
+            .text-blue-600,
             .text-blue-700,
             .text-blue-900,
             .text-blue-950,
+            .text-sky-600,
             .text-sky-700,
             .text-sky-800,
+            .text-cyan-600,
             .text-cyan-700,
             .text-cyan-800,
+            .text-violet-600,
             .text-violet-700,
             .text-violet-800,
+            .text-purple-600,
             .text-purple-700,
             .text-purple-900
         ) {
@@ -592,8 +742,10 @@
     .dark
         :where(.app-workspace, .patient-portal)
         :is(
+            .text-orange-600,
             .text-orange-700,
             .text-orange-900,
+            .text-yellow-600,
             .text-yellow-700,
             .text-yellow-800
         ) {
@@ -1415,5 +1567,12 @@
 
     .status-text-only > svg {
         display: none;
+    }
+
+    .status-text-only.status-text-compact {
+        min-height: 1.1rem !important;
+        padding: 0.05rem 0.4rem !important;
+        font-size: 0.55rem !important;
+        line-height: 0.7rem;
     }
 }

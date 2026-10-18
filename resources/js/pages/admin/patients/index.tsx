@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { CalendarDays, Mail, Phone, UsersRound } from 'lucide-react';
+import {
+    CalendarDays,
+    Mail,
+    Pencil,
+    Phone,
+    Trash2,
+    UsersRound,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
@@ -31,6 +38,7 @@ type Patient = {
     is_online: boolean;
     last_active_at: string | null;
     days_since_active: number | null;
+    can_delete: boolean;
     profile: {
         birthdate: string | null;
         age: number | null;
@@ -231,6 +239,9 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                             <th className="w-[11%] px-4 py-3 whitespace-nowrap">
                                                 Active Days
                                             </th>
+                                            <th className="w-[14%] px-4 py-3 text-right">
+                                                Actions
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-border">
@@ -384,6 +395,46 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                                         )}
                                                         className="mt-1 text-[11px] leading-4 text-slate-400"
                                                     />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <Link
+                                                            href={`/admin/patients/${patient.id}/edit`}
+                                                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-moss-700 hover:bg-moss-50 dark:text-moss-300 dark:hover:bg-moss-900/30"
+                                                        >
+                                                            <Pencil className="size-3.5" />
+                                                            Edit
+                                                        </Link>
+                                                        <button
+                                                            type="button"
+                                                            disabled={
+                                                                !patient.can_delete
+                                                            }
+                                                            title={
+                                                                patient.can_delete
+                                                                    ? 'Delete patient'
+                                                                    : 'Patients with appointment or medical history cannot be deleted'
+                                                            }
+                                                            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent dark:text-red-400 dark:hover:bg-red-950/30 dark:disabled:text-slate-600"
+                                                            onClick={() => {
+                                                                if (
+                                                                    confirm(
+                                                                        `Permanently delete ${fullName(patient)}? This cannot be undone.`,
+                                                                    )
+                                                                ) {
+                                                                    router.delete(
+                                                                        `/admin/patients/${patient.id}`,
+                                                                        {
+                                                                            preserveScroll: true,
+                                                                        },
+                                                                    );
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Trash2 className="size-3.5" />
+                                                            Delete
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}

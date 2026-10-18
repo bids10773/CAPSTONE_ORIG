@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Plus,
     Edit,
@@ -6,6 +6,7 @@ import {
     ToggleLeft,
     ToggleRight,
     CalendarDays,
+    Trash2,
 } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
@@ -26,6 +27,7 @@ interface Company {
     industry_type: string;
     created_at: string;
     appointments_count: number;
+    can_delete: boolean;
     account: Array<{
         id: number;
         first_name: string;
@@ -239,6 +241,34 @@ export default function AdminCompaniesIndex() {
                                                             <ToggleLeft className="h-4 w-4" />
                                                         )}
                                                     </Link>
+                                                    <button
+                                                        type="button"
+                                                        disabled={
+                                                            !company.can_delete
+                                                        }
+                                                        className="p-1 text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:text-gray-300"
+                                                        title={
+                                                            company.can_delete
+                                                                ? 'Delete'
+                                                                : 'Companies with appointment or referral history cannot be deleted'
+                                                        }
+                                                        onClick={() => {
+                                                            if (
+                                                                confirm(
+                                                                    `Permanently delete ${company.company_name} and its login account? This cannot be undone.`,
+                                                                )
+                                                            ) {
+                                                                router.delete(
+                                                                    `/admin/companies/${company.id}`,
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                    },
+                                                                );
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>

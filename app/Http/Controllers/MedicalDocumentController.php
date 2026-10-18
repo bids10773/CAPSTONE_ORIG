@@ -171,7 +171,9 @@ class MedicalDocumentController extends Controller
             ->where('actor_id', $request->user()->id)
             ->exists();
         $pdfUrl = null;
-        if ($document->medicalCertificate && $request->user()->can('downloadPdf', $document->medicalCertificate)) {
+        if (in_array($document->status, ['pending', 'cancelled'], true)) {
+            $pdfUrl = null;
+        } elseif ($document->medicalCertificate && $request->user()->can('downloadPdf', $document->medicalCertificate)) {
             $pdfUrl = route('medical-certificates.pdf', $document->medicalCertificate);
         } elseif ($document->appointment_id) {
             $ability = match ($document->document_type) {

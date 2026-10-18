@@ -43,6 +43,26 @@ test('patient portal exposes only the patients document status metadata', functi
             ->missing('documents.0.results'));
 });
 
+test('non-downloadable medical documents do not expose a download link', function (string $status) {
+    $patient = User::factory()->create(['role' => 'patient', 'email_verified_at' => now()]);
+    $admin = User::factory()->create(['role' => 'admin']);
+    $appointment = Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => today(),
+        'type' => 'individual',
+        'status' => 'accepted',
+        'service_types' => ['CBC'],
+    ]);
+    $document = releaseDocument($patient, $status, $appointment);
+
+    $this->actingAs($admin)->get(route('medical-documents.index', ['search' => $document->document_number]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('documents.data', 1)
+            ->where('documents.data.0.status', $status)
+            ->where('documents.data.0.pdf_url', null));
+})->with(['pending', 'cancelled']);
+
 test('laboratory document lists only requested laboratory services', function () {
     $patient = User::factory()->create(['role' => 'patient', 'email_verified_at' => now()]);
     $appointment = Appointment::create([

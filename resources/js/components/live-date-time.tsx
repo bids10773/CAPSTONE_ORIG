@@ -6,13 +6,9 @@ const timeZone = 'Asia/Manila';
 
 type LiveDateTimeProps = {
     className?: string;
-    dateBesideTime?: boolean;
 };
 
-export function LiveDateTime({
-    className,
-    dateBesideTime = false,
-}: LiveDateTimeProps) {
+export function LiveDateTime({ className }: LiveDateTimeProps) {
     const [now, setNow] = useState<Date>(() => new Date());
 
     useEffect(() => {
@@ -26,6 +22,13 @@ export function LiveDateTime({
         weekday: 'short',
         month: 'short',
         day: 'numeric',
+        year: 'numeric',
+    }).format(now);
+    const dateTime = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
     }).format(now);
     const time = new Intl.DateTimeFormat('en-PH', {
         timeZone,
@@ -42,15 +45,13 @@ export function LiveDateTime({
             )}
             aria-label={`Philippine date and time: ${date}, ${time}`}
         >
-            <span
-                className={cn(
-                    'items-center gap-2 text-xs font-bold whitespace-nowrap',
-                    dateBesideTime ? 'flex' : 'hidden 2xl:flex',
-                )}
+            <time
+                dateTime={dateTime}
+                className="flex items-center gap-2 text-xs font-bold whitespace-nowrap"
             >
                 <CalendarDays className="size-4 shrink-0" aria-hidden="true" />
                 {date}
-            </span>
+            </time>
             <span className="flex items-center gap-2 whitespace-nowrap">
                 <Clock3 className="size-4 shrink-0" aria-hidden="true" />
                 <time

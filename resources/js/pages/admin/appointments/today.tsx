@@ -115,7 +115,6 @@ function formatTime(value: string | null, fallback?: string | null): string {
 export default function TodayAppointments({
     appointments,
     filters,
-    today,
     summary,
 }: Props) {
     const [search, setSearch] = useState(filters.search);
@@ -177,12 +176,6 @@ export default function TodayAppointments({
         );
     }
 
-    const formattedDate = new Intl.DateTimeFormat('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-    }).format(new Date(`${today}T00:00:00`));
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Today's Clinic Overview" />
@@ -203,10 +196,6 @@ export default function TodayAppointments({
                                 Monitor patient flow, current workload, and
                                 completed visits without taking over routine
                                 receptionist decisions.
-                            </p>
-                            <p className="mt-5 flex items-center gap-2 text-sm font-semibold text-moss-100">
-                                <CalendarClock className="size-4" />{' '}
-                                {formattedDate}
                             </p>
                         </div>
                         <div className="w-fit rounded-2xl border border-white/15 bg-white/10 px-6 py-4 backdrop-blur-sm">

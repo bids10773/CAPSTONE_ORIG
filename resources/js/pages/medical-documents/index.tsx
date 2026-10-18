@@ -215,15 +215,18 @@ export default function DocumentManagement({
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-wrap gap-2">
-                                            {doc.pdf_url && (
-                                                <a
-                                                    href={doc.pdf_url}
-                                                    className="rounded-lg border p-2"
-                                                    aria-label="Download PDF"
-                                                >
-                                                    <Download className="size-4" />
-                                                </a>
-                                            )}
+                                            {!['pending', 'cancelled'].includes(
+                                                doc.status,
+                                            ) &&
+                                                doc.pdf_url && (
+                                                    <a
+                                                        href={doc.pdf_url}
+                                                        className="rounded-lg border p-2"
+                                                        aria-label="Download PDF"
+                                                    >
+                                                        <Download className="size-4" />
+                                                    </a>
+                                                )}
                                             {doc.can?.review && (
                                                 <button
                                                     onClick={() => review(doc)}

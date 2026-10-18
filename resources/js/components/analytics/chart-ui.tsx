@@ -96,7 +96,8 @@ export function ChartTooltip({
                             <span
                                 className="size-2 shrink-0 rounded-full"
                                 style={{
-                                    backgroundColor: item.color ?? '#64748b',
+                                    backgroundColor:
+                                        item.color ?? 'var(--muted-foreground)',
                                 }}
                             />
                             <span className="truncate">{item.name}</span>
@@ -137,7 +138,7 @@ export function ChartEmptyState({
 }
 
 export const chartGridProps = {
-    stroke: '#e2e8f0',
+    stroke: 'var(--border)',
     strokeDasharray: '3 5',
     vertical: false,
 } as const;
@@ -145,14 +146,14 @@ export const chartGridProps = {
 export const chartAxisProps = {
     axisLine: false,
     tickLine: false,
-    tick: { fill: '#64748b', fontSize: 11 },
+    tick: { fill: 'var(--muted-foreground)', fontSize: 11 },
 } as const;
 
 export const chartLegendProps = {
     iconType: 'circle' as const,
     iconSize: 8,
     wrapperStyle: {
-        color: '#475569',
+        color: 'var(--muted-foreground)',
         fontSize: 12,
         paddingTop: 12,
         lineHeight: '22px',

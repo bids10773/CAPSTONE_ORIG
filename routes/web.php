@@ -280,6 +280,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::resource('staff', StaffController::class)->except('show');
         Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
+        Route::get('/patients/{patient}/edit', [AdminPatientController::class, 'edit'])->name('patients.edit');
+        Route::patch('/patients/{patient}', [AdminPatientController::class, 'update'])->name('patients.update');
+        Route::delete('/patients/{patient}', [AdminPatientController::class, 'destroy'])->name('patients.destroy');
         Route::get('/patients/{patient}', [AdminPatientController::class, 'show'])->name('patients.show');
         Route::patch('/staff/{staff}/toggle-active', [StaffController::class, 'toggleActive'])->name('staff.toggle-active');
         Route::post('/staff/{staff}/signature', [StaffController::class, 'uploadSignature'])->name('staff.signature');
@@ -316,6 +319,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/inquiries', [AdminInquiryController::class, 'index'])->name('inquiries.index');
         Route::get('/inquiries/{inquiry}', [AdminInquiryController::class, 'show'])->name('inquiries.show');
+        Route::delete('/inquiries/{inquiry}', [AdminInquiryController::class, 'destroy'])->name('inquiries.destroy');
         Route::patch('/inquiries/{inquiry}/status', [AdminInquiryController::class, 'updateStatus'])->name('inquiries.status');
         Route::post('/inquiries/{inquiry}/reply', [AdminInquiryController::class, 'reply'])
             ->middleware('throttle:6,1')

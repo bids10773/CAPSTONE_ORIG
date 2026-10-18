@@ -93,11 +93,6 @@ const navigation: Record<string, Item[]> = {
             icon: FileBadge2,
         },
         {
-            title: 'Document Management',
-            href: '/medical-documents',
-            icon: FileText,
-        },
-        {
             title: 'Management',
             href: '/admin/staff',
             icon: UserCog,
@@ -126,6 +121,11 @@ const navigation: Record<string, Item[]> = {
                     title: 'Doctor availability',
                     href: '/admin/doctor-availability',
                     icon: Stethoscope,
+                },
+                {
+                    title: 'Document Management',
+                    href: '/medical-documents',
+                    icon: FileText,
                 },
             ],
         },

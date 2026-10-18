@@ -228,7 +228,7 @@ export default function AdminOnsiteEvent({
             );
     };
     return (
-        <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+        <div className="space-y-6 p-4 text-slate-900 sm:p-6 lg:p-8 dark:text-foreground">
             <Head title="Onsite Event Preparation" />
             <header>
                 <Link
