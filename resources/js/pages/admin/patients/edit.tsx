@@ -51,7 +51,7 @@ export default function EditPatient({ patient }: { patient: Patient }) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Edit ${patient.first_name} ${patient.last_name}`} />
-            <main className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:p-6">
+            <div className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:p-6">
                 <div>
                     <Link
                         href="/admin/patients"
@@ -238,7 +238,7 @@ export default function EditPatient({ patient }: { patient: Patient }) {
                         </button>
                     </div>
                 </form>
-            </main>
+            </div>
         </AppLayout>
     );
 }

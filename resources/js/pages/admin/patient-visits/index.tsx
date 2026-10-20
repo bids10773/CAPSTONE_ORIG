@@ -435,7 +435,7 @@ export default function PatientVisitDashboard({
     return (
         <>
             <Head title="Analytics" />
-            <main className="min-h-screen bg-slate-50/70 px-4 py-6 sm:px-6 lg:px-8 dark:bg-slate-950">
+            <div className="min-h-screen bg-slate-50/70 px-4 py-6 sm:px-6 lg:px-8 dark:bg-slate-950">
                 <div className="mx-auto w-full max-w-[1800px] space-y-6">
                     <header className="rounded-3xl bg-gradient-to-br from-[#173f31] to-[#2f7256] p-6 text-white shadow-lg sm:p-8">
                         <p className="text-xs font-bold tracking-[0.2em] text-emerald-100 uppercase">
@@ -795,7 +795,7 @@ export default function PatientVisitDashboard({
                         {data.meta.definition} {data.meta.disclaimer}
                     </aside>
                 </div>
-            </main>
+            </div>
         </>
     );
 }

@@ -189,7 +189,7 @@ export default function Profile({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Profile Settings" />
-            <main className="mx-auto grid w-full max-w-[1500px] gap-6 p-4 sm:p-6 lg:p-8 xl:grid-cols-12 xl:items-start">
+            <div className="mx-auto grid w-full max-w-[1500px] gap-6 p-4 sm:p-6 lg:p-8 xl:grid-cols-12 xl:items-start">
                 <header className="relative overflow-hidden rounded-[2rem] bg-moss-800 px-6 py-8 text-white shadow-xl sm:px-9 sm:py-10 xl:col-span-12">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(190,215,185,.25),transparent_25rem)]" />
                     <div className="relative flex items-start justify-between gap-4 sm:items-center sm:gap-6">
@@ -1251,7 +1251,7 @@ export default function Profile({
                             </section>
                         )}
                 </div>
-            </main>
+            </div>
         </AppLayout>
     );
 }

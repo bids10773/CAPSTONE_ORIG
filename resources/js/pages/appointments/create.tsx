@@ -779,7 +779,7 @@ export default function CreateAppointment() {
                 ]}
             >
                 <div className="min-h-full bg-background text-slate-900">
-                    <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6">
+                    <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6">
                         <BookingIntro className="mb-5 lg:hidden" />
 
                         {draftRestored && (
@@ -1150,7 +1150,7 @@ export default function CreateAppointment() {
                                 />
                             </div>
                         </div>
-                    </main>
+                    </div>
                 </div>
             </AppLayout>
         </>

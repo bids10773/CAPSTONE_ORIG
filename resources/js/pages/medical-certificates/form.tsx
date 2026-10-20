@@ -577,7 +577,7 @@ export default function MedicalCertificateFormPage({
                         : 'Create Medical Certificate'
                 }
             />
-            <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+            <div className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
                 <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                     <div>
                         <Link
@@ -1314,7 +1314,7 @@ export default function MedicalCertificateFormPage({
                         <MedicalCertificatePreview data={previewData} />
                     </div>
                 </div>
-            </main>
+            </div>
         </AppLayout>
     );
 }

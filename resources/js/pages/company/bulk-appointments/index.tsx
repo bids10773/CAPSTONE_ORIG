@@ -132,7 +132,7 @@ export default function CompanyBulkAppointments({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Bulk Appointments" />
 
-            <main className="space-y-6 p-4 sm:p-6 lg:p-8">
+            <div className="space-y-6 p-4 sm:p-6 lg:p-8">
                 <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                     <div>
                         <p className="text-xs font-bold tracking-[0.16em] text-moss-700 uppercase">
@@ -328,7 +328,7 @@ export default function CompanyBulkAppointments({
                         label="bulk appointments"
                     />
                 </section>
-            </main>
+            </div>
         </AppLayout>
     );
 }

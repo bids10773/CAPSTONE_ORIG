@@ -89,13 +89,25 @@ export default function DocumentManagement({
                     onSubmit={apply}
                     className="flex flex-wrap gap-2 rounded-2xl border bg-white p-4"
                 >
+                    <label htmlFor="document-search" className="sr-only">
+                        Search by patient or document number
+                    </label>
                     <input
+                        id="document-search"
+                        type="search"
+                        name="search"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Patient or document number"
+                        autoComplete="off"
                         className="min-w-60 flex-1 rounded-xl border px-3 py-2"
                     />
+                    <label htmlFor="document-status" className="sr-only">
+                        Filter by document status
+                    </label>
                     <select
+                        id="document-status"
+                        name="status"
                         value={status}
                         onChange={(e) => setStatus(e.target.value)}
                         className="rounded-xl border px-3 py-2"
@@ -115,7 +127,12 @@ export default function DocumentManagement({
                             </option>
                         ))}
                     </select>
+                    <label htmlFor="document-type" className="sr-only">
+                        Filter by document type
+                    </label>
                     <select
+                        id="document-type"
+                        name="type"
                         value={type}
                         onChange={(e) => setType(e.target.value)}
                         className="rounded-xl border px-3 py-2"
@@ -132,16 +149,24 @@ export default function DocumentManagement({
                             </option>
                         ))}
                     </select>
+                    <label htmlFor="requested-from" className="sr-only">
+                        Requested from
+                    </label>
                     <input
-                        aria-label="Requested from"
+                        id="requested-from"
                         type="date"
+                        name="date_from"
                         value={dateFrom}
                         onChange={(e) => setDateFrom(e.target.value)}
                         className="rounded-xl border px-3 py-2"
                     />
+                    <label htmlFor="requested-to" className="sr-only">
+                        Requested to
+                    </label>
                     <input
-                        aria-label="Requested to"
+                        id="requested-to"
                         type="date"
+                        name="date_to"
                         value={dateTo}
                         onChange={(e) => setDateTo(e.target.value)}
                         className="rounded-xl border px-3 py-2"

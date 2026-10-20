@@ -143,7 +143,7 @@ export default function AppointmentRecord({
                         : `${patientName} · Medical Record`
                 }
             />
-            <main className="mx-auto max-w-[1500px] space-y-4 px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6 lg:px-8 lg:pt-4 lg:pb-8">
+            <div className="mx-auto max-w-[1500px] space-y-4 px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6 lg:px-8 lg:pt-4 lg:pb-8">
                 <div>
                     <Link
                         href={appointmentsIndexUrl}
@@ -261,7 +261,7 @@ export default function AppointmentRecord({
                         </div>
                     )}
                 </section>
-            </main>
+            </div>
         </>
     );
 }

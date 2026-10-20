@@ -21,7 +21,7 @@ export default function CreateCompany({
     return (
         <>
             <Head title="Create Company Account" />
-            <main className="w-full max-w-7xl overflow-x-hidden p-4 sm:p-6">
+            <div className="w-full max-w-7xl overflow-x-hidden p-4 sm:p-6">
                 <div className="mb-6 flex min-w-0 flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                     <Link
                         href="/admin/companies"
@@ -48,7 +48,7 @@ export default function CreateCompany({
                     prefill={prefill ?? undefined}
                     sourceInquiryId={sourceInquiryId}
                 />
-            </main>
+            </div>
         </>
     );
 }

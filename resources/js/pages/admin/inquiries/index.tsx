@@ -33,7 +33,7 @@ export default function AdminInquiryIndex({
     return (
         <AppLayout>
             <Head title="Inquiry Management" />
-            <main className="space-y-6 p-4 sm:p-6">
+            <div className="space-y-6 p-4 sm:p-6">
                 <SearchFilterToolbar
                     title="Inquiry Management"
                     search={{
@@ -203,7 +203,7 @@ export default function AdminInquiryIndex({
                         <Pagination pagination={inquiries} label="inquiries" />
                     )}
                 </section>
-            </main>
+            </div>
         </AppLayout>
     );
 }
