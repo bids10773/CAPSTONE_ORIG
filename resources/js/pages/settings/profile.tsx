@@ -192,14 +192,28 @@ export default function Profile({
             <main className="mx-auto grid w-full max-w-[1500px] gap-6 p-4 sm:p-6 lg:p-8 xl:grid-cols-12 xl:items-start">
                 <header className="relative overflow-hidden rounded-[2rem] bg-moss-800 px-6 py-8 text-white shadow-xl sm:px-9 sm:py-10 xl:col-span-12">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(190,215,185,.25),transparent_25rem)]" />
-                    <div className="relative">
-                        <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
-                            Profile Settings
-                        </h1>
-                        <p className="mt-3 max-w-xl text-sm leading-6 text-moss-100 sm:text-base">
-                            Manage your personal information, health details,
-                            and account security.
-                        </p>
+                    <div className="relative flex items-start justify-between gap-4 sm:items-center sm:gap-6">
+                        <div>
+                            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
+                                Profile Settings
+                            </h1>
+                            <p className="mt-3 max-w-xl text-sm leading-6 text-moss-100 sm:text-base">
+                                Manage your personal information, health
+                                details, and account security.
+                            </p>
+                        </div>
+                        <div
+                            className="relative shrink-0"
+                            aria-label={`${user.name} is online`}
+                        >
+                            <div className="flex size-16 items-center justify-center rounded-2xl bg-moss-100 text-xl font-bold text-moss-800 shadow-lg ring-1 ring-white/20 sm:size-20 sm:text-2xl dark:bg-moss-900 dark:text-moss-100">
+                                {initials}
+                            </div>
+                            <span
+                                className="absolute -right-1 -bottom-1 size-5 rounded-full bg-emerald-500 ring-4 ring-moss-800"
+                                aria-hidden="true"
+                            />
+                        </div>
                     </div>
                 </header>
 
@@ -304,21 +318,8 @@ export default function Profile({
                                 id="personal-information"
                                 className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-border dark:bg-card"
                             >
-                                <div className="flex flex-col gap-3 border-b border-slate-100 bg-gradient-to-r from-moss-50/80 to-white p-4 sm:flex-row sm:items-center sm:justify-between dark:border-border dark:from-moss-950/40 dark:to-card">
-                                    <div className="flex items-center gap-3">
-                                        <div className="relative shrink-0">
-                                            <div className="flex size-12 items-center justify-center rounded-xl bg-moss-100 font-bold text-moss-800 dark:bg-moss-900/60 dark:text-moss-200">
-                                                {initials}
-                                            </div>
-                                            <span
-                                                className="absolute right-0 bottom-0 size-3 rounded-full bg-emerald-500 ring-2 ring-card"
-                                                role="status"
-                                                aria-label="Online"
-                                                title="Online"
-                                            />
-                                        </div>
-                                    </div>
-                                    {!editing && (
+                                {!editing && (
+                                    <div className="flex justify-end border-b border-slate-100 bg-gradient-to-r from-moss-50/80 to-white p-4 dark:border-border dark:from-moss-950/40 dark:to-card">
                                         <Button
                                             type="button"
                                             onClick={() => setEditing(true)}
@@ -327,8 +328,8 @@ export default function Profile({
                                             <Pencil className="size-4" /> Edit
                                             Profile
                                         </Button>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
 
                                 {!editing ? (
                                     <dl className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
