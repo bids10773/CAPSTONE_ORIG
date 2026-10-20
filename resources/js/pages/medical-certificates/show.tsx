@@ -173,7 +173,7 @@ export default function MedicalCertificateShow({ certificate, can }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Medical Certificate ${number}`} />
-            <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+            <div className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
                 <header className="flex flex-col justify-between gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-end sm:p-6 dark:border-border dark:bg-card">
                     <div>
                         <Link
@@ -484,7 +484,7 @@ export default function MedicalCertificateShow({ certificate, can }: Props) {
                         />
                     </div>
                 </div>
-            </main>
+            </div>
         </AppLayout>
     );
 }

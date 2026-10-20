@@ -126,7 +126,7 @@ export default function AdminReports({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Reports" />
-            <main className="space-y-6 p-4 sm:p-6 lg:p-8">
+            <div className="space-y-6 p-4 sm:p-6 lg:p-8">
                 <header>
                     <p className="text-xs font-bold tracking-[.16em] text-moss-700 uppercase">
                         Clinic analytics
@@ -281,7 +281,7 @@ export default function AdminReports({
                         label="appointments"
                     />
                 </section>
-            </main>
+            </div>
         </AppLayout>
     );
 }

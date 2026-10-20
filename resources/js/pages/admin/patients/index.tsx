@@ -160,7 +160,7 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
         <>
             <Head title="Patient Management" />
 
-            <main className="mx-auto max-w-[1600px] space-y-4 p-4 sm:p-6">
+            <div className="mx-auto max-w-[1600px] space-y-4 p-4 sm:p-6">
                 <SearchFilterToolbar
                     title="Patients"
                     search={{
@@ -458,7 +458,7 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                         </div>
                     )}
                 </section>
-            </main>
+            </div>
         </>
     );
 }

@@ -139,7 +139,7 @@ export default function FinalEvaluation({
     return (
         <>
             <Head title="Final Medical Evaluation" />
-            <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+            <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
                 <Link
                     href="/doctor/appointments"
                     className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-moss-700"
@@ -684,7 +684,7 @@ export default function FinalEvaluation({
                         </div>
                     </form>
                 )}
-            </main>
+            </div>
         </>
     );
 }

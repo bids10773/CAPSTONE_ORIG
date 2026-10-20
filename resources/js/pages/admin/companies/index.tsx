@@ -202,22 +202,31 @@ export default function AdminCompaniesIndex() {
                                                 <div className="flex items-center justify-end gap-2">
                                                     <Link
                                                         href={`/admin/companies/${company.id}`}
-                                                        className="p-1 text-gray-400 hover:text-moss-600"
+                                                        className="inline-flex size-10 items-center justify-center rounded-xl text-gray-400 hover:bg-moss-50 hover:text-moss-600 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none"
+                                                        aria-label={`View ${company.company_name}`}
                                                         title="View"
                                                     >
-                                                        <Eye className="h-4 w-4" />
+                                                        <Eye
+                                                            className="h-4 w-4"
+                                                            aria-hidden="true"
+                                                        />
                                                     </Link>
                                                     <Link
                                                         href={`/admin/companies/${company.id}/edit`}
-                                                        className="p-1 text-gray-400 hover:text-moss-600"
+                                                        className="inline-flex size-10 items-center justify-center rounded-xl text-gray-400 hover:bg-moss-50 hover:text-moss-600 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none"
+                                                        aria-label={`Edit ${company.company_name}`}
                                                         title="Edit"
                                                     >
-                                                        <Edit className="h-4 w-4" />
+                                                        <Edit
+                                                            className="h-4 w-4"
+                                                            aria-hidden="true"
+                                                        />
                                                     </Link>
                                                     <Link
                                                         href={`/admin/companies/${company.id}/toggle-active`}
                                                         method="patch"
-                                                        className={`p-1 ${company.status === 'active' ? 'text-green-600 hover:text-green-800' : 'text-gray-400 hover:text-gray-600'}`}
+                                                        className={`inline-flex size-10 items-center justify-center rounded-xl focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none ${company.status === 'active' ? 'text-green-600 hover:bg-green-50 hover:text-green-800' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}`}
+                                                        aria-label={`${company.status === 'active' ? 'Deactivate' : 'Activate'} ${company.company_name}`}
                                                         title={
                                                             company.status ===
                                                             'active'
@@ -236,9 +245,15 @@ export default function AdminCompaniesIndex() {
                                                     >
                                                         {company.status ===
                                                         'active' ? (
-                                                            <ToggleRight className="h-4 w-4" />
+                                                            <ToggleRight
+                                                                className="h-4 w-4"
+                                                                aria-hidden="true"
+                                                            />
                                                         ) : (
-                                                            <ToggleLeft className="h-4 w-4" />
+                                                            <ToggleLeft
+                                                                className="h-4 w-4"
+                                                                aria-hidden="true"
+                                                            />
                                                         )}
                                                     </Link>
                                                     <button
@@ -246,7 +261,8 @@ export default function AdminCompaniesIndex() {
                                                         disabled={
                                                             !company.can_delete
                                                         }
-                                                        className="p-1 text-red-500 hover:text-red-700 disabled:cursor-not-allowed disabled:text-gray-300"
+                                                        className="inline-flex size-10 items-center justify-center rounded-xl text-red-500 hover:bg-red-50 hover:text-red-700 focus-visible:ring-4 focus-visible:ring-red-500/20 focus-visible:outline-none disabled:cursor-not-allowed disabled:text-gray-300"
+                                                        aria-label={`Delete ${company.company_name}`}
                                                         title={
                                                             company.can_delete
                                                                 ? 'Delete'
@@ -267,7 +283,10 @@ export default function AdminCompaniesIndex() {
                                                             }
                                                         }}
                                                     >
-                                                        <Trash2 className="h-4 w-4" />
+                                                        <Trash2
+                                                            className="h-4 w-4"
+                                                            aria-hidden="true"
+                                                        />
                                                     </button>
                                                 </div>
                                             </td>

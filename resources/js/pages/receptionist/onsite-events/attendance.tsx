@@ -187,7 +187,7 @@ export default function Attendance({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${companyName} Attendance`} />
-            <main className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
                 <header className="relative overflow-hidden rounded-2xl border border-moss-200 bg-gradient-to-r from-moss-50 via-white to-white p-6 shadow-sm dark:border-border dark:from-moss-950 dark:via-card dark:to-card">
                     <div className="absolute -top-20 -right-16 size-56 rounded-full bg-moss-200/35 blur-3xl dark:bg-moss-700/10" />
                     <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
@@ -438,7 +438,7 @@ export default function Attendance({
                         label="event employees"
                     />
                 </section>
-            </main>
+            </div>
         </AppLayout>
     );
 }

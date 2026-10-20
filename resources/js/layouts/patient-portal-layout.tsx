@@ -48,6 +48,12 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
 
     return (
         <div className="patient-portal min-h-screen bg-background text-foreground">
+            <a
+                href="#main-content"
+                className="fixed top-4 left-4 z-[200] -translate-y-24 rounded-xl bg-card px-4 py-3 text-sm font-semibold text-moss-800 shadow-lg transition-transform focus:translate-y-0 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none dark:text-moss-200"
+            >
+                Skip to content
+            </a>
             <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl">
                 <div className="mx-auto flex h-[72px] max-w-[1500px] items-center gap-3 px-4 sm:px-6 lg:px-8">
                     <Link
@@ -100,7 +106,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                     <button
                         type="button"
                         onClick={() => setMobileOpen((open) => !open)}
-                        className="rounded-xl p-2 text-slate-600 hover:bg-moss-50 lg:hidden dark:text-moss-200"
+                        className="rounded-xl p-2 text-slate-600 hover:bg-moss-50 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none lg:hidden dark:text-moss-200"
                         aria-label="Toggle patient navigation"
                         aria-expanded={mobileOpen}
                     >
@@ -192,7 +198,13 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                     </nav>
                 )}
             </header>
-            <main className="min-w-0 overflow-x-clip">{children}</main>
+            <main
+                id="main-content"
+                tabIndex={-1}
+                className="min-w-0 scroll-mt-20 overflow-x-clip focus:outline-none"
+            >
+                {children}
+            </main>
         </div>
     );
 }

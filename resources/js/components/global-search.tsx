@@ -10,6 +10,7 @@ import {
     X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 type SearchItem = {
     id: string;
@@ -77,6 +78,7 @@ export function GlobalSearch() {
     const [error, setError] = useState('');
     const [activeIndex, setActiveIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
+    const triggerRef = useRef<HTMLButtonElement | null>(null);
     const items = useMemo(
         () => groups.flatMap((group) => group.items),
         [groups],
@@ -89,23 +91,13 @@ export function GlobalSearch() {
                 event.key.toLowerCase() === 'k'
             ) {
                 event.preventDefault();
+                triggerRef.current = null;
                 setOpen(true);
-            }
-            if (event.key === 'Escape' && open) {
-                event.preventDefault();
-                setOpen(false);
-                setQuery('');
-                setGroups([]);
-                setError('');
             }
         };
         window.addEventListener('keydown', shortcut);
         return () => window.removeEventListener('keydown', shortcut);
-    }, [open]);
-
-    useEffect(() => {
-        if (open) inputRef.current?.focus();
-    }, [open]);
+    }, []);
 
     useEffect(() => {
         if (!open || query.trim().length < 2) {
@@ -176,10 +168,19 @@ export function GlobalSearch() {
 
     let itemIndex = -1;
     return (
-        <>
+        <Dialog
+            open={open}
+            onOpenChange={(nextOpen) => {
+                if (nextOpen) setOpen(true);
+                else close();
+            }}
+        >
             <button
                 type="button"
-                onClick={() => setOpen(true)}
+                onClick={(event) => {
+                    triggerRef.current = event.currentTarget;
+                    setOpen(true);
+                }}
                 className="mx-auto hidden h-10 w-full max-w-md items-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-500 transition hover:border-moss-300 hover:bg-white lg:flex dark:hover:bg-card"
                 aria-label="Open global search"
             >
@@ -191,119 +192,119 @@ export function GlobalSearch() {
             </button>
             <button
                 type="button"
-                onClick={() => setOpen(true)}
+                onClick={(event) => {
+                    triggerRef.current = event.currentTarget;
+                    setOpen(true);
+                }}
                 className="topbar-icon ml-auto lg:hidden"
                 aria-label="Open global search"
             >
                 <Search className="size-[18px]" />
             </button>
 
-            {open && (
-                <div
-                    className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-950/45 px-4 pt-[10vh] backdrop-blur-sm"
-                    role="presentation"
-                    onMouseDown={(event) =>
-                        event.target === event.currentTarget && close()
-                    }
-                >
-                    <section
-                        role="dialog"
-                        aria-modal="true"
-                        aria-label="Global search"
-                        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl"
+            <DialogContent
+                showCloseButton={false}
+                overlayClassName="z-[100] bg-slate-950/45 backdrop-blur-sm overscroll-contain"
+                onOpenAutoFocus={(event) => {
+                    event.preventDefault();
+                    inputRef.current?.focus();
+                }}
+                onCloseAutoFocus={(event) => {
+                    if (!triggerRef.current) return;
+                    event.preventDefault();
+                    triggerRef.current.focus();
+                }}
+                className="top-[10vh] z-[101] max-h-[80vh] max-w-2xl translate-y-0 gap-0 overflow-hidden rounded-2xl border border-border bg-card p-0 text-card-foreground shadow-2xl sm:max-w-2xl"
+                aria-label="Global search"
+            >
+                <DialogTitle className="sr-only">Global search</DialogTitle>
+                <div className="flex items-center border-b border-slate-200 px-4">
+                    {loading ? (
+                        <LoaderCircle className="size-5 animate-spin text-moss-700" />
+                    ) : (
+                        <Search className="size-5 text-slate-400" />
+                    )}
+                    <input
+                        ref={inputRef}
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                        onKeyDown={onKeyDown}
+                        type="search"
+                        placeholder={copy.input}
+                        aria-label="Global search query"
+                        aria-controls="global-search-results"
+                        className="h-14 min-w-0 flex-1 border-0 px-3 text-base outline-none"
+                    />
+                    <button
+                        type="button"
+                        onClick={close}
+                        className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none dark:hover:bg-accent"
+                        aria-label="Close search"
                     >
-                        <div className="flex items-center border-b border-slate-200 px-4">
-                            {loading ? (
-                                <LoaderCircle className="size-5 animate-spin text-moss-700" />
-                            ) : (
-                                <Search className="size-5 text-slate-400" />
-                            )}
-                            <input
-                                ref={inputRef}
-                                value={query}
-                                onChange={(event) =>
-                                    setQuery(event.target.value)
-                                }
-                                onKeyDown={onKeyDown}
-                                type="search"
-                                placeholder={copy.input}
-                                aria-label="Global search query"
-                                aria-controls="global-search-results"
-                                className="h-14 min-w-0 flex-1 border-0 px-3 text-base outline-none"
-                            />
-                            <button
-                                type="button"
-                                onClick={close}
-                                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-accent"
-                                aria-label="Close search"
-                            >
-                                <X className="size-5" />
-                            </button>
-                        </div>
-                        <div
-                            id="global-search-results"
-                            className="max-h-[65vh] overflow-y-auto p-2"
-                            aria-live="polite"
-                        >
-                            {query.trim().length < 2 && (
-                                <div className="p-8 text-center text-sm text-slate-500">
-                                    <FileSearch className="mx-auto mb-3 size-8 text-moss-600" />
-                                    Enter at least two characters. {copy.empty}
-                                </div>
-                            )}
-                            {error && (
-                                <p className="p-6 text-center text-sm font-semibold text-red-600">
-                                    {error}
-                                </p>
-                            )}
-                            {!loading &&
-                                !error &&
-                                query.trim().length >= 2 &&
-                                groups.length === 0 && (
-                                    <p className="p-8 text-center text-sm text-slate-500">
-                                        No authorized records matched your
-                                        search.
-                                    </p>
-                                )}
-                            {groups.map((group) => (
-                                <div key={group.key} className="mb-3 last:mb-0">
-                                    <h2 className="px-3 py-2 text-xs font-bold tracking-wider text-slate-400 uppercase">
-                                        {group.title}
-                                    </h2>
-                                    {group.items.map((item) => {
-                                        itemIndex += 1;
-                                        const index = itemIndex;
-                                        const Icon = icons[item.type];
-                                        return (
-                                            <button
-                                                key={item.id}
-                                                type="button"
-                                                onMouseEnter={() =>
-                                                    setActiveIndex(index)
-                                                }
-                                                onClick={() => navigate(item)}
-                                                className={`flex w-full items-center gap-3 rounded-xl p-3 text-left ${activeIndex === index ? 'bg-moss-50 ring-1 ring-moss-200 dark:bg-accent dark:ring-border' : 'hover:bg-slate-50 dark:hover:bg-muted'}`}
-                                            >
-                                                <span className="rounded-xl bg-card p-2 text-moss-700 shadow-sm dark:text-moss-200">
-                                                    <Icon className="size-5" />
-                                                </span>
-                                                <span className="min-w-0">
-                                                    <span className="block truncate font-semibold text-slate-900">
-                                                        {item.title}
-                                                    </span>
-                                                    <span className="block truncate text-xs text-slate-500">
-                                                        {item.subtitle}
-                                                    </span>
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            ))}
-                        </div>
-                    </section>
+                        <X className="size-5" />
+                    </button>
                 </div>
-            )}
-        </>
+                <div
+                    id="global-search-results"
+                    className="max-h-[65vh] overflow-y-auto p-2"
+                    aria-live="polite"
+                >
+                    {query.trim().length < 2 && (
+                        <div className="p-8 text-center text-sm text-slate-500">
+                            <FileSearch className="mx-auto mb-3 size-8 text-moss-600" />
+                            Enter at least two characters. {copy.empty}
+                        </div>
+                    )}
+                    {error && (
+                        <p className="p-6 text-center text-sm font-semibold text-red-600">
+                            {error}
+                        </p>
+                    )}
+                    {!loading &&
+                        !error &&
+                        query.trim().length >= 2 &&
+                        groups.length === 0 && (
+                            <p className="p-8 text-center text-sm text-slate-500">
+                                No authorized records matched your search.
+                            </p>
+                        )}
+                    {groups.map((group) => (
+                        <div key={group.key} className="mb-3 last:mb-0">
+                            <h2 className="px-3 py-2 text-xs font-bold tracking-wider text-slate-400 uppercase">
+                                {group.title}
+                            </h2>
+                            {group.items.map((item) => {
+                                itemIndex += 1;
+                                const index = itemIndex;
+                                const Icon = icons[item.type];
+                                return (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        onMouseEnter={() =>
+                                            setActiveIndex(index)
+                                        }
+                                        onClick={() => navigate(item)}
+                                        className={`flex w-full items-center gap-3 rounded-xl p-3 text-left ${activeIndex === index ? 'bg-moss-50 ring-1 ring-moss-200 dark:bg-accent dark:ring-border' : 'hover:bg-slate-50 dark:hover:bg-muted'}`}
+                                    >
+                                        <span className="rounded-xl bg-card p-2 text-moss-700 shadow-sm dark:text-moss-200">
+                                            <Icon className="size-5" />
+                                        </span>
+                                        <span className="min-w-0">
+                                            <span className="block truncate font-semibold text-slate-900">
+                                                {item.title}
+                                            </span>
+                                            <span className="block truncate text-xs text-slate-500">
+                                                {item.subtitle}
+                                            </span>
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }

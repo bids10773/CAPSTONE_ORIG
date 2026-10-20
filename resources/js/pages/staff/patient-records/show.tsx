@@ -104,7 +104,7 @@ export default function StaffPatientRecordShow({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${patient.name} · Patient Record`} />
-            <main className="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+            <div className="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
                 <Link
                     href={recordsPath}
                     className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-moss-700"
@@ -326,7 +326,7 @@ export default function StaffPatientRecordShow({
                         )}
                     </section>
                 )}
-            </main>
+            </div>
         </AppLayout>
     );
 }

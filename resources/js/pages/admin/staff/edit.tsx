@@ -100,7 +100,7 @@ export default function EditStaff({
     return (
         <>
             <Head title={`Edit ${staff.first_name} ${staff.last_name}`} />
-            <main className="mx-auto w-full max-w-[1500px] space-y-6 p-4 sm:p-6 lg:p-8">
+            <div className="mx-auto w-full max-w-[1500px] space-y-6 p-4 sm:p-6 lg:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <Link
                         href="/admin/staff"
@@ -453,7 +453,7 @@ export default function EditStaff({
                         )}
                     </section>
                 )}
-            </main>
+            </div>
         </>
     );
 }

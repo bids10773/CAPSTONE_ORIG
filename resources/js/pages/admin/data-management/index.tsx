@@ -102,7 +102,7 @@ export default function DataManagement({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Data Management" />
 
-            <main className="space-y-6 p-4 sm:p-6 lg:p-8">
+            <div className="space-y-6 p-4 sm:p-6 lg:p-8">
                 <section>
                     <p className="text-xs font-bold tracking-[0.16em] text-moss-700 uppercase">
                         Administration
@@ -370,7 +370,7 @@ export default function DataManagement({
                         </div>
                     )}
                 </section>
-            </main>
+            </div>
         </AppLayout>
     );
 }

@@ -70,7 +70,7 @@ export default function AdminSecurity({ securityAlerts, securityLogs }: Props) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Booking & Security Alerts" />
 
-            <main className="space-y-6 p-4 sm:p-6 lg:p-8">
+            <div className="space-y-6 p-4 sm:p-6 lg:p-8">
                 <section className="grid gap-4 md:grid-cols-3">
                     {signals.map((signal) => (
                         <article
@@ -225,7 +225,7 @@ export default function AdminSecurity({ securityAlerts, securityLogs }: Props) {
                         label="security logs"
                     />
                 </section>
-            </main>
+            </div>
         </AppLayout>
     );
 }

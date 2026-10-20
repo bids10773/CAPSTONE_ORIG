@@ -235,7 +235,7 @@ export default function AppointmentRequests({
     return (
         <AppLayout>
             <Head title="Appointment Requests" />
-            <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+            <div className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
                 <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                     <div>
                         <p className="mb-1 text-sm font-semibold text-moss-700 dark:text-moss-300">
@@ -436,7 +436,7 @@ export default function AppointmentRequests({
                         label="appointment requests"
                     />
                 </section>
-            </main>
+            </div>
 
             <Dialog
                 open={viewingAppointment !== null}

@@ -39,7 +39,7 @@ test('patient appointments support validated page sizes and preserve authorizati
             ->has('appointments.data', 15));
 });
 
-test('receptionist queue paginates online records before walk-ins', function () {
+test('receptionist queue paginates walk-ins before scheduled online patients who have not arrived', function () {
     $staff = User::factory()->create(['role' => 'receptionist']);
     $patient = User::factory()->create(['role' => 'patient']);
     createPaginatedAppointments($patient, 12, ['type' => 'walk_in']);
@@ -52,7 +52,7 @@ test('receptionist queue paginates online records before walk-ins', function () 
             ->where('walkIns.total', 24)
             ->where('walkIns.per_page', 10)
             ->has('walkIns.data', 10)
-            ->where('walkIns.data.0.type', 'individual'));
+            ->where('walkIns.data.0.type', 'walk_in'));
 });
 
 test('admin report detail table is paginated without changing aggregate totals', function () {

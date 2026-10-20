@@ -160,7 +160,7 @@ export default function MedicalCertificatesIndex({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Medical Certificates" />
-            <main className="mx-auto w-full max-w-[1600px] space-y-5 p-4 sm:p-6 lg:p-8">
+            <div className="mx-auto w-full max-w-[1600px] space-y-5 p-4 sm:p-6 lg:p-8">
                 <header className="rounded-2xl border border-moss-200 bg-gradient-to-r from-moss-50 to-white p-5 shadow-sm sm:p-6 dark:border-border dark:from-moss-950 dark:to-card">
                     <p className="text-xs font-bold tracking-[.16em] text-moss-700 uppercase dark:text-moss-300">
                         Clinical documents
@@ -362,7 +362,7 @@ export default function MedicalCertificatesIndex({
                         </div>
                     )}
                 </section>
-            </main>
+            </div>
         </AppLayout>
     );
 }

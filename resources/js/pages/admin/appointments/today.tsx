@@ -179,7 +179,7 @@ export default function TodayAppointments({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Today's Clinic Overview" />
-            <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+            <div className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
                 <header className="relative overflow-hidden rounded-[2rem] bg-moss-800 p-6 text-white shadow-[0_18px_45px_-30px_rgba(23,50,34,.8)] sm:p-8">
                     <div className="absolute -top-20 -right-16 size-64 rounded-full bg-white/10 blur-3xl" />
                     <div className="absolute -bottom-28 left-1/3 size-56 rounded-full bg-moss-400/20 blur-3xl" />
@@ -466,7 +466,7 @@ export default function TodayAppointments({
                         </DialogContent>
                     )}
                 </Dialog>
-            </main>
+            </div>
         </AppLayout>
     );
 }

@@ -146,8 +146,8 @@ export default function DoctorAppointmentsIndex(props: Props) {
 
                 {/* Table */}
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                    <div className="overflow-hidden">
-                        <table className="w-full table-fixed">
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[760px] table-fixed">
                             <thead className="border-b border-gray-200 bg-gray-50">
                                 <tr>
                                     <th className="w-[24%] px-4 py-3 text-left text-xs font-medium tracking-wider whitespace-nowrap text-gray-500 uppercase">

@@ -382,7 +382,7 @@ export default function CompanyDashboard() {
     return (
         <AppLayout>
             <Head title="Company Dashboard" />
-            <main className="min-h-screen space-y-6 bg-gray-50 p-4 pb-10 sm:p-6 lg:p-8 dark:bg-background">
+            <div className="min-h-screen space-y-6 bg-gray-50 p-4 pb-10 sm:p-6 lg:p-8 dark:bg-background">
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
                     <section className="relative flex min-h-64 flex-col justify-between overflow-hidden rounded-[2rem] bg-moss-800 p-7 text-white shadow-[0_10px_30px_-24px_rgba(48,63,52,.45)] sm:p-9">
                         <div className="absolute -top-20 -right-16 size-64 rounded-full bg-white/10 blur-3xl" />
@@ -1166,7 +1166,7 @@ export default function CompanyDashboard() {
                         )}
                     </section>
                 </div>
-            </main>
+            </div>
         </AppLayout>
     );
 }
