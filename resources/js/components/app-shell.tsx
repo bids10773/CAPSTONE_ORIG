@@ -17,6 +17,11 @@ export function AppShell({ children, variant = 'header' }: Props) {
     }
 
     return (
-        <SidebarProvider defaultPinned={isPinned}>{children}</SidebarProvider>
+        <SidebarProvider
+            defaultPinned={isPinned}
+            className="app-workspace min-h-screen bg-background"
+        >
+            {children}
+        </SidebarProvider>
     );
 }

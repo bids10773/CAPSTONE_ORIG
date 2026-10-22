@@ -1,4 +1,3 @@
-import { motion, useReducedMotion } from 'framer-motion';
 import {
     CheckCircle2,
     CircleDot,
@@ -111,7 +110,6 @@ export function StatusBadge({
     status: string;
     className?: string;
 }) {
-    const reduceMotion = useReducedMotion();
     const key = status.toLowerCase() as keyof typeof statusConfig;
     const config = statusConfig[key] ?? {
         label: status.replaceAll('_', ' '),
@@ -119,18 +117,14 @@ export function StatusBadge({
         icon: CircleDot,
     };
     return (
-        <motion.span
-            key={key}
-            initial={reduceMotion ? false : { opacity: 0.75, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: reduceMotion ? 0 : 0.18 }}
+        <span
             className={cn(
-                'status-text-only motion-status inline-flex items-center justify-center text-xs font-bold',
+                'status-text-only inline-flex items-center justify-center text-xs font-semibold',
                 config.className,
                 className,
             )}
         >
             {config.label}
-        </motion.span>
+        </span>
     );
 }

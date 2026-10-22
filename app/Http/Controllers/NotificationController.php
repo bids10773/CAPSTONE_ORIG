@@ -92,6 +92,23 @@ class NotificationController extends Controller
         return back()->with('success', 'All notifications marked as read.');
     }
 
+    public function destroy(Request $request, string $notification): RedirectResponse
+    {
+        $owned = $request->user()->notifications()->whereKey($notification)->firstOrFail();
+        $owned->delete();
+        $this->broadcastUpdate($request);
+
+        return back()->with('success', 'Notification removed.');
+    }
+
+    public function destroyAll(Request $request): RedirectResponse
+    {
+        $request->user()->notifications()->delete();
+        $this->broadcastUpdate($request);
+
+        return back()->with('success', 'All notifications removed.');
+    }
+
     /** @return array<string, mixed> */
     private function serialize(DatabaseNotification $notification): array
     {

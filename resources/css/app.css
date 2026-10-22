@@ -204,7 +204,7 @@
 
     .auth-input,
     .auth-select {
-        @apply h-12 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-900 transition-all duration-200 outline-none placeholder:text-slate-400 hover:border-moss-300 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10;
+        @apply h-12 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-900 transition-[background-color,border-color,box-shadow,color] duration-200 outline-none placeholder:text-slate-400 hover:border-moss-300 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10;
     }
 
     .auth-input {
@@ -242,11 +242,11 @@
     }
 
     .auth-primary-button {
-        @apply flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-moss-500 px-5 text-sm font-semibold text-white shadow-lg shadow-moss-600/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-moss-600 hover:shadow-xl hover:shadow-moss-600/25 focus-visible:ring-4 focus-visible:ring-moss-500/25 focus-visible:outline-none active:translate-y-0 disabled:pointer-events-none disabled:opacity-60 disabled:shadow-none;
+        @apply flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-moss-500 px-5 text-sm font-semibold text-white shadow-lg shadow-moss-600/20 transition-[background-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:bg-moss-600 hover:shadow-xl hover:shadow-moss-600/25 focus-visible:ring-4 focus-visible:ring-moss-500/25 focus-visible:outline-none active:translate-y-0 disabled:pointer-events-none disabled:opacity-60 disabled:shadow-none;
     }
 
     .topbar-icon {
-        @apply flex size-10 items-center justify-center rounded-xl text-slate-500 transition-all hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none;
+        @apply flex size-10 items-center justify-center rounded-xl text-slate-500 transition-[background-color,color,box-shadow] hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none;
     }
 
     .dark .topbar-icon:hover {
@@ -309,15 +309,6 @@
 
     .motion-press:active:not(:disabled) {
         transform: scale(0.98);
-    }
-
-    .motion-status {
-        transition:
-            color var(--motion-fast) var(--motion-ease-out),
-            background-color var(--motion-fast) var(--motion-ease-out),
-            border-color var(--motion-fast) var(--motion-ease-out),
-            opacity var(--motion-fast) var(--motion-ease-out),
-            transform var(--motion-fast) var(--motion-ease-out);
     }
 
     .app-workspace main section,
@@ -853,6 +844,9 @@
         [class~='hover:bg-slate-50/50']:hover,
     .dark
         :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-slate-50/70']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
         [class~='hover:bg-slate-100']:hover,
     .dark
         :where(.app-workspace, .patient-portal)
@@ -892,7 +886,13 @@
         [class~='hover:bg-moss-100/50']:hover,
     .dark
         :where(.app-workspace, .patient-portal)
-        [class~='hover:bg-white']:hover {
+        [class~='hover:bg-moss-200']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-white']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-white/60']:hover {
         background-color: var(--accent) !important;
     }
 
@@ -908,14 +908,42 @@
             [class~='hover:border-moss-100'],
             [class~='hover:border-moss-200'],
             [class~='hover:border-moss-300'],
-            [class~='hover:border-moss-400']
+            [class~='hover:border-moss-400'],
+            [class~='hover:border-moss-400/40']
         ):hover {
         border-color: var(--color-moss-700) !important;
     }
 
     .dark
         :where(.app-workspace, .patient-portal)
+        :is(
+            [class~='hover:border-gray-300'],
+            [class~='hover:border-slate-300']
+        ):hover {
+        border-color: var(--border) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(
+            [class~='hover:border-amber-200'],
+            [class~='hover:border-amber-300']
+        ):hover {
+        border-color: rgb(180 83 9 / 0.8) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:border-rose-300']:hover {
+        border-color: rgb(190 24 93 / 0.75) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
         [class~='hover:bg-amber-50']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-amber-100/70']:hover,
     .dark
         :where(.app-workspace, .patient-portal)
         [class~='hover:bg-amber-100/50']:hover {
@@ -925,6 +953,9 @@
     .dark
         :where(.app-workspace, .patient-portal)
         [class~='hover:bg-emerald-100']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-emerald-50']:hover,
     .dark
         :where(.app-workspace, .patient-portal)
         [class~='hover:bg-green-50']:hover,
@@ -954,12 +985,53 @@
 
     .dark
         :where(.app-workspace, .patient-portal)
+        [class*='hover:text-neutral-']:hover {
+        color: var(--foreground) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
         [class*='hover:text-moss-']:hover,
     .dark
         :where(.app-workspace, .patient-portal)
         .group:hover
         [class*='group-hover:text-moss-'] {
         color: var(--color-moss-200) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is([class*='hover:text-amber-'], [class*='hover:text-yellow-']):hover {
+        color: rgb(252 211 77) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(
+            [class*='hover:text-emerald-'],
+            [class*='hover:text-green-']
+        ):hover {
+        color: rgb(110 231 183) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is([class*='hover:text-red-'], [class*='hover:text-rose-']):hover {
+        color: rgb(253 164 175) !important;
+    }
+
+    /* Dialogs render outside the workspace wrapper. Keep their legacy light
+       hover utilities consistent with the active dark surface as well. */
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            [class~='hover:bg-gray-100'],
+            [class~='hover:bg-gray-200'],
+            [class~='hover:bg-slate-50'],
+            [class~='hover:bg-slate-100'],
+            [class~='hover:bg-moss-50']
+        ):hover {
+        background-color: var(--accent) !important;
     }
 
     .dark :is(.app-workspace, .patient-portal) .preserve-light-action {
@@ -1511,7 +1583,9 @@
         color: oklch(0.145 0 0);
     }
     .auth-shell input::placeholder {
-        color: oklch(0.6 0 0) !important;
+        color: #94a3b8 !important;
+        -webkit-text-fill-color: #94a3b8 !important;
+        opacity: 1;
     }
     .auth-shell .registration-form input::placeholder {
         color: oklch(0.72 0 0) !important;
@@ -1549,16 +1623,16 @@
 @layer components {
     /* Compact outlined status pills shared across every workspace. */
     .status-text-only {
-        min-height: 1.35rem !important;
+        min-height: 1.5rem !important;
         width: fit-content;
-        padding: 0.15rem 0.55rem !important;
+        padding: 0.2rem 0.625rem !important;
         border: 1px solid currentColor !important;
         border-radius: 9999px !important;
         background: transparent !important;
         box-shadow: none !important;
-        font-size: 0.625rem !important;
-        line-height: 0.85rem;
-        letter-spacing: 0.02em;
+        font-size: 0.6875rem !important;
+        line-height: 1rem;
+        letter-spacing: 0.015em;
         text-transform: uppercase;
         white-space: nowrap;
         align-items: center;
@@ -1570,9 +1644,9 @@
     }
 
     .status-text-only.status-text-compact {
-        min-height: 1.1rem !important;
-        padding: 0.05rem 0.4rem !important;
-        font-size: 0.55rem !important;
-        line-height: 0.7rem;
+        min-height: 1.25rem !important;
+        padding: 0.1rem 0.45rem !important;
+        font-size: 0.625rem !important;
+        line-height: 0.8rem;
     }
 }

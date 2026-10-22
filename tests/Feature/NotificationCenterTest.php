@@ -138,6 +138,26 @@ test('authenticated user can mark one or all of only their own notifications as 
         ->and($other->unreadNotifications()->count())->toBe(1);
 });
 
+test('authenticated user can remove one or all of only their own notifications', function () {
+    $patient = notificationPatient();
+    $other = notificationPatient();
+    $doctor = notificationDoctor();
+    $patient->notify(new AppointmentSubmitted(notificationAppointment($patient, $doctor)));
+    $patient->notify(new AppointmentSubmitted(notificationAppointment($patient, $doctor)));
+    $other->notify(new AppointmentSubmitted(notificationAppointment($other, $doctor)));
+    $first = $patient->notifications()->first();
+
+    $this->actingAs($patient)->delete(route('notifications.destroy', $first->id))->assertRedirect();
+    expect($patient->notifications()->count())->toBe(1);
+
+    $this->delete(route('notifications.destroy', $other->notifications()->first()->id))->assertNotFound();
+    expect($other->notifications()->count())->toBe(1);
+
+    $this->delete(route('notifications.destroy-all'))->assertRedirect();
+    expect($patient->notifications()->count())->toBe(0)
+        ->and($other->notifications()->count())->toBe(1);
+});
+
 test('notification center is paginated and shared bell count uses real unread records', function () {
     $patient = notificationPatient();
     $appointment = notificationAppointment($patient, notificationDoctor());

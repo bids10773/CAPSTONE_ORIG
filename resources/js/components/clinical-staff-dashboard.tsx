@@ -61,7 +61,7 @@ export function ClinicalStaffDashboard({
     extraStat?: { label: string; value: string | number; icon: LucideIcon };
 }) {
     return (
-        <div className="min-h-screen space-y-6 bg-gray-50 p-6">
+        <div className="min-h-screen space-y-6 bg-gray-50 p-4 sm:p-6 lg:p-8 dark:bg-background">
             <StaffDashboardHero
                 name={name}
                 description={description}

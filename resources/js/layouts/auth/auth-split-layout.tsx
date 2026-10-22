@@ -13,6 +13,8 @@ import logo from '/public/images/full_logo2-optimized.webp';
 
 export default function AuthSplitLayout({
     children,
+    title,
+    description,
     variant = 'login',
 }: AuthLayoutProps) {
     const { auth } = usePage().props as any;
@@ -187,6 +189,20 @@ export default function AuthSplitLayout({
                             </div>
                         </div>
                         <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-[0_24px_70px_-30px_rgba(15,43,75,.3)] sm:p-9">
+                            {(title || description) && (
+                                <header className="mb-7 text-center">
+                                    {title && (
+                                        <h1 className="text-2xl font-semibold tracking-[-0.025em] text-slate-950">
+                                            {title}
+                                        </h1>
+                                    )}
+                                    {description && (
+                                        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                                            {description}
+                                        </p>
+                                    )}
+                                </header>
+                            )}
                             {children}
                         </div>
                         <p className="mt-6 text-center text-xs text-slate-400">
