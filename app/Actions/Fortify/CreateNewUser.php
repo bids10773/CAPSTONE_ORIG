@@ -58,6 +58,7 @@ class CreateNewUser implements CreatesNewUsers
             ],
             'sex' => ['required', 'string'],
             'civil_status' => ['required', 'string'],
+            'address' => ['required', 'string', 'max:1000'],
 
             'password' => $this->passwordRules(),
         ], [
@@ -110,6 +111,7 @@ class CreateNewUser implements CreatesNewUsers
                 'birthdate' => $input['birthdate'],
                 'sex' => $input['sex'],
                 'civil_status' => $input['civil_status'],
+                'address' => $input['address'],
             ]);
 
             return $user;

@@ -2,6 +2,8 @@ export type * from './auth';
 export type * from './navigation';
 export type * from './ui';
 export type * from './availability';
+export type * from './medical-certificate';
+export type * from './medical-document';
 
 import type { Auth } from './auth';
 

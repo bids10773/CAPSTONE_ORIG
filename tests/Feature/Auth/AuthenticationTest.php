@@ -210,10 +210,10 @@ test('users can logout', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('users are rate limited', function () {
+test('users are warned after three failures and locked after five until password reset', function () {
     $user = User::factory()->create();
 
-    foreach ([4, 3, 2, 1] as $remaining) {
+    foreach ([4, 3, 2, 1] as $index => $remaining) {
         $response = $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'wrong-password',
@@ -223,7 +223,10 @@ test('users are rate limited', function () {
         $response->assertSessionHasErrors([
             'email' => 'The email or password you entered is incorrect.',
         ]);
-        $response->assertSessionHas('login_attempt_limit', fn (array $state) => $state['remainingAttempts'] === $remaining && $state['locked'] === false);
+        $response->assertSessionHas('login_attempt_limit', fn (array $state) => $state['failedAttempts'] === $index + 1
+            && $state['warningAfterAttempts'] === 3
+            && $state['remainingAttempts'] === $remaining
+            && $state['locked'] === false);
     }
 
     $fifthAttempt = $this->post(route('login.store'), [
@@ -236,9 +239,15 @@ test('users are rate limited', function () {
         'email' => 'The email or password you entered is incorrect.',
     ]);
     $fifthAttempt->assertSessionHas('login_attempt_limit', fn (array $state) => $state['remainingAttempts'] === 0
-        && $state['locked'] === true
-        && $state['retryAfter'] > 0
-        && $state['retryAfter'] <= 60);
+        && $state['failedAttempts'] === 5
+        && $state['locked'] === true);
+    expect($user->refresh()->failed_login_attempts)->toBe(5)
+        ->and($user->login_locked_at)->not->toBeNull();
+    $this->assertDatabaseHas('security_audits', [
+        'target_user_id' => $user->id,
+        'action' => 'account_locked_after_failed_logins',
+        'status' => 'blocked',
+    ]);
 
     $blockedAttempt = $this->post(route('login.store'), [
         'email' => $user->email,
@@ -247,17 +256,20 @@ test('users are rate limited', function () {
 
     $this->assertGuest();
     $blockedAttempt->assertSessionHasErrors([
-        'email' => 'Too many failed login attempts.',
+        'email' => 'Your account is locked. Reset your password by email to unlock it.',
     ]);
 
     $this->travel(61)->seconds();
 
-    $this->post(route('login.store'), [
+    $stillBlocked = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'password',
     ]);
 
-    $this->assertAuthenticatedAs($user);
+    $this->assertGuest();
+    $stillBlocked->assertSessionHasErrors([
+        'email' => 'Your account is locked. Reset your password by email to unlock it.',
+    ]);
 });
 
 test('validation failures do not consume login attempts', function () {
@@ -289,11 +301,15 @@ test('successful login clears previous failed attempts', function () {
         ]);
     }
 
+    expect($user->refresh()->failed_login_attempts)->toBe(2);
+
     $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'password',
     ]);
     $this->assertAuthenticatedAs($user);
+    expect($user->refresh()->failed_login_attempts)->toBe(0)
+        ->and($user->login_locked_at)->toBeNull();
 
     $this->post(route('logout'));
 

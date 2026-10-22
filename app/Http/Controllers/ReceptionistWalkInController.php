@@ -12,6 +12,7 @@ use App\Services\AppointmentReminderService;
 use App\Services\AppointmentSchedulingService;
 use App\Services\WalkInDoctorSlotService;
 use App\Services\WalkInService;
+use App\Support\ClinicHours;
 use App\Support\SearchTerm;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -139,36 +140,51 @@ class ReceptionistWalkInController extends Controller
             ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
             ->whereHas('user', fn ($query) => $query->where('role', 'patient'))
             ->whereDate('appointment_date', today())
-            ->orderByRaw("CASE WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type <> 'walk_in' THEN 2 WHEN type = 'walk_in' THEN 3 ELSE 4 END")
-            ->orderByRaw('COALESCE(start_time, arrived_at, created_at)')
+            ->orderByRaw("CASE WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type = 'walk_in' THEN 2 WHEN type <> 'walk_in' THEN 3 ELSE 4 END")
+            ->orderByRaw("CASE WHEN type = 'walk_in' THEN COALESCE(arrived_at, created_at) END")
+            ->orderBy('start_time')
+            ->orderByRaw('COALESCE(arrived_at, created_at)')
             ->orderBy('id')
             ->get(['id', 'type'])
             ->groupBy(fn (Appointment $appointment): string => $appointment->type === 'walk_in' ? 'walk_in' : 'online')
             ->map(fn ($appointments) => $appointments->pluck('id')->flip());
 
         $walkIns = Appointment::query()
-            ->with(['user.patientProfile', 'doctor:id,first_name,last_name'])
+            ->with(['user.patientProfile', 'doctor:id,first_name,last_name', 'latestVitalSign',
+                'vitalSignRecheckRequests' => fn ($query) => $query->where('status', 'pending')])
             ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
             ->whereHas('user', fn ($query) => $query->where('role', 'patient'))
             ->whereDate('appointment_date', today())
             ->when($status !== '', fn ($query) => $query->where('status', $status))
             ->when($search !== '', function ($query) use ($search): void {
-                $query->whereHas('user', function ($patient) use ($search): void {
-                    foreach (preg_split('/\s+/', $search) ?: [] as $term) {
-                        $like = '%'.SearchTerm::forLike($term).'%';
-                        $patient->where(function ($match) use ($like): void {
-                            $match
-                                ->where('first_name', 'like', $like)
-                                ->orWhere('middle_name', 'like', $like)
-                                ->orWhere('last_name', 'like', $like)
-                                ->orWhere('email', 'like', $like)
-                                ->orWhere('contact', 'like', $like);
+                $appointmentReference = Appointment::parseReferenceCode($search);
+                preg_match('/^PAT0*(\d+)$/i', $search, $patientMatch);
+
+                $query->where(function ($match) use ($appointmentReference, $patientMatch, $search): void {
+                    $match->where(fn ($reference) => $reference
+                        ->where('appointments.id', (int) ($appointmentReference['id'] ?? 0))
+                        ->when($appointmentReference, fn ($typed) => $typed->whereIn('type', $appointmentReference['types'])))
+                        ->orWhereHas('user', function ($patient) use ($patientMatch, $search): void {
+                            $patient->where(function ($identity) use ($search): void {
+                                foreach (preg_split('/\s+/', $search) ?: [] as $term) {
+                                    $like = '%'.SearchTerm::forLike($term).'%';
+                                    $identity->where(function ($field) use ($like): void {
+                                        $field
+                                            ->where('first_name', 'like', $like)
+                                            ->orWhere('middle_name', 'like', $like)
+                                            ->orWhere('last_name', 'like', $like)
+                                            ->orWhere('email', 'like', $like)
+                                            ->orWhere('contact', 'like', $like);
+                                    });
+                                }
+                            })->orWhere('id', (int) ($patientMatch[1] ?? 0));
                         });
-                    }
                 });
             })
-            ->orderByRaw("CASE WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type <> 'walk_in' AND status IN ('pending', 'accepted') THEN 2 WHEN type = 'walk_in' THEN 3 ELSE 4 END")
-            ->orderByRaw('COALESCE(start_time, arrived_at, created_at)')
+            ->orderByRaw("CASE WHEN status IN ('completed', 'cancelled', 'rejected') THEN 4 WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type = 'walk_in' THEN 2 WHEN type <> 'walk_in' AND status IN ('pending', 'accepted') THEN 3 ELSE 4 END")
+            ->orderByRaw("CASE WHEN type = 'walk_in' THEN COALESCE(arrived_at, created_at) END")
+            ->orderBy('start_time')
+            ->orderByRaw('COALESCE(arrived_at, created_at)')
             ->orderBy('id')
             ->paginate($this->perPage($request))
             ->withQueryString()
@@ -179,13 +195,19 @@ class ReceptionistWalkInController extends Controller
                 $appointment->setAttribute('queue_number', $prefix.'-'.str_pad((string) $position, 3, '0', STR_PAD_LEFT));
                 $appointment->setAttribute('arrival_status', $this->scheduling->arrivalStatus($appointment));
                 $appointment->setAttribute('grace_ends_at', $this->scheduling->graceEndsAt($appointment)?->toIso8601String());
+                $appointment->setAttribute('intake_status', ! $appointment->arrived_at
+                    ? 'waiting_check_in'
+                    : ($appointment->vitalSignRecheckRequests->isNotEmpty()
+                        ? 'recheck_requested'
+                        : ($appointment->latestVitalSign ? 'ready_for_consultation' : 'for_vital_signs')));
+                $appointment->setAttribute('vital_signs_url', route('receptionist.vital-signs.create', $appointment));
 
                 return $appointment;
             });
 
         return Inertia::render('receptionist/walk-ins', [
             'walkIns' => $walkIns,
-            'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'serviceTypes' => Appointment::getBookableServiceTypeOptions(),
             'filters' => compact('status', 'search'),
             'mode' => $mode,
             'clinicClosed' => today()->isWeekend(),
@@ -225,7 +247,25 @@ class ReceptionistWalkInController extends Controller
 
     public function updateStatus(UpdateWalkInStatusRequest $request, Appointment $appointment): RedirectResponse
     {
-        abort_unless(in_array($appointment->type, ['individual', 'company_referral'], true) && $appointment->bulk_appointment_id === null, 403);
+        abort_unless(in_array($appointment->type, ['individual', 'company_referral', 'walk_in'], true) && $appointment->bulk_appointment_id === null, 403);
+        if ($appointment->type === 'walk_in') {
+            if ($appointment->status !== 'accepted' || $appointment->doctor_id === null || $appointment->start_time === null) {
+                return back()->withErrors([
+                    'status' => 'Assign a doctor and time before starting this walk-in appointment.',
+                ]);
+            }
+
+            if ($this->scheduling->scheduledAt($appointment, ClinicHours::timezone())?->greaterThan(ClinicHours::now())) {
+                return back()->withErrors([
+                    'status' => 'This walk-in appointment cannot start before its assigned time.',
+                ]);
+            }
+
+            $this->scheduling->checkIn($appointment, $request->user());
+
+            return back()->with('success', 'Walk-in appointment is now processing.');
+        }
+
         if ($appointment->type === 'individual' && $appointment->status !== 'accepted') {
             return back()->withErrors([
                 'status' => 'Accept the online appointment request before marking the patient as arrived.',

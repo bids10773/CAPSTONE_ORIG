@@ -31,7 +31,7 @@ class LaboratoryFormDefinition
     public function sections(): array
     {
         return [
-            'cbc' => ['label' => 'Complete Blood Count', 'column' => 'cbc_results', 'services' => ['CBC'], 'fields' => [
+            'cbc' => ['label' => 'Complete Blood Count', 'column' => 'cbc_results', 'services' => ['CBC'], 'requires_interpretation' => true, 'fields' => [
                 $this->numberField('hemoglobin', 'Hemoglobin', 'g/dL', 'M 13–17; F 12–16', 0, 30, 2, ['male' => [13, 17], 'female' => [12, 16]]),
                 $this->numberField('hematocrit', 'Hematocrit', null, 'M 0.39–0.53; F 0.36–0.46', 0, 1, 3, ['male' => [0.39, 0.53], 'female' => [0.36, 0.46]]),
                 $this->numberField('rbc_count', 'RBC Count', '×10¹²/L', 'M 4.5–6.2; F 4.2–5.4', 0, 20, 2, ['male' => [4.5, 6.2], 'female' => [4.2, 5.4]]),
@@ -47,7 +47,7 @@ class LaboratoryFormDefinition
                 $this->numberField('platelet_count', 'Platelet Count', '×10⁹/L', '150–450', 0, 2000, 2, ['default' => [150, 450]]),
                 $this->field('verification_note', 'Note'),
             ]],
-            'urinalysis' => ['label' => 'Urinalysis', 'column' => 'urinalysis_results', 'services' => ['Urinalysis'], 'fields' => [
+            'urinalysis' => ['label' => 'Urinalysis', 'column' => 'urinalysis_results', 'services' => ['Urinalysis'], 'requires_interpretation' => true, 'fields' => [
                 $this->field('color', 'Color', 'select', null, 'Straw–Amber', ['Straw', 'Yellow', 'Light Yellow', 'Dark Yellow', 'Amber', 'Reddish', 'Other']),
                 $this->field('transparency', 'Transparency', 'select', null, 'Clear', ['Clear', 'Slightly Hazy', 'Hazy', 'Turbid']),
                 $this->numberField('ph', 'Reaction / pH', null, '4.5–8.0', 0, 14, 2, ['default' => [4.5, 8]]),
@@ -64,7 +64,7 @@ class LaboratoryFormDefinition
                 $this->field('trichomonas', 'Trichomonas Vaginalis'), $this->field('casts', 'Casts'),
                 $this->field('crystals', 'Crystals'), $this->field('others', 'Others'),
             ]],
-            'fecalysis' => ['label' => 'Fecalysis', 'column' => 'fecalysis_results', 'services' => ['Fecalysis'], 'fields' => [
+            'fecalysis' => ['label' => 'Fecalysis', 'column' => 'fecalysis_results', 'services' => ['Fecalysis'], 'requires_interpretation' => true, 'fields' => [
                 $this->field('color', 'Color'), $this->field('consistency', 'Consistency', 'select', null, null, ['Formed', 'Semi-formed', 'Watery', 'Other']),
                 $this->field('pus_cells', 'Pus Cells', 'text', '/HPF'), $this->field('rbc', 'RBC', 'text', '/HPF'),
                 $this->field('yeast_cells', 'Yeast Cells'), $this->field('bacteria', 'Bacteria'),
@@ -74,14 +74,13 @@ class LaboratoryFormDefinition
                 $this->field('methamphetamine', 'Methamphetamine', 'select', null, null, ['Negative', 'Positive', 'Pending']),
                 $this->field('tetrahydrocannabinol', 'Marijuana / THC', 'select', null, null, ['Negative', 'Positive', 'Pending']),
             ]],
-            'serology' => ['label' => 'Serology', 'column' => 'serology_results', 'services' => ['Hepatitis'], 'fields' => [
+            'serology' => ['label' => 'Hepatitis B Screening', 'column' => 'serology_results', 'services' => ['Hepatitis'], 'fields' => [
                 $this->field('hbsag', 'Hepatitis B Surface Antigen', 'select', null, null, ['Non-reactive', 'Reactive']),
-                $this->field('anti_hav_igm', 'Hepatitis A Anti-HAV IgM', 'select', null, null, ['Non-reactive', 'Reactive']),
             ]],
             'pregnancy' => ['label' => 'Pregnancy Test', 'column' => 'pregnancy_test', 'services' => ['Pregnancy Test'], 'fields' => [
                 $this->field('pregnancy_test', 'Urine Pregnancy Test', 'select', null, null, ['Negative', 'Positive']),
             ]],
-            'blood_chemistry' => ['label' => 'Blood Chemistry', 'column' => 'blood_chemistry_results', 'services' => ['FBS', 'Blood Chemistry'], 'fields' => [
+            'blood_chemistry' => ['label' => 'Blood Chemistry', 'column' => 'blood_chemistry_results', 'services' => ['FBS', 'Blood Chemistry'], 'requires_interpretation' => true, 'fields' => [
                 $this->numberField('fbs', 'FBS', 'mg/dL', '75–115', 0, 2000, 2, ['default' => [75, 115]]),
                 $this->numberField('cholesterol', 'Cholesterol', 'mg/dL', '<200', 0, 2000, 2, ['default' => [null, 199.99]]),
                 $this->numberField('triglycerides', 'Triglycerides', 'mg/dL', '36–165', 0, 5000, 2, ['default' => [36, 165]]),

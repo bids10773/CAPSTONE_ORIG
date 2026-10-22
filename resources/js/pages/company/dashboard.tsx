@@ -3,7 +3,6 @@ import {
     AlertCircle,
     ArrowRight,
     BriefcaseMedical,
-    Building2,
     CalendarDays,
     CheckCircle2,
     ClipboardCheck,
@@ -24,7 +23,6 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { DashboardClinicBadge } from '@/components/dashboard-clinic-badge';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,6 +50,7 @@ const PRE_EMPLOYMENT_SERVICES = [
     'Fecalysis',
     'X-Ray',
 ];
+const COMMON_ADD_ONS = ['Drug Test', 'Hepatitis', 'Pregnancy Test'];
 
 interface Appointment {
     id: number;
@@ -69,6 +68,7 @@ interface BulkAppointment {
     event_end_date?: string | null;
     start_time?: string | null;
     status: string;
+    onsite_event_status?: string | null;
     service_types: string[];
     report_status?: string | null;
     report_released_at?: string | null;
@@ -189,7 +189,7 @@ const formatDate = (value: string) =>
 
 const formatBulkEventDates = (appointment: BulkAppointment) => {
     if (!appointment.event_end_date) {
-        return `${formatDate(appointment.appointment_date)} · Duration pending clinic approval`;
+        return formatDate(appointment.appointment_date);
     }
 
     if (
@@ -200,6 +200,20 @@ const formatBulkEventDates = (appointment: BulkAppointment) => {
     }
 
     return `${formatDate(appointment.appointment_date)} · Whole day`;
+};
+
+const bulkAppointmentStage = (appointment: BulkAppointment) => {
+    if (appointment.onsite_event_status === 'draft') {
+        return 'Draft — upload masterlist to submit';
+    }
+
+    if (appointment.status === 'pending') {
+        return 'Awaiting clinic approval — duration pending';
+    }
+
+    if (appointment.status === 'accepted') return 'Scheduled';
+
+    return appointment.status.replaceAll('_', ' ');
 };
 
 const statusStyle: Record<PreviewRow['status'], string> = {
@@ -368,16 +382,13 @@ export default function CompanyDashboard() {
     return (
         <AppLayout>
             <Head title="Company Dashboard" />
-            <main className="min-h-screen space-y-6 bg-gray-50 p-4 pb-10 sm:p-6 lg:p-8 dark:bg-background">
+            <div className="min-h-screen space-y-6 bg-gray-50 p-4 pb-10 sm:p-6 lg:p-8 dark:bg-background">
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
                     <section className="relative flex min-h-64 flex-col justify-between overflow-hidden rounded-[2rem] bg-moss-800 p-7 text-white shadow-[0_10px_30px_-24px_rgba(48,63,52,.45)] sm:p-9">
                         <div className="absolute -top-20 -right-16 size-64 rounded-full bg-white/10 blur-3xl" />
                         <div className="absolute -bottom-24 left-1/3 size-48 rounded-full bg-moss-400/20 blur-3xl" />
                         <div className="relative">
-                            <DashboardClinicBadge icon={Building2}>
-                                Company dashboard
-                            </DashboardClinicBadge>
-                            <p className="mt-8 text-sm font-semibold text-moss-200">
+                            <p className="text-sm font-semibold text-moss-200">
                                 Welcome back
                             </p>
                             <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -672,6 +683,18 @@ export default function CompanyDashboard() {
                             <p className="text-xs font-semibold text-slate-700">
                                 Required medical services
                             </p>
+                            {referralForm.data.examination_purpose ===
+                                'pre_employment' && (
+                                <div className="mt-1.5 rounded-xl border border-moss-200 bg-moss-50 px-3 py-2 text-[11px] leading-5 text-moss-800">
+                                    <strong>Basic 5 is included:</strong> CBC,
+                                    routine urinalysis, fecalysis, chest X-ray,
+                                    and physical examination. Drug Test,
+                                    Hepatitis B Screening, and Pregnancy Test
+                                    are optional employer-requested add-ons. ECG
+                                    is unavailable while its result integration
+                                    is pending.
+                                </div>
+                            )}
                             <div className="mt-1.5 grid gap-1.5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
                                 {Object.entries(serviceTypes).map(
                                     ([value, label]) => (
@@ -710,7 +733,26 @@ export default function CompanyDashboard() {
                                                     )
                                                 }
                                             />
-                                            {label}
+                                            <span>
+                                                {label}
+                                                {PRE_EMPLOYMENT_SERVICES.includes(
+                                                    value,
+                                                ) &&
+                                                    referralForm.data
+                                                        .examination_purpose ===
+                                                        'pre_employment' && (
+                                                        <small className="block font-semibold text-moss-700">
+                                                            Basic 5
+                                                        </small>
+                                                    )}
+                                                {COMMON_ADD_ONS.includes(
+                                                    value,
+                                                ) && (
+                                                    <small className="block font-semibold text-amber-700">
+                                                        Optional add-on
+                                                    </small>
+                                                )}
+                                            </span>
                                         </label>
                                     ),
                                 )}
@@ -805,7 +847,10 @@ export default function CompanyDashboard() {
                                                 {formatBulkEventDates(
                                                     appointment,
                                                 )}{' '}
-                                                - {appointment.status}
+                                                ·{' '}
+                                                {bulkAppointmentStage(
+                                                    appointment,
+                                                )}
                                             </option>
                                         ))}
                                     </select>
@@ -1121,7 +1166,7 @@ export default function CompanyDashboard() {
                         )}
                     </section>
                 </div>
-            </main>
+            </div>
         </AppLayout>
     );
 }

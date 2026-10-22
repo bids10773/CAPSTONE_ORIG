@@ -10,6 +10,9 @@ type Event = {
     id: number;
     appointment_date: string;
     event_end_date?: string | null;
+    start_time?: string | null;
+    end_time?: string | null;
+    can_open_queue: boolean;
     status: string;
     event_address?: string | null;
     bulk_employees_count: number;
@@ -78,6 +81,8 @@ export default function StaffOnsiteEvents({
                                         {formatEventDateRange(
                                             event.appointment_date,
                                             event.event_end_date,
+                                            event.start_time,
+                                            event.end_time,
                                         )}
                                     </span>
                                     {event.event_address && (
@@ -98,14 +103,26 @@ export default function StaffOnsiteEvents({
                                     {event.status.replaceAll('_', ' ')}
                                 </td>
                                 <td className="px-5 py-4 text-right">
-                                    <Button asChild size="sm">
-                                        <Link
-                                            href={`/${role}/onsite-events/${event.id}`}
-                                        >
-                                            <ClipboardList className="size-4" />{' '}
-                                            Open queue
-                                        </Link>
-                                    </Button>
+                                    {event.can_open_queue ? (
+                                        <Button asChild size="sm">
+                                            <Link
+                                                href={`/${role}/onsite-events/${event.id}`}
+                                            >
+                                                <ClipboardList className="size-4" />{' '}
+                                                Open queue
+                                            </Link>
+                                        </Button>
+                                    ) : (
+                                        <div className="text-right">
+                                            <Button size="sm" disabled>
+                                                <ClipboardList className="size-4" />{' '}
+                                                Open queue
+                                            </Button>
+                                            <p className="mt-1 text-xs text-amber-700">
+                                                Opens on the scheduled date
+                                            </p>
+                                        </div>
+                                    )}
                                 </td>
                             </tr>
                         ))}

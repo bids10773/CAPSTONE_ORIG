@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\MedicalCertificate;
 use App\Models\User;
+use App\Services\LaboratoryFormDefinition;
 use App\Support\SearchTerm;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -12,6 +14,8 @@ use Inertia\Response;
 
 class StaffPatientRecordController extends Controller
 {
+    public function __construct(private readonly LaboratoryFormDefinition $laboratoryForms) {}
+
     public function index(Request $request): Response
     {
         /** @var User $staff */
@@ -27,31 +31,28 @@ class StaffPatientRecordController extends Controller
         $likeSearch = SearchTerm::forLike($search);
         $status = (string) ($filters['status'] ?? '');
 
-        $records = Appointment::query()
-            ->with([
-                'user:id,first_name,middle_name,last_name,email,contact',
-                'user.patientProfile:user_id,birthdate,sex,civil_status,employee_number',
-                'company:id,company_name',
-                'physicalExam:id,appointment_id',
-                'medicalHistory:id,appointment_id',
-                'medicalExamination:id,appointment_id,examining_doctor_id,finalized_by,finalized_at,released_at',
-                'labResult:id,appointment_id,encoded_by,status,finalized_at',
-                'xrayReport:id,appointment_id,radiologist_id,status,is_completed,verified_at',
-            ])
-            ->where('type', '!=', 'company_bulk')
-            ->whereHas('user', fn (Builder $query) => $query->where('role', 'patient'))
-            ->when($staff->role !== 'receptionist', fn (Builder $query) => $query
-                ->where(fn (Builder $assigned) => $this->scopeAssignedRecords($assigned, $staff)))
-            ->when($search, fn (Builder $query) => $query->where(fn (Builder $match) => $match
-                ->where('id', ctype_digit($search) ? (int) $search : 0)
-                ->orWhereHas('user', fn (Builder $user) => $user
-                    ->where('first_name', 'like', "%{$likeSearch}%")
-                    ->orWhere('middle_name', 'like', "%{$likeSearch}%")
-                    ->orWhere('last_name', 'like', "%{$likeSearch}%")
-                    ->orWhere('email', 'like', "%{$likeSearch}%")
-                    ->orWhere('contact', 'like', "%{$likeSearch}%"))
-                ->orWhereHas('patientProfile', fn (Builder $profile) => $profile
-                    ->where('employee_number', 'like', "%{$likeSearch}%"))))
+        $records = $this->recordsQuery($staff)
+            ->when($search, function (Builder $query) use ($search, $likeSearch): void {
+                $appointmentReference = Appointment::parseReferenceCode($search);
+                preg_match('/^PAT0*(\d+)$/i', $search, $patientMatch);
+
+                $query->where(fn (Builder $match) => $match
+                    ->where(fn (Builder $appointment) => $appointment
+                        ->where('id', ctype_digit($search)
+                            ? (int) $search
+                            : (int) ($appointmentReference['id'] ?? 0))
+                        ->when($appointmentReference, fn (Builder $reference) => $reference
+                            ->whereIn('type', $appointmentReference['types'])))
+                    ->orWhereHas('user', fn (Builder $user) => $user
+                        ->where('id', (int) ($patientMatch[1] ?? 0))
+                        ->orWhere('first_name', 'like', "%{$likeSearch}%")
+                        ->orWhere('middle_name', 'like', "%{$likeSearch}%")
+                        ->orWhere('last_name', 'like', "%{$likeSearch}%")
+                        ->orWhere('email', 'like', "%{$likeSearch}%")
+                        ->orWhere('contact', 'like', "%{$likeSearch}%"))
+                    ->orWhereHas('patientProfile', fn (Builder $profile) => $profile
+                        ->where('employee_number', 'like', "%{$likeSearch}%")));
+            })
             ->when($status, fn (Builder $query) => $query->where('status', $status))
             ->latest('appointment_date')
             ->latest('id')
@@ -64,6 +65,102 @@ class StaffPatientRecordController extends Controller
             'filters' => ['search' => $search, 'status' => $status],
             'role' => $staff->role,
         ]);
+    }
+
+    public function show(Request $request, User $patient): Response
+    {
+        /** @var User $staff */
+        $staff = $request->user();
+        abort_unless(
+            in_array($staff->role, ['doctor', 'medtech', 'radtech', 'receptionist'], true)
+                && $patient->role === 'patient',
+            404,
+        );
+
+        $appointments = $this->recordsQuery($staff)
+            ->where('user_id', $patient->id)
+            ->latest('appointment_date')
+            ->latest('id')
+            ->get();
+
+        abort_if($appointments->isEmpty(), 404);
+
+        $patient->load('patientProfile', 'company:id,company_name');
+        $profile = $patient->patientProfile;
+
+        return Inertia::render('staff/patient-records/show', [
+            'patient' => [
+                'id' => $patient->id,
+                'name' => $patient->name,
+                'patient_reference_code' => $patient->patient_reference_code,
+                'email' => $patient->email,
+                'contact' => $patient->contact,
+                'company' => $patient->company?->company_name,
+                'profile' => $profile ? [
+                    'birthdate' => $profile->birthdate?->toDateString(),
+                    'age' => $profile->birthdate?->age,
+                    'sex' => $profile->sex,
+                    'civil_status' => $profile->civil_status,
+                    'address' => $profile->address,
+                    'employee_number' => $profile->employee_number,
+                ] : null,
+            ],
+            'records' => $appointments
+                ->map(fn (Appointment $appointment): array => $this->recordPayload($appointment, $staff->role))
+                ->values(),
+            'medicalCertificates' => $this->medicalCertificatesFor($patient, $staff),
+            'role' => $staff->role,
+        ]);
+    }
+
+    private function medicalCertificatesFor(User $patient, User $staff): array
+    {
+        if (! in_array($staff->role, ['doctor', 'receptionist'], true)) {
+            return [];
+        }
+
+        return MedicalCertificate::query()
+            ->where('patient_id', $patient->id)
+            ->whereIn('status', ['issued', 'void'])
+            ->when($staff->role === 'doctor', fn (Builder $query) => $query
+                ->where('attending_physician_id', $staff->id))
+            ->latest('issued_at')
+            ->latest('id')
+            ->get()
+            ->map(fn (MedicalCertificate $certificate): array => [
+                'id' => $certificate->id,
+                'certificate_number' => $certificate->certificate_number,
+                'date_issued' => $certificate->date_issued?->toDateString(),
+                'physician_name' => $certificate->physician_name,
+                'status' => $certificate->status,
+                'issued_at' => $certificate->issued_at?->toIso8601String(),
+                'view_url' => route('medical-certificates.show', $certificate, false),
+                'pdf_url' => $certificate->status === 'issued'
+                    ? route('medical-certificates.pdf', $certificate, false)
+                    : null,
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function recordsQuery(User $staff): Builder
+    {
+        return Appointment::query()
+            ->with([
+                'user:id,first_name,middle_name,last_name,email,contact,role',
+                'user.patientProfile:user_id,birthdate,sex,civil_status,address,employee_number',
+                'company:id,company_name',
+                'physicalExam',
+                'medicalHistory:id,appointment_id',
+                'medicalExamination',
+                'labResult',
+                'xrayReport',
+                'vitalSigns.recordedBy:id,first_name,middle_name,last_name',
+            ])
+            ->where('type', '!=', 'company_bulk')
+            ->whereHas('user', fn (Builder $query) => $query->where('role', 'patient'))
+            ->when($staff->role !== 'receptionist', fn (Builder $query) => $query
+                ->where(fn (Builder $assigned) => $this->scopeAssignedRecords($assigned, $staff)));
     }
 
     private function scopeAssignedRecords(Builder $query, User $staff): void
@@ -107,7 +204,7 @@ class StaffPatientRecordController extends Controller
         $manageUrl = match ($role) {
             'doctor' => $appointment->status === 'for_final_evaluation'
                 ? route('doctor.final-evaluation', $appointment, false)
-                : (in_array($appointment->status, ['accepted', 'arrived'], true)
+                : (($appointment->status === 'arrived' || $appointment->arrived_at !== null)
                     && $appointment->appointment_date?->isToday()
                     && $appointment->isPePackage()
                     ? route('doctor.physical-exams.create', $appointment, false)
@@ -129,7 +226,9 @@ class StaffPatientRecordController extends Controller
             'type' => $appointment->type,
             'service_types' => $appointment->service_types ?? [],
             'patient' => [
+                'id' => $appointment->user->id,
                 'name' => $appointment->user->name,
+                'patient_reference_code' => $appointment->user->patient_reference_code,
                 'email' => $appointment->user->email,
                 'contact' => $appointment->user->contact,
                 'birthdate' => $profile?->birthdate?->toDateString(),
@@ -139,12 +238,42 @@ class StaffPatientRecordController extends Controller
                 'employee_number' => $profile?->employee_number,
             ],
             'company' => $appointment->company?->company_name ?? $appointment->company_name,
+            'vital_signs' => $appointment->vitalSigns->sortByDesc('measured_at')->map(fn ($vital): array => [
+                'id' => $vital->id, 'systolic_pressure' => $vital->systolic_pressure,
+                'diastolic_pressure' => $vital->diastolic_pressure, 'heart_rate' => $vital->heart_rate,
+                'respiratory_rate' => $vital->respiratory_rate, 'temperature' => $vital->temperature,
+                'oxygen_saturation' => $vital->oxygen_saturation, 'height' => $vital->height,
+                'weight' => $vital->weight, 'bmi' => $vital->bmi, 'measurement_type' => $vital->measurement_type,
+                'measured_at' => $vital->measured_at?->toIso8601String(), 'recorded_by' => $vital->recordedBy?->name,
+            ])->values()->all(),
             'documents' => [
                 'physical_exam' => $role === 'doctor' && $appointment->physicalExam !== null,
-                'medical_history' => $role === 'doctor' && $appointment->physicalExam !== null && $appointment->medicalHistory !== null,
-                'final_evaluation' => $role === 'doctor' && $appointment->physicalExam !== null && $appointment->medicalExamination?->finalized_at !== null,
                 'laboratory' => in_array($role, ['doctor', 'medtech'], true) && $appointment->labResult !== null,
                 'xray' => in_array($role, ['doctor', 'radtech'], true) && $appointment->xrayReport !== null,
+            ],
+            'reports' => [
+                'physical_exam' => $role === 'doctor' && $appointment->physicalExam ? [
+                    'classification' => $appointment->medicalExamination?->medical_classification
+                        ?? $appointment->physicalExam->classification,
+                    'remarks' => $appointment->medicalExamination?->final_remarks
+                        ?? $appointment->physicalExam->doctor_remarks
+                        ?? $appointment->physicalExam->remarks,
+                    'url' => route('clinical-forms.physical-exam.pdf', $appointment, false),
+                ] : null,
+                'laboratory' => in_array($role, ['doctor', 'medtech'], true) && $appointment->labResult ? [
+                    'status' => $appointment->labResult->status,
+                    'sections' => collect($this->laboratoryForms->sectionsFor($appointment))
+                        ->filter(fn (array $definition): bool => filled($appointment->labResult->{$definition['column']}))
+                        ->pluck('label')
+                        ->values()
+                        ->all(),
+                    'url' => route('clinical-forms.laboratory.pdf', $appointment, false),
+                ] : null,
+                'xray' => in_array($role, ['doctor', 'radtech'], true) && $appointment->xrayReport ? [
+                    'status' => $appointment->xrayReport->status,
+                    'impression' => $appointment->xrayReport->impression,
+                    'url' => route('clinical-forms.xray.pdf', $appointment, false),
+                ] : null,
             ],
             'manage_url' => $manageUrl,
         ];

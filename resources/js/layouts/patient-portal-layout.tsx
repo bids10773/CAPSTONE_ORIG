@@ -1,12 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import {
-    CalendarDays,
-    ChevronDown,
-    FileHeart,
-    Home,
-    Menu,
-    X,
-} from 'lucide-react';
+import { CalendarDays, ChevronDown, Home, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { ClinicStatusLogo } from '@/components/clinic-status-logo';
 import { LiveDateTime } from '@/components/live-date-time';
@@ -26,11 +19,6 @@ import logo from '/public/images/full_logo2-optimized.webp';
 const links = [
     { title: 'Home', href: '/dashboard', icon: Home },
     { title: 'My appointments', href: '/appointments', icon: CalendarDays },
-    {
-        title: 'Medical records',
-        href: '/appointments?status=completed',
-        icon: FileHeart,
-    },
 ];
 
 export default function PatientPortalLayout({ children }: AppLayoutProps) {
@@ -38,20 +26,14 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
     const { auth } = page.props as any;
     const user = auth?.user;
     const [mobileOpen, setMobileOpen] = useState(false);
-    const [currentPath, queryString = ''] = page.url.split('?');
-    const currentStatus = new URLSearchParams(queryString).get('status');
+    const [currentPath] = page.url.split('?');
     const isLinkActive = (href: string) => {
         if (href === '/dashboard') return currentPath === '/dashboard';
-        if (href.includes('status=completed')) {
-            return (
-                currentPath === '/appointments' && currentStatus === 'completed'
-            );
-        }
 
         return (
-            href === '/appointments' &&
-            currentPath.startsWith('/appointments') &&
-            currentStatus !== 'completed'
+            (href === '/appointments' &&
+                currentPath.startsWith('/appointments')) ||
+            currentPath === href
         );
     };
     const fullName =
@@ -66,6 +48,12 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
 
     return (
         <div className="patient-portal min-h-screen bg-background text-foreground">
+            <a
+                href="#main-content"
+                className="fixed top-4 left-4 z-[200] -translate-y-24 rounded-xl bg-card px-4 py-3 text-sm font-semibold text-moss-800 shadow-lg transition-transform focus:translate-y-0 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none dark:text-moss-200"
+            >
+                Skip to content
+            </a>
             <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl">
                 <div className="mx-auto flex h-[72px] max-w-[1500px] items-center gap-3 px-4 sm:px-6 lg:px-8">
                     <Link
@@ -91,7 +79,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                     </Link>
 
                     <nav
-                        className="ml-5 hidden items-center gap-1 xl:flex"
+                        className="ml-5 hidden items-center gap-1 lg:flex"
                         aria-label="Patient navigation"
                     >
                         {links.map(({ title, href, icon: Icon }) => {
@@ -118,7 +106,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                     <button
                         type="button"
                         onClick={() => setMobileOpen((open) => !open)}
-                        className="rounded-xl p-2 text-slate-600 hover:bg-moss-50 xl:hidden dark:text-moss-200"
+                        className="rounded-xl p-2 text-slate-600 hover:bg-moss-50 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none lg:hidden dark:text-moss-200"
                         aria-label="Toggle patient navigation"
                         aria-expanded={mobileOpen}
                     >
@@ -138,7 +126,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                             <DropdownMenuTrigger asChild>
                                 <button
                                     type="button"
-                                    className="flex shrink-0 items-center gap-2 rounded-xl p-1.5 text-left text-foreground hover:bg-moss-50 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none data-[state=open]:bg-moss-50 dark:hover:bg-moss-900 dark:data-[state=open]:bg-moss-900"
+                                    className="group flex shrink-0 items-center gap-2 rounded-xl p-1.5 text-left text-foreground transition-colors hover:bg-moss-50 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none data-[state=open]:bg-moss-50 dark:hover:bg-moss-900 dark:data-[state=open]:bg-moss-900"
                                     aria-label="Open patient account menu"
                                 >
                                     <span className="relative shrink-0">
@@ -161,13 +149,13 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                                     <span className="hidden max-w-32 truncate text-xs font-bold text-foreground md:block">
                                         {fullName}
                                     </span>
-                                    <ChevronDown className="hidden size-4 text-slate-400 md:block dark:text-moss-300" />
+                                    <ChevronDown className="hidden size-4 text-slate-400 transition-transform duration-200 group-data-[state=open]:rotate-180 motion-reduce:transition-none md:block dark:text-moss-300" />
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
                                 align="end"
                                 sideOffset={8}
-                                className="w-64 rounded-xl"
+                                className="w-64 origin-top-right rounded-xl data-[state=closed]:duration-150 data-[state=open]:duration-300 data-[state=open]:slide-in-from-top-3 motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none"
                             >
                                 <UserMenuContent
                                     user={user}
@@ -180,10 +168,10 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
 
                 {mobileOpen && (
                     <nav
-                        className="border-t border-slate-100 bg-white p-3 xl:hidden"
+                        className="border-t border-slate-100 bg-white p-3 lg:hidden"
                         aria-label="Mobile patient navigation"
                     >
-                        <div className="mx-auto grid max-w-[1500px] gap-1 sm:grid-cols-3">
+                        <div className="mx-auto grid max-w-[1500px] gap-1 sm:grid-cols-2">
                             {links.map(({ title, href, icon: Icon }) => {
                                 const active = isLinkActive(href);
 
@@ -210,7 +198,13 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                     </nav>
                 )}
             </header>
-            <main className="min-w-0 overflow-x-clip">{children}</main>
+            <main
+                id="main-content"
+                tabIndex={-1}
+                className="min-w-0 scroll-mt-20 overflow-x-clip focus:outline-none"
+            >
+                {children}
+            </main>
         </div>
     );
 }

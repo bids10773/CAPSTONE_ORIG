@@ -2,21 +2,16 @@ import { Link } from '@inertiajs/react';
 import { ArrowRight, CalendarDays } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { DashboardClinicBadge } from '@/components/dashboard-clinic-badge';
 
 export function StaffDashboardHero({
-    role,
     name,
     description,
-    icon: Icon,
     action,
     todayLabel,
     todayValue,
 }: {
-    role: string;
     name: string;
     description: string;
-    icon: LucideIcon;
     action: { label: string; href: string };
     todayLabel: string;
     todayValue: number;
@@ -27,10 +22,7 @@ export function StaffDashboardHero({
                 <div className="absolute -top-20 -right-16 size-64 rounded-full bg-white/10 blur-3xl" />
                 <div className="absolute -bottom-24 left-1/3 size-48 rounded-full bg-moss-400/20 blur-3xl" />
                 <div className="relative">
-                    <DashboardClinicBadge icon={Icon}>
-                        {role} dashboard
-                    </DashboardClinicBadge>
-                    <p className="mt-9 text-sm font-semibold text-moss-200">
+                    <p className="text-sm font-semibold text-moss-200">
                         Welcome back
                     </p>
                     <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">

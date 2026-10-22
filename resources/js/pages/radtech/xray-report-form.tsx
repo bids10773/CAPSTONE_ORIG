@@ -125,7 +125,7 @@ export default function XrayReportForm({
     return (
         <>
             <Head title="X-Ray Report" />
-            <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+            <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
                 <header className="overflow-hidden rounded-2xl bg-moss-700 text-white shadow-sm">
                     <div className="grid gap-5 p-6 lg:grid-cols-[1fr_auto]">
                         <div>
@@ -169,7 +169,7 @@ export default function XrayReportForm({
                             />
                             {appointment.patient_profile?.employee_number && (
                                 <Summary
-                                    label="Company ID"
+                                    label="Company Employee No."
                                     value={
                                         appointment.patient_profile
                                             .employee_number
@@ -398,7 +398,7 @@ export default function XrayReportForm({
                         </div>
                     </div>
                 </form>
-            </main>
+            </div>
         </>
     );
 }

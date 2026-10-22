@@ -11,7 +11,12 @@ function partsFromValue(value: string): DateParts {
         : { day: '', month: '', year: '' };
 }
 
-function validationMessage(parts: DateParts, min?: string, max?: string) {
+function validationMessage(
+    parts: DateParts,
+    min?: string,
+    max?: string,
+    minErrorMessage?: string,
+) {
     if (!parts.day || !parts.month || !parts.year) {
         return 'Please complete the appointment date.';
     }
@@ -32,7 +37,8 @@ function validationMessage(parts: DateParts, min?: string, max?: string) {
     }
 
     const value = `${parts.year}-${parts.month}-${parts.day}`;
-    if (min && value < min) return 'Appointment date cannot be in the past.';
+    if (min && value < min)
+        return minErrorMessage ?? 'Appointment date cannot be in the past.';
     if (max && value > max)
         return 'Appointment date is outside the available booking period.';
     if (candidate.getUTCDay() === 0 || candidate.getUTCDay() === 6)
@@ -44,6 +50,7 @@ type Props = {
     error?: string;
     min?: string;
     max?: string;
+    minErrorMessage?: string;
     onChange: (value: string) => void;
     slotCounts?: Record<string, number>;
     slotCountContext?: string;
@@ -58,11 +65,23 @@ function dateKey(date: Date): string {
     ].join('-');
 }
 
+function monthKey(date: Date): string {
+    return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+    ].join('-');
+}
+
+function dateFromKey(value: string): Date {
+    return new Date(`${value}T00:00:00`);
+}
+
 export default function AppointmentDateInput({
     value,
     error,
     min,
     max,
+    minErrorMessage,
     onChange,
     slotCounts,
     slotCountContext = 'across all doctors',
@@ -77,9 +96,11 @@ export default function AppointmentDateInput({
     }
     const parts = draft.parts;
     const [visibleMonth, setVisibleMonth] = useState(() => {
-        const initial = value || min;
+        const valueIsInRange =
+            value && (!min || value >= min) && (!max || value <= max);
+        const initial = valueIsInRange ? value : min;
         return initial
-            ? new Date(`${initial}T00:00:00`)
+            ? dateFromKey(initial)
             : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     });
     const [localError, setLocalError] = useState<string>();
@@ -88,9 +109,20 @@ export default function AppointmentDateInput({
     const yearRef = useRef<HTMLInputElement>(null);
     const errorId = `${useId()}-error`;
 
+    const displayedMonth = useMemo(() => {
+        if (min && monthKey(visibleMonth) < min.slice(0, 7)) {
+            return dateFromKey(`${min.slice(0, 7)}-01`);
+        }
+        if (max && monthKey(visibleMonth) > max.slice(0, 7)) {
+            return dateFromKey(`${max.slice(0, 7)}-01`);
+        }
+
+        return visibleMonth;
+    }, [max, min, visibleMonth]);
+
     const calendarDays = useMemo(() => {
-        const year = visibleMonth.getFullYear();
-        const month = visibleMonth.getMonth();
+        const year = displayedMonth.getFullYear();
+        const month = displayedMonth.getMonth();
         const firstWeekday = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -100,7 +132,7 @@ export default function AppointmentDateInput({
                 ? new Date(year, month, day)
                 : null;
         });
-    }, [visibleMonth]);
+    }, [displayedMonth]);
 
     const selectedSlotCount = value ? slotCounts?.[value] : undefined;
 
@@ -122,7 +154,7 @@ export default function AppointmentDateInput({
             next.month.length === 2 &&
             next.year.length === 4;
         const message = complete
-            ? validationMessage(next, min, max)
+            ? validationMessage(next, min, max, minErrorMessage)
             : undefined;
         const nextValue =
             complete && !message
@@ -181,7 +213,7 @@ export default function AppointmentDateInput({
                                     maxLength={field.length}
                                     value={parts[field.key]}
                                     placeholder={field.placeholder}
-                                    aria-invalid={Boolean(error || localError)}
+                                    aria-invalid={Boolean(localError || error)}
                                     aria-describedby={errorId}
                                     onChange={(event) =>
                                         update(field.key, event.target.value)
@@ -197,6 +229,7 @@ export default function AppointmentDateInput({
                                                     parts,
                                                     min,
                                                     max,
+                                                    minErrorMessage,
                                                 ),
                                             );
                                         }
@@ -212,7 +245,7 @@ export default function AppointmentDateInput({
                 </>
             )}
             <div id={errorId} aria-live="polite">
-                <InputError message={error || localError} />
+                <InputError message={localError || error} />
             </div>
             {slotCounts && (
                 <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -221,24 +254,17 @@ export default function AppointmentDateInput({
                             type="button"
                             onClick={() =>
                                 setVisibleMonth(
-                                    (current) =>
-                                        new Date(
-                                            current.getFullYear(),
-                                            current.getMonth() - 1,
-                                            1,
-                                        ),
+                                    new Date(
+                                        displayedMonth.getFullYear(),
+                                        displayedMonth.getMonth() - 1,
+                                        1,
+                                    ),
                                 )
                             }
                             className="flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30"
                             disabled={
                                 !!min &&
-                                dateKey(
-                                    new Date(
-                                        visibleMonth.getFullYear(),
-                                        visibleMonth.getMonth() + 1,
-                                        0,
-                                    ),
-                                ) < min
+                                monthKey(displayedMonth) <= min.slice(0, 7)
                             }
                             aria-label="Previous month"
                         >
@@ -249,30 +275,23 @@ export default function AppointmentDateInput({
                             {new Intl.DateTimeFormat('en-US', {
                                 month: 'long',
                                 year: 'numeric',
-                            }).format(visibleMonth)}
+                            }).format(displayedMonth)}
                         </span>
                         <button
                             type="button"
                             onClick={() =>
                                 setVisibleMonth(
-                                    (current) =>
-                                        new Date(
-                                            current.getFullYear(),
-                                            current.getMonth() + 1,
-                                            1,
-                                        ),
+                                    new Date(
+                                        displayedMonth.getFullYear(),
+                                        displayedMonth.getMonth() + 1,
+                                        1,
+                                    ),
                                 )
                             }
                             className="flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30"
                             disabled={
                                 !!max &&
-                                dateKey(
-                                    new Date(
-                                        visibleMonth.getFullYear(),
-                                        visibleMonth.getMonth() + 1,
-                                        1,
-                                    ),
-                                ) > max
+                                monthKey(displayedMonth) >= max.slice(0, 7)
                             }
                             aria-label="Next month"
                         >

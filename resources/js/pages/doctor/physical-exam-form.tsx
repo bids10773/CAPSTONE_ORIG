@@ -48,6 +48,9 @@ interface Props {
         medical_history?: Record<string, string | null>;
     };
     physicalExam: any;
+    latestVitalSign: any | null;
+    vitalSignHistory: any[];
+    pendingVitalRecheck: any | null;
     submitUrl: string;
     vitalLimits: Record<string, { min: number; max: number }>;
     locked: boolean;
@@ -108,21 +111,25 @@ function getAge(birthdate?: string) {
 export default function PhysicalExamForm({
     appointment,
     physicalExam,
+    latestVitalSign,
+    vitalSignHistory,
+    pendingVitalRecheck,
     submitUrl,
     vitalLimits,
     locked,
 }: Props) {
-    const [initialSystolic = '', initialDiastolic = ''] = String(
-        physicalExam?.blood_pressure || '',
-    ).split('/');
+    const initialSystolic = latestVitalSign?.systolic_pressure ?? '';
+    const initialDiastolic = latestVitalSign?.diastolic_pressure ?? '';
     const { data, setData, post, isDirty, processing, errors } = useForm<any>({
-        height: physicalExam?.height || '',
-        weight: physicalExam?.weight || '',
+        height: latestVitalSign?.height || '',
+        weight: latestVitalSign?.weight || '',
         systolic_pressure: initialSystolic,
         diastolic_pressure: initialDiastolic,
-        pulse_rate: physicalExam?.pulse_rate || '',
-        respiration_rate: physicalExam?.respiration_rate || '',
-        temperature: physicalExam?.temperature || '',
+        pulse_rate: latestVitalSign?.heart_rate || '',
+        respiration_rate: latestVitalSign?.respiratory_rate || '',
+        temperature: latestVitalSign?.temperature || '',
+        oxygen_saturation: latestVitalSign?.oxygen_saturation || '',
+        vital_signs_override_reason: '',
         visual_acuity: physicalExam?.visual_acuity || '',
         hearing: physicalExam?.hearing || '',
         remarks: physicalExam?.remarks || '',
@@ -226,37 +233,8 @@ export default function PhysicalExamForm({
             ? Number((weight / (height / 100) ** 2).toFixed(1))
             : null;
 
-    const bmiCategory =
-        bmi === null
-            ? null
-            : bmi < 18.5
-              ? 'Underweight'
-              : bmi < 25
-                ? 'Normal'
-                : bmi < 30
-                  ? 'Overweight'
-                  : 'Obese';
-
     const onSubmit = (event: React.FormEvent) => {
         event.preventDefault();
-        const fields: VitalField[] = [
-            'height',
-            'weight',
-            'pulse_rate',
-            'temperature',
-            'systolic_pressure',
-            'diastolic_pressure',
-        ];
-        const nextErrors = Object.fromEntries(
-            fields.map((field) => [field, validateVital(field, data[field])]),
-        ) as Record<VitalField, string>;
-        setVitalErrors(nextErrors);
-        if (Object.values(nextErrors).some(Boolean)) {
-            document
-                .getElementById('physical-exam-errors')
-                ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            return;
-        }
         post(submitUrl, {
             preserveScroll: true,
             onSuccess: clearDraft,
@@ -303,7 +281,7 @@ export default function PhysicalExamForm({
                         ...(appointment.patient_profile?.employee_number
                             ? [
                                   {
-                                      label: 'Company ID',
+                                      label: 'Company Employee No.',
                                       value: appointment.patient_profile
                                           .employee_number,
                                   },
@@ -402,7 +380,7 @@ export default function PhysicalExamForm({
                         <ClinicalSection
                             icon={Activity}
                             title="II. Physical examination — vital signs"
-                            description="Record the patient's current measurements. BMI is calculated automatically."
+                            description="Review the intake measurements recorded by reception. These values are read-only and preserve their original audit history."
                         >
                             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                 <MedicalMetricCard
@@ -412,6 +390,7 @@ export default function PhysicalExamForm({
                                 >
                                     <Input
                                         value={data.height}
+                                        readOnly
                                         inputMode="decimal"
                                         onChange={(event) =>
                                             updateVital(
@@ -436,6 +415,7 @@ export default function PhysicalExamForm({
                                 >
                                     <Input
                                         value={data.weight}
+                                        readOnly
                                         inputMode="decimal"
                                         onChange={(event) =>
                                             updateVital(
@@ -461,6 +441,7 @@ export default function PhysicalExamForm({
                                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                                         <Input
                                             aria-label="Systolic pressure"
+                                            readOnly
                                             value={data.systolic_pressure}
                                             inputMode="numeric"
                                             onChange={(event) =>
@@ -483,6 +464,7 @@ export default function PhysicalExamForm({
                                         </span>
                                         <Input
                                             aria-label="Diastolic pressure"
+                                            readOnly
                                             value={data.diastolic_pressure}
                                             inputMode="numeric"
                                             onChange={(event) =>
@@ -517,6 +499,7 @@ export default function PhysicalExamForm({
                                 >
                                     <Input
                                         value={data.pulse_rate}
+                                        readOnly
                                         inputMode="numeric"
                                         onChange={(event) =>
                                             updateVital(
@@ -542,6 +525,7 @@ export default function PhysicalExamForm({
                                 >
                                     <Input
                                         value={data.temperature}
+                                        readOnly
                                         inputMode="decimal"
                                         onChange={(event) =>
                                             updateVital(
@@ -567,6 +551,7 @@ export default function PhysicalExamForm({
                                 >
                                     <Input
                                         value={data.respiration_rate}
+                                        readOnly
                                         inputMode="numeric"
                                         onChange={(event) =>
                                             setData(
@@ -578,6 +563,17 @@ export default function PhysicalExamForm({
                                     />
                                     <FieldError
                                         message={errors.respiration_rate}
+                                    />
+                                </MedicalMetricCard>
+                                <MedicalMetricCard
+                                    icon={Activity}
+                                    label="Oxygen saturation"
+                                    unit="%"
+                                >
+                                    <Input
+                                        value={data.oxygen_saturation}
+                                        readOnly
+                                        placeholder="Not recorded"
                                     />
                                 </MedicalMetricCard>
                                 <MedicalMetricCard
@@ -622,14 +618,125 @@ export default function PhysicalExamForm({
                                         <strong className="text-3xl text-moss-900">
                                             {bmi ?? '—'}
                                         </strong>
-                                        {bmiCategory && (
-                                            <span className="mb-1 rounded-full bg-white px-2 py-1 text-xs font-semibold text-moss-700">
-                                                {bmiCategory}
-                                            </span>
-                                        )}
                                     </div>
                                 </div>
                             </div>
+                            {latestVitalSign ? (
+                                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                                    <strong>
+                                        Recorded by{' '}
+                                        {latestVitalSign.recorded_by?.name ??
+                                            'Reception staff'}
+                                    </strong>
+                                    <span className="ml-2">
+                                        {new Date(
+                                            latestVitalSign.measured_at,
+                                        ).toLocaleString()}
+                                    </span>
+                                    {latestVitalSign.notes && (
+                                        <p className="mt-1">
+                                            Observation: {latestVitalSign.notes}
+                                        </p>
+                                    )}
+                                    {pendingVitalRecheck && (
+                                        <p className="mt-2 font-semibold text-amber-700">
+                                            Recheck pending:{' '}
+                                            {pendingVitalRecheck.reason}
+                                        </p>
+                                    )}
+                                    <div className="mt-3 flex flex-wrap gap-3">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                const reason = window.prompt(
+                                                    'Explain why these measurements should be rechecked.',
+                                                );
+                                                if (reason)
+                                                    router.post(
+                                                        `/doctor/appointments/${appointment.id}/vital-signs/recheck`,
+                                                        { reason },
+                                                        {
+                                                            preserveScroll: true,
+                                                        },
+                                                    );
+                                            }}
+                                        >
+                                            Request recheck
+                                        </Button>
+                                        <details>
+                                            <summary className="cursor-pointer py-2 font-semibold text-moss-700">
+                                                View repeated readings (
+                                                {vitalSignHistory.length})
+                                            </summary>
+                                            <div className="mt-2 space-y-2">
+                                                {vitalSignHistory.map(
+                                                    (reading) => (
+                                                        <p
+                                                            key={reading.id}
+                                                            className="rounded-lg bg-white p-2 text-xs"
+                                                        >
+                                                            {new Date(
+                                                                reading.measured_at,
+                                                            ).toLocaleString()}{' '}
+                                                            · BP{' '}
+                                                            {
+                                                                reading.systolic_pressure
+                                                            }
+                                                            /
+                                                            {
+                                                                reading.diastolic_pressure
+                                                            }{' '}
+                                                            · Pulse{' '}
+                                                            {reading.heart_rate}{' '}
+                                                            · Temp{' '}
+                                                            {
+                                                                reading.temperature
+                                                            }
+                                                            °C · SpO₂{' '}
+                                                            {
+                                                                reading.oxygen_saturation
+                                                            }
+                                                            % · recorded by{' '}
+                                                            {reading.recorded_by
+                                                                ?.name ??
+                                                                'Staff'}
+                                                        </p>
+                                                    ),
+                                                )}
+                                            </div>
+                                        </details>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4">
+                                    <p className="font-semibold text-amber-900">
+                                        No vital signs have been recorded for
+                                        this consultation.
+                                    </p>
+                                    <p className="mt-1 text-sm text-amber-800">
+                                        Routine intake should be completed by
+                                        reception. Urgent care may proceed only
+                                        with a documented reason.
+                                    </p>
+                                    <Textarea
+                                        className="mt-3 bg-white"
+                                        value={data.vital_signs_override_reason}
+                                        onChange={(event) =>
+                                            setData(
+                                                'vital_signs_override_reason',
+                                                event.target.value,
+                                            )
+                                        }
+                                        placeholder="Urgent override reason"
+                                    />
+                                    <FieldError
+                                        message={
+                                            errors.vital_signs_override_reason
+                                        }
+                                    />
+                                </div>
+                            )}
                         </ClinicalSection>
                     </div>
 

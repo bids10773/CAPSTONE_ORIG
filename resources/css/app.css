@@ -77,7 +77,7 @@
     --motion-entrance: 420ms;
     --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
-    --background: #f2f6f1;
+    --background: #ffffff;
     --foreground: #1f2937;
 
     --primary: #6b8f71;
@@ -204,7 +204,7 @@
 
     .auth-input,
     .auth-select {
-        @apply h-12 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-900 transition-all duration-200 outline-none placeholder:text-slate-400 hover:border-moss-300 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10;
+        @apply h-12 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-900 transition-[background-color,border-color,box-shadow,color] duration-200 outline-none placeholder:text-slate-400 hover:border-moss-300 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10;
     }
 
     .auth-input {
@@ -242,11 +242,11 @@
     }
 
     .auth-primary-button {
-        @apply flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-moss-500 px-5 text-sm font-semibold text-white shadow-lg shadow-moss-600/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-moss-600 hover:shadow-xl hover:shadow-moss-600/25 focus-visible:ring-4 focus-visible:ring-moss-500/25 focus-visible:outline-none active:translate-y-0 disabled:pointer-events-none disabled:opacity-60 disabled:shadow-none;
+        @apply flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-moss-500 px-5 text-sm font-semibold text-white shadow-lg shadow-moss-600/20 transition-[background-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:bg-moss-600 hover:shadow-xl hover:shadow-moss-600/25 focus-visible:ring-4 focus-visible:ring-moss-500/25 focus-visible:outline-none active:translate-y-0 disabled:pointer-events-none disabled:opacity-60 disabled:shadow-none;
     }
 
     .topbar-icon {
-        @apply flex size-10 items-center justify-center rounded-xl text-slate-500 transition-all hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none;
+        @apply flex size-10 items-center justify-center rounded-xl text-slate-500 transition-[background-color,color,box-shadow] hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none;
     }
 
     .dark .topbar-icon:hover {
@@ -260,8 +260,9 @@
 
     /* Shared enterprise workspace treatment. Existing pages retain their logic
        while receiving one consistent, accessible component language. */
-    .app-workspace main {
-        @apply text-slate-700;
+    .app-workspace main,
+    .patient-portal main {
+        color: var(--foreground);
     }
 
     .app-workspace main > div > div[class*='p-6'],
@@ -308,15 +309,6 @@
 
     .motion-press:active:not(:disabled) {
         transform: scale(0.98);
-    }
-
-    .motion-status {
-        transition:
-            color var(--motion-fast) var(--motion-ease-out),
-            background-color var(--motion-fast) var(--motion-ease-out),
-            border-color var(--motion-fast) var(--motion-ease-out),
-            opacity var(--motion-fast) var(--motion-ease-out),
-            transform var(--motion-fast) var(--motion-ease-out);
     }
 
     .app-workspace main section,
@@ -416,6 +408,21 @@
         color: var(--foreground) !important;
     }
 
+    /* Dialogs render in a portal outside the workspace wrapper, so mirror the
+       shared foreground treatment for their light-theme utility classes. */
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-slate-950,
+            .text-slate-900,
+            .text-slate-800,
+            .text-gray-950,
+            .text-gray-900,
+            .text-gray-800
+        ) {
+        color: var(--foreground) !important;
+    }
+
     .dark .app-workspace .text-slate-700,
     .dark .app-workspace .text-slate-600,
     .dark .app-workspace .text-slate-500,
@@ -429,6 +436,120 @@
     .dark .patient-portal .text-gray-600,
     .dark .patient-portal .text-gray-500 {
         color: var(--muted-foreground) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-slate-700,
+            .text-slate-600,
+            .text-slate-500,
+            .text-gray-700,
+            .text-gray-600,
+            .text-gray-500
+        ) {
+        color: var(--muted-foreground) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .bg-white,
+            .bg-slate-50,
+            .bg-slate-100,
+            .bg-gray-50,
+            .bg-gray-100,
+            .bg-moss-50,
+            .bg-moss-100
+        ) {
+        background-color: var(--muted) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .border-slate-100,
+            .border-slate-200,
+            .border-slate-300,
+            .border-gray-100,
+            .border-gray-200,
+            .border-gray-300,
+            .border-moss-100,
+            .border-moss-200,
+            .border-moss-300
+        ) {
+        border-color: var(--border) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-moss-950,
+            .text-moss-900,
+            .text-moss-800,
+            .text-moss-700,
+            .text-moss-600,
+            .text-moss-500
+        ) {
+        color: var(--color-moss-200) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-amber-600,
+            .text-amber-700,
+            .text-amber-800,
+            .text-amber-900,
+            .text-amber-950
+        ) {
+        color: rgb(252 211 77) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-emerald-600,
+            .text-emerald-700,
+            .text-emerald-800,
+            .text-green-600,
+            .text-green-700,
+            .text-green-800
+        ) {
+        color: rgb(110 231 183) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-red-600,
+            .text-red-700,
+            .text-red-800,
+            .text-rose-600,
+            .text-rose-700,
+            .text-rose-800
+        ) {
+        color: rgb(253 164 175) !important;
+    }
+
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            .text-blue-600,
+            .text-blue-700,
+            .text-blue-800,
+            .text-sky-600,
+            .text-sky-700,
+            .text-cyan-600,
+            .text-cyan-700,
+            .text-indigo-600,
+            .text-indigo-700,
+            .text-violet-600,
+            .text-violet-700,
+            .text-purple-600,
+            .text-purple-700
+        ) {
+        color: rgb(165 180 252) !important;
     }
 
     .dark
@@ -458,13 +579,19 @@
 
     .dark
         :where(.app-workspace, .patient-portal)
-        :is(.bg-amber-50, .bg-amber-100, [class~='bg-amber-50/70']) {
+        :is(
+            .bg-amber-50,
+            .bg-amber-100,
+            [class~='bg-amber-50/70'],
+            [class~='bg-amber-100/70']
+        ) {
         background-color: rgb(120 53 15 / 0.3) !important;
     }
 
     .dark
         :where(.app-workspace, .patient-portal)
         :is(
+            .text-amber-600,
             .text-amber-700,
             .text-amber-800,
             .text-amber-900,
@@ -488,10 +615,12 @@
     .dark
         :where(.app-workspace, .patient-portal)
         :is(
+            .text-emerald-600,
             .text-emerald-700,
             .text-emerald-800,
             .text-emerald-900,
             .text-emerald-950,
+            .text-green-600,
             .text-green-700,
             .text-green-800,
             .text-green-900
@@ -507,13 +636,20 @@
 
     .dark
         :where(.app-workspace, .patient-portal)
-        :is(.bg-red-50, .bg-red-100, .bg-rose-50) {
+        :is(.bg-red-50, .bg-red-100, .bg-rose-50, [class~='bg-red-50/60']) {
         background-color: rgb(127 29 29 / 0.3) !important;
     }
 
     .dark
         :where(.app-workspace, .patient-portal)
-        :is(.text-red-700, .text-red-800, .text-rose-700, .text-rose-800) {
+        :is(
+            .text-red-600,
+            .text-red-700,
+            .text-red-800,
+            .text-rose-600,
+            .text-rose-700,
+            .text-rose-800
+        ) {
         color: rgb(253 164 175) !important;
     }
 
@@ -531,7 +667,7 @@
 
     .dark
         :where(.app-workspace, .patient-portal)
-        :is(.text-indigo-700, .text-indigo-800) {
+        :is(.text-indigo-600, .text-indigo-700, .text-indigo-800) {
         color: rgb(165 180 252) !important;
     }
 
@@ -556,15 +692,20 @@
     .dark
         :where(.app-workspace, .patient-portal)
         :is(
+            .text-blue-600,
             .text-blue-700,
             .text-blue-900,
             .text-blue-950,
+            .text-sky-600,
             .text-sky-700,
             .text-sky-800,
+            .text-cyan-600,
             .text-cyan-700,
             .text-cyan-800,
+            .text-violet-600,
             .text-violet-700,
             .text-violet-800,
+            .text-purple-600,
             .text-purple-700,
             .text-purple-900
         ) {
@@ -592,8 +733,10 @@
     .dark
         :where(.app-workspace, .patient-portal)
         :is(
+            .text-orange-600,
             .text-orange-700,
             .text-orange-900,
+            .text-yellow-600,
             .text-yellow-700,
             .text-yellow-800
         ) {
@@ -701,6 +844,9 @@
         [class~='hover:bg-slate-50/50']:hover,
     .dark
         :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-slate-50/70']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
         [class~='hover:bg-slate-100']:hover,
     .dark
         :where(.app-workspace, .patient-portal)
@@ -740,7 +886,13 @@
         [class~='hover:bg-moss-100/50']:hover,
     .dark
         :where(.app-workspace, .patient-portal)
-        [class~='hover:bg-white']:hover {
+        [class~='hover:bg-moss-200']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-white']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-white/60']:hover {
         background-color: var(--accent) !important;
     }
 
@@ -756,14 +908,42 @@
             [class~='hover:border-moss-100'],
             [class~='hover:border-moss-200'],
             [class~='hover:border-moss-300'],
-            [class~='hover:border-moss-400']
+            [class~='hover:border-moss-400'],
+            [class~='hover:border-moss-400/40']
         ):hover {
         border-color: var(--color-moss-700) !important;
     }
 
     .dark
         :where(.app-workspace, .patient-portal)
+        :is(
+            [class~='hover:border-gray-300'],
+            [class~='hover:border-slate-300']
+        ):hover {
+        border-color: var(--border) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(
+            [class~='hover:border-amber-200'],
+            [class~='hover:border-amber-300']
+        ):hover {
+        border-color: rgb(180 83 9 / 0.8) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:border-rose-300']:hover {
+        border-color: rgb(190 24 93 / 0.75) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
         [class~='hover:bg-amber-50']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-amber-100/70']:hover,
     .dark
         :where(.app-workspace, .patient-portal)
         [class~='hover:bg-amber-100/50']:hover {
@@ -773,6 +953,9 @@
     .dark
         :where(.app-workspace, .patient-portal)
         [class~='hover:bg-emerald-100']:hover,
+    .dark
+        :where(.app-workspace, .patient-portal)
+        [class~='hover:bg-emerald-50']:hover,
     .dark
         :where(.app-workspace, .patient-portal)
         [class~='hover:bg-green-50']:hover,
@@ -802,12 +985,53 @@
 
     .dark
         :where(.app-workspace, .patient-portal)
+        [class*='hover:text-neutral-']:hover {
+        color: var(--foreground) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
         [class*='hover:text-moss-']:hover,
     .dark
         :where(.app-workspace, .patient-portal)
         .group:hover
         [class*='group-hover:text-moss-'] {
         color: var(--color-moss-200) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is([class*='hover:text-amber-'], [class*='hover:text-yellow-']):hover {
+        color: rgb(252 211 77) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is(
+            [class*='hover:text-emerald-'],
+            [class*='hover:text-green-']
+        ):hover {
+        color: rgb(110 231 183) !important;
+    }
+
+    .dark
+        :where(.app-workspace, .patient-portal)
+        :is([class*='hover:text-red-'], [class*='hover:text-rose-']):hover {
+        color: rgb(253 164 175) !important;
+    }
+
+    /* Dialogs render outside the workspace wrapper. Keep their legacy light
+       hover utilities consistent with the active dark surface as well. */
+    .dark
+        [data-slot='dialog-content']
+        :is(
+            [class~='hover:bg-gray-100'],
+            [class~='hover:bg-gray-200'],
+            [class~='hover:bg-slate-50'],
+            [class~='hover:bg-slate-100'],
+            [class~='hover:bg-moss-50']
+        ):hover {
+        background-color: var(--accent) !important;
     }
 
     .dark :is(.app-workspace, .patient-portal) .preserve-light-action {
@@ -842,6 +1066,495 @@
     }
 }
 
+/* Medical certificate preview and browser-print surface. The document is kept
+   deliberately independent from dashboard theme rules so its paper output is
+   always a white, A4 clinic form. */
+.medical-certificate-preview-shell {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: #e8ece8;
+    box-shadow: var(--shadow-sm);
+}
+
+.medical-certificate-preview-toolbar {
+    display: flex;
+    min-height: 4rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+    padding: 0.75rem 1rem;
+}
+
+.medical-certificate-preview-toolbar p {
+    color: var(--foreground);
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.medical-certificate-preview-toolbar span {
+    display: block;
+    margin-top: 0.125rem;
+    color: var(--muted-foreground);
+    font-size: 0.6875rem;
+}
+
+.medical-certificate-zoom-controls {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--background);
+}
+
+.medical-certificate-zoom-controls button {
+    display: inline-flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted-foreground);
+}
+
+.medical-certificate-zoom-controls button:hover:not(:disabled) {
+    background: var(--accent);
+    color: var(--foreground);
+}
+
+.medical-certificate-zoom-controls button:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+}
+
+.medical-certificate-zoom-controls svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.medical-certificate-zoom-controls output {
+    min-width: 3.25rem;
+    border-right: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    color: var(--foreground);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 2.25rem;
+    text-align: center;
+}
+
+.medical-certificate-scroll-region {
+    min-height: 28rem;
+    max-height: calc(100vh - 10rem);
+    overflow: auto;
+    padding: 1.25rem;
+    outline: none;
+}
+
+.medical-certificate-scroll-region:focus-visible {
+    box-shadow: inset 0 0 0 3px rgb(107 143 113 / 0.28);
+}
+
+.medical-certificate-stage {
+    position: relative;
+    margin: 0 auto;
+    transition:
+        width 180ms ease-out,
+        height 180ms ease-out;
+}
+
+.medical-certificate-document {
+    position: relative;
+    display: flex;
+    width: 210mm;
+    height: 297mm;
+    box-sizing: border-box;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+    transform-origin: top left;
+    background: #ffffff !important;
+    box-shadow: 0 12px 40px rgb(15 23 42 / 0.18);
+    color: #111111 !important;
+    color-scheme: light;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11.25pt;
+    font-weight: 400;
+    line-height: 1.38;
+    padding: 12mm 16mm 11mm;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
+
+.medical-certificate-document :where(h1, h2, h3, p) {
+    margin: 0;
+}
+
+.medical-certificate-document > :not(.medical-certificate-watermark) {
+    position: relative;
+    z-index: 1;
+}
+
+.medical-certificate-watermark {
+    position: absolute;
+    top: 49%;
+    left: 50%;
+    z-index: 0;
+    width: 185mm;
+    transform: translate(-50%, -50%) rotate(-31deg);
+    color: rgb(71 85 105 / 0.105) !important;
+    font-size: 34pt;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.medical-certificate-watermark-pending_approval,
+.medical-certificate-watermark-changes_requested,
+.medical-certificate-watermark-approved {
+    color: rgb(146 64 14 / 0.09) !important;
+}
+
+.medical-certificate-watermark-void {
+    color: rgb(185 28 28 / 0.12) !important;
+    font-size: 54pt;
+}
+
+.medical-certificate-letterhead {
+    display: grid;
+    min-height: 20mm;
+    grid-template-columns: 31mm minmax(0, 1fr) 9mm;
+    align-items: center;
+    gap: 3mm;
+}
+
+.medical-certificate-logo {
+    width: 29mm;
+    height: 19mm;
+    object-fit: contain;
+}
+
+.medical-certificate-clinic-copy {
+    color: #5f9c68 !important;
+    text-align: center;
+}
+
+.medical-certificate-clinic-copy h1 {
+    color: #5f9c68 !important;
+    font-size: 22.5pt;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.medical-certificate-clinic-copy p {
+    margin-top: 1.4mm;
+    color: #5f9c68 !important;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 9pt;
+    line-height: 1.15;
+}
+
+.medical-certificate-header-rule {
+    height: 0.45mm;
+    margin-top: 2.5mm;
+    background: #222222 !important;
+}
+
+.medical-certificate-title-row {
+    display: grid;
+    min-height: 17mm;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 4mm;
+}
+
+.medical-certificate-title-row h2 {
+    color: #111111 !important;
+    font-size: 13.5pt;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: underline;
+    text-underline-offset: 1.2mm;
+}
+
+.medical-certificate-title-row p {
+    display: flex;
+    align-items: baseline;
+    justify-self: end;
+    color: #111111 !important;
+    font-size: 10.5pt;
+    white-space: nowrap;
+}
+
+.medical-certificate-reference-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px 18px;
+    margin-top: 6px;
+    color: #374151;
+    font-size: 11px;
+}
+
+.medical-certificate-inline-value {
+    display: inline-block;
+    min-height: 1.25em;
+    border-bottom: 0.35mm solid #222222;
+    color: #111111 !important;
+    padding: 0 1.5mm 0.2mm;
+    text-align: center;
+    vertical-align: baseline;
+}
+
+.medical-certificate-date-value {
+    width: 36mm;
+}
+
+.medical-certificate-copy {
+    color: #111111 !important;
+}
+
+.medical-certificate-greeting {
+    margin-top: 11mm !important;
+    margin-bottom: 8mm !important;
+}
+
+.medical-certificate-patient-statement p + p {
+    margin-top: 1.3mm;
+}
+
+.medical-certificate-salutation-value {
+    min-width: 13mm;
+}
+
+.medical-certificate-name-value {
+    min-width: 74mm;
+    max-width: 100mm;
+}
+
+.medical-certificate-short-value {
+    min-width: 12mm;
+}
+
+.medical-certificate-sex-value {
+    min-width: 23mm;
+}
+
+.medical-certificate-status-value {
+    min-width: 29mm;
+}
+
+.medical-certificate-ruled-text {
+    overflow: hidden;
+    box-sizing: border-box;
+    color: #111111 !important;
+    line-height: 7mm;
+    overflow-wrap: anywhere;
+    padding: 0 1mm;
+    white-space: pre-wrap;
+    background-image: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent calc(7mm - 0.3mm),
+        #222222 calc(7mm - 0.3mm),
+        #222222 7mm
+    ) !important;
+}
+
+.medical-certificate-reason-lines {
+    height: 21mm;
+    margin-top: 1.5mm;
+}
+
+.medical-certificate-findings-section {
+    margin-top: 5mm;
+}
+
+.medical-certificate-findings-section h3 {
+    color: #111111 !important;
+    font-size: 11.5pt;
+    font-style: italic;
+    font-weight: 500;
+}
+
+.medical-certificate-impression-lines {
+    height: 14mm;
+    margin-top: -5.3mm;
+    padding-left: 36mm;
+}
+
+.medical-certificate-recommendation-lines {
+    height: 21mm;
+    margin-top: -5.3mm;
+    padding-left: 48mm;
+}
+
+.medical-certificate-rest-line {
+    margin-top: 7mm !important;
+    white-space: nowrap;
+}
+
+.medical-certificate-rest-value {
+    min-width: 44mm;
+}
+
+.medical-certificate-issued-line {
+    max-width: 158mm;
+    margin-top: 8mm !important;
+}
+
+.medical-certificate-issued-day-value {
+    min-width: 33mm;
+}
+
+.medical-certificate-issued-month-value {
+    min-width: 45mm;
+}
+
+.medical-certificate-signature-block {
+    position: absolute !important;
+    right: 16mm;
+    bottom: 30mm;
+    width: 77mm;
+    color: #111111 !important;
+    font-size: 10.5pt;
+    line-height: 1.3;
+    text-align: center;
+}
+
+.medical-certificate-signature-line {
+    position: relative;
+    height: 19mm;
+    border-bottom: 0.35mm solid #222222;
+}
+
+.medical-certificate-signature-line strong {
+    position: absolute;
+    right: 0;
+    bottom: 0.4mm;
+    font-weight: 500;
+}
+
+.medical-certificate-signature-name {
+    overflow: hidden;
+    margin-top: 1mm;
+    font-size: 9.5pt;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.medical-certificate-signature-role {
+    font-weight: 700;
+}
+
+.medical-certificate-license-value {
+    display: inline-block;
+    min-width: 42mm;
+    border-bottom: 0.35mm solid #222222;
+    padding: 0 1mm 0.2mm;
+    text-align: center;
+}
+
+.medical-certificate-footer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 6mm;
+    margin-top: auto;
+    color: #111111 !important;
+    font-size: 10.25pt;
+}
+
+.medical-certificate-footer strong {
+    font-style: italic;
+}
+
+@media (max-width: 639px) {
+    .medical-certificate-preview-toolbar {
+        align-items: flex-start;
+    }
+
+    .medical-certificate-preview-toolbar span {
+        display: none;
+    }
+
+    .medical-certificate-scroll-region {
+        min-height: 24rem;
+        padding: 0.75rem;
+    }
+}
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 0;
+    }
+
+    html:has(.medical-certificate-print-area),
+    body:has(.medical-certificate-print-area) {
+        width: 210mm !important;
+        min-width: 210mm !important;
+        height: 297mm !important;
+        min-height: 297mm !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        background: #ffffff !important;
+    }
+
+    body:has(.medical-certificate-print-area) * {
+        visibility: hidden !important;
+    }
+
+    body:has(.medical-certificate-print-area) .medical-certificate-print-area,
+    body:has(.medical-certificate-print-area)
+        .medical-certificate-print-area
+        * {
+        visibility: visible !important;
+    }
+
+    body:has(.medical-certificate-print-area) .certificate-no-print {
+        display: none !important;
+    }
+
+    body:has(.medical-certificate-print-area)
+        .medical-certificate-preview-shell,
+    body:has(.medical-certificate-print-area)
+        .medical-certificate-scroll-region,
+    body:has(.medical-certificate-print-area) .medical-certificate-stage {
+        width: 210mm !important;
+        height: 297mm !important;
+        max-height: none !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    body:has(.medical-certificate-print-area) .medical-certificate-print-area {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        margin: 0 !important;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -869,19 +1582,27 @@
     .auth-panel-right span {
         color: oklch(0.145 0 0);
     }
-    .auth-panel-right input::placeholder {
-        color: oklch(0.6 0 0);
+    .auth-shell input::placeholder {
+        color: #94a3b8 !important;
+        -webkit-text-fill-color: #94a3b8 !important;
+        opacity: 1;
+    }
+    .auth-shell .registration-form input::placeholder {
+        color: oklch(0.72 0 0) !important;
+        -webkit-text-fill-color: oklch(0.72 0 0) !important;
+        opacity: 1;
     }
     .auth-panel-right .text-muted-foreground {
         color: oklch(0.45 0 0) !important;
     }
     /* Input fields: visible bg + dark text */
-    .auth-panel-right input[type='email'],
-    .auth-panel-right input[type='password'],
-    .auth-panel-right input[type='text'] {
-        background-color: oklch(0.96 0.005 240);
-        color: oklch(0.145 0 0);
-        border-color: oklch(0.88 0 0);
+    .auth-shell input[type='email'],
+    .auth-shell input[type='password'],
+    .auth-shell input[type='text'] {
+        background-color: #ffffff !important;
+        color: oklch(0.145 0 0) !important;
+        border-color: oklch(0.88 0 0) !important;
+        -webkit-text-fill-color: oklch(0.145 0 0);
     }
 
     /* ─── Checkbox fix ─── */
@@ -900,15 +1621,32 @@
 }
 
 @layer components {
-    /* Statuses are intentionally plain colored text across every workspace. */
+    /* Compact outlined status pills shared across every workspace. */
     .status-text-only {
-        min-height: 0 !important;
+        min-height: 1.5rem !important;
         width: fit-content;
-        padding: 0 !important;
-        border: 0 !important;
-        border-radius: 0 !important;
+        padding: 0.2rem 0.625rem !important;
+        border: 1px solid currentColor !important;
+        border-radius: 9999px !important;
         background: transparent !important;
         box-shadow: none !important;
-        line-height: 1.25rem;
+        font-size: 0.6875rem !important;
+        line-height: 1rem;
+        letter-spacing: 0.015em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .status-text-only > svg {
+        display: none;
+    }
+
+    .status-text-only.status-text-compact {
+        min-height: 1.25rem !important;
+        padding: 0.1rem 0.45rem !important;
+        font-size: 0.625rem !important;
+        line-height: 0.8rem;
     }
 }

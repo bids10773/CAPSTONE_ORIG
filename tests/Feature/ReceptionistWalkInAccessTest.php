@@ -2,6 +2,7 @@
 
 use App\Models\Appointment;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
 function receptionist(): User
@@ -89,14 +90,15 @@ test('receptionist dashboard includes todays active online queue only', function
             ->where('onlineQueue.0.services', ['PE', 'Pregnancy Test']));
 });
 
-test('online appointments have priority and receptionist cannot manually cancel them', function () {
+test('waiting walk ins are listed FCFS ahead of scheduled patients who have not arrived', function () {
     $this->travelTo(today()->setTime(9, 0));
     $patient = User::factory()->create(['role' => 'patient']);
-    $walkIn = Appointment::create([
+    $laterWalkIn = Appointment::create([
         'user_id' => $patient->id,
         'appointment_date' => today(),
         'type' => 'walk_in',
         'status' => 'pending',
+        'arrived_at' => today()->setTime(8, 45),
         'service_types' => ['CBC'],
     ]);
     $online = Appointment::create([
@@ -107,21 +109,62 @@ test('online appointments have priority and receptionist cannot manually cancel 
         'status' => 'accepted',
         'service_types' => ['PE'],
     ]);
+    $earlierWalkIn = Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => today(),
+        'type' => 'walk_in',
+        'status' => 'pending',
+        'arrived_at' => today()->setTime(8, 30),
+        'service_types' => ['CBC'],
+    ]);
     $staff = receptionist();
 
     $this->actingAs($staff)
         ->get(route('receptionist.queue.index'))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('walkIns.data.0.id', $online->id)
-            ->where('walkIns.data.0.queue_number', 'O-001')
-            ->where('walkIns.data.1.id', $walkIn->id)
-            ->where('walkIns.data.1.queue_number', 'W-001'));
+            ->where('walkIns.data.0.id', $earlierWalkIn->id)
+            ->where('walkIns.data.0.queue_number', 'W-001')
+            ->where('walkIns.data.1.id', $laterWalkIn->id)
+            ->where('walkIns.data.1.queue_number', 'W-002')
+            ->where('walkIns.data.2.id', $online->id)
+            ->where('walkIns.data.2.queue_number', 'O-001'));
 
     $this->actingAs($staff)
         ->patch(route('receptionist.walk-ins.status', $online), ['status' => 'cancelled'])
         ->assertSessionHasErrors('status');
 
     expect($online->refresh()->status)->toBe('accepted');
+});
+
+test('an arrived scheduled patient retains priority for the reserved slot', function () {
+    $this->travelTo(today()->setTime(9, 0));
+    $patient = User::factory()->create(['role' => 'patient']);
+    $walkIn = Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => today(),
+        'type' => 'walk_in',
+        'status' => 'pending',
+        'arrived_at' => today()->setTime(8, 30),
+        'service_types' => ['CBC'],
+    ]);
+    $scheduled = Appointment::create([
+        'user_id' => $patient->id,
+        'appointment_date' => today(),
+        'start_time' => '09:00',
+        'end_time' => '09:30',
+        'type' => 'individual',
+        'status' => 'arrived',
+        'arrived_at' => today()->setTime(8, 45),
+        'service_types' => ['PE'],
+    ]);
+
+    $this->actingAs(receptionist())
+        ->get(route('receptionist.queue.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('walkIns.data.0.id', $scheduled->id)
+            ->where('walkIns.data.0.queue_number', 'O-001')
+            ->where('walkIns.data.1.id', $walkIn->id)
+            ->where('walkIns.data.1.queue_number', 'W-001'));
 });
 
 test('opening the receptionist queue releases a late online slot to the earliest waiting walk in', function () {
@@ -146,6 +189,8 @@ test('opening the receptionist queue releases a late online slot to the earliest
 });
 
 test('receptionist can register a new patient and create a walk-in appointment', function () {
+    $this->travelTo(Carbon::parse('2026-09-18 09:00:00', 'Asia/Manila'));
+
     $this->actingAs(receptionist())
         ->post(route('receptionist.walk-ins.store'), [
             'patient_type' => 'new',
@@ -170,6 +215,11 @@ test('receptionist can register a new patient and create a walk-in appointment',
         'type' => 'walk_in',
         'status' => 'pending',
     ]);
+
+    $walkIn = Appointment::query()->where('user_id', $patient->id)->where('type', 'walk_in')->firstOrFail();
+    expect($patient->patient_reference_code)->toStartWith('PAT')
+        ->and($walkIn->reference_code)->toStartWith('WLK')
+        ->and($walkIn->arrived_at)->not->toBeNull();
 });
 
 test('receptionist cannot register an annual exam as a walk in', function () {
@@ -191,6 +241,8 @@ test('receptionist cannot register an annual exam as a walk in', function () {
 });
 
 test('receptionist can find and queue an existing patient', function () {
+    $this->travelTo(Carbon::parse('2026-09-18 09:00:00', 'Asia/Manila'));
+
     $staff = receptionist();
     $patient = User::factory()->create([
         'role' => 'patient',
@@ -258,7 +310,8 @@ test('receptionist assigns a doctor only in a free slot that does not overlap an
     $walkIn = Appointment::query()->where('user_id', $patient->id)->where('type', 'walk_in')->firstOrFail();
     expect($walkIn->doctor_id)->toBe($doctor->id)
         ->and($walkIn->start_time->format('H:i'))->toBe('08:30')
-        ->and($walkIn->end_time->format('H:i'))->toBe('09:00');
+        ->and($walkIn->end_time->format('H:i'))->toBe('09:00')
+        ->and($walkIn->status)->toBe('accepted');
 
     $this->post(route('receptionist.walk-ins.store'), [...$registration, 'start_time' => '08:30'])
         ->assertSessionHasErrors('start_time');
@@ -294,7 +347,8 @@ test('receptionist can later assign a waiting walk-in without taking an online s
         'doctor_id' => $doctor->id, 'start_time' => '08:30',
     ])->assertRedirect();
     expect($walkIn->refresh()->doctor_id)->toBe($doctor->id)
-        ->and($walkIn->start_time->format('H:i'))->toBe('08:30');
+        ->and($walkIn->start_time->format('H:i'))->toBe('08:30')
+        ->and($walkIn->status)->toBe('accepted');
 
     $this->actingAs($staff)->patch(route('receptionist.walk-ins.doctor', $walkIn), [
         'doctor_id' => $doctor->id, 'start_time' => '09:30',
@@ -320,7 +374,7 @@ test('receptionist cannot register walk ins while the clinic is closed on weeken
     ]);
 });
 
-test('receptionist can mark accepted online patients arrived but cannot bypass approval or change walk in clinical status', function () {
+test('receptionist can mark accepted online patients arrived but cannot bypass approval or start an unscheduled walk in', function () {
     $staff = receptionist();
     $patient = User::factory()->create();
     $walkIn = Appointment::create([
@@ -360,9 +414,41 @@ test('receptionist can mark accepted online patients arrived but cannot bypass a
 
     $this->actingAs($staff)
         ->patch(route('receptionist.walk-ins.status', $walkIn), ['status' => 'arrived'])
-        ->assertForbidden();
+        ->assertSessionHasErrors('status');
 
     expect($walkIn->refresh()->status)->toBe('pending');
+});
+
+test('scheduled walk in can start processing only when its assigned time arrives', function () {
+    $this->travelTo(Carbon::parse('2026-09-18 14:30:00', 'Asia/Manila'));
+    $staff = receptionist();
+    $doctor = User::factory()->create(['role' => 'doctor']);
+    $patient = User::factory()->create(['role' => 'patient']);
+    $walkIn = Appointment::create([
+        'user_id' => $patient->id,
+        'doctor_id' => $doctor->id,
+        'appointment_date' => today(),
+        'start_time' => '15:00',
+        'end_time' => '15:30',
+        'type' => 'walk_in',
+        'status' => 'accepted',
+        'arrived_at' => now(),
+        'checked_in_by' => $staff->id,
+        'service_types' => ['PE'],
+    ]);
+
+    $this->actingAs($staff)
+        ->patch(route('receptionist.walk-ins.status', $walkIn), ['status' => 'arrived'])
+        ->assertSessionHasErrors('status');
+    expect($walkIn->refresh()->status)->toBe('accepted');
+
+    $this->travelTo(Carbon::parse('2026-09-18 15:00:00', 'Asia/Manila'));
+    $this->actingAs($staff)
+        ->patch(route('receptionist.walk-ins.status', $walkIn), ['status' => 'arrived'])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect($walkIn->refresh()->status)->toBe('arrived');
 });
 
 test('bulk employees never appear in or mutate through the walk-in queue', function () {

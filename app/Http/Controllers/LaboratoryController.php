@@ -23,11 +23,18 @@ class LaboratoryController extends Controller
         $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'medicalExamination.diagnosticResults']);
         $drugResult = $appointment->medicalExamination?->diagnosticResults->firstWhere('service_key', 'drug_test');
         $drugVerificationPending = in_array($drugResult?->status, ['verifying', 'awaiting_official_result', 'official_result_received'], true);
+        $interpretations = $appointment->medicalExamination?->diagnosticResults
+            ->mapWithKeys(fn ($result): array => [$result->service_key => [
+                'interpretation' => $result->interpretation,
+                'findings' => $result->findings,
+            ]])
+            ->all() ?? [];
 
         return Inertia::render('medtech/lab-results-form', [
             'appointment' => $appointment,
             'labResult' => $appointment->labResult,
             'sections' => $definitions->sectionsFor($appointment),
+            'interpretations' => $interpretations,
             'patientSummary' => $this->patientSummary($appointment),
             'locked' => $appointment->labResult?->isFinalized() && ! $drugVerificationPending && request()->user()->role !== 'admin',
             'drugVerificationPending' => $drugVerificationPending,
@@ -59,7 +66,7 @@ class LaboratoryController extends Controller
     {
         Gate::authorize('viewLaboratory', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment);
-        $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'labResult.verifiedBy']);
+        $appointment->load(['user.patientProfile', 'company', 'doctor', 'medicalExamination', 'labResult.encodedBy', 'labResult.verifiedBy']);
         abort_unless($appointment->labResult, 404, 'No laboratory report exists for this appointment.');
         $workflow->auditDocumentAccess($appointment, $request->user(), 'laboratory', $request);
 
@@ -70,9 +77,9 @@ class LaboratoryController extends Controller
             'patient' => $this->patientSummary($appointment),
         ])->setPaper('letter');
 
-        return $request->boolean('preview')
+        return $this->secure($request->boolean('preview')
             ? $pdf->stream("LMIC-Laboratory-{$appointment->id}.pdf")
-            : $pdf->download("LMIC-Laboratory-{$appointment->id}.pdf");
+            : $pdf->download("LMIC-Laboratory-{$appointment->id}.pdf"));
     }
 
     public function sectionPdf(
@@ -84,7 +91,7 @@ class LaboratoryController extends Controller
     ): HttpResponse {
         Gate::authorize('viewLaboratory', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment);
-        $appointment->load(['user.patientProfile', 'company', 'doctor', 'labResult.encodedBy', 'labResult.verifiedBy']);
+        $appointment->load(['user.patientProfile', 'company', 'doctor', 'medicalExamination', 'labResult.encodedBy', 'labResult.verifiedBy']);
 
         $availableSections = $definitions->sectionsFor($appointment);
         abort_unless(array_key_exists($section, $availableSections), 404, 'This laboratory test was not selected for the appointment.');
@@ -103,9 +110,9 @@ class LaboratoryController extends Controller
         ])->setPaper('letter');
         $filename = 'LMIC-'.str($section)->replace('_', '-')->title()."-{$appointment->id}.pdf";
 
-        return $request->boolean('preview')
+        return $this->secure($request->boolean('preview')
             ? $pdf->stream($filename)
-            : $pdf->download($filename);
+            : $pdf->download($filename));
     }
 
     private function patientSummary(Appointment $appointment): array
@@ -137,7 +144,7 @@ class LaboratoryController extends Controller
 
         if ($appointment->isPePackage()) {
             $appointment->loadMissing('medicalExamination');
-            abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final PE report has not been released yet.');
+            abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final medical examination report has not been released yet.');
 
             return;
         }
@@ -148,5 +155,15 @@ class LaboratoryController extends Controller
                 ->firstWhere('service_key', 'drug_test');
             abort_unless($drugTest?->isVerified(), 403, 'The official Drug Test result has not been verified yet.');
         }
+    }
+
+    private function secure(HttpResponse $response): HttpResponse
+    {
+        $response->headers->set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
+        $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+
+        return $response;
     }
 }

@@ -25,7 +25,7 @@ const laboratoryMapping: Record<string, { label: string; column: string }> = {
     Urinalysis: { label: 'Urinalysis', column: 'urinalysis_results' },
     Fecalysis: { label: 'Fecalysis', column: 'fecalysis_results' },
     'Drug Test': { label: 'Drug Test', column: 'drug_test_results' },
-    Hepatitis: { label: 'Hepatitis Screening', column: 'serology_results' },
+    Hepatitis: { label: 'Hepatitis B Screening', column: 'serology_results' },
     'Pregnancy Test': { label: 'Pregnancy Test', column: 'pregnancy_test' },
     FBS: { label: 'Fasting Blood Sugar', column: 'blood_chemistry_results' },
     'Blood Chemistry': {
@@ -139,7 +139,7 @@ export default function FinalEvaluation({
     return (
         <>
             <Head title="Final Medical Evaluation" />
-            <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+            <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
                 <Link
                     href="/doctor/appointments"
                     className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-moss-700"
@@ -181,7 +181,7 @@ export default function FinalEvaluation({
                             />
                             {profile?.employee_number && (
                                 <Meta
-                                    label="Company ID"
+                                    label="Company Employee No."
                                     value={profile.employee_number}
                                 />
                             )}
@@ -684,7 +684,7 @@ export default function FinalEvaluation({
                         </div>
                     </form>
                 )}
-            </main>
+            </div>
         </>
     );
 }

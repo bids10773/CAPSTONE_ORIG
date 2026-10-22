@@ -26,12 +26,17 @@ class PhysicalExamController extends Controller
         Gate::authorize('updatePhysicalExam', $appointment);
         app(\App\Services\OnsiteEventWorkflowService::class)->startService($appointment, 'doctor', request()->user());
         $medicalExamination = $examinations->forAppointment($appointment);
-        $appointment->load(['user', 'company', 'medicalExamination', 'physicalExam', 'medicalHistory', 'patientProfile']);
+        $appointment->load(['user', 'company', 'medicalExamination', 'physicalExam', 'medicalHistory', 'patientProfile',
+            'latestVitalSign.recordedBy', 'vitalSigns.recordedBy',
+            'vitalSignRecheckRequests' => fn ($query) => $query->where('status', 'pending')->with('requestedBy')]);
         $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'diagnosticResults', 'xrayReport']);
 
         return Inertia::render('doctor/physical-exam-form', [
             'appointment' => $appointment,
             'physicalExam' => $appointment->physicalExam,
+            'latestVitalSign' => $appointment->latestVitalSign,
+            'vitalSignHistory' => $appointment->vitalSigns->sortByDesc('measured_at')->values(),
+            'pendingVitalRecheck' => $appointment->vitalSignRecheckRequests->first(),
             'medicalExamination' => $medicalExamination,
             'childSummaries' => $medicalExamination->childSummaries(),
             'vitalLimits' => config('physical_exam.vital_limits'),
@@ -59,15 +64,19 @@ class PhysicalExamController extends Controller
             foreach ($request->bodyParts() as $field) {
                 $findings[$field] = $data["{$field}_status"] === 'normal' ? null : $data[$field];
             }
+            $vital = $appointment->latestVitalSign()->lockForUpdate()->first();
+            if (! $vital && blank($data['vital_signs_override_reason'] ?? null)) {
+                throw ValidationException::withMessages(['vital_signs_override_reason' => 'Record vital signs first, or document why urgent care must proceed without them.']);
+            }
 
             $exam = PhysicalExam::updateOrCreate(['appointment_id' => $appointment->id], [
                 'medical_examination_id' => $medicalExamination->id,
                 'doctor_id' => $request->user()->id,
-                ...$request->safe()->only([
-                    'height', 'weight', 'pulse_rate', 'respiration_rate',
-                    'temperature', 'visual_acuity', 'hearing', 'remarks',
-                ]),
-                'blood_pressure' => $request->bloodPressure(),
+                'height' => $vital?->height, 'weight' => $vital?->weight,
+                'pulse_rate' => $vital?->heart_rate, 'respiration_rate' => $vital?->respiratory_rate,
+                'temperature' => $vital?->temperature,
+                ...$request->safe()->only(['visual_acuity', 'hearing', 'remarks']),
+                'blood_pressure' => $vital ? "{$vital->systolic_pressure}/{$vital->diastolic_pressure}" : null,
                 ...$findings,
                 'classification' => 'Pending',
                 'is_completed' => true,
@@ -88,6 +97,11 @@ class PhysicalExamController extends Controller
             app(\App\Services\OnsiteEventWorkflowService::class)->completeService($appointment, 'doctor', $request->user());
             app(\App\Services\OnsiteEventWorkflowService::class)->refreshFinalEvaluationTask($appointment->fresh());
             $this->audit($request, $appointment, 'physical_exam', $exam->wasRecentlyCreated ? 'created' : 'updated', $exam->getChanges());
+            if (! $vital) {
+                $this->audit($request, $appointment, 'vital_signs', 'urgent_override', [
+                    'reason' => $data['vital_signs_override_reason'],
+                ]);
+            }
         });
 
         $destination = $appointment->bulk_appointment_id !== null
@@ -196,7 +210,7 @@ class PhysicalExamController extends Controller
             DB::afterCommit(fn () => $appointment->user?->notify(new MedicalReportReleased));
         });
 
-        return back()->with('success', 'Final PE report released to the patient.');
+        return back()->with('success', 'Final medical examination report released to the patient.');
     }
 
     private function audit(Request $request, Appointment $appointment, string $form, string $action, array $changes): void

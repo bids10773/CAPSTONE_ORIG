@@ -8,6 +8,7 @@
     $diagnostics = $examination?->diagnosticResults?->keyBy('service_key') ?? collect();
     $diagnostic = fn (string $key) => $diagnostics->get($key);
     $verified = fn (string $key) => $diagnostic($key)?->status === 'verified';
+    $interpretation = fn (string $key) => $diagnostic($key)?->interpretation;
     $tick = fn (bool $condition) => $condition ? '/' : ' ';
     $labValue = function ($data, string $key) {
         return is_array($data) && filled($data[$key] ?? null) ? $data[$key] : null;
@@ -18,7 +19,10 @@
     $drugResult = is_array($drugResult) ? $drugResult : ($laboratory?->drug_test_results ?? []);
     $methamphetamine = strtolower((string) $labValue($drugResult, 'methamphetamine'));
     $marijuana = strtolower((string) $labValue($drugResult, 'tetrahydrocannabinol'));
-    $xrayNormal = $xray?->isVerified() && str_contains(strtolower((string) $xray->impression), 'normal');
+    $xrayImpression = strtolower(trim((string) $xray?->impression));
+    $xrayNormal = $xray?->isVerified()
+        && preg_match('/\bnormal\b/u', $xrayImpression) === 1
+        && preg_match('/\b(?:abnormal|not\s+normal)\b/u', $xrayImpression) !== 1;
     $xrayFindings = $xray?->isVerified() && ! $xrayNormal;
     $classification = $examination?->medical_classification;
     $systemFindings = [
@@ -85,7 +89,7 @@
         .bmi-value { height: 17px; border-bottom: .55px solid {{ $green }}; color: #111; font-size: 8.5px; }
         .cert-text { padding: 4px 16px; font-size: 7.4px; line-height: 1.35; }
         .signatures { table-layout: fixed; }
-        .signatures td { height: 31px; text-align: center; vertical-align: bottom; }
+        .signatures td { height: 55px; padding: 1px 3px; text-align: center; vertical-align: bottom; }
         .signature-name { border-bottom: .55px solid {{ $green }}; color: #111; font-size: 7.5px; }
         .signature-role { font-size: 6.8px; }
         .conclusion { padding-top: 7px; color: #244080; text-align: center; font-size: 8px; }
@@ -162,15 +166,14 @@
 
     <div class="section">III. LABORATORY</div>
     <table class="ruled diagnostic">
-        <tr><td class="test">A. Complete Blood Count</td><td class="choice">[ {{ $tick($verified('cbc')) }} ] Normal</td><td class="choice">[ {{ $tick(false) }} ] Findings</td><td class="notes">{{ $verified('cbc') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
-        <tr><td class="test">B. Urinalysis</td><td class="choice">[ {{ $tick($verified('urinalysis')) }} ] Normal</td><td class="choice">[ {{ $tick(false) }} ] Findings</td><td class="notes">{{ $verified('urinalysis') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
-        <tr><td class="test">C. Fecalysis</td><td class="choice">[ {{ $tick($verified('fecalysis')) }} ] Normal</td><td class="choice">[ {{ $tick(false) }} ] Findings</td><td class="notes">{{ $verified('fecalysis') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
-        @php $hbsag = strtolower((string) $labValue($laboratory?->serology_results, 'hbsag')); $hav = strtolower((string) $labValue($laboratory?->serology_results, 'anti_hav_igm')); @endphp
+        <tr><td class="test">A. Complete Blood Count</td><td class="choice">[ {{ $tick($interpretation('cbc') === 'normal') }} ] Normal</td><td class="choice">[ {{ $tick($interpretation('cbc') === 'with_findings') }} ] Findings</td><td class="notes">{{ $verified('cbc') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
+        <tr><td class="test">B. Urinalysis</td><td class="choice">[ {{ $tick($interpretation('urinalysis') === 'normal') }} ] Normal</td><td class="choice">[ {{ $tick($interpretation('urinalysis') === 'with_findings') }} ] Findings</td><td class="notes">{{ $verified('urinalysis') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
+        <tr><td class="test">C. Fecalysis</td><td class="choice">[ {{ $tick($interpretation('fecalysis') === 'normal') }} ] Normal</td><td class="choice">[ {{ $tick($interpretation('fecalysis') === 'with_findings') }} ] Findings</td><td class="notes">{{ $verified('fecalysis') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
+        @php $hbsag = strtolower((string) $labValue($laboratory?->serology_results, 'hbsag')); @endphp
         <tr><td class="test">D. Hepatitis B (HBs Ag)</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && str_contains($hbsag, 'non')) }} ] Non-reactive</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && $hbsag === 'reactive') }} ] Reactive</td><td class="notes">{{ ! $isRequested('Hepatitis') ? 'NOT REQUESTED' : ($verified('serology') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
-        <tr><td class="test">E. Hepatitis A (Anti-HAV IgM)</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && str_contains($hav, 'non')) }} ] Non-reactive</td><td class="choice">[ {{ $tick($isRequested('Hepatitis') && $hav === 'reactive') }} ] Reactive</td><td class="notes">{{ ! $isRequested('Hepatitis') ? 'NOT REQUESTED' : ($verified('serology') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
         @php $pregnancy = strtolower((string) (is_array($laboratory?->pregnancy_test) ? data_get($laboratory->pregnancy_test, 'pregnancy_test') : $laboratory?->pregnancy_test)); @endphp
-        <tr><td class="test">F. Pregnancy Test</td><td class="choice">[ {{ $tick($isRequested('Pregnancy Test') && $pregnancy === 'negative') }} ] Negative</td><td class="choice">[ {{ $tick($isRequested('Pregnancy Test') && $pregnancy === 'positive') }} ] Positive</td><td class="notes">{{ ! $isRequested('Pregnancy Test') ? 'NOT REQUESTED' : ($verified('pregnancy') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
-        <tr><td colspan="4">G. Drug Test</td></tr>
+        <tr><td class="test">E. Pregnancy Test</td><td class="choice">[ {{ $tick($isRequested('Pregnancy Test') && $pregnancy === 'negative') }} ] Negative</td><td class="choice">[ {{ $tick($isRequested('Pregnancy Test') && $pregnancy === 'positive') }} ] Positive</td><td class="notes">{{ ! $isRequested('Pregnancy Test') ? 'NOT REQUESTED' : ($verified('pregnancy') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
+        <tr><td colspan="4">F. Drug Test</td></tr>
         <tr><td class="test" style="padding-left:14px">a. Methamphetamine (Shabu)</td><td class="choice">[ {{ $tick($isRequested('Drug Test') && $methamphetamine === 'negative') }} ] Negative</td><td class="choice">[ {{ $tick($isRequested('Drug Test') && $methamphetamine === 'positive') }} ] Positive</td><td class="notes">{{ ! $isRequested('Drug Test') ? 'NOT REQUESTED' : ($verified('drug_test') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
         <tr><td class="test" style="padding-left:14px">b. Marijuana</td><td class="choice">[ {{ $tick($isRequested('Drug Test') && $marijuana === 'negative') }} ] Negative</td><td class="choice">[ {{ $tick($isRequested('Drug Test') && $marijuana === 'positive') }} ] Positive</td><td class="notes">{{ ! $isRequested('Drug Test') ? 'NOT REQUESTED' : ($verified('drug_test') ? 'SEE ATTACHED RESULT' : 'PENDING') }}</td></tr>
     </table>
@@ -180,12 +183,12 @@
 
     <div class="section">V. ELECTROCARDIOGRAM / AUDIOMETRY</div>
     <table class="ruled diagnostic">
-        <tr><td class="test bold">Electrocardiogram (ECG)</td><td class="choice">[ ] Normal</td><td class="choice">[ ] Findings</td><td class="notes">{{ $isRequested('ECG') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
-        <tr><td class="test bold">Audiometry</td><td class="choice">[ ] Normal</td><td class="choice">[ ] Findings</td><td class="notes">{{ $isRequested('Audiometry') ? 'SEE ATTACHED RESULT' : '' }}</td></tr>
+        <tr><td class="test bold">Electrocardiogram (ECG)</td><td class="choice">[ ] Normal</td><td class="choice">[ ] Findings</td><td class="notes">{{ $isRequested('ECG') ? 'PENDING' : 'NOT REQUESTED' }}</td></tr>
+        <tr><td class="test bold">Audiometry</td><td class="choice">[ ] Normal</td><td class="choice">[ ] Findings</td><td class="notes">{{ $isRequested('Audiometry') ? 'PENDING' : 'NOT REQUESTED' }}</td></tr>
     </table>
 
     <div class="section">VI. OTHERS</div>
-    <table class="ruled diagnostic"><tr><td class="test bold">BLOOD CHEM</td><td class="choice">[ {{ $tick($verified('blood_chemistry')) }} ] Normal</td><td class="choice">[ ] Findings</td><td class="notes">{{ $verified('blood_chemistry') ? 'SEE ATTACHED RESULT' : '' }}</td></tr></table>
+    <table class="ruled diagnostic"><tr><td class="test bold">BLOOD CHEM</td><td class="choice">[ {{ $tick($interpretation('blood_chemistry') === 'normal') }} ] Normal</td><td class="choice">[ {{ $tick($interpretation('blood_chemistry') === 'with_findings') }} ] Findings</td><td class="notes">{{ $verified('blood_chemistry') ? 'SEE ATTACHED RESULT' : '' }}</td></tr></table>
 
     <table class="ruled class-area"><tr>
         <td class="class-list">
@@ -205,8 +208,8 @@
 
     <table class="ruled signatures">
         <tr>
-            <td><div class="signature-name">{{ strtoupper($examination?->finalizedBy?->name ?? '') }}</div><div class="signature-role">CLASSIFIED BY:</div></td>
-            <td><div class="signature-name">{{ strtoupper($physical->doctor?->name ?? $examination?->examiningDoctor?->name ?? '') }}</div><div class="signature-role">Examining Physician</div></td>
+            <td>@include('pdf.partials.electronic-signature', ['staff' => $examination?->finalizedBy, 'role' => 'Classifying Physician', 'verifiedAt' => $examination?->finalized_at, 'verificationLabel' => 'Finalized', 'compact' => true])</td>
+            <td>@include('pdf.partials.electronic-signature', ['staff' => $physical->doctor ?? $examination?->examiningDoctor, 'role' => 'Examining Physician', 'verifiedAt' => $physical->finalized_at, 'verificationLabel' => 'Examined', 'compact' => true])</td>
             <td><div class="signature-name">{{ strtoupper($appointment->user->name) }}</div><div class="signature-role">Signature Over Printed Name</div></td>
         </tr>
     </table>
@@ -258,7 +261,7 @@
             @endforeach
         </table>
         @if($physical->remarks)<p><b>Remarks:</b> {{ $physical->remarks }}</p>@endif
-        <div class="attachment-signature">{{ $physical->doctor?->name ?? 'Authorized doctor' }}<br>Examining Physician</div>
+        <div class="attachment-signature">@include('pdf.partials.electronic-signature', ['staff' => $physical->doctor, 'role' => 'Examining Physician', 'verifiedAt' => $physical->finalized_at, 'verificationLabel' => 'Examined'])</div>
     </div>
 
     @foreach(($laboratorySections ?? []) as $sectionKey => $section)
@@ -287,8 +290,14 @@
                         </tr>
                     @endforeach
                 </table>
+                @if($interpretation($sectionKey))
+                    <p><b>Clinical interpretation:</b> {{ $interpretation($sectionKey) === 'normal' ? 'Normal' : 'With findings' }}</p>
+                @endif
+                @if($interpretation($sectionKey) === 'with_findings' && filled($diagnostic($sectionKey)?->findings))
+                    <p><b>Findings:</b> {{ $diagnostic($sectionKey)->findings }}</p>
+                @endif
                 @if($laboratory->remarks)<p><b>Remarks:</b> {{ $laboratory->remarks }}</p>@endif
-                <div class="attachment-signature">{{ $laboratory->verifiedBy?->name ?? $laboratory->encodedBy?->name ?? 'Medical Technologist' }}<br>Medical Technologist</div>
+                <div class="attachment-signature">@include('pdf.partials.electronic-signature', ['staff' => $laboratory->verifiedBy ?? $laboratory->encodedBy, 'role' => 'Medical Technologist', 'verifiedAt' => $laboratory->finalized_at])</div>
             </div>
         @endif
     @endforeach
@@ -306,11 +315,11 @@
                 <tr><th style="width:25%">Findings</th><td>{{ $xray->findings ?: '—' }}</td></tr>
                 <tr><th>Impression</th><td>{{ $xray->impression ?: '—' }}</td></tr>
             </table>
-            <div class="attachment-signature">{{ $xray->radiologist?->name ?? $xray->verifiedBy?->name ?? 'Authorized Clinical Staff' }}<br>Authorized Clinical Staff</div>
+            <div class="attachment-signature">@include('pdf.partials.electronic-signature', ['staff' => $xray->verifiedBy ?? $xray->radiologist, 'role' => 'Radiologic Technologist', 'verifiedAt' => $xray->verified_at])</div>
         </div>
     @endif
 
-    @if($examination?->finalized_at)
+    {{-- Final evaluation is already represented in the main medical examination form.
         <div class="attachment-page">
             <h1>Living Myth Medical Clinic</h1>
             <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
@@ -323,8 +332,8 @@
                 <tr><th>Recommendations</th><td>{{ $examination->recommendations ?? '—' }}</td></tr>
                 <tr><th>Finalized on</th><td>{{ $examination->finalized_at->format('F j, Y') }}</td></tr>
             </table>
-            <div class="attachment-signature">{{ $examination->finalizedBy?->name ?? 'Authorized doctor' }}<br>Classifying Physician</div>
+            <div class="attachment-signature">@include('pdf.partials.electronic-signature', ['staff' => $examination->finalizedBy, 'role' => 'Classifying Physician', 'verifiedAt' => $examination->finalized_at, 'verificationLabel' => 'Finalized'])</div>
         </div>
-    @endif
+    --}}
 </body>
 </html>

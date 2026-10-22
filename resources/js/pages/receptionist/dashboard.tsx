@@ -5,7 +5,6 @@ import {
     CalendarClock,
     CheckCircle2,
     CircleX,
-    ClipboardList,
     Clock3,
     ListOrdered,
     Users,
@@ -17,6 +16,7 @@ import {
     StaffDashboardStat,
 } from '@/components/staff-dashboard';
 import AppLayout from '@/layouts/app-layout';
+import { formatAppointmentDateTime } from '@/lib/appointment-date-time';
 
 type Metrics = {
     total: number;
@@ -33,6 +33,7 @@ type OnlineQueueItem = {
     id: number;
     queue_number: string;
     patient_name: string;
+    appointment_date: string;
     start_time: string | null;
     services: string[];
     status: string;
@@ -51,12 +52,10 @@ export default function ReceptionistDashboard({
     return (
         <>
             <Head title="Receptionist Dashboard" />
-            <div className="min-h-screen space-y-6 bg-gray-50 p-6">
+            <div className="min-h-screen space-y-6 bg-gray-50 p-4 sm:p-6 lg:p-8 dark:bg-background">
                 <StaffDashboardHero
-                    role="Receptionist"
                     name={auth?.user?.name ?? 'Receptionist'}
                     description="Keep today's online appointments and walk-in queue moving."
-                    icon={ClipboardList}
                     action={{
                         label: 'Register walk-in',
                         href: '/receptionist/walk-ins',
@@ -169,7 +168,10 @@ export default function ReceptionistDashboard({
                                     </p>
                                 </div>
                                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                    {item.start_time ?? 'Time pending'}
+                                    {formatAppointmentDateTime(
+                                        item.appointment_date,
+                                        item.start_time,
+                                    )}
                                 </span>
                                 <span className="status-text-only w-fit text-xs font-bold text-amber-700 capitalize dark:text-amber-400">
                                     {item.status.replaceAll('_', ' ')}

@@ -34,6 +34,10 @@ interface Appointment {
         company_name: string;
     } | null;
     physical_exam?: any; // Changed to match common Laravel snake_case relationship naming
+    latest_vital_sign?: {
+        measured_at: string;
+        recorded_by?: { name: string };
+    } | null;
     medical_examination?: {
         finalized_at?: string | null;
         released_at?: string | null;
@@ -142,8 +146,8 @@ export default function DoctorAppointmentsIndex(props: Props) {
 
                 {/* Table */}
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                    <div className="overflow-hidden">
-                        <table className="w-full table-fixed">
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[760px] table-fixed">
                             <thead className="border-b border-gray-200 bg-gray-50">
                                 <tr>
                                     <th className="w-[24%] px-4 py-3 text-left text-xs font-medium tracking-wider whitespace-nowrap text-gray-500 uppercase">
@@ -227,6 +231,16 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                 <StatusBadge
                                                     status={appointment.status}
                                                 />
+                                                {appointment.status ===
+                                                    'arrived' && (
+                                                    <p
+                                                        className={`mt-1 text-xs font-semibold ${appointment.latest_vital_sign ? 'text-emerald-700' : 'text-amber-700'}`}
+                                                    >
+                                                        {appointment.latest_vital_sign
+                                                            ? 'Vital signs recorded'
+                                                            : 'Awaiting vital signs'}
+                                                    </p>
+                                                )}
                                             </td>
                                             <td className="space-x-1 px-4 py-3 text-right whitespace-nowrap">
                                                 <Link
@@ -237,13 +251,9 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                     <Eye className="h-4 w-4" />
                                                 </Link>
 
-                                                {/* FIXED LOGIC: Show exam button if status is accepted/arrived AND no exam exists */}
-                                                {[
-                                                    'accepted',
-                                                    'arrived',
-                                                ].includes(
-                                                    appointment.status.toLowerCase(),
-                                                ) &&
+                                                {/* The examination starts only after reception checks the patient in. */}
+                                                {appointment.status.toLowerCase() ===
+                                                    'arrived' &&
                                                     appointment.is_scheduled_today &&
                                                     !appointment.physical_exam
                                                         ?.id && (
@@ -258,6 +268,23 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                         >
                                                             <Play className="h-4 w-4" />
                                                         </button>
+                                                    )}
+
+                                                {appointment.status.toLowerCase() ===
+                                                    'accepted' &&
+                                                    appointment.is_scheduled_today &&
+                                                    !appointment.physical_exam
+                                                        ?.id && (
+                                                        <span
+                                                            className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700"
+                                                            title="Reception must check the patient in before the physical examination can begin"
+                                                        >
+                                                            <LockKeyhole className="h-3.5 w-3.5" />
+                                                            <span className="hidden 2xl:inline">
+                                                                Waiting for
+                                                                check-in
+                                                            </span>
+                                                        </span>
                                                     )}
 
                                                 {[

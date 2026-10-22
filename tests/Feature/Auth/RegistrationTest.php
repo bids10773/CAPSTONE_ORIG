@@ -16,12 +16,33 @@ test('new users can register', function () {
         'birthdate' => '1990-01-01',
         'sex' => 'Male',
         'civil_status' => 'Single',
+        'address' => '123 Sample Street, Quezon City',
         'password' => 'Hello123',
         'password_confirmation' => 'Hello123',
     ]);
 
     $this->assertAuthenticated();
     $response->assertRedirect();
+    $user = \App\Models\User::where('email', 'test@example.com')->firstOrFail();
+    $profile = $user->patientProfile;
+    expect($profile?->address)->toBe('123 Sample Street, Quezon City');
+    expect($user->hasCompletePatientProfile())->toBeTrue();
+});
+
+test('registration requires an address', function () {
+    $this->post(route('register.store'), [
+        'first_name' => 'Missing',
+        'last_name' => 'Address',
+        'email' => 'missing-address@example.com',
+        'contact' => '09171234567',
+        'birthdate' => '1990-01-01',
+        'sex' => 'Male',
+        'civil_status' => 'Single',
+        'password' => 'Hello123',
+        'password_confirmation' => 'Hello123',
+    ])->assertSessionHasErrors('address');
+
+    $this->assertDatabaseMissing('users', ['email' => 'missing-address@example.com']);
 });
 
 test('registration enforces the shared password policy', function (string $password, string $message) {
@@ -61,6 +82,7 @@ test('registration normalizes Philippine mobile numbers', function () {
         'first_name' => 'Normalized', 'last_name' => 'Patient',
         'email' => 'normalized@example.com', 'contact' => '+63 917 123 4567',
         'birthdate' => '1990-01-01', 'sex' => 'Male', 'civil_status' => 'Single',
+        'address' => '123 Sample Street, Quezon City',
         'password' => 'Hello123', 'password_confirmation' => 'Hello123',
     ])->assertSessionDoesntHaveErrors();
 
@@ -87,6 +109,7 @@ test('registration accepts a valid leap-day birthdate', function () {
         'first_name' => 'Leap', 'last_name' => 'Patient',
         'email' => 'leap@example.com', 'contact' => '09171230001',
         'birthdate' => '2004-02-29', 'sex' => 'Female', 'civil_status' => 'Single',
+        'address' => '123 Sample Street, Quezon City',
         'password' => 'Hello123', 'password_confirmation' => 'Hello123',
     ])->assertSessionDoesntHaveErrors('birthdate');
 
@@ -118,6 +141,7 @@ test('registration accepts a patient who is exactly 18 years old', function () {
         'email' => 'legal-adult@example.com', 'contact' => '09171230004',
         'birthdate' => today()->subYearsNoOverflow(18)->toDateString(),
         'sex' => 'Male', 'civil_status' => 'Single',
+        'address' => '123 Sample Street, Quezon City',
         'password' => 'Hello123', 'password_confirmation' => 'Hello123',
     ])->assertSessionDoesntHaveErrors('birthdate');
 

@@ -1,4 +1,5 @@
 import { createInertiaApp } from '@inertiajs/react';
+import { configureEcho } from '@laravel/echo-react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import type { ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -7,6 +8,9 @@ import '../css/app.css';
 import LogoutModal from './components/logout-modal';
 import { LogoutModalProvider } from './contexts/logout-modal-context';
 import { initializeTheme } from './hooks/use-appearance';
+configureEcho({
+    broadcaster: 'reverb',
+});
 
 // Keeping the glob options explicit makes Vite rebuild the Inertia page map
 // whenever a new page module is added during development.
@@ -22,6 +26,19 @@ const pages: Record<string, () => Promise<InertiaPageModule>> = {
         import('./pages/staff/onsite-events/show'),
     './pages/staff/patient-records/index.tsx': () =>
         import('./pages/staff/patient-records/index'),
+    './pages/staff/patient-records/show.tsx': () =>
+        import('./pages/staff/patient-records/show'),
+    './pages/admin/staff/edit.tsx': () => import('./pages/admin/staff/edit'),
+    './pages/admin/patient-visits/index.tsx': () =>
+        import('./pages/admin/patient-visits/index'),
+    './pages/company/bulk-appointments/index.tsx': () =>
+        import('./pages/company/bulk-appointments/index'),
+    './pages/medical-documents/index.tsx': () =>
+        import('./pages/medical-documents/index'),
+    './pages/medical-documents/patient.tsx': () =>
+        import('./pages/medical-documents/patient'),
+    './pages/receptionist/vital-signs.tsx': () =>
+        import('./pages/receptionist/vital-signs'),
     './pages/radtech/xray-report-form.tsx': () =>
         import('./pages/radtech/xray-report-form'),
 };

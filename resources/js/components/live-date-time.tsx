@@ -4,7 +4,11 @@ import { cn } from '@/lib/utils';
 
 const timeZone = 'Asia/Manila';
 
-export function LiveDateTime({ className }: { className?: string }) {
+type LiveDateTimeProps = {
+    className?: string;
+};
+
+export function LiveDateTime({ className }: LiveDateTimeProps) {
     const [now, setNow] = useState<Date>(() => new Date());
 
     useEffect(() => {
@@ -18,6 +22,13 @@ export function LiveDateTime({ className }: { className?: string }) {
         weekday: 'short',
         month: 'short',
         day: 'numeric',
+        year: 'numeric',
+    }).format(now);
+    const dateTime = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
     }).format(now);
     const time = new Intl.DateTimeFormat('en-PH', {
         timeZone,
@@ -29,24 +40,27 @@ export function LiveDateTime({ className }: { className?: string }) {
     return (
         <div
             className={cn(
-                'items-center gap-2 border-l border-border px-3 text-moss-700 dark:text-moss-200',
+                'items-center gap-3 border-l border-border px-3 text-moss-700 dark:text-moss-200',
                 className,
             )}
             aria-label={`Philippine date and time: ${date}, ${time}`}
         >
-            <Clock3 className="size-4 shrink-0" aria-hidden="true" />
-            <div className="leading-tight whitespace-nowrap">
+            <time
+                dateTime={dateTime}
+                className="flex items-center gap-2 text-xs font-bold whitespace-nowrap"
+            >
+                <CalendarDays className="size-4 shrink-0" aria-hidden="true" />
+                {date}
+            </time>
+            <span className="flex items-center gap-2 whitespace-nowrap">
+                <Clock3 className="size-4 shrink-0" aria-hidden="true" />
                 <time
                     dateTime={now.toISOString()}
                     className="block text-xs font-bold tabular-nums"
                 >
                     {time}
                 </time>
-                <span className="hidden text-[10px] font-medium text-slate-500 2xl:flex 2xl:items-center 2xl:gap-1 dark:text-slate-400">
-                    <CalendarDays className="size-3" aria-hidden="true" />
-                    {date}
-                </span>
-            </div>
+            </span>
         </div>
     );
 }

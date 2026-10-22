@@ -30,7 +30,6 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
-import { DashboardClinicBadge } from '@/components/dashboard-clinic-badge';
 import AppLayout from '@/layouts/app-layout';
 import {
     formatAppointmentDateTime,
@@ -495,11 +494,6 @@ export default function AdminDashboard() {
             <Head title="Admin Dashboard" />
 
             <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-                <section className="rounded-[2rem] bg-moss-800 px-6 py-5 text-white sm:px-8">
-                    <DashboardClinicBadge icon={BarChart3}>
-                        Admin dashboard
-                    </DashboardClinicBadge>
-                </section>
                 <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                     {kpis.map(({ label, value, detail, icon: Icon }, index) => (
                         <article
@@ -547,17 +541,6 @@ export default function AdminDashboard() {
                                     />
                                 </span>
                             </div>
-                            {index === 0 && (
-                                <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-moss-700 px-3 py-2 text-xs font-semibold text-white shadow-sm">
-                                    <CalendarDays className="size-4" />
-                                    {new Intl.DateTimeFormat('en-US', {
-                                        weekday: 'long',
-                                        month: 'long',
-                                        day: 'numeric',
-                                        year: 'numeric',
-                                    }).format(new Date())}
-                                </div>
-                            )}
                             {index === 3 ? (
                                 <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3">
                                     {visiblePartnerCompanies.length > 0 ? (
@@ -636,7 +619,7 @@ export default function AdminDashboard() {
                                         >
                                             <CartesianGrid
                                                 horizontal={false}
-                                                stroke="#e2e8f0"
+                                                stroke="var(--border)"
                                                 strokeDasharray="3 3"
                                             />
                                             <XAxis
@@ -645,7 +628,7 @@ export default function AdminDashboard() {
                                                 axisLine={false}
                                                 tickLine={false}
                                                 tick={{
-                                                    fill: '#94a3b8',
+                                                    fill: 'var(--muted-foreground)',
                                                     fontSize: 11,
                                                 }}
                                             />
@@ -656,12 +639,14 @@ export default function AdminDashboard() {
                                                 axisLine={false}
                                                 tickLine={false}
                                                 tick={{
-                                                    fill: '#475569',
+                                                    fill: 'var(--foreground)',
                                                     fontSize: 11,
                                                 }}
                                             />
                                             <Tooltip
-                                                cursor={{ fill: '#f8fafc' }}
+                                                cursor={{
+                                                    fill: 'var(--muted)',
+                                                }}
                                                 formatter={(value) => [
                                                     Number(
                                                         value,
@@ -669,7 +654,10 @@ export default function AdminDashboard() {
                                                     'Selections',
                                                 ]}
                                                 contentStyle={{
-                                                    border: '1px solid #e2e8f0',
+                                                    backgroundColor:
+                                                        'var(--popover)',
+                                                    color: 'var(--popover-foreground)',
+                                                    border: '1px solid var(--border)',
                                                     borderRadius: 12,
                                                     boxShadow:
                                                         '0 8px 24px rgba(15,23,42,.08)',
@@ -792,7 +780,7 @@ export default function AdminDashboard() {
                                                     innerRadius={70}
                                                     outerRadius={105}
                                                     paddingAngle={2}
-                                                    stroke="#fff"
+                                                    stroke="var(--card)"
                                                     strokeWidth={2}
                                                     activeShape={(props) => (
                                                         <Sector
@@ -801,7 +789,7 @@ export default function AdminDashboard() {
                                                                 props.outerRadius +
                                                                 8
                                                             }
-                                                            stroke="#1f2937"
+                                                            stroke="var(--foreground)"
                                                             strokeWidth={3}
                                                         />
                                                     )}
@@ -834,7 +822,10 @@ export default function AdminDashboard() {
                                                         'Appointments',
                                                     ]}
                                                     contentStyle={{
-                                                        border: '1px solid #e2e8f0',
+                                                        backgroundColor:
+                                                            'var(--popover)',
+                                                        color: 'var(--popover-foreground)',
+                                                        border: '1px solid var(--border)',
                                                         borderRadius: 12,
                                                         boxShadow:
                                                             '0 8px 24px rgba(15,23,42,.08)',

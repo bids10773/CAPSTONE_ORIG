@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
     Plus,
     Edit,
@@ -6,6 +6,7 @@ import {
     ToggleLeft,
     ToggleRight,
     CalendarDays,
+    Trash2,
 } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
@@ -26,6 +27,7 @@ interface Company {
     industry_type: string;
     created_at: string;
     appointments_count: number;
+    can_delete: boolean;
     account: Array<{
         id: number;
         first_name: string;
@@ -200,22 +202,31 @@ export default function AdminCompaniesIndex() {
                                                 <div className="flex items-center justify-end gap-2">
                                                     <Link
                                                         href={`/admin/companies/${company.id}`}
-                                                        className="p-1 text-gray-400 hover:text-moss-600"
+                                                        className="inline-flex size-10 items-center justify-center rounded-xl text-gray-400 hover:bg-moss-50 hover:text-moss-600 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none"
+                                                        aria-label={`View ${company.company_name}`}
                                                         title="View"
                                                     >
-                                                        <Eye className="h-4 w-4" />
+                                                        <Eye
+                                                            className="h-4 w-4"
+                                                            aria-hidden="true"
+                                                        />
                                                     </Link>
                                                     <Link
                                                         href={`/admin/companies/${company.id}/edit`}
-                                                        className="p-1 text-gray-400 hover:text-moss-600"
+                                                        className="inline-flex size-10 items-center justify-center rounded-xl text-gray-400 hover:bg-moss-50 hover:text-moss-600 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none"
+                                                        aria-label={`Edit ${company.company_name}`}
                                                         title="Edit"
                                                     >
-                                                        <Edit className="h-4 w-4" />
+                                                        <Edit
+                                                            className="h-4 w-4"
+                                                            aria-hidden="true"
+                                                        />
                                                     </Link>
                                                     <Link
                                                         href={`/admin/companies/${company.id}/toggle-active`}
                                                         method="patch"
-                                                        className={`p-1 ${company.status === 'active' ? 'text-green-600 hover:text-green-800' : 'text-gray-400 hover:text-gray-600'}`}
+                                                        className={`inline-flex size-10 items-center justify-center rounded-xl focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none ${company.status === 'active' ? 'text-green-600 hover:bg-green-50 hover:text-green-800' : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'}`}
+                                                        aria-label={`${company.status === 'active' ? 'Deactivate' : 'Activate'} ${company.company_name}`}
                                                         title={
                                                             company.status ===
                                                             'active'
@@ -234,11 +245,49 @@ export default function AdminCompaniesIndex() {
                                                     >
                                                         {company.status ===
                                                         'active' ? (
-                                                            <ToggleRight className="h-4 w-4" />
+                                                            <ToggleRight
+                                                                className="h-4 w-4"
+                                                                aria-hidden="true"
+                                                            />
                                                         ) : (
-                                                            <ToggleLeft className="h-4 w-4" />
+                                                            <ToggleLeft
+                                                                className="h-4 w-4"
+                                                                aria-hidden="true"
+                                                            />
                                                         )}
                                                     </Link>
+                                                    <button
+                                                        type="button"
+                                                        disabled={
+                                                            !company.can_delete
+                                                        }
+                                                        className="inline-flex size-10 items-center justify-center rounded-xl text-red-500 hover:bg-red-50 hover:text-red-700 focus-visible:ring-4 focus-visible:ring-red-500/20 focus-visible:outline-none disabled:cursor-not-allowed disabled:text-gray-300"
+                                                        aria-label={`Delete ${company.company_name}`}
+                                                        title={
+                                                            company.can_delete
+                                                                ? 'Delete'
+                                                                : 'Companies with appointment or referral history cannot be deleted'
+                                                        }
+                                                        onClick={() => {
+                                                            if (
+                                                                confirm(
+                                                                    `Permanently delete ${company.company_name} and its login account? This cannot be undone.`,
+                                                                )
+                                                            ) {
+                                                                router.delete(
+                                                                    `/admin/companies/${company.id}`,
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                    },
+                                                                );
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2
+                                                            className="h-4 w-4"
+                                                            aria-hidden="true"
+                                                        />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>

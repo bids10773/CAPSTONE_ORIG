@@ -31,7 +31,6 @@ export default function RadTechDashboard({
         <>
             <Head title="RadTech Dashboard" />
             <ClinicalStaffDashboard
-                role="RadTech"
                 name={auth?.user?.name ?? 'RadTech'}
                 description="Track X-ray requests and prepare the next patient for imaging."
                 icon={ScanLine}

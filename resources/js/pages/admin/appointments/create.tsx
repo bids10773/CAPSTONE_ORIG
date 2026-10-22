@@ -191,10 +191,14 @@ export default function AdminCreateAppointment() {
                                 Patient Information
                             </h2>
                             <div className="relative">
-                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                <label
+                                    htmlFor="patient_search"
+                                    className="mb-1 block text-sm font-medium text-gray-700"
+                                >
                                     Select Patient *
                                 </label>
                                 <input
+                                    id="patient_search"
                                     type="text"
                                     name="patient_search"
                                     value={patientSearch}
@@ -206,6 +210,12 @@ export default function AdminCreateAppointment() {
                                     placeholder="Search for a patient..."
                                     className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                     autoComplete="off"
+                                    aria-invalid={Boolean(errors.patient_id)}
+                                    aria-describedby={
+                                        errors.patient_id
+                                            ? 'patient-search-error'
+                                            : undefined
+                                    }
                                 />
                                 <input
                                     type="hidden"
@@ -241,7 +251,11 @@ export default function AdminCreateAppointment() {
                                         </div>
                                     )}
                                 {errors.patient_id && (
-                                    <p className="mt-1 text-sm text-red-600">
+                                    <p
+                                        id="patient-search-error"
+                                        role="alert"
+                                        className="mt-1 text-sm text-red-600"
+                                    >
                                         {errors.patient_id}
                                     </p>
                                 )}
@@ -303,10 +317,14 @@ export default function AdminCreateAppointment() {
                                     Company Information
                                 </h2>
                                 <div className="relative">
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    <label
+                                        htmlFor="company_search"
+                                        className="mb-1 block text-sm font-medium text-gray-700"
+                                    >
                                         Select Company *
                                     </label>
                                     <input
+                                        id="company_search"
                                         type="text"
                                         name="company_search"
                                         value={companySearch}
@@ -320,6 +338,14 @@ export default function AdminCreateAppointment() {
                                         placeholder="Search for a company..."
                                         className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                         autoComplete="off"
+                                        aria-invalid={Boolean(
+                                            errors.company_id,
+                                        )}
+                                        aria-describedby={
+                                            errors.company_id
+                                                ? 'company-search-error'
+                                                : undefined
+                                        }
                                     />
                                     <input
                                         type="hidden"
@@ -351,7 +377,11 @@ export default function AdminCreateAppointment() {
                                             </div>
                                         )}
                                     {errors.company_id && (
-                                        <p className="mt-1 text-sm text-red-600">
+                                        <p
+                                            id="company-search-error"
+                                            role="alert"
+                                            className="mt-1 text-sm text-red-600"
+                                        >
                                             {errors.company_id}
                                         </p>
                                     )}
@@ -359,10 +389,14 @@ export default function AdminCreateAppointment() {
 
                                 {showReferralCode && (
                                     <div className="mt-4">
-                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                        <label
+                                            htmlFor="referral_code"
+                                            className="mb-1 block text-sm font-medium text-gray-700"
+                                        >
                                             Referral Code
                                         </label>
                                         <input
+                                            id="referral_code"
                                             type="text"
                                             name="referral_code"
                                             value={formData.referral_code}
@@ -387,11 +421,15 @@ export default function AdminCreateAppointment() {
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     {/* Birthdate & Age */}
                                     <div className="md:col-span-2">
-                                        <label className="mb-2 block text-sm font-medium text-gray-700">
+                                        <label
+                                            htmlFor="birthdate"
+                                            className="mb-2 block text-sm font-medium text-gray-700"
+                                        >
                                             Birthdate *
                                         </label>
                                         <div className="flex gap-3">
                                             <input
+                                                id="birthdate"
                                                 type="date"
                                                 name="birthdate"
                                                 max={
@@ -401,6 +439,14 @@ export default function AdminCreateAppointment() {
                                                 }
                                                 className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                                 onChange={handleChange}
+                                                aria-invalid={Boolean(
+                                                    errors.birthdate,
+                                                )}
+                                                aria-describedby={
+                                                    errors.birthdate
+                                                        ? 'birthdate-error'
+                                                        : undefined
+                                                }
                                             />
                                             <div className="flex min-w-[100px] items-center rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-800">
                                                 Age:{' '}
@@ -411,7 +457,11 @@ export default function AdminCreateAppointment() {
                                             </div>
                                         </div>
                                         {errors.birthdate && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p
+                                                id="birthdate-error"
+                                                role="alert"
+                                                className="mt-1 text-sm text-red-600"
+                                            >
                                                 {errors.birthdate}
                                             </p>
                                         )}
@@ -419,13 +469,23 @@ export default function AdminCreateAppointment() {
 
                                     {/* Sex */}
                                     <div>
-                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                        <label
+                                            htmlFor="sex"
+                                            className="mb-1 block text-sm font-medium text-gray-700"
+                                        >
                                             Sex *
                                         </label>
                                         <select
+                                            id="sex"
                                             name="sex"
                                             className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                             onChange={handleChange}
+                                            aria-invalid={Boolean(errors.sex)}
+                                            aria-describedby={
+                                                errors.sex
+                                                    ? 'sex-error'
+                                                    : undefined
+                                            }
                                         >
                                             <option value="">Select sex</option>
                                             <option value="Male">Male</option>
@@ -434,7 +494,11 @@ export default function AdminCreateAppointment() {
                                             </option>
                                         </select>
                                         {errors.sex && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p
+                                                id="sex-error"
+                                                role="alert"
+                                                className="mt-1 text-sm text-red-600"
+                                            >
                                                 {errors.sex}
                                             </p>
                                         )}
@@ -442,13 +506,25 @@ export default function AdminCreateAppointment() {
 
                                     {/* Civil Status */}
                                     <div>
-                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                        <label
+                                            htmlFor="civil_status"
+                                            className="mb-1 block text-sm font-medium text-gray-700"
+                                        >
                                             Civil Status *
                                         </label>
                                         <select
+                                            id="civil_status"
                                             name="civil_status"
                                             className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                             onChange={handleChange}
+                                            aria-invalid={Boolean(
+                                                errors.civil_status,
+                                            )}
+                                            aria-describedby={
+                                                errors.civil_status
+                                                    ? 'civil-status-error'
+                                                    : undefined
+                                            }
                                         >
                                             <option value="">
                                                 Select civil status
@@ -467,7 +543,11 @@ export default function AdminCreateAppointment() {
                                             </option>
                                         </select>
                                         {errors.civil_status && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p
+                                                id="civil-status-error"
+                                                role="alert"
+                                                className="mt-1 text-sm text-red-600"
+                                            >
                                                 {errors.civil_status}
                                             </p>
                                         )}
@@ -475,18 +555,34 @@ export default function AdminCreateAppointment() {
 
                                     {/* Address */}
                                     <div className="md:col-span-2">
-                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                        <label
+                                            htmlFor="address"
+                                            className="mb-1 block text-sm font-medium text-gray-700"
+                                        >
                                             Address *
                                         </label>
                                         <textarea
+                                            id="address"
                                             name="address"
                                             rows={2}
                                             className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                             placeholder="Complete address"
                                             onChange={handleChange}
+                                            aria-invalid={Boolean(
+                                                errors.address,
+                                            )}
+                                            aria-describedby={
+                                                errors.address
+                                                    ? 'address-error'
+                                                    : undefined
+                                            }
                                         />
                                         {errors.address && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p
+                                                id="address-error"
+                                                role="alert"
+                                                className="mt-1 text-sm text-red-600"
+                                            >
                                                 {errors.address}
                                             </p>
                                         )}
@@ -494,37 +590,69 @@ export default function AdminCreateAppointment() {
 
                                     {/* Emergency Contact */}
                                     <div>
-                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                        <label
+                                            htmlFor="emergency_contact_name"
+                                            className="mb-1 block text-sm font-medium text-gray-700"
+                                        >
                                             Emergency Contact Name *
                                         </label>
                                         <input
+                                            id="emergency_contact_name"
                                             type="text"
                                             name="emergency_contact_name"
                                             className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                             placeholder="Emergency contact full name"
                                             onChange={handleChange}
+                                            aria-invalid={Boolean(
+                                                errors.emergency_contact_name,
+                                            )}
+                                            aria-describedby={
+                                                errors.emergency_contact_name
+                                                    ? 'emergency-contact-name-error'
+                                                    : undefined
+                                            }
                                         />
                                         {errors.emergency_contact_name && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p
+                                                id="emergency-contact-name-error"
+                                                role="alert"
+                                                className="mt-1 text-sm text-red-600"
+                                            >
                                                 {errors.emergency_contact_name}
                                             </p>
                                         )}
                                     </div>
 
                                     <div>
-                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                        <label
+                                            htmlFor="emergency_contact_no"
+                                            className="mb-1 block text-sm font-medium text-gray-700"
+                                        >
                                             Emergency Contact Number *
                                         </label>
                                         <input
+                                            id="emergency_contact_no"
                                             type="tel"
                                             name="emergency_contact_no"
                                             maxLength={11}
                                             className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
                                             placeholder="09XXXXXXXXX"
                                             onChange={handleChange}
+                                            aria-invalid={Boolean(
+                                                errors.emergency_contact_no,
+                                            )}
+                                            aria-describedby={
+                                                errors.emergency_contact_no
+                                                    ? 'emergency-contact-number-error'
+                                                    : undefined
+                                            }
                                         />
                                         {errors.emergency_contact_no && (
-                                            <p className="mt-1 text-sm text-red-600">
+                                            <p
+                                                id="emergency-contact-number-error"
+                                                role="alert"
+                                                className="mt-1 text-sm text-red-600"
+                                            >
                                                 {errors.emergency_contact_no}
                                             </p>
                                         )}
@@ -539,14 +667,24 @@ export default function AdminCreateAppointment() {
                                 Service Type
                             </h2>
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                <label
+                                    htmlFor="service_type"
+                                    className="mb-1 block text-sm font-medium text-gray-700"
+                                >
                                     Select Service *
                                 </label>
                                 <select
+                                    id="service_type"
                                     name="service_type"
                                     value={formData.service_type}
                                     onChange={handleChange}
                                     className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
+                                    aria-invalid={Boolean(errors.service_type)}
+                                    aria-describedby={
+                                        errors.service_type
+                                            ? 'service-type-error'
+                                            : undefined
+                                    }
                                 >
                                     <option value="">Select a service</option>
                                     {(
@@ -561,7 +699,11 @@ export default function AdminCreateAppointment() {
                                     ))}
                                 </select>
                                 {errors.service_type && (
-                                    <p className="mt-1 text-sm text-red-600">
+                                    <p
+                                        id="service-type-error"
+                                        role="alert"
+                                        className="mt-1 text-sm text-red-600"
+                                    >
                                         {errors.service_type}
                                     </p>
                                 )}
@@ -574,19 +716,35 @@ export default function AdminCreateAppointment() {
                                 Schedule
                             </h2>
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                <label
+                                    htmlFor="appointment_date"
+                                    className="mb-1 block text-sm font-medium text-gray-700"
+                                >
                                     Preferred Date & Time *
                                 </label>
                                 <input
+                                    id="appointment_date"
                                     type="datetime-local"
                                     min={new Date().toISOString().slice(0, 16)}
                                     name="appointment_date"
                                     value={formData.appointment_date}
                                     onChange={handleChange}
                                     className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-moss-500 focus:ring-2 focus:ring-moss-500"
+                                    aria-invalid={Boolean(
+                                        errors.appointment_date,
+                                    )}
+                                    aria-describedby={
+                                        errors.appointment_date
+                                            ? 'appointment-date-error'
+                                            : undefined
+                                    }
                                 />
                                 {errors.appointment_date && (
-                                    <p className="mt-1 text-sm text-red-600">
+                                    <p
+                                        id="appointment-date-error"
+                                        role="alert"
+                                        className="mt-1 text-sm text-red-600"
+                                    >
                                         {errors.appointment_date}
                                     </p>
                                 )}
@@ -603,10 +761,14 @@ export default function AdminCreateAppointment() {
                                 Additional Information
                             </h2>
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                <label
+                                    htmlFor="notes"
+                                    className="mb-1 block text-sm font-medium text-gray-700"
+                                >
                                     Notes (Optional)
                                 </label>
                                 <textarea
+                                    id="notes"
                                     name="notes"
                                     value={formData.notes}
                                     onChange={handleChange}
@@ -619,7 +781,10 @@ export default function AdminCreateAppointment() {
 
                         {/* Error Message */}
                         {errors.general && (
-                            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+                            <div
+                                role="alert"
+                                className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700"
+                            >
                                 {errors.general}
                             </div>
                         )}

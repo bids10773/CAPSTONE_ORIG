@@ -3,13 +3,14 @@
 use App\Models\Appointment;
 use App\Models\User;
 
-test('appointment reference codes use a prefix based on visit type', function () {
+test('appointment reference codes consistently identify the booking channel', function () {
     $patient = User::factory()->create(['role' => 'patient']);
 
     foreach ([
         'individual' => 'APT',
         'walk_in' => 'WLK',
         'company_referral' => 'REF',
+        'company_bulk' => 'APT',
     ] as $type => $prefix) {
         $appointment = Appointment::create([
             'user_id' => $patient->id,

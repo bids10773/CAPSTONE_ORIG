@@ -37,7 +37,7 @@ export default function ChangeTemporaryPassword() {
     return (
         <>
             <Head title="Change temporary password" />
-            <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
+            <main className="auth-shell flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10 text-slate-950">
                 <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-8">
                     <div className="flex size-12 items-center justify-center rounded-xl bg-moss-50 text-moss-600">
                         <ShieldCheck className="size-6" />

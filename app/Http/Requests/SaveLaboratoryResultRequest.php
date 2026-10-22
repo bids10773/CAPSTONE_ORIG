@@ -12,13 +12,16 @@ class SaveLaboratoryResultRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $results = $this->input('results', []);
-        array_walk_recursive($results, function (&$value): void {
+        $interpretations = $this->input('interpretations', []);
+        $trim = function (&$value): void {
             if (is_string($value)) {
                 $value = trim($value);
             }
-        });
+        };
+        array_walk_recursive($results, $trim);
+        array_walk_recursive($interpretations, $trim);
 
-        $this->merge(['results' => $results]);
+        $this->merge(['results' => $results, 'interpretations' => $interpretations]);
     }
 
     public function authorize(): bool
@@ -32,6 +35,16 @@ class SaveLaboratoryResultRequest extends FormRequest
         $sections = app(LaboratoryFormDefinition::class)->sectionsFor($this->route('appointment'));
 
         foreach ($sections as $sectionKey => $section) {
+            if ($section['requires_interpretation'] ?? false) {
+                $presence = $this->boolean('finalize') ? 'required' : 'nullable';
+                $rules["interpretations.{$sectionKey}.interpretation"] = [$presence, Rule::in(['normal', 'with_findings'])];
+                $rules["interpretations.{$sectionKey}.findings"] = [
+                    Rule::requiredIf(fn (): bool => $this->boolean('finalize')
+                        && $this->input("interpretations.{$sectionKey}.interpretation") === 'with_findings'),
+                    'nullable', 'string', 'max:3000',
+                ];
+            }
+
             foreach ($section['fields'] as $field) {
                 $key = "results.{$sectionKey}.{$field['key']}";
                 $presence = $this->boolean('finalize') ? 'required' : 'nullable';
@@ -59,6 +72,9 @@ class SaveLaboratoryResultRequest extends FormRequest
         $messages = [
             'results.*.*.required' => 'Complete every requested result before finalizing the laboratory report.',
             'results.*.*.in' => 'Select one of the available laboratory result options.',
+            'interpretations.*.interpretation.required' => 'Select Normal or With findings before finalizing this result.',
+            'interpretations.*.interpretation.in' => 'Select a valid clinical interpretation.',
+            'interpretations.*.findings.required' => 'Describe the findings before finalizing this result.',
         ];
 
         foreach (app(LaboratoryFormDefinition::class)->sectionsFor($this->route('appointment')) as $sectionKey => $section) {

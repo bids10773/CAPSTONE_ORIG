@@ -97,7 +97,7 @@ test('admin security page shows booking and security alert counts', function () 
     $this->actingAs($admin)->get(route('admin.security'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->component('admin/reports')
+            ->component('admin/security')
             ->where('securityAlerts.possibleDuplicateAccounts', 1)
             ->where('securityAlerts.repeatedBookingAttempts', 1)
             ->where('securityAlerts.highCancellationActivity', 0)
@@ -135,4 +135,40 @@ test('admin security logs show actors and targets with pagination', function () 
         ->assertInertia(fn (Assert $page) => $page
             ->has('securityLogs.data', 1)
             ->where('securityLogs.current_page', 2));
+});
+
+test('admin can download all security logs as csv', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $patient = User::factory()->create(['role' => 'patient']);
+
+    SecurityAudit::create([
+        'actor_id' => $admin->id,
+        'target_user_id' => $patient->id,
+        'action' => 'appointment_checked_in',
+        'status' => 'success',
+        'metadata' => ['private' => 'must not be exported'],
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.security.logs.download'));
+
+    $response->assertOk()
+        ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+    $content = $response->streamedContent();
+
+    expect($content)
+        ->toContain('Time,Event,Actor,Target,Outcome')
+        ->toContain('appointment_checked_in')
+        ->toContain($admin->name)
+        ->toContain($patient->name)
+        ->toContain('success')
+        ->not->toContain('must not be exported');
+});
+
+test('non-admin users cannot download security logs', function () {
+    $patient = User::factory()->create(['role' => 'patient']);
+
+    $this->actingAs($patient)
+        ->get(route('admin.security.logs.download'))
+        ->assertForbidden();
 });

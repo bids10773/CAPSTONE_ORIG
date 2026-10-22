@@ -5,12 +5,13 @@ import {
     Check,
     ClipboardCheck,
     History,
+    HeartPulse,
     Printer,
     Search,
     UserPlus,
     Users,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import BirthdateInput from '@/components/birthdate-input';
 import { Pagination } from '@/components/pagination';
@@ -19,6 +20,7 @@ import type { PaginatedResponse } from '@/types/pagination';
 
 type Patient = {
     id: number;
+    patient_reference_code?: string;
     first_name: string;
     middle_name?: string;
     last_name: string;
@@ -33,11 +35,16 @@ const EXAMINATION_PURPOSE_ICONS = {
 };
 type WalkIn = {
     id: number;
+    reference_code: string;
     queue_number: string;
     status:
         | 'pending'
         | 'accepted'
         | 'arrived'
+        | 'for_diagnostics'
+        | 'for_xray'
+        | 'awaiting_xray_result'
+        | 'for_final_evaluation'
         | 'completed'
         | 'rejected'
         | 'cancelled';
@@ -61,12 +68,22 @@ type WalkIn = {
     notes?: string;
     user: Patient;
     doctor?: { id: number; first_name: string; last_name: string } | null;
+    intake_status?:
+        | 'waiting_check_in'
+        | 'for_vital_signs'
+        | 'ready_for_consultation'
+        | 'recheck_requested';
+    vital_signs_url?: string;
 };
 
 const statusLabels = {
     pending: 'Waiting',
     accepted: 'Scheduled',
     arrived: 'Processing',
+    for_diagnostics: 'Diagnostics',
+    for_xray: 'For X-ray',
+    awaiting_xray_result: 'Awaiting X-ray',
+    for_final_evaluation: 'Final evaluation',
     completed: 'Completed',
     rejected: 'Rejected',
     cancelled: 'Cancelled',
@@ -75,6 +92,10 @@ const statusStyles = {
     pending: 'bg-amber-50 text-amber-700',
     accepted: 'bg-sky-50 text-sky-700',
     arrived: 'bg-violet-50 text-violet-700',
+    for_diagnostics: 'bg-violet-50 text-violet-700',
+    for_xray: 'bg-sky-50 text-sky-700',
+    awaiting_xray_result: 'bg-amber-50 text-amber-700',
+    for_final_evaluation: 'bg-orange-50 text-orange-700',
     completed: 'bg-emerald-50 text-emerald-700',
     rejected: 'bg-rose-50 text-rose-700',
     cancelled: 'bg-rose-50 text-rose-700',
@@ -99,6 +120,68 @@ function examinationPurposeLabel(value?: string | null): string {
     if (!value) return 'Not specified';
 
     return examinationPurposeLabels[value] ?? value.replaceAll('_', ' ');
+}
+
+function formatTime(value?: string | null): string {
+    if (!value) return 'Time pending';
+
+    const match = value.match(/(\d{2}):(\d{2})/);
+    if (!match) return value;
+
+    return new Intl.DateTimeFormat('en-PH', {
+        hour: 'numeric',
+        minute: '2-digit',
+    }).format(new Date(2000, 0, 1, Number(match[1]), Number(match[2])));
+}
+
+function scheduledTime(walkIn: WalkIn): number | null {
+    if (!walkIn.start_time) return null;
+
+    const date = walkIn.appointment_date.slice(0, 10).split('-').map(Number);
+    const timeMatch = walkIn.start_time.match(/(\d{2}):(\d{2})/);
+    if (date.length !== 3 || date.some(Number.isNaN) || !timeMatch) return null;
+
+    return new Date(
+        date[0],
+        date[1] - 1,
+        date[2],
+        Number(timeMatch[1]),
+        Number(timeMatch[2]),
+    ).getTime();
+}
+
+function isReady(walkIn: WalkIn, now: number): boolean {
+    const scheduled = scheduledTime(walkIn);
+
+    return (
+        walkIn.type === 'walk_in' &&
+        walkIn.status === 'accepted' &&
+        scheduled !== null &&
+        scheduled <= now
+    );
+}
+
+function queueStageLabel(walkIn: WalkIn, now: number): string {
+    if (isReady(walkIn, now)) return 'Ready';
+    if (walkIn.intake_status === 'for_vital_signs') return 'For Vital Signs';
+    if (walkIn.intake_status === 'recheck_requested')
+        return 'Vital Signs Recheck';
+    if (walkIn.intake_status === 'ready_for_consultation')
+        return 'Ready for Consultation';
+
+    return statusLabels[walkIn.status];
+}
+
+function queueDetailLabel(walkIn: WalkIn, now: number): string {
+    if (walkIn.type !== 'walk_in') return arrivalLabels[walkIn.arrival_status];
+    if (walkIn.status === 'pending') return 'Walk-in — waiting for a slot';
+    if (isReady(walkIn, now)) return 'Ready for procedures';
+    if (walkIn.status === 'accepted') {
+        return `Scheduled for ${formatTime(walkIn.start_time)}`;
+    }
+    if (walkIn.status === 'arrived') return queueStageLabel(walkIn, now);
+
+    return statusLabels[walkIn.status];
 }
 
 export default function WalkIns({
@@ -133,6 +216,15 @@ export default function WalkIns({
     );
     const [assignmentTime, setAssignmentTime] = useState('');
     const [assignmentError, setAssignmentError] = useState('');
+    const [currentTime, setCurrentTime] = useState(() => Date.now());
+    useEffect(() => {
+        const timer = window.setInterval(
+            () => setCurrentTime(Date.now()),
+            15_000,
+        );
+
+        return () => window.clearInterval(timer);
+    }, []);
     const form = useForm({
         patient_type: 'existing',
         user_id: null as number | null,
@@ -271,8 +363,9 @@ export default function WalkIns({
                                 : 'Today’s patients'}
                         </h1>
                         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                            Track today’s patients and assign care from one
-                            place.
+                            Reserved appointment slots remain protected. Waiting
+                            walk-ins are handled FCFS using the next available
+                            slot.
                         </p>
                     </div>
                     <button
@@ -700,7 +793,7 @@ export default function WalkIns({
                                         </option>
                                         {selectedDoctor?.slots.map((slot) => (
                                             <option key={slot} value={slot}>
-                                                {slot}
+                                                {formatTime(slot)}
                                             </option>
                                         ))}
                                     </select>
@@ -844,19 +937,24 @@ export default function WalkIns({
                                             {walkIn.user.first_name}{' '}
                                             {walkIn.user.last_name}
                                         </p>
+                                        <p className="mt-0.5 font-mono text-xs font-bold text-moss-700">
+                                            {walkIn.user
+                                                .patient_reference_code ??
+                                                `PAT${String(walkIn.user.id).padStart(4, '0')}`}{' '}
+                                            · {walkIn.reference_code}
+                                        </p>
                                         {walkIn.doctor && walkIn.start_time && (
                                             <p className="mt-1 text-xs font-semibold text-slate-700">
                                                 Dr. {walkIn.doctor.first_name}{' '}
                                                 {walkIn.doctor.last_name} ·{' '}
-                                                {walkIn.start_time.slice(0, 5)}
+                                                {formatTime(walkIn.start_time)}
                                             </p>
                                         )}
                                         <p className="mt-1 text-xs font-semibold text-moss-700">
-                                            {
-                                                arrivalLabels[
-                                                    walkIn.arrival_status
-                                                ]
-                                            }
+                                            {queueDetailLabel(
+                                                walkIn,
+                                                currentTime,
+                                            )}
                                         </p>
                                     </div>
                                     <div className="col-span-2 flex flex-wrap content-center gap-1 border-t border-slate-100 pt-3 sm:col-span-3 xl:col-span-1 xl:col-start-3 xl:row-start-1 xl:border-0 xl:pt-0">
@@ -949,7 +1047,9 @@ export default function WalkIns({
                                                                     key={slot}
                                                                     value={slot}
                                                                 >
-                                                                    {slot}
+                                                                    {formatTime(
+                                                                        slot,
+                                                                    )}
                                                                 </option>
                                                             ),
                                                         )}
@@ -991,6 +1091,32 @@ export default function WalkIns({
                                                         </button>
                                                     </div>
                                                 </div>
+                                            )}
+                                        {walkIn.arrived_at &&
+                                            ![
+                                                'completed',
+                                                'cancelled',
+                                                'rejected',
+                                            ].includes(walkIn.status) &&
+                                            walkIn.vital_signs_url && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        router.visit(
+                                                            walkIn.vital_signs_url!,
+                                                        )
+                                                    }
+                                                    className="inline-flex items-center gap-1 rounded-xl border border-moss-300 px-3 py-2 text-xs font-bold text-moss-800 hover:bg-moss-50"
+                                                >
+                                                    <HeartPulse className="size-3.5" />
+                                                    {walkIn.intake_status ===
+                                                    'for_vital_signs'
+                                                        ? 'Record Vital Signs'
+                                                        : walkIn.intake_status ===
+                                                            'recheck_requested'
+                                                          ? 'Recheck Vital Signs'
+                                                          : 'Add New Measurement'}
+                                                </button>
                                             )}
                                     </div>
                                     <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:justify-end sm:self-start xl:col-start-4">
@@ -1036,10 +1162,37 @@ export default function WalkIns({
                                                     Mark Arrived
                                                 </button>
                                             )}
+                                        {walkIn.type === 'walk_in' &&
+                                            walkIn.status === 'accepted' && (
+                                                <button
+                                                    type="button"
+                                                    disabled={
+                                                        !isReady(
+                                                            walkIn,
+                                                            currentTime,
+                                                        )
+                                                    }
+                                                    onClick={() =>
+                                                        markArrived(walkIn)
+                                                    }
+                                                    className="inline-flex items-center gap-1 rounded-xl bg-moss-700 px-3 py-2 text-xs font-bold text-white hover:bg-moss-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                                                >
+                                                    <Check className="size-3.5" />
+                                                    {isReady(
+                                                        walkIn,
+                                                        currentTime,
+                                                    )
+                                                        ? 'Start processing'
+                                                        : `Starts ${formatTime(walkIn.start_time)}`}
+                                                </button>
+                                            )}
                                         <span
                                             className={`status-text-only text-xs font-bold ${statusStyles[walkIn.status]}`}
                                         >
-                                            {statusLabels[walkIn.status]}
+                                            {queueStageLabel(
+                                                walkIn,
+                                                currentTime,
+                                            )}
                                         </span>
                                     </div>
                                 </article>
@@ -1069,6 +1222,12 @@ export default function WalkIns({
                                     <span className="font-semibold text-slate-900">
                                         {appointment.user.first_name}{' '}
                                         {appointment.user.last_name}
+                                        <span className="mt-0.5 block font-mono text-xs font-bold text-moss-700">
+                                            {appointment.user
+                                                .patient_reference_code ??
+                                                `PAT${String(appointment.user.id).padStart(4, '0')}`}{' '}
+                                            · {appointment.reference_code}
+                                        </span>
                                     </span>
                                     <span className="text-sm text-slate-500">
                                         {appointment.cancellation_reason ??

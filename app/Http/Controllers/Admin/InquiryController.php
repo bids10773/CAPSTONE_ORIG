@@ -94,4 +94,12 @@ class InquiryController extends Controller
 
         return to_route('admin.companies.create', ['inquiry' => $inquiry->id]);
     }
+
+    public function destroy(Inquiry $inquiry): RedirectResponse
+    {
+        Gate::authorize('delete', $inquiry);
+        $inquiry->delete();
+
+        return redirect()->route('admin.inquiries.index')->with('success', 'Inquiry deleted successfully.');
+    }
 }

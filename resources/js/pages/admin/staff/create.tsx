@@ -84,7 +84,7 @@ export default function CreateStaff() {
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-7xl p-6"
+                className="mx-auto w-full max-w-[1500px] p-4 sm:p-6 lg:p-8"
             >
                 {/* Header Section */}
                 <div className="mb-8 flex items-center justify-between">

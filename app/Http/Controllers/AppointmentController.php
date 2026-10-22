@@ -9,15 +9,19 @@ use App\Models\Company;
 use App\Models\CompanyReferral;
 use App\Models\MedicalHistory;
 use App\Models\User;
+use App\Notifications\AppointmentCancelled;
 use App\Notifications\OnsiteStaffAssigned;
 use App\Rules\Weekday;
 use App\Services\AppointmentApprovalService;
+use App\Services\AppointmentSchedulingService;
 use App\Services\IndividualAppointmentBookingService;
 use App\Services\LaboratoryFormDefinition;
+use App\Services\MedicalDocumentService;
 use App\Services\OnsiteEventWorkflowService;
 use App\Services\OnsiteStaffAvailabilityService;
 use App\Support\ClinicHours;
 use App\Support\SearchTerm;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -89,7 +93,9 @@ class AppointmentController extends Controller
             $query->where('type', $type);
         }
 
-        $appointments = $query->orderBy('appointment_date', 'desc')
+        $appointments = $query->orderByDesc('appointment_date')
+            ->orderByDesc('start_time')
+            ->orderByDesc('id')
             ->paginate($this->perPage($request))
             ->withQueryString();
 
@@ -154,6 +160,18 @@ class AppointmentController extends Controller
             ]);
 
         $user = $request->user()->load('patientProfile'); // ✅ LOAD RELATION
+        $companyAddress = $user->role === 'company'
+            ? $user->company()->where('status', 'active')->value('address')
+            : null;
+        $companyAnnualExamMinimumDate = null;
+        if ($user->role === 'company') {
+            $companyAnnualExamMinimumDate = $user->company()
+                ->where('status', 'active')
+                ->exists()
+                    ? ClinicHours::partneredCompanyMinimumAppointmentDate()
+                    : null;
+        }
+
         $upcomingAppointments = collect();
         if ($user->role === 'patient') {
             $upcomingAppointments = Appointment::query()
@@ -167,9 +185,10 @@ class AppointmentController extends Controller
         return Inertia::render('appointments/create', [
             'clinicHours' => ClinicHours::publicSettings(),
             'companies' => $companies,
-            'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'companyAddress' => $companyAddress,
+            'serviceTypes' => Appointment::getBookableServiceTypeOptions(),
             'pePackage' => [
-                'preEmploymentServices' => config('medical.pe_package.pre_employment_services', []),
+                'preEmploymentServices' => config('medical.pe_package.basic_five_services', []),
                 'optionalBulkServices' => config('medical.pe_package.optional_bulk_services', []),
             ],
             'appointmentTypes' => collect(Appointment::getTypeOptions())
@@ -182,6 +201,7 @@ class AppointmentController extends Controller
                 'maximumUpcoming' => (int) config('medical.booking_security.max_active_future_appointments', 1),
                 'upcomingAppointments' => $upcomingAppointments,
                 'bookedDates' => $upcomingAppointments->pluck('appointment_date')->map->toDateString()->unique()->values(),
+                'companyAnnualExamMinimumDate' => $companyAnnualExamMinimumDate,
             ],
             'referral' => $referral ? [
                 'id' => $referral->id,
@@ -202,6 +222,7 @@ class AppointmentController extends Controller
     {
         $user = $request->user();
         $referral = null;
+        $company = null;
 
         if ($request->filled('company_referral_id')) {
             abort_unless($user->role === 'patient', 403);
@@ -239,8 +260,17 @@ class AppointmentController extends Controller
                 'examination_purpose' => 'annual_pe',
                 'event_contact_name' => $user->name,
                 'event_contact_number' => $user->contact,
+                'service_types' => collect(config('medical.pe_package.basic_five_services', []))
+                    ->merge($request->input('service_types', []))
+                    ->unique()
+                    ->values()
+                    ->all(),
             ]);
         }
+
+        $minimumAppointmentDate = $company
+            ? ClinicHours::partneredCompanyMinimumAppointmentDate()
+            : ClinicHours::today();
 
         $rules = [
             'doctor_id' => ['nullable', Rule::requiredIf(fn () => in_array($request->type, ['individual', 'company_referral'], true)), 'exists:users,id'],
@@ -248,13 +278,13 @@ class AppointmentController extends Controller
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
             'company_id' => ['nullable', 'exists:companies,id'],
             'company_name' => ['nullable', 'string', 'max:255'],
-            'appointment_date' => ['required', 'date', 'after_or_equal:'.ClinicHours::today(), new Weekday],
+            'appointment_date' => ['required', 'date', 'after_or_equal:'.$minimumAppointmentDate, new Weekday],
             'examination_purpose' => ['nullable', 'string', Rule::in(['pre_employment', 'annual_pe', 'medical_clearance'])],
             'service_types' => ['required', 'array'],
             'service_types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(Appointment::getServiceTypeOptions()))],
             'notes' => ['nullable', 'string', 'max:500'],
-            'service_location' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), Rule::in(['onsite', 'clinic', 'hybrid'])],
-            'event_address' => [Rule::requiredIf(fn () => $request->type === 'company_bulk' && in_array($request->service_location, ['onsite', 'hybrid'], true)), 'nullable', 'string', 'max:500'],
+            'service_location' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), Rule::in(['onsite', 'clinic'])],
+            'event_address' => ['exclude_unless:service_location,onsite', Rule::requiredIf(fn () => $request->type === 'company_bulk'), 'string', 'max:500'],
             'event_contact_name' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), 'nullable', 'string', 'max:255'],
             'event_contact_number' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), 'nullable', 'string', 'max:30'],
             'expected_employee_count' => [Rule::requiredIf(fn () => $request->type === 'company_bulk'), 'nullable', 'integer', 'min:1', 'max:5000'],
@@ -271,7 +301,13 @@ class AppointmentController extends Controller
             $rules['appointment_date'][] = 'before_or_equal:'.$referral->valid_until->toDateString();
         }
 
-        $validator = Validator::make($request->all(), $rules);
+        $messages = [];
+        if ($company) {
+            $messages['appointment_date.after_or_equal'] =
+                'Partnered companies must schedule their annual medical examinations at least one month in advance.';
+        }
+
+        $validator = Validator::make($request->all(), $rules, $messages);
 
         $validator->after(function ($validator) use ($request): void {
             if ($request->filled('appointment_date') && ! ClinicHours::isBookableDate($request->input('appointment_date'))) {
@@ -284,15 +320,11 @@ class AppointmentController extends Controller
                 );
             }
 
-            if ($request->type !== 'company_bulk') {
-                return;
-            }
-
             $unsupported = collect($request->input('service_types', []))
-                ->intersect(['ECG', 'Audiometry', 'Neuro Psychiatric Test']);
+                ->intersect(Appointment::getUnavailableServiceTypes());
             if ($unsupported->isNotEmpty()) {
                 $validator->errors()->add('service_types',
-                    'These services cannot be selected for bulk events until their clinical result forms are available: '.$unsupported->join(', ').'.');
+                    'These services are unavailable until their clinical result forms are integrated: '.$unsupported->join(', ').'.');
             }
         });
 
@@ -321,7 +353,7 @@ class AppointmentController extends Controller
         }
 
         if (($data['examination_purpose'] ?? null) === 'pre_employment') {
-            $data['service_types'] = collect(config('medical.pe_package.pre_employment_services', []))
+            $data['service_types'] = collect(config('medical.pe_package.basic_five_services', []))
                 ->merge($data['service_types'])
                 ->unique()
                 ->values()
@@ -461,8 +493,12 @@ class AppointmentController extends Controller
     /**
      * Display the specified appointment.
      */
-    public function show(Request $request, Appointment $appointment, LaboratoryFormDefinition $definitions): Response
-    {
+    public function show(
+        Request $request,
+        Appointment $appointment,
+        LaboratoryFormDefinition $definitions,
+        MedicalDocumentService $documents,
+    ): Response {
         Gate::authorize('view', $appointment);
 
         $appointment->load([
@@ -476,14 +512,37 @@ class AppointmentController extends Controller
         ]);
         $appointment->user?->patientProfile?->append('age');
 
+        $laboratorySections = $definitions->sectionsFor($appointment);
+        $documents->synchronizeAppointment($appointment);
+        $completePeDocumentStatus = $appointment->medicalDocuments()
+            ->where('document_type', 'physical_examination')
+            ->value('status');
+        $completePeReadyForPickup = $appointment->isPePackage()
+            && in_array(
+                $completePeDocumentStatus,
+                ['ready_for_pickup', 'released'],
+                true,
+            );
+
+        $appointmentPayload = $appointment;
+        if ($request->user()->role === 'patient') {
+            $appointmentPayload = $appointment->toArray();
+            $appointmentPayload['medical_history'] = null;
+            $appointmentPayload['physical_exam'] = $appointment->physicalExam ? ['is_completed' => (bool) $appointment->physicalExam->is_completed] : null;
+            $appointmentPayload['lab_result'] = $appointment->labResult ? ['status' => $appointment->labResult->status, 'finalized_at' => $appointment->labResult->finalized_at] : null;
+            $appointmentPayload['xray_report'] = $appointment->xrayReport ? ['status' => $appointment->xrayReport->status, 'performed_at' => $appointment->xrayReport->performed_at, 'verified_at' => $appointment->xrayReport->verified_at] : null;
+            $appointmentPayload['medical_examination'] = $appointment->medicalExamination ? ['status' => $appointment->medicalExamination->status, 'finalized_at' => $appointment->medicalExamination->finalized_at, 'released_at' => $appointment->medicalExamination->released_at] : null;
+        }
+
         return Inertia::render('appointments/show', [
-            'appointment' => $appointment,
+            'appointment' => $appointmentPayload,
             'appointmentsIndexUrl' => match ($request->user()->role) {
                 'admin' => '/admin/appointments',
                 'doctor' => '/doctor/appointments',
                 default => '/appointments',
             },
-            'laboratorySections' => collect($definitions->sectionsFor($appointment))
+            'completePeReadyForPickup' => $completePeReadyForPickup,
+            'laboratorySections' => collect($laboratorySections)
                 ->map(fn (array $section): array => [
                     'label' => $section['label'],
                     'column' => $section['column'],
@@ -496,6 +555,7 @@ class AppointmentController extends Controller
      */
     public function updateStatus(Request $request, Appointment $appointment)
     {
+        $wasCancelled = $appointment->status === 'cancelled';
         $validator = Validator::make($request->all(), [
             'status' => ['required', 'string', 'in:pending,accepted,arrived,for_diagnostics,for_xray,awaiting_xray_result,for_final_evaluation,completed,cancelled'],
             'event_duration_days' => [
@@ -542,6 +602,17 @@ class AppointmentController extends Controller
             $appointment->update([
                 'status' => $request->status,
             ]);
+
+            if ($request->status === 'cancelled' && ! $wasCancelled) {
+                try {
+                    $appointment->user?->notify(new AppointmentCancelled($appointment->fresh()));
+                } catch (\Throwable $exception) {
+                    Log::warning('Patient appointment cancellation notification failed.', [
+                        'appointment_id' => $appointment->id,
+                        'exception' => $exception->getMessage(),
+                    ]);
+                }
+            }
         }
 
         return back()->with('success', match ($request->status) {
@@ -827,6 +898,9 @@ class AppointmentController extends Controller
     public function adminIndex(AdminAppointmentIndexRequest $request): Response
     {
         $bulkOnly = $request->routeIs('admin.bulk-appointments.index');
+        if ($bulkOnly) {
+            app(AppointmentSchedulingService::class)->expireLateAppointments();
+        }
         $filters = $request->validated();
         $search = SearchTerm::normalize((string) ($filters['search'] ?? ''));
         $likeSearch = SearchTerm::forLike($search);
@@ -865,17 +939,23 @@ class AppointmentController extends Controller
         );
 
         if ($search) {
+            $appointmentReference = Appointment::parseReferenceCode($search);
+            preg_match('/^PAT0*(\d+)$/i', $search, $patientMatch);
+
             if ($bulkOnly) {
                 $statusSearch = SearchTerm::forLike(str_replace(' ', '_', strtolower($search)));
-                $query->where(function ($query) use ($likeSearch, $statusSearch) {
+                $query->where(function ($query) use ($appointmentReference, $likeSearch, $statusSearch) {
                     $query->whereHas('company', fn ($company) => $company->where('company_name', 'like', "%{$likeSearch}%"))
                         ->orWhere('company_name', 'like', "%{$likeSearch}%")
-                        ->orWhere('status', 'like', "%{$statusSearch}%");
+                        ->orWhere('status', 'like', "%{$statusSearch}%")
+                        ->orWhere(fn ($reference) => $reference
+                            ->where('appointments.id', (int) ($appointmentReference['id'] ?? 0))
+                            ->when($appointmentReference, fn ($typed) => $typed->whereIn('type', $appointmentReference['types'])));
                 });
             } else {
                 $nameTokens = array_map(SearchTerm::forLike(...), preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [$search]);
-                $query->where(function ($query) use ($search, $likeSearch, $nameTokens) {
-                    $query->whereHas('user', function ($user) use ($likeSearch, $nameTokens) {
+                $query->where(function ($query) use ($search, $appointmentReference, $patientMatch, $likeSearch, $nameTokens) {
+                    $query->whereHas('user', function ($user) use ($patientMatch, $likeSearch, $nameTokens) {
                         $user->where(function ($identity) use ($likeSearch, $nameTokens) {
                             $identity->where('email', 'like', "%{$likeSearch}%")
                                 ->orWhere('contact', 'like', "%{$likeSearch}%")
@@ -889,6 +969,9 @@ class AppointmentController extends Controller
                                     }
                                 });
                         });
+                        if (isset($patientMatch[1])) {
+                            $user->orWhereKey((int) $patientMatch[1]);
+                        }
                     })
                         ->orWhereHas('doctor', function ($doctor) use ($nameTokens) {
                             foreach ($nameTokens as $token) {
@@ -902,7 +985,14 @@ class AppointmentController extends Controller
                         ->orWhereHas('company', fn ($company) => $company->where('company_name', 'like', "%{$likeSearch}%"))
                         ->orWhere('company_name', 'like', "%{$likeSearch}%")
                         ->orWhere('referral_code', 'like', "%{$likeSearch}%")
-                        ->when(ctype_digit($search), fn ($appointment) => $appointment->orWhere('appointments.id', (int) $search));
+                        ->when(
+                            ctype_digit($search) || $appointmentReference,
+                            fn ($appointment) => $appointment->orWhere(fn ($reference) => $reference
+                                ->where('appointments.id', ctype_digit($search)
+                                    ? (int) $search
+                                    : (int) $appointmentReference['id'])
+                                ->when($appointmentReference, fn ($typed) => $typed->whereIn('type', $appointmentReference['types']))),
+                        );
                 });
             }
         }
@@ -1038,25 +1128,34 @@ class AppointmentController extends Controller
         ]);
 
         if ($search !== '') {
+            $appointmentReference = Appointment::parseReferenceCode($search);
+            preg_match('/^PAT0*(\d+)$/i', $search, $patientMatch);
             $nameTokens = array_map(SearchTerm::forLike(...), preg_split('/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [$search]);
-            $query->whereHas('user', function ($patient) use ($likeSearch, $nameTokens): void {
-                $patient->where(function ($identity) use ($likeSearch, $nameTokens): void {
-                    $identity->where('email', 'like', "%{$likeSearch}%")
-                        ->orWhere('contact', 'like', "%{$likeSearch}%")
-                        ->orWhere(function ($name) use ($nameTokens): void {
-                            foreach ($nameTokens as $token) {
-                                $name->where(fn ($part) => $part
-                                    ->where('first_name', 'like', "%{$token}%")
-                                    ->orWhere('middle_name', 'like', "%{$token}%")
-                                    ->orWhere('last_name', 'like', "%{$token}%"));
-                            }
+            $query->where(function (Builder $match) use ($appointmentReference, $patientMatch, $likeSearch, $nameTokens): void {
+                $match->where(fn (Builder $reference) => $reference
+                    ->where('appointments.id', (int) ($appointmentReference['id'] ?? 0))
+                    ->when($appointmentReference, fn (Builder $typed) => $typed->whereIn('type', $appointmentReference['types'])))
+                    ->orWhereHas('user', function ($patient) use ($patientMatch, $likeSearch, $nameTokens): void {
+                        $patient->where(function ($identity) use ($patientMatch, $likeSearch, $nameTokens): void {
+                            $identity->where('id', (int) ($patientMatch[1] ?? 0))
+                                ->orWhere('email', 'like', "%{$likeSearch}%")
+                                ->orWhere('contact', 'like', "%{$likeSearch}%")
+                                ->orWhere(function ($name) use ($nameTokens): void {
+                                    foreach ($nameTokens as $token) {
+                                        $name->where(fn ($part) => $part
+                                            ->where('first_name', 'like', "%{$token}%")
+                                            ->orWhere('middle_name', 'like', "%{$token}%")
+                                            ->orWhere('last_name', 'like', "%{$token}%"));
+                                    }
+                                });
                         });
-                });
+                    });
             });
         }
 
         $appointments = $query
-            ->orderByRaw('CASE WHEN start_time IS NULL THEN 1 ELSE 0 END')
+            ->orderByRaw("CASE WHEN status = 'completed' THEN 4 WHEN type <> 'walk_in' AND arrived_at IS NOT NULL THEN 1 WHEN type = 'walk_in' THEN 2 WHEN type <> 'walk_in' THEN 3 ELSE 4 END")
+            ->orderByRaw("CASE WHEN type = 'walk_in' THEN COALESCE(arrived_at, created_at) END")
             ->orderBy('start_time')
             ->orderByRaw('COALESCE(arrived_at, created_at)')
             ->orderBy('id')
@@ -1101,7 +1200,7 @@ class AppointmentController extends Controller
             'companies' => $companies,
             'doctors' => $doctors,
             'patients' => $patients,
-            'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'serviceTypes' => Appointment::getBookableServiceTypeOptions(),
             'appointmentTypes' => Appointment::getTypeOptions(),
         ]);
     }
@@ -1116,7 +1215,7 @@ class AppointmentController extends Controller
             'type' => ['required', 'string', 'in:individual,company_referral,company_bulk'],
             'company_id' => ['nullable', 'exists:companies,id'],
             'appointment_date' => ['required', 'date', new Weekday],
-            'service_type' => ['required', 'string'],
+            'service_type' => ['required', 'string', Rule::in(array_keys(Appointment::getBookableServiceTypeOptions()))],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
 
@@ -1177,7 +1276,7 @@ class AppointmentController extends Controller
             'appointments' => $query,
             'doctors' => User::where('role', 'doctor')->where('is_active', true)
                 ->get(['id', 'first_name', 'last_name']),
-            'serviceTypes' => Appointment::getServiceTypeOptions(),
+            'serviceTypes' => Appointment::getBookableServiceTypeOptions(),
             'statusOptions' => ['pending', 'accepted', 'arrived', 'for_diagnostics', 'for_xray', 'for_final_evaluation', 'completed', 'cancelled'],
             'filters' => compact('search', 'status', 'type'),
         ]);
@@ -1210,6 +1309,7 @@ class AppointmentController extends Controller
                 'appointment_date' => ['required', 'date', 'after_or_equal:today', new Weekday],
                 'start_time' => ['required', 'date_format:H:i'],
                 'service_types' => ['required', 'array', 'min:1'],
+                'service_types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(Appointment::getBookableServiceTypeOptions()))],
                 'notes' => ['nullable', 'string', 'max:500'],
             ]);
 
@@ -1317,6 +1417,7 @@ class AppointmentController extends Controller
             'appointment_date' => ['required', 'date', new Weekday],
             'start_time' => ['required', 'date_format:H:i'],
             'service_types' => ['required', 'array', 'min:1'],
+            'service_types.*' => ['required', 'string', 'distinct', Rule::in(array_keys(Appointment::getBookableServiceTypeOptions()))],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -1376,7 +1477,7 @@ class AppointmentController extends Controller
         $date = (string) $request->get('date', '');
         $batch = (string) $request->get('batch', '');
 
-        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport', 'medicalExamination', 'serviceQueues'])
+        $query = Appointment::with(['user', 'company', 'physicalExam', 'labResult', 'xrayReport', 'medicalExamination', 'serviceQueues', 'latestVitalSign.recordedBy'])
             ->where('type', '!=', 'company_bulk')
             ->whereHas('user', fn ($user) => $user->where('role', 'patient'))
             ->where(function ($access) use ($request, $role) {

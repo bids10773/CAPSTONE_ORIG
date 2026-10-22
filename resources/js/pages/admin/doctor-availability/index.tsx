@@ -555,20 +555,12 @@ export default function DoctorAvailability({
                                         <Trash2 className="h-4 w-4" />
                                         Clear schedule
                                     </Button>
-                                    <Button
-                                        disabled={
-                                            processing ||
-                                            (!isAdmin &&
-                                                Boolean(selectedRequest))
-                                        }
-                                    >
-                                        <Save className="h-4 w-4" />
-                                        {isAdmin
-                                            ? 'Save schedule'
-                                            : selectedRequest
-                                              ? 'Request pending'
-                                              : 'Submit change request'}
-                                    </Button>
+                                    {isAdmin && (
+                                        <Button disabled={processing}>
+                                            <Save className="h-4 w-4" />
+                                            Save schedule
+                                        </Button>
+                                    )}
                                 </div>
                             </form>
                         )}

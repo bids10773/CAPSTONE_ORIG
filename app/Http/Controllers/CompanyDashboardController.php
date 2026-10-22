@@ -60,13 +60,14 @@ class CompanyDashboardController extends Controller
                 'bulkEmployees as completed_employees_count' => fn ($employees) => $employees->where('status', 'completed'),
                 'bulkEmployees as awaiting_results_count' => fn ($employees) => $employees->whereIn('status', ['awaiting_xray_result', 'for_final_evaluation']),
             ])
-            ->get(['id', 'appointment_date', 'event_end_date', 'start_time', 'status', 'service_types', 'service_location', 'event_address', 'expected_employee_count'])
+            ->get(['id', 'appointment_date', 'event_end_date', 'start_time', 'status', 'onsite_event_status', 'service_types', 'service_location', 'event_address', 'expected_employee_count'])
             ->map(fn ($appointment) => [
                 'id' => $appointment->id,
                 'appointment_date' => $appointment->appointment_date?->toDateString(),
                 'event_end_date' => $appointment->event_end_date?->toDateString(),
                 'start_time' => $appointment->start_time?->format('H:i'),
                 'status' => $appointment->status,
+                'onsite_event_status' => $appointment->onsite_event_status,
                 'service_types' => $appointment->service_types ?? [],
                 'service_location' => $appointment->service_location,
                 'event_address' => $appointment->event_address,
@@ -158,9 +159,7 @@ class CompanyDashboardController extends Controller
                 'completed' => $referrals->where('status', 'completed')->count(),
                 'expired' => $referrals->where('status', 'expired')->count(),
             ],
-            'serviceTypes' => collect(Appointment::getServiceTypeOptions())
-                ->except(['ECG', 'Audiometry', 'Neuro Psychiatric Test'])
-                ->all(),
+            'serviceTypes' => Appointment::getBookableServiceTypeOptions(),
         ];
     }
 }

@@ -143,11 +143,14 @@ class IndividualAppointmentBookingService
             throw ValidationException::withMessages($result['messages']);
         }
 
-        $admins = User::query()->where('role', 'admin')->where('is_active', true)->get();
+        $reviewers = User::query()
+            ->whereIn('role', ['admin', 'receptionist'])
+            ->where('is_active', true)
+            ->get();
         try {
-            Notification::send($admins, new \App\Notifications\NewAppointmentRequest($result));
+            Notification::send($reviewers, new \App\Notifications\NewAppointmentRequest($result));
         } catch (\Throwable $exception) {
-            Log::warning('Admin appointment request notification failed.', [
+            Log::warning('Appointment reviewer request notification failed.', [
                 'appointment_id' => $result->id,
                 'exception' => $exception->getMessage(),
             ]);

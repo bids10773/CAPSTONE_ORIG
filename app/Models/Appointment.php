@@ -246,6 +246,34 @@ class Appointment extends Model
         return $this->hasOne(MedicalHistory::class, 'appointment_id');
     }
 
+    public function medicalCertificates(): HasMany
+    {
+        return $this->hasMany(MedicalCertificate::class);
+    }
+
+    public function medicalDocuments(): HasMany
+    {
+        return $this->hasMany(MedicalDocument::class);
+    }
+
+    public function vitalSigns(): HasMany
+    {
+        return $this->hasMany(VitalSign::class);
+    }
+
+    public function latestVitalSign(): HasOne
+    {
+        return $this->hasOne(VitalSign::class)->ofMany([
+            'measured_at' => 'max',
+            'id' => 'max',
+        ]);
+    }
+
+    public function vitalSignRecheckRequests(): HasMany
+    {
+        return $this->hasMany(VitalSignRecheckRequest::class);
+    }
+
     /**
      * Get status badge color.
      */
@@ -270,6 +298,23 @@ class Appointment extends Model
         };
 
         return $prefix.str_pad((string) $this->getKey(), 4, '0', STR_PAD_LEFT);
+    }
+
+    /** @return array{id:int, types:list<string>}|null */
+    public static function parseReferenceCode(string $reference): ?array
+    {
+        if (! preg_match('/^(APT|WLK|REF)0*(\d+)$/i', $reference, $matches)) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $matches[2],
+            'types' => match (strtoupper($matches[1])) {
+                'WLK' => ['walk_in'],
+                'REF' => ['company_referral'],
+                default => ['individual', 'company_bulk'],
+            },
+        ];
     }
 
     /**
@@ -318,6 +363,18 @@ class Appointment extends Model
             'Neuro Psychiatric Test' => 'Neuro Psychiatric Test',
 
         ];
+    }
+
+    public static function getUnavailableServiceTypes(): array
+    {
+        return ['ECG', 'Audiometry', 'Neuro Psychiatric Test'];
+    }
+
+    public static function getBookableServiceTypeOptions(): array
+    {
+        return collect(self::getServiceTypeOptions())
+            ->except(self::getUnavailableServiceTypes())
+            ->all();
     }
 
     // ✅ helper for display

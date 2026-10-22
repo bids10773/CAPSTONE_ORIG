@@ -42,7 +42,8 @@ test('admin creates a company and its secure first-login account atomically', fu
         ->and($account->must_change_password)->toBeTrue()
         ->and($account->is_active)->toBeTrue()
         ->and($account->password)->not->toBeNull();
-    expect($company->is_partnered)->toBeTrue();
+    expect($company->is_partnered)->toBeTrue()
+        ->and($company->address)->toBe('123 Health Avenue, Cabuyao, Laguna');
 
     Mail::assertSent(CompanyInvitation::class, function (CompanyInvitation $mail) use ($account): bool {
         return $mail->hasTo('portal@acme.test')
@@ -151,6 +152,7 @@ test('admin updates representative identity and keeps company login synchronized
     $this->actingAs($admin)->put(route('admin.companies.update', $company), companyPayload([
         'email' => 'updated@acme.test',
         'contact_number' => '(049) 555-0199',
+        'address' => '456 Updated Business Road, Calamba, Laguna',
         'representative_first_name' => 'Elena',
         'representative_middle_name' => '',
         'representative_last_name' => 'Dela Cruz',
@@ -163,6 +165,7 @@ test('admin updates representative identity and keeps company login synchronized
         ->and($account->email)->toBe('updated@acme.test')
         ->and($account->contact)->toBe('(049) 555-0199')
         ->and($account->role)->toBe('company');
+    expect($company->fresh()->address)->toBe('456 Updated Business Road, Calamba, Laguna');
 });
 
 test('company contact accepts a landline telephone number with area code', function () {

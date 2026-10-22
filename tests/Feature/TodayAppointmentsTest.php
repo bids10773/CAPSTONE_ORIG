@@ -91,6 +91,28 @@ test("today's queue includes walk-ins and reflects arrival updates", function ()
             ->where('summary.in_progress', 1));
 });
 
+test("today's queue shows waiting walk ins before scheduled patients who have not arrived", function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $patient = User::factory()->create(['role' => 'patient']);
+    $scheduled = createTodayAppointment($patient, [
+        'start_time' => '10:00',
+        'end_time' => '10:30',
+    ]);
+    $walkIn = createTodayAppointment($patient, [
+        'type' => 'walk_in',
+        'status' => 'pending',
+        'start_time' => null,
+        'end_time' => null,
+        'arrived_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.appointments.today'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('appointments.data.0.id', $walkIn->id)
+            ->where('appointments.data.1.id', $scheduled->id));
+});
+
 test("patients cannot access the clinic-wide today's appointments queue", function () {
     $patient = User::factory()->create(['role' => 'patient']);
 

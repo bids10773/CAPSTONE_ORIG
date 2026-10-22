@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -60,6 +62,7 @@ test('patient can update account and personal profile fields through the existin
         'birthdate' => '1990-01-01',
         'sex' => 'Male',
         'civil_status' => 'Single',
+        'address' => 'Old Address, Manila',
     ]);
 
     $this->actingAs($user)->patch(route('profile.update'), [
@@ -71,6 +74,7 @@ test('patient can update account and personal profile fields through the existin
         'birthdate' => '2003-08-18',
         'sex' => 'Female',
         'civil_status' => 'Widowed',
+        'address' => 'New Address, Quezon City',
         'role' => 'admin',
         'is_active' => false,
     ])->assertSessionDoesntHaveErrors()->assertRedirect(route('profile.edit'));
@@ -81,7 +85,8 @@ test('patient can update account and personal profile fields through the existin
         ->is_active->toBeTrue()
         ->and($user->patientProfile->birthdate->toDateString())->toBe('2003-08-18')
         ->and($user->patientProfile->sex)->toBe('Female')
-        ->and($user->patientProfile->civil_status)->toBe('Widowed');
+        ->and($user->patientProfile->civil_status)->toBe('Widowed')
+        ->and($user->patientProfile->address)->toBe('New Address, Quezon City');
 });
 
 test('profile update rejects invalid patient personal details', function () {
@@ -95,7 +100,88 @@ test('profile update rejects invalid patient personal details', function () {
         'birthdate' => today()->addDay()->toDateString(),
         'sex' => 'Unknown',
         'civil_status' => 'Unsupported',
+        'address' => 'Test Address, Manila',
     ])->assertSessionHasErrors(['contact', 'birthdate', 'sex', 'civil_status']);
+});
+
+test('clinical staff can maintain their professional license number', function (string $role) {
+    $staff = User::factory()->create(['role' => $role, 'license_no' => null]);
+
+    $this->actingAs($staff)->patch(route('profile.update'), [
+        'first_name' => $staff->first_name,
+        'middle_name' => $staff->middle_name,
+        'last_name' => $staff->last_name,
+        'email' => $staff->email,
+        'contact' => $staff->contact,
+        'license_no' => '1234567',
+    ])->assertSessionHasNoErrors()->assertRedirect(route('profile.edit'));
+
+    expect($staff->refresh()->license_no)->toBe('1234567');
+})->with(['doctor', 'medtech', 'radtech']);
+
+test('clinical staff PRC license numbers must contain 5 to 7 digits', function (string $licenseNo) {
+    $staff = User::factory()->create(['role' => 'doctor', 'license_no' => null]);
+
+    $this->actingAs($staff)->patch(route('profile.update'), [
+        'first_name' => $staff->first_name,
+        'middle_name' => $staff->middle_name,
+        'last_name' => $staff->last_name,
+        'email' => $staff->email,
+        'contact' => $staff->contact,
+        'license_no' => $licenseNo,
+    ])->assertSessionHasErrors('license_no');
+})->with(['1234', '12345678', 'PRC123']);
+
+test('patients cannot add a professional license number through profile updates', function () {
+    $patient = User::factory()->create(['role' => 'patient', 'license_no' => null]);
+
+    $this->actingAs($patient)->patch(route('profile.update'), [
+        'first_name' => $patient->first_name,
+        'middle_name' => $patient->middle_name,
+        'last_name' => $patient->last_name,
+        'email' => $patient->email,
+        'license_no' => 'NOT-A-CLINICIAN',
+    ])->assertSessionHasNoErrors();
+
+    expect($patient->refresh()->license_no)->toBeNull();
+});
+
+test('clinical staff can upload their own electronic signature', function () {
+    Storage::fake('public');
+    $doctor = User::factory()->create([
+        'role' => 'doctor',
+        'license_no' => '12345',
+    ]);
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL8WQAAAABJRU5ErkJggg==');
+
+    $this->actingAs($doctor)
+        ->post(route('profile.signature.update'), [
+            'signature' => UploadedFile::fake()->createWithContent('signature.png', $png),
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('profile.edit'));
+
+    $doctor->refresh();
+    Storage::disk('public')->assertExists($doctor->signature_path);
+    expect($doctor->signatureDataUri())->toStartWith('data:image/png;base64,');
+    $this->assertDatabaseHas('security_audits', [
+        'actor_id' => $doctor->id,
+        'target_user_id' => $doctor->id,
+        'action' => 'electronic_signature_updated',
+        'status' => 'success',
+    ]);
+});
+
+test('patients cannot upload an electronic signature', function () {
+    Storage::fake('public');
+    $patient = User::factory()->create(['role' => 'patient']);
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL8WQAAAABJRU5ErkJggg==');
+
+    $this->actingAs($patient)
+        ->post('/settings/profile/signature', [
+            'signature' => UploadedFile::fake()->createWithContent('signature.png', $png),
+        ])
+        ->assertForbidden();
 });
 
 test('user can delete their account', function () {

@@ -129,6 +129,79 @@ test('attendance is restricted to the receptionist assigned to the selected even
         ->and(SecurityAudit::where('action', 'onsite_employee_marked_arrived')->where('actor_id', $assigned->id)->exists())->toBeTrue();
 });
 
+test('future onsite events show their exact schedule but keep staff workspaces locked', function () {
+    extract(onsiteFixture());
+    $event->update(['appointment_date' => today()->addWeek()]);
+    $admin = User::factory()->create(['role' => 'admin']);
+    $receptionist = User::factory()->create(['role' => 'receptionist', 'is_active' => true]);
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $workflow = app(OnsiteEventWorkflowService::class);
+    $workflow->assignStaff($event, $receptionist, 'receptionist', 10, $admin);
+    $workflow->assignStaff($event, $doctor, 'doctor', 10, $admin);
+
+    $this->actingAs($receptionist)
+        ->get(route('receptionist.onsite-events.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('events.data.0.appointment_date', $event->fresh()->appointment_date->toISOString())
+            ->where('events.data.0.start_time', '08:00')
+            ->where('events.data.0.end_time', '17:00')
+            ->where('events.data.0.can_manage_attendance', false));
+    $this->actingAs($receptionist)
+        ->get(route('receptionist.onsite-events.show', $event))
+        ->assertForbidden();
+    $this->actingAs($receptionist)
+        ->patch(route('receptionist.onsite-employees.attendance', $child), ['attendance_status' => 'arrived'])
+        ->assertForbidden();
+
+    $this->actingAs($doctor)
+        ->get(route('doctor.onsite-events.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('events.data.0.can_open_queue', false));
+    $this->actingAs($doctor)
+        ->get(route('doctor.onsite-events.show', $event))
+        ->assertForbidden();
+    $this->actingAs($doctor)
+        ->get(route('doctor.onsite-events.queue', $event))
+        ->assertForbidden();
+});
+
+test('past onsite events are removed from receptionist and clinical workspaces', function () {
+    extract(onsiteFixture());
+    $event->update(['appointment_date' => today()->subDays(2), 'event_end_date' => today()->subDay()]);
+    $admin = User::factory()->create(['role' => 'admin']);
+    $receptionist = User::factory()->create(['role' => 'receptionist', 'is_active' => true]);
+    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
+    $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
+    $workflow = app(OnsiteEventWorkflowService::class);
+    $workflow->assignStaff($event, $receptionist, 'receptionist', 10, $admin);
+    foreach ([[$doctor, 'doctor'], [$medtech, 'medtech'], [$radtech, 'radtech']] as [$staff, $role]) {
+        $workflow->assignStaff($event, $staff, $role, 10, $admin);
+    }
+
+    $this->actingAs($receptionist)
+        ->get(route('receptionist.onsite-events.index'))
+        ->assertInertia(fn ($page) => $page->has('events.data', 0));
+    $this->actingAs($receptionist)
+        ->get(route('receptionist.onsite-events.show', $event))
+        ->assertForbidden();
+    $this->actingAs($receptionist)
+        ->patch(route('receptionist.onsite-employees.attendance', $child), ['attendance_status' => 'arrived'])
+        ->assertForbidden();
+
+    foreach ([[$doctor, 'doctor'], [$medtech, 'medtech'], [$radtech, 'radtech']] as [$staff, $role]) {
+        $this->actingAs($staff)
+            ->get(route("{$role}.onsite-events.index"))
+            ->assertInertia(fn ($page) => $page->has('events.data', 0));
+        $this->actingAs($staff)
+            ->get(route("{$role}.onsite-events.show", $event))
+            ->assertForbidden();
+        $this->actingAs($staff)
+            ->get(route("{$role}.onsite-events.queue", $event))
+            ->assertForbidden();
+    }
+});
+
 test('receptionist employee search is scoped to one bulk event and supports employee number', function () {
     extract(onsiteFixture());
     $admin = User::factory()->create(['role' => 'admin']);
@@ -389,6 +462,7 @@ test('onsite physical examination returns the doctor to the company onsite event
         'height' => 170, 'weight' => 65, 'blood_pressure' => '120/80',
         'pulse_rate' => 72, 'respiration_rate' => 16, 'temperature' => 36.7,
         'visual_acuity' => '20/20 OU', 'hearing' => 'Normal bilateral',
+        'vital_signs_override_reason' => 'Onsite urgent workflow proceeded before separate intake capture.',
     ];
     foreach (['head_scalp', 'eyes', 'ears', 'nose_sinuses', 'mouth_throat', 'neck_thyroid', 'chest_breast', 'lungs', 'heart', 'abdomen', 'back', 'anus', 'genitals', 'extremities', 'skin', 'dental'] as $part) {
         $payload["{$part}_status"] = 'normal';

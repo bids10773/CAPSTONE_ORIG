@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Admin\InquiryController as AdminInquiryController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminDataManagementController;
 use App\Http\Controllers\AdminPatientController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Auth\PatientProfileCompletionController;
 use App\Http\Controllers\Auth\SocialAuthenticationController;
 use App\Http\Controllers\ClinicalDocumentController;
+use App\Http\Controllers\CompanyBulkAppointmentController;
 use App\Http\Controllers\CompanyBulkMedicalReportController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CompanyDashboardController;
@@ -18,6 +20,8 @@ use App\Http\Controllers\ForecastController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\LaboratoryController;
+use App\Http\Controllers\MedicalCertificateController;
+use App\Http\Controllers\MedicalDocumentController;
 use App\Http\Controllers\MedTechDashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnsiteEventController;
@@ -30,6 +34,7 @@ use App\Http\Controllers\ReceptionistWalkInController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StaffPatientRecordController;
 use App\Http\Controllers\TemporaryPasswordController;
+use App\Http\Controllers\VitalSignController;
 use App\Http\Controllers\XrayController;
 use App\Support\ClinicHours;
 use App\Support\RoleDashboard;
@@ -82,22 +87,65 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/my-medical-documents', [MedicalDocumentController::class, 'patientIndex'])
+        ->middleware(['role:patient', 'profile.complete'])->name('medical-documents.patient');
+
+    Route::middleware('role:admin,receptionist,doctor,medtech,radtech')
+        ->prefix('medical-documents')->name('medical-documents.')->controller(MedicalDocumentController::class)
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::patch('/{medicalDocument}/review', 'review')->name('review');
+            Route::patch('/{medicalDocument}/ready', 'markReady')->name('ready');
+            Route::post('/{medicalDocument}/release', 'release')->name('release');
+            Route::patch('/{medicalDocument}/release/reverse', 'reverseRelease')->name('release.reverse');
+        });
+
     Route::get('/my-inquiries', [InquiryController::class, 'index'])->name('inquiries.index');
     Route::get('/complete-patient-profile', [PatientProfileCompletionController::class, 'edit'])
         ->name('patient-profile.complete');
     Route::put('/complete-patient-profile', [PatientProfileCompletionController::class, 'update'])
         ->middleware('throttle:10,1')
         ->name('patient-profile.update');
+    Route::get('/notifications/center', [NotificationController::class, 'center'])->name('notifications.center');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::patch('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::delete('/notifications', [NotificationController::class, 'destroyAll'])->name('notifications.destroy-all');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('notifications.read');
     Route::post('/notifications/{notification}/visit', [NotificationController::class, 'readAndVisit'])->whereUuid('notification')->name('notifications.visit');
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->whereUuid('notification')->name('notifications.destroy');
     Route::get('/company-referrals/invitation/{token}/accept', [CompanyReferralController::class, 'accept'])
         ->middleware(['signed', 'throttle:10,1'])
         ->name('company-referrals.accept');
     Route::get('/api/global-search', GlobalSearchController::class)
         ->middleware('throttle:30,1')
         ->name('api.global-search');
+
+    Route::middleware('role:admin,receptionist,doctor')
+        ->prefix('medical-certificates')
+        ->name('medical-certificates.')
+        ->controller(MedicalCertificateController::class)
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::get('/patients/search', 'patientSearch')
+                ->middleware('throttle:30,1')
+                ->name('patients.search');
+            Route::get('/patients/{patient}/consultations', 'consultations')
+                ->whereNumber('patient')
+                ->middleware('throttle:30,1')
+                ->name('patients.consultations');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{medicalCertificate}', 'show')->whereNumber('medicalCertificate')->name('show');
+            Route::get('/{medicalCertificate}/edit', 'edit')->whereNumber('medicalCertificate')->name('edit');
+            Route::patch('/{medicalCertificate}', 'update')->whereNumber('medicalCertificate')->name('update');
+            Route::patch('/{medicalCertificate}/submit', 'submit')->whereNumber('medicalCertificate')->name('submit');
+            Route::patch('/{medicalCertificate}/approve', 'approve')->whereNumber('medicalCertificate')->name('approve');
+            Route::patch('/{medicalCertificate}/request-changes', 'requestChanges')->whereNumber('medicalCertificate')->name('request-changes');
+            Route::patch('/{medicalCertificate}/issue', 'issue')->whereNumber('medicalCertificate')->name('issue');
+            Route::patch('/{medicalCertificate}/void', 'void')->whereNumber('medicalCertificate')->name('void');
+            Route::get('/{medicalCertificate}/print', 'print')->whereNumber('medicalCertificate')->name('print');
+            Route::get('/{medicalCertificate}/pdf', 'pdf')->whereNumber('medicalCertificate')->name('pdf');
+        });
 
     Route::get('/dashboard', PatientDashboardController::class)
         ->middleware(['patient.only', 'profile.complete'])
@@ -120,6 +168,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('role:company')->group(function () {
         Route::get('/company/dashboard', CompanyDashboardController::class)->name('company.dashboard');
+        Route::get('/company/bulk-appointments', [CompanyBulkAppointmentController::class, 'index'])->name('company.bulk-appointments.index');
         Route::post('/company/employees/import/preview', [CompanyEmployeeImportController::class, 'preview'])->name('company.employees.import.preview');
         Route::post('/company/employees/import/confirm', [CompanyEmployeeImportController::class, 'confirm'])->name('company.employees.import.confirm');
         Route::get('/company/employees/import/template', [CompanyEmployeeImportController::class, 'template'])->name('company.employees.import.template');
@@ -135,6 +184,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/walk-ins', [ReceptionistWalkInController::class, 'store'])->name('walk-ins.store');
         Route::patch('/walk-ins/{appointment}/doctor', [ReceptionistWalkInController::class, 'assignDoctor'])->name('walk-ins.doctor');
         Route::patch('/walk-ins/{appointment}/status', [ReceptionistWalkInController::class, 'updateStatus'])->name('walk-ins.status');
+        Route::get('/appointments/{appointment}/vital-signs', [VitalSignController::class, 'create'])->name('vital-signs.create');
+        Route::post('/appointments/{appointment}/vital-signs', [VitalSignController::class, 'store'])
+            ->middleware('throttle:30,1')->name('vital-signs.store');
         Route::get('/queue', [ReceptionistWalkInController::class, 'queue'])->name('queue.index');
         Route::get('/appointment-requests', [ReceptionistWalkInController::class, 'appointmentRequests'])->name('appointment-requests.index');
         Route::patch('/appointment-requests/{appointment}/approve', [ReceptionistWalkInController::class, 'approveAppointment'])->name('appointment-requests.approve');
@@ -145,6 +197,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/patients', [ReceptionistWalkInController::class, 'patients'])->name('patients.index');
         Route::get('/patients/search', [ReceptionistWalkInController::class, 'searchPatients'])->name('patients.search');
         Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
+        Route::get('/patient-records/{patient}', [StaffPatientRecordController::class, 'show'])->name('patient-records.show');
         Route::get('/onsite-events', [OnsiteEventController::class, 'receptionistIndex'])->name('onsite-events.index');
         Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'receptionistShow'])->name('onsite-events.show');
         Route::patch('/onsite-employees/{employee}/attendance', [OnsiteEventController::class, 'attendance'])->name('onsite-employees.attendance');
@@ -157,11 +210,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', DoctorDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor')->name('appointments');
         Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
+        Route::get('/patient-records/{patient}', [StaffPatientRecordController::class, 'show'])->name('patient-records.show');
         Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
         Route::get('/doctor-availability', [DoctorAvailabilityController::class, 'adminIndex'])->name('doctor-availability.index');
         Route::patch('/doctor-availability', [DoctorAvailabilityController::class, 'doctorSubmit'])->name('doctor-availability.update');
         Route::get('/physical-exam-form/{appointment}', [PhysicalExamController::class, 'create'])->name('physical-exams.create');
         Route::post('/physical-exam-form/{appointment}', [PhysicalExamController::class, 'store'])->name('physical-exams.store');
+        Route::post('/appointments/{appointment}/vital-signs/recheck', [VitalSignController::class, 'requestRecheck'])->name('vital-signs.recheck');
         Route::get('/final-evaluation/{appointment}', [PhysicalExamController::class, 'final'])->name('final-evaluation');
         Route::post('/final-evaluation/{appointment}', [PhysicalExamController::class, 'finalStore'])->name('final-evaluation.store');
         Route::post('/final-evaluation/{appointment}/drug-test', [\App\Http\Controllers\DoctorDiagnosticResultController::class, 'drugTest'])->name('diagnostics.drug-test.verify');
@@ -175,6 +230,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', MedTechDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'medtech')->name('appointments');
         Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
+        Route::get('/patient-records/{patient}', [StaffPatientRecordController::class, 'show'])->name('patient-records.show');
         Route::get('/lab-results/{appointment}', [LaboratoryController::class, 'create'])->name('lab-results.create');
         Route::post('/lab-results/{appointment}', [LaboratoryController::class, 'store'])->name('lab-results.store');
     });
@@ -186,9 +242,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('clinical-forms.laboratory.section.pdf');
     Route::get('/clinical-forms/{appointment}/physical-exam.pdf', [ClinicalDocumentController::class, 'physicalExam'])
         ->name('clinical-forms.physical-exam.pdf');
-    Route::get('/clinical-forms/{appointment}/{section}.pdf', [ClinicalDocumentController::class, 'peSection'])
-        ->where('section', 'medical-history|physical-findings|final-evaluation')
-        ->name('clinical-forms.pe-section.pdf');
     Route::get('/clinical-forms/{appointment}/xray.pdf', [ClinicalDocumentController::class, 'xray'])
         ->name('clinical-forms.xray.pdf');
 
@@ -199,9 +252,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', RadTechDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'radtech')->name('appointments');
         Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
+        Route::get('/patient-records/{patient}', [StaffPatientRecordController::class, 'show'])->name('patient-records.show');
         Route::get('/xrays/{appointment}', [XrayController::class, 'create'])->name('xrays.create');
         Route::post('/xrays/{appointment}', [XrayController::class, 'store'])->name('xrays.store');
     });
+
+    Route::middleware('role:admin')
+        ->prefix('analytics')
+        ->name('analytics.')
+        ->group(function () {
+            Route::redirect('/patient-volume', '/admin/analytics')->name('patient-volume.index');
+            Route::get('/api/patient-volume', [PatientVisitForecastController::class, 'dashboard'])->name('patient-volume.dashboard');
+        });
 
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/onsite-events/{event}', [OnsiteEventController::class, 'adminShow'])->name('onsite-events.show');
@@ -220,8 +282,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::resource('staff', StaffController::class)->except('show');
         Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
+        Route::get('/patients/{patient}/edit', [AdminPatientController::class, 'edit'])->name('patients.edit');
+        Route::patch('/patients/{patient}', [AdminPatientController::class, 'update'])->name('patients.update');
+        Route::delete('/patients/{patient}', [AdminPatientController::class, 'destroy'])->name('patients.destroy');
+        Route::get('/patients/{patient}', [AdminPatientController::class, 'show'])->name('patients.show');
         Route::patch('/staff/{staff}/toggle-active', [StaffController::class, 'toggleActive'])->name('staff.toggle-active');
         Route::post('/staff/{staff}/signature', [StaffController::class, 'uploadSignature'])->name('staff.signature');
+        Route::get('/staff/{staff}/license-document/{side?}', [StaffController::class, 'downloadLicenseDocument'])
+            ->where('side', 'front|back')
+            ->name('staff.license-document.download');
+        Route::patch('/staff/{staff}/license-verification', [StaffController::class, 'updateLicenseVerification'])->name('staff.license-verification.update');
         Route::post('/staff/{staff}/resend-credentials', [StaffController::class, 'resendCredentials'])
             ->middleware('throttle:6,1')
             ->name('staff.resend-credentials');
@@ -251,22 +321,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/inquiries', [AdminInquiryController::class, 'index'])->name('inquiries.index');
         Route::get('/inquiries/{inquiry}', [AdminInquiryController::class, 'show'])->name('inquiries.show');
+        Route::delete('/inquiries/{inquiry}', [AdminInquiryController::class, 'destroy'])->name('inquiries.destroy');
         Route::patch('/inquiries/{inquiry}/status', [AdminInquiryController::class, 'updateStatus'])->name('inquiries.status');
         Route::post('/inquiries/{inquiry}/reply', [AdminInquiryController::class, 'reply'])
             ->middleware('throttle:6,1')
             ->name('inquiries.reply');
         Route::get('/inquiries/{inquiry}/create-company', [AdminInquiryController::class, 'createCompany'])->name('inquiries.create-company');
 
-        Route::get('/analytics', [AdminDashboardController::class, 'analytics'])->name('analytics');
+        Route::get('/analytics', [PatientVisitForecastController::class, 'index'])->name('analytics');
         Route::get('/forecast', [ForecastController::class, 'index'])->name('forecast.index');
         Route::get('/api/forecast/monthly', [ForecastController::class, 'monthly'])->name('forecast.monthly');
         Route::get('/api/forecast/resources', [ForecastController::class, 'resources'])->name('forecast.resources');
         Route::get('/api/forecast/weather', [ForecastController::class, 'weather'])->name('forecast.weather');
         Route::get('/api/forecast/weather-scenario', [ForecastController::class, 'weatherScenario'])->name('forecast.weather-scenario');
-        Route::get('/patient-visits', [PatientVisitForecastController::class, 'index'])->name('patient-visits.index');
-        Route::get('/api/patient-visits', [PatientVisitForecastController::class, 'dashboard'])->name('patient-visits.dashboard');
+        Route::redirect('/patient-visits', '/admin/analytics')->name('patient-visits.index');
+        Route::redirect('/api/patient-visits', '/analytics/api/patient-volume')->name('patient-visits.dashboard');
         Route::get('/security', [AdminDashboardController::class, 'security'])->name('security');
+        Route::get('/security/logs/download', [AdminDashboardController::class, 'downloadSecurityLogs'])->name('security.logs.download');
         Route::get('/reports', [AdminDashboardController::class, 'reports'])->name('reports');
+        Route::get('/data-management', [AdminDataManagementController::class, 'index'])->name('data-management.index');
+        Route::patch('/data-management', [AdminDataManagementController::class, 'update'])->name('data-management.update');
+        Route::post('/data-management/backups', [AdminDataManagementController::class, 'backup'])->name('data-management.backups.store');
+        Route::get('/data-management/backups/{backup}', [AdminDataManagementController::class, 'download'])->name('data-management.backups.download');
+        Route::post('/data-management/enforce', [AdminDataManagementController::class, 'enforce'])->name('data-management.enforce');
     });
 });
 

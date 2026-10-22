@@ -18,16 +18,16 @@ return [
         'working_days' => ['mon', 'tue', 'wed', 'thu', 'fri'],
     ],
     'pe_package' => [
-        'pre_employment_services' => [
-            'PE',
-            'CBC',
-            'Urinalysis',
-            'Fecalysis',
-            'X-Ray',
-        ],
-        'optional_bulk_services' => [
-            'Drug Test',
-            'Pregnancy Test',
+        'basic_five_services' => ['PE', 'CBC', 'Urinalysis', 'Fecalysis', 'X-Ray'],
+        'optional_bulk_services' => ['Drug Test', 'Hepatitis', 'Pregnancy Test'],
+    ],
+    'document_release' => [
+        'instructions' => env(
+            'MEDICAL_DOCUMENT_RELEASE_INSTRUCTIONS',
+            'Medical documents are released directly by authorized clinic personnel. Please visit the clinic to claim your approved documents.'
+        ),
+        'methods' => [
+            'physical_pickup' => 'Physical pickup at clinic',
         ],
     ],
 ];

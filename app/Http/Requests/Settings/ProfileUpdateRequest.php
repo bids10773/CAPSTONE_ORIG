@@ -17,7 +17,13 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->profileRules($this->user()->id);
+        $rules = $this->profileRules($this->user()->id);
+
+        if (in_array($this->user()->role, ['doctor', 'medtech', 'radtech'], true)) {
+            $rules['license_no'] = ['nullable', 'regex:/^\d{5,7}$/'];
+        }
+
+        return $rules;
     }
 
     /** @return array<string, string> */
@@ -28,6 +34,7 @@ class ProfileUpdateRequest extends FormRequest
             'birthdate.before_or_equal' => 'Birthdate cannot be in the future.',
             'sex.in' => 'Please select a valid sex.',
             'civil_status.in' => 'Please select a valid civil status.',
+            'license_no.regex' => 'The PRC license number must contain 5 to 7 digits only.',
         ];
     }
 }

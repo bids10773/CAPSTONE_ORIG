@@ -27,6 +27,12 @@ export default function ClinicDashboardLayout({
 }: AppLayoutProps) {
     const { auth, sidebarPinned } = usePage().props as any;
     const user = auth?.user;
+    const showStaffSettings = [
+        'doctor',
+        'medtech',
+        'radtech',
+        'receptionist',
+    ].includes(user?.role);
     const fullName =
         user?.name ||
         [user?.first_name, user?.last_name].filter(Boolean).join(' ') ||
@@ -41,6 +47,12 @@ export default function ClinicDashboardLayout({
             defaultPinned={Boolean(sidebarPinned)}
             className="app-workspace min-h-screen bg-background"
         >
+            <a
+                href="#main-content"
+                className="fixed top-4 left-4 z-[200] -translate-y-24 rounded-xl bg-card px-4 py-3 text-sm font-semibold text-moss-800 shadow-lg transition-transform focus:translate-y-0 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none dark:text-moss-200"
+            >
+                Skip to content
+            </a>
             <AppSidebar />
             <SidebarInset className="min-w-0 bg-background">
                 <header className="sticky top-0 z-30 flex h-[72px] shrink-0 items-center border-b border-border bg-card/95 px-4 backdrop-blur-xl sm:px-6">
@@ -97,18 +109,25 @@ export default function ClinicDashboardLayout({
                                     align="end"
                                     sideOffset={8}
                                 >
-                                    <UserMenuContent user={user} />
+                                    <UserMenuContent
+                                        user={user}
+                                        showProfileSettings={showStaffSettings}
+                                    />
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
                     </div>
                 </header>
 
-                <main className="relative flex-1">
+                <div
+                    id="main-content"
+                    tabIndex={-1}
+                    className="relative flex-1 focus:outline-none"
+                >
                     <PageTransition className="mx-auto w-full max-w-[1600px]">
                         {children}
                     </PageTransition>
-                </main>
+                </div>
             </SidebarInset>
         </SidebarProvider>
     );

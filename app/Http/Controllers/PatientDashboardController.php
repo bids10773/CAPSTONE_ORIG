@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Appointment;
+use App\Models\MedicalDocument;
+use App\Services\MedicalDocumentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -10,7 +12,7 @@ use Inertia\Response;
 
 class PatientDashboardController extends Controller
 {
-    public function __invoke(Request $request): Response|RedirectResponse
+    public function __invoke(Request $request, MedicalDocumentService $documents): Response|RedirectResponse
     {
         $user = $request->user();
 
@@ -34,6 +36,8 @@ class PatientDashboardController extends Controller
         if (! $user->hasVerifiedEmail()) {
             return redirect()->route('verification.notice');
         }
+
+        $documents->synchronizePatient($user);
 
         /*
         |--------------------------------------------------------------------------
@@ -128,6 +132,12 @@ class PatientDashboardController extends Controller
             'appointments' => $appointments,
             'upcomingAppointments' => $upcomingAppointments,
             'stats' => $stats,
+            'medicalDocuments' => MedicalDocument::query()->releaseVisible()->where('patient_id', $user->id)
+                ->latest('requested_at')->limit(4)->get()->map(fn (MedicalDocument $document): array => [
+                    'id' => $document->id, 'title' => $document->title, 'status' => $document->status,
+                    'requested_at' => $document->requested_at?->toIso8601String(),
+                ]),
+            'releaseInstructions' => config('medical.document_release.instructions'),
         ]);
     }
 }

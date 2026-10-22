@@ -4,6 +4,7 @@ use App\Models\Appointment;
 use App\Models\User;
 use App\Services\AppointmentSchedulingService;
 use App\Services\WalkInDoctorSlotService;
+use App\Support\ClinicHours;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -91,6 +92,22 @@ test('scheduler automatically rejects an individual request after its pending ti
         'action' => 'appointment_auto_rejected',
         'target_user_id' => $pending->user_id,
     ]);
+});
+
+test('scheduler automatically rejects a pending bulk request after its event day ends', function () {
+    $pending = scheduledPatient([
+        'type' => 'company_bulk',
+        'status' => 'pending',
+        'start_time' => '08:00',
+        'end_time' => '17:00',
+    ]);
+    $service = app(AppointmentSchedulingService::class);
+
+    expect($service->expireLateAppointments(Carbon::parse('2026-08-07 17:00:00', ClinicHours::timezone())))->toBe(0)
+        ->and($service->expireLateAppointments(Carbon::parse('2026-08-07 17:00:01', ClinicHours::timezone())))->toBe(1)
+        ->and($pending->refresh()->status)->toBe('rejected')
+        ->and($pending->rejection_reason)->toBe('schedule_expired')
+        ->and($pending->rejection_details)->toContain('event date passed');
 });
 
 test('expiry is idempotent and does not duplicate a released slot assignment', function () {

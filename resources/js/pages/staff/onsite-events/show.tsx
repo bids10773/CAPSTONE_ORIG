@@ -47,6 +47,8 @@ type Event = {
     id: number;
     appointment_date: string;
     event_end_date?: string | null;
+    start_time?: string | null;
+    end_time?: string | null;
     event_address?: string | null;
     company?: {
         company_name: string;
@@ -225,7 +227,7 @@ export default function StaffOnsiteEvent({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${companyName} Queue`} />
-            <main className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
                 <header className="relative overflow-hidden rounded-2xl border border-moss-200 bg-gradient-to-r from-moss-50 via-white to-white p-6 shadow-sm dark:border-border dark:from-moss-950 dark:via-card dark:to-card">
                     <div className="absolute -top-20 -right-16 size-56 rounded-full bg-moss-200/35 blur-3xl dark:bg-moss-700/10" />
                     <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
@@ -262,6 +264,8 @@ export default function StaffOnsiteEvent({
                                     {formatEventDateRange(
                                         event.appointment_date,
                                         event.event_end_date,
+                                        event.start_time,
+                                        event.end_time,
                                     )}
                                 </span>
                             </div>
@@ -356,7 +360,7 @@ export default function StaffOnsiteEvent({
                                             Employee
                                         </th>
                                         <th className="px-5 py-3.5">
-                                            Company ID
+                                            Company Employee No.
                                         </th>
                                         <th className="px-5 py-3.5">Task</th>
                                         <th className="px-5 py-3.5">
@@ -393,7 +397,7 @@ export default function StaffOnsiteEvent({
                                             </td>
                                             <td className="px-5 py-4">
                                                 <span
-                                                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold capitalize ${queueStatusStyles[queue.status] ?? 'border-slate-200 bg-slate-50 text-slate-700 dark:border-border dark:bg-muted dark:text-muted-foreground'}`}
+                                                    className={`status-text-only inline-flex text-xs font-bold capitalize ${queueStatusStyles[queue.status] ?? 'text-slate-700 dark:text-muted-foreground'}`}
                                                 >
                                                     {queue.status.replaceAll(
                                                         '_',
@@ -439,7 +443,7 @@ export default function StaffOnsiteEvent({
 
                     <Pagination pagination={queues} label="queue tasks" />
                 </section>
-            </main>
+            </div>
         </AppLayout>
     );
 }

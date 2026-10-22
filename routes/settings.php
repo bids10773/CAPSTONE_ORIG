@@ -29,3 +29,12 @@ Route::middleware(['auth', 'verified', 'role:admin,doctor,medtech,radtech,compan
         ->middleware('password.confirm')
         ->name('profile.two-factor.confirm');
 });
+
+Route::middleware(['auth', 'verified', 'role:doctor,medtech,radtech'])->group(function () {
+    Route::post('settings/profile/signature', [ProfileController::class, 'updateSignature'])
+        ->middleware('throttle:6,1')
+        ->name('profile.signature.update');
+    Route::post('settings/profile/license-document', [ProfileController::class, 'updateLicenseDocument'])
+        ->middleware('throttle:6,1')
+        ->name('profile.license-document.update');
+});

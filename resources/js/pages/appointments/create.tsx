@@ -72,6 +72,7 @@ interface AppointmentUser {
 interface AppointmentPageProps {
     clinicHours: ClinicHoursSettings;
     companies?: Company[];
+    companyAddress?: string | null;
     serviceTypes?: Record<string, string>;
     appointmentTypes?: Record<string, string>;
     pePackage?: {
@@ -82,6 +83,7 @@ interface AppointmentPageProps {
     bookingPolicy?: {
         maximumUpcoming: number;
         bookedDates: string[];
+        companyAnnualExamMinimumDate?: string | null;
         upcomingAppointments: Array<{
             id: number;
             appointment_date: string;
@@ -144,6 +146,37 @@ const TYPE_DETAILS: Record<
 };
 
 const SERVICE_ICONS = [HeartPulse, FileHeart, Stethoscope, ClipboardCheck];
+const BASIC_FIVE_DETAILS = [
+    {
+        service: 'CBC',
+        label: 'Complete Blood Count (CBC)',
+        description:
+            'Checks blood cells for infection, anemia, and general health concerns.',
+    },
+    {
+        service: 'Urinalysis',
+        label: 'Routine Urinalysis',
+        description: 'Screens for urinary, kidney, and metabolic conditions.',
+    },
+    {
+        service: 'Fecalysis',
+        label: 'Fecalysis (Stool Test)',
+        description:
+            'Checks for parasites, blood, and gastrointestinal concerns.',
+    },
+    {
+        service: 'X-Ray',
+        label: 'Chest X-ray (PA view)',
+        description:
+            'Evaluates the lungs and chest, including tuberculosis screening.',
+    },
+    {
+        service: 'PE',
+        label: 'Physical Examination',
+        description:
+            'Includes a physician assessment and Fit-to-Work evaluation.',
+    },
+] as const;
 const EXAMINATION_PURPOSES = [
     ['pre_employment', 'Pre-employment'],
     ['annual_pe', 'Annual Examination'],
@@ -215,10 +248,11 @@ const restoreDraft = (storageKey: string): BookingData => {
                 typeof draft.notes === 'string'
                     ? draft.notes.slice(0, 500)
                     : '',
-            service_location:
-                typeof draft.service_location === 'string'
-                    ? draft.service_location
-                    : 'onsite',
+            service_location: ['onsite', 'clinic'].includes(
+                String(draft.service_location),
+            )
+                ? String(draft.service_location)
+                : 'onsite',
             event_address:
                 typeof draft.event_address === 'string'
                     ? draft.event_address
@@ -300,6 +334,7 @@ const add30Minutes = (time: string) => {
 export default function CreateAppointment() {
     const {
         companies = [],
+        companyAddress = '',
         serviceTypes = {},
         appointmentTypes = {},
         pePackage = {
@@ -312,6 +347,7 @@ export default function CreateAppointment() {
         bookingPolicy = {
             maximumUpcoming: 1,
             bookedDates: [],
+            companyAnnualExamMinimumDate: null,
             upcomingAppointments: [],
         },
     } = usePage<AppointmentPageProps>().props;
@@ -322,10 +358,24 @@ export default function CreateAppointment() {
     } = useClinicHours(clinicHours);
     const storageKey = `appointment-draft-${auth.user.id}`;
     const isCompanyAccount = auth.user.role === 'company';
+    const onsiteAddress = isCompanyAccount ? (companyAddress ?? '') : '';
+    const appointmentMinimumDate =
+        isCompanyAccount && bookingPolicy.companyAnnualExamMinimumDate
+            ? bookingPolicy.companyAnnualExamMinimumDate
+            : minDate;
 
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState<BookingData>(() => {
-        const draft = restoreDraft(storageKey);
+        const restoredDraft = restoreDraft(storageKey);
+        const draft =
+            restoredDraft.appointment_date &&
+            restoredDraft.appointment_date < appointmentMinimumDate
+                ? {
+                      ...restoredDraft,
+                      appointment_date: '',
+                      start_time: '',
+                  }
+                : restoredDraft;
 
         if (referral) {
             return {
@@ -344,12 +394,24 @@ export default function CreateAppointment() {
                   type: 'company_bulk',
                   company_id: String(auth.user.company_id ?? ''),
                   examination_purpose: 'annual_pe',
+                  service_types: Array.from(
+                      new Set([
+                          ...pePackage.preEmploymentServices,
+                          ...draft.service_types.filter((service) =>
+                              Object.hasOwn(serviceTypes, service),
+                          ),
+                      ]),
+                  ),
                   event_contact_name:
                       draft.event_contact_name.trim() || auth.user.name,
                   event_contact_number:
                       draft.event_contact_number.trim() ||
                       auth.user.contact ||
                       '',
+                  event_address:
+                      draft.service_location === 'onsite'
+                          ? draft.event_address.trim() || onsiteAddress
+                          : '',
               }
             : {
                   ...draft,
@@ -505,7 +567,11 @@ export default function CreateAppointment() {
     }, [formData.type]);
 
     useEffect(() => {
-        if (!formData.doctor_id || !formData.appointment_date) {
+        if (
+            !formData.doctor_id ||
+            !formData.appointment_date ||
+            formData.appointment_date < minDate
+        ) {
             return;
         }
         const controller = new AbortController();
@@ -549,7 +615,7 @@ export default function CreateAppointment() {
                 if (!controller.signal.aborted) setLoadingAvailability(false);
             });
         return () => controller.abort();
-    }, [formData.doctor_id, formData.appointment_date]);
+    }, [formData.doctor_id, formData.appointment_date, minDate]);
 
     const update = <K extends keyof BookingData>(
         key: K,
@@ -589,9 +655,11 @@ export default function CreateAppointment() {
         if (currentStep === 2) {
             if (!formData.appointment_date)
                 nextErrors.appointment_date = 'Choose a date.';
-            else if (formData.appointment_date < minDate)
+            else if (formData.appointment_date < appointmentMinimumDate)
                 nextErrors.appointment_date =
-                    'This date is no longer available. Please choose another day.';
+                    bookingPolicy.companyAnnualExamMinimumDate
+                        ? 'Partnered companies must schedule their annual medical examinations at least one month in advance.'
+                        : 'This date is no longer available. Please choose another day.';
             if (
                 formData.type === 'individual' &&
                 bookingPolicy.bookedDates.includes(formData.appointment_date)
@@ -623,7 +691,7 @@ export default function CreateAppointment() {
                 nextErrors.expected_employee_count =
                     'Enter the expected employee count.';
             if (
-                ['onsite', 'hybrid'].includes(formData.service_location) &&
+                formData.service_location === 'onsite' &&
                 !formData.event_address.trim()
             )
                 nextErrors.event_address = 'Enter the event address.';
@@ -646,10 +714,11 @@ export default function CreateAppointment() {
 
     const submit = () => {
         if (submitting) return;
-        if (formData.appointment_date < minDate) {
+        if (formData.appointment_date < appointmentMinimumDate) {
             setErrors({
-                appointment_date:
-                    'This date is no longer available. Please choose another day.',
+                appointment_date: bookingPolicy.companyAnnualExamMinimumDate
+                    ? 'Partnered companies must schedule their annual medical examinations at least one month in advance.'
+                    : 'This date is no longer available. Please choose another day.',
             });
             setCurrentStep(2);
             return;
@@ -710,7 +779,7 @@ export default function CreateAppointment() {
                 ]}
             >
                 <div className="min-h-full bg-background text-slate-900">
-                    <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6">
+                    <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6">
                         <BookingIntro className="mb-5 lg:hidden" />
 
                         {draftRestored && (
@@ -894,7 +963,9 @@ export default function CreateAppointment() {
                                             )}
                                             {currentStep === 2 && (
                                                 <ScheduleStep
-                                                    minDate={minDate}
+                                                    minDate={
+                                                        appointmentMinimumDate
+                                                    }
                                                     doctors={doctors}
                                                     doctor={selectedDoctor}
                                                     times={availableTimes}
@@ -920,6 +991,9 @@ export default function CreateAppointment() {
                                                         formData.type ===
                                                             'company_referral'
                                                     }
+                                                    requiresOneMonthLeadTime={Boolean(
+                                                        bookingPolicy.companyAnnualExamMinimumDate,
+                                                    )}
                                                     maxAllowedDate={
                                                         referral?.valid_until
                                                     }
@@ -970,6 +1044,9 @@ export default function CreateAppointment() {
                                                     profile={patientProfile}
                                                     isCompanyAccount={
                                                         isCompanyAccount
+                                                    }
+                                                    companyAddress={
+                                                        onsiteAddress
                                                     }
                                                     notes={formData.notes}
                                                     event={formData}
@@ -1073,7 +1150,7 @@ export default function CreateAppointment() {
                                 />
                             </div>
                         </div>
-                    </main>
+                    </div>
                 </div>
             </AppLayout>
         </>
@@ -1356,13 +1433,53 @@ function VisitStep({
 
             <FieldGroup
                 title="Medical services"
-                description="Select services based on your needed service during this visit."
+                description={
+                    isCompanyAccount ||
+                    formData.examination_purpose === 'pre_employment'
+                        ? 'The Basic 5 is included automatically. Select only the additional services requested by the employer.'
+                        : 'Select services based on your needed service during this visit.'
+                }
             >
+                {(isCompanyAccount ||
+                    formData.examination_purpose === 'pre_employment') && (
+                    <div className="mb-4 rounded-2xl border border-moss-200 bg-moss-50/70 p-4">
+                        <p className="text-sm font-semibold text-moss-900">
+                            Basic 5 — included
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-moss-700">
+                            The standard PEME or APE package required by many
+                            employers in the Philippines.
+                        </p>
+                        <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                            {BASIC_FIVE_DETAILS.map((item) => (
+                                <li
+                                    key={item.service}
+                                    className="rounded-xl bg-white/80 px-3 py-2"
+                                >
+                                    <span className="block text-xs font-semibold text-slate-800">
+                                        {item.label}
+                                    </span>
+                                    <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">
+                                        {item.description}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="mt-3 text-[11px] leading-5 text-slate-600">
+                            <strong>Common add-ons:</strong> Drug Test,
+                            Hepatitis B Screening, and Pregnancy Test for
+                            eligible female patients. ECG is unavailable while
+                            its clinical result integration is pending.
+                        </p>
+                    </div>
+                )}
                 <div className="grid gap-3 sm:grid-cols-2">
                     {serviceTypes.map(([value, label], index) => {
                         const selected = formData.service_types.includes(value);
-                        const includedInPreEmployment =
-                            formData.examination_purpose === 'pre_employment' &&
+                        const includedInBasicFive =
+                            (isCompanyAccount ||
+                                formData.examination_purpose ===
+                                    'pre_employment') &&
                             preEmploymentServices.includes(value);
                         const Icon =
                             SERVICE_ICONS[index % SERVICE_ICONS.length];
@@ -1371,7 +1488,7 @@ function VisitStep({
                                 key={value}
                                 type="button"
                                 onClick={() => onService(value)}
-                                disabled={!!referral || includedInPreEmployment}
+                                disabled={!!referral || includedInBasicFive}
                                 aria-pressed={selected}
                                 className={`flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
                             >
@@ -1390,9 +1507,9 @@ function VisitStep({
                                                 Optional add-on
                                             </small>
                                         )}
-                                    {includedInPreEmployment && (
+                                    {includedInBasicFive && (
                                         <small className="mt-0.5 block text-xs font-semibold text-moss-700">
-                                            Included in Pre-employment
+                                            Included in Basic 5
                                         </small>
                                     )}
                                 </span>
@@ -1424,6 +1541,7 @@ interface ScheduleStepProps {
     maxAllowedDate?: string;
     errors: BookingErrors;
     requiresDoctor: boolean;
+    requiresOneMonthLeadTime: boolean;
     onDate: (date: string) => void;
     onDoctor: (doctorId: string) => void;
     onTime: (time: string) => void;
@@ -1442,6 +1560,7 @@ function ScheduleStep({
     maxAllowedDate,
     errors,
     requiresDoctor,
+    requiresOneMonthLeadTime,
     onDate,
     onDoctor,
     onTime,
@@ -1459,11 +1578,20 @@ function ScheduleStep({
         return (
             <FieldGroup
                 title="Preferred event start date"
-                description="Request your preferred starting date. The clinic will decide whether the program needs one or two full days and will assign all doctors and staff after review."
+                description={
+                    requiresOneMonthLeadTime
+                        ? 'Partnered companies must schedule their annual medical examinations at least one month in advance.'
+                        : 'Request your preferred starting date. The clinic will decide whether the program needs one or two full days and will assign all doctors and staff after review.'
+                }
             >
                 <AppointmentDateInput
                     min={today}
-                    max={latestDate}
+                    max={requiresOneMonthLeadTime ? undefined : latestDate}
+                    minErrorMessage={
+                        requiresOneMonthLeadTime
+                            ? 'Partnered companies must schedule their annual medical examinations at least one month in advance.'
+                            : undefined
+                    }
                     value={selectedDate}
                     error={errors.appointment_date}
                     onChange={onDate}
@@ -1632,6 +1760,7 @@ interface DetailsStepProps {
     user: AppointmentUser;
     profile?: PatientProfile | null;
     isCompanyAccount: boolean;
+    companyAddress: string;
     notes: string;
     onNotes: (notes: string) => void;
     event: BookingData;
@@ -1643,6 +1772,7 @@ function DetailsStep({
     user,
     profile,
     isCompanyAccount,
+    companyAddress,
     notes,
     onNotes,
     event,
@@ -1698,6 +1828,11 @@ function DetailsStep({
                                     onEvent('service_location', location);
                                     if (location === 'clinic') {
                                         onEvent('event_address', '');
+                                    } else if (!event.event_address.trim()) {
+                                        onEvent(
+                                            'event_address',
+                                            companyAddress,
+                                        );
                                     }
                                 }}
                                 className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
@@ -1706,7 +1841,6 @@ function DetailsStep({
                                     Onsite at company
                                 </option>
                                 <option value="clinic">At LMIC clinic</option>
-                                <option value="hybrid">Hybrid</option>
                             </select>
                         </label>
                         <label className="text-sm font-semibold text-slate-800">
@@ -1727,8 +1861,7 @@ function DetailsStep({
                             />
                         </label>
                         <InlineError message={errors.expected_employee_count} />
-                        {(event.service_location === 'onsite' ||
-                            event.service_location === 'hybrid') && (
+                        {event.service_location === 'onsite' && (
                             <div className="sm:col-span-2">
                                 <label className="text-sm font-semibold text-slate-800">
                                     Event address
@@ -2013,9 +2146,7 @@ function ReviewStep({
                               'Service setup',
                               formData.service_location === 'clinic'
                                   ? 'At LMIC clinic'
-                                  : formData.service_location === 'hybrid'
-                                    ? 'Hybrid'
-                                    : 'Onsite at company',
+                                  : 'Onsite at company',
                           ],
                           ...(formData.event_address
                               ? [

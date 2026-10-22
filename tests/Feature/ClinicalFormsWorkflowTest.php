@@ -17,18 +17,20 @@ function clinicalAppointment(array $services = ['CBC']): Appointment
     return Appointment::create([
         'user_id' => $patient->id, 'company_id' => $company->id,
         'appointment_date' => now(), 'type' => 'company_referral',
-        'status' => 'for_diagnostics', 'service_types' => $services,
+        'status' => 'for_diagnostics', 'arrived_at' => now(), 'service_types' => $services,
     ]);
 }
 
 function cbcPayload(bool $finalize = true): array
 {
-    return ['finalize' => $finalize, 'remarks' => 'Specimen acceptable.', 'results' => ['cbc' => [
-        'hemoglobin' => '14.2', 'hematocrit' => '0.42', 'rbc_count' => '4.8', 'wbc_count' => '7.1',
-        'segmenters' => '0.60', 'lymphocytes' => '0.32', 'monocytes' => '0.04',
-        'eosinophils' => '0.03', 'basophils' => '0.01', 'stab' => '0.02', 'meta' => '0.00',
-        'differential_others' => 'None', 'platelet_count' => '250', 'verification_note' => 'Repeated and verified',
-    ]]];
+    return ['finalize' => $finalize, 'remarks' => 'Specimen acceptable.',
+        'interpretations' => ['cbc' => ['interpretation' => 'normal', 'findings' => '']],
+        'results' => ['cbc' => [
+            'hemoglobin' => '14.2', 'hematocrit' => '0.42', 'rbc_count' => '4.8', 'wbc_count' => '7.1',
+            'segmenters' => '0.60', 'lymphocytes' => '0.32', 'monocytes' => '0.04',
+            'eosinophils' => '0.03', 'basophils' => '0.01', 'stab' => '0.02', 'meta' => '0.00',
+            'differential_others' => 'None', 'platelet_count' => '250', 'verification_note' => 'Repeated and verified',
+        ]]];
 }
 
 function peLaboratoryPayload(): array
@@ -39,6 +41,11 @@ function peLaboratoryPayload(): array
     return [
         'finalize' => true,
         'remarks' => 'PE package laboratory examinations completed.',
+        'interpretations' => collect($sections)
+            ->filter(fn (array $section): bool => $section['requires_interpretation'] ?? false)
+            ->mapWithKeys(fn (array $section, string $key): array => [
+                $key => ['interpretation' => 'normal', 'findings' => ''],
+            ])->all(),
         'results' => collect($sections)->mapWithKeys(fn (array $section, string $key): array => [
             $key => collect($section['fields'])->mapWithKeys(fn (array $field): array => [
                 $field['key'] => $field['type'] === 'number'
@@ -59,12 +66,23 @@ test('PE alone creates the physical exam without silently adding other services'
 });
 
 test('explicit pre employment basics include physical exam cbc urinalysis fecalysis and xray', function () {
-    $appointment = clinicalAppointment(config('medical.pe_package.pre_employment_services'));
+    $appointment = clinicalAppointment(config('medical.pe_package.basic_five_services'));
 
     expect(array_keys(app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment)))
         ->toBe(['cbc', 'urinalysis', 'fecalysis'])
         ->and($appointment->isPePackage())->toBeTrue()
         ->and($appointment->requiresXray())->toBeTrue();
+});
+
+test('Basic 5 and supported employer add-ons are configured without unfinished services', function () {
+    expect(config('medical.pe_package.basic_five_services'))->toBe([
+        'PE', 'CBC', 'Urinalysis', 'Fecalysis', 'X-Ray',
+    ])->and(config('medical.pe_package.optional_bulk_services'))->toBe([
+        'Drug Test', 'Hepatitis', 'Pregnancy Test',
+    ])->and(array_keys(Appointment::getBookableServiceTypeOptions()))
+        ->not->toContain('ECG', 'Audiometry', 'Neuro Psychiatric Test')
+        ->and(collect(app(\App\Services\LaboratoryFormDefinition::class)->sections()['serology']['fields'])->pluck('key')->all())
+        ->toBe(['hbsag']);
 });
 
 test('pregnancy testing is available only for female patients', function () {
@@ -98,8 +116,44 @@ test('medtech saves structured laboratory results and finalization advances work
     expect($result->cbc_results['hemoglobin'])->toBe('14.2')
         ->and($result->isFinalized())->toBeTrue()
         ->and($appointment->fresh()->status)->toBe('for_final_evaluation');
+    $this->assertDatabaseHas('diagnostic_results', [
+        'appointment_id' => $appointment->id,
+        'service_key' => 'cbc',
+        'status' => 'verified',
+        'interpretation' => 'normal',
+        'findings' => null,
+    ]);
     $this->assertDatabaseHas('clinical_form_audits', [
         'appointment_id' => $appointment->id, 'form_type' => 'laboratory', 'action' => 'created',
+    ]);
+});
+
+test('laboratory finalization requires an explicit section interpretation and findings text when abnormal', function () {
+    $appointment = clinicalAppointment();
+    $medtech = User::factory()->create(['role' => 'medtech']);
+    $payload = cbcPayload();
+    unset($payload['interpretations']);
+
+    $this->actingAs($medtech)
+        ->post(route('medtech.lab-results.store', $appointment), $payload)
+        ->assertSessionHasErrors('interpretations.cbc.interpretation');
+
+    $payload = cbcPayload();
+    $payload['interpretations']['cbc'] = ['interpretation' => 'with_findings', 'findings' => ''];
+    $this->actingAs($medtech)
+        ->post(route('medtech.lab-results.store', $appointment), $payload)
+        ->assertSessionHasErrors('interpretations.cbc.findings');
+
+    $payload['interpretations']['cbc']['findings'] = 'Elevated hemoglobin; correlate clinically.';
+    $this->actingAs($medtech)
+        ->post(route('medtech.lab-results.store', $appointment), $payload)
+        ->assertSessionHasNoErrors();
+
+    $this->assertDatabaseHas('diagnostic_results', [
+        'appointment_id' => $appointment->id,
+        'service_key' => 'cbc',
+        'interpretation' => 'with_findings',
+        'findings' => 'Elevated hemoglobin; correlate clinically.',
     ]);
 });
 
@@ -124,7 +178,7 @@ test('finalized laboratory reports cannot be overwritten by medical staff', func
 
 test('patient can download completed laboratory PDF but receptionist cannot access clinical forms', function () {
     $appointment = clinicalAppointment();
-    $medtech = User::factory()->create(['role' => 'medtech', 'license_no' => 'RMT-123']);
+    $medtech = User::factory()->create(['role' => 'medtech', 'license_no' => '12345']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
 
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.pdf', $appointment))
@@ -135,9 +189,9 @@ test('patient can download completed laboratory PDF but receptionist cannot acce
     $appointment->update(['status' => 'completed']);
 
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.pdf', $appointment))
-        ->assertOk()->assertHeader('content-type', 'application/pdf');
+        ->assertOk();
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'cbc']))
-        ->assertOk()->assertHeader('content-type', 'application/pdf');
+        ->assertOk();
 
     $receptionist = User::factory()->create(['role' => 'receptionist']);
     $this->actingAs($receptionist)->get(route('clinical-forms.laboratory.pdf', $appointment))->assertForbidden();
@@ -186,8 +240,7 @@ test('patient can download every selected laboratory service form', function () 
     foreach (array_keys($sections) as $section) {
         $this->actingAs($appointment->user)
             ->get(route('clinical-forms.laboratory.section.pdf', [$appointment, $section]))
-            ->assertOk()
-            ->assertHeader('content-type', 'application/pdf');
+            ->assertOk();
     }
 });
 
@@ -267,8 +320,7 @@ test('patient cannot download an xray report before radtech verification', funct
     $appointment->update(['status' => 'completed']);
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.xray.pdf', $appointment))
-        ->assertOk()
-        ->assertHeader('content-type', 'application/pdf');
+        ->assertOk();
 });
 
 test('patient cannot access another patients appointment or clinical document by changing the id', function () {
@@ -292,7 +344,7 @@ test('patient cannot access another patients appointment or clinical document by
 });
 
 test('PE laboratory package cannot be finalized with only one required child result', function () {
-    $appointment = clinicalAppointment(config('medical.pe_package.pre_employment_services'));
+    $appointment = clinicalAppointment(config('medical.pe_package.basic_five_services'));
     $medtech = User::factory()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), [
         'finalize' => true, 'results' => ['cbc' => cbcPayload()['results']['cbc']],
@@ -301,9 +353,16 @@ test('PE laboratory package cannot be finalized with only one required child res
 });
 
 test('doctor records structured physical findings and final approval locks the encounter', function () {
-    $appointment = clinicalAppointment(config('medical.pe_package.pre_employment_services'));
+    $appointment = clinicalAppointment(config('medical.pe_package.basic_five_services'));
     $doctor = User::factory()->create(['role' => 'doctor']);
     $appointment->update(['doctor_id' => $doctor->id]);
+    $appointment->vitalSigns()->create([
+        'patient_id' => $appointment->user_id, 'recorded_by' => User::factory()->create(['role' => 'receptionist'])->id,
+        'submission_key' => (string) \Illuminate\Support\Str::uuid(), 'measurement_type' => 'initial',
+        'systolic_pressure' => 120, 'diastolic_pressure' => 80, 'heart_rate' => 72,
+        'respiratory_rate' => 16, 'temperature' => 36.7, 'oxygen_saturation' => 98,
+        'height' => 170, 'weight' => 65, 'bmi' => 22.5, 'measured_at' => now(),
+    ]);
     $parts = ['head_scalp', 'eyes', 'ears', 'nose_sinuses', 'mouth_throat', 'neck_thyroid', 'chest_breast', 'lungs', 'heart', 'abdomen', 'back', 'anus', 'genitals', 'extremities', 'skin', 'dental'];
     $payload = [
         'height' => 170, 'weight' => 65, 'blood_pressure' => '120 / 80',

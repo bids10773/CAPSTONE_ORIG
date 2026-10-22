@@ -67,7 +67,7 @@ export default function ShowInquiry({
             <Head
                 title={`Inquiry INQ-${String(inquiry.id).padStart(6, '0')}`}
             />
-            <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+            <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
                 <Link
                     href="/admin/inquiries"
                     className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-moss-700"
@@ -205,7 +205,7 @@ export default function ShowInquiry({
                         )}
                     </aside>
                 </div>
-            </main>
+            </div>
         </AppLayout>
     );
 }

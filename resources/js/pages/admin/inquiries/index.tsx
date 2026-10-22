@@ -1,5 +1,5 @@
-import { Head, Link } from '@inertiajs/react';
-import { Eye, Inbox } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { Eye, Inbox, Pencil, Trash2 } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import AppLayout from '@/layouts/app-layout';
@@ -33,7 +33,7 @@ export default function AdminInquiryIndex({
     return (
         <AppLayout>
             <Head title="Inquiry Management" />
-            <main className="space-y-6 p-4 sm:p-6">
+            <div className="space-y-6 p-4 sm:p-6">
                 <SearchFilterToolbar
                     title="Inquiry Management"
                     search={{
@@ -152,13 +152,46 @@ export default function AdminInquiryIndex({
                                                 ).toLocaleDateString()}
                                             </td>
                                             <td className="pr-5 text-right">
-                                                <Link
-                                                    href={`/admin/inquiries/${inquiry.id}`}
-                                                    className="inline-flex rounded-lg p-2 text-moss-700 hover:bg-moss-50"
-                                                    aria-label={`Open inquiry ${inquiry.id}`}
-                                                >
-                                                    <Eye className="size-4" />
-                                                </Link>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Link
+                                                        href={`/admin/inquiries/${inquiry.id}`}
+                                                        className="inline-flex rounded-lg p-2 text-moss-700 hover:bg-moss-50"
+                                                        aria-label={`Open inquiry ${inquiry.id}`}
+                                                        title="View"
+                                                    >
+                                                        <Eye className="size-4" />
+                                                    </Link>
+                                                    <Link
+                                                        href={`/admin/inquiries/${inquiry.id}`}
+                                                        className="inline-flex rounded-lg p-2 text-moss-700 hover:bg-moss-50"
+                                                        aria-label={`Edit inquiry ${inquiry.id}`}
+                                                        title="Edit status or response"
+                                                    >
+                                                        <Pencil className="size-4" />
+                                                    </Link>
+                                                    <button
+                                                        type="button"
+                                                        className="inline-flex rounded-lg p-2 text-red-600 hover:bg-red-50"
+                                                        aria-label={`Delete inquiry ${inquiry.id}`}
+                                                        title="Delete"
+                                                        onClick={() => {
+                                                            if (
+                                                                confirm(
+                                                                    `Permanently delete inquiry INQ-${String(inquiry.id).padStart(6, '0')}? This cannot be undone.`,
+                                                                )
+                                                            ) {
+                                                                router.delete(
+                                                                    `/admin/inquiries/${inquiry.id}`,
+                                                                    {
+                                                                        preserveScroll: true,
+                                                                    },
+                                                                );
+                                                            }
+                                                        }}
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -170,7 +203,7 @@ export default function AdminInquiryIndex({
                         <Pagination pagination={inquiries} label="inquiries" />
                     )}
                 </section>
-            </main>
+            </div>
         </AppLayout>
     );
 }

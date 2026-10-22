@@ -29,6 +29,19 @@ test('admin global search groups appointments people and companies', function ()
         ->assertJsonFragment(['id' => 'company-'.$company->id]);
 });
 
+test('admin global search finds a patient by PAT reference', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $patient = User::factory()->create(['role' => 'patient']);
+
+    $this->actingAs($admin)
+        ->getJson(route('api.global-search', ['q' => $patient->patient_reference_code]))
+        ->assertOk()
+        ->assertJsonFragment([
+            'id' => 'person-'.$patient->id,
+            'url' => route('admin.patients.show', $patient),
+        ]);
+});
+
 test('patient global search never exposes another patients records', function () {
     $patient = User::factory()->create(['role' => 'patient', 'first_name' => 'Own']);
     $other = User::factory()->create(['role' => 'patient', 'first_name' => 'Private', 'last_name' => 'Person']);

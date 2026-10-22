@@ -336,7 +336,7 @@ function isPastAppointment(appointment: Appointment): boolean {
 function StatusBadge({ status }: { status: string }) {
     return (
         <span
-            className={`text-xs font-semibold whitespace-nowrap ${statusStyles[status] ?? 'text-slate-600 dark:text-slate-300'}`}
+            className={`status-text-only status-text-compact inline-flex font-semibold whitespace-nowrap ${statusStyles[status] ?? 'text-slate-600 dark:text-slate-300'}`}
         >
             {statusLabels[status] ?? status.replaceAll('_', ' ')}
         </span>
@@ -1130,15 +1130,14 @@ export default function AdminAppointmentsIndex() {
                                                                 />
                                                                 <TruncatedText
                                                                     value={
-                                                                        appointment.company
-                                                                            ? `Company · ${appointment.company.company_name}`
-                                                                            : typeLabels[
-                                                                                    appointment
-                                                                                        .type
-                                                                                ] ===
-                                                                                'Walk-in'
-                                                                              ? 'Walk-in patient'
-                                                                              : 'Individual patient'
+                                                                        typeLabels[
+                                                                            appointment
+                                                                                .type
+                                                                        ] ??
+                                                                        appointment.type.replaceAll(
+                                                                            '_',
+                                                                            ' ',
+                                                                        )
                                                                     }
                                                                     className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400"
                                                                 />
@@ -1195,23 +1194,10 @@ export default function AdminAppointmentsIndex() {
                                                     </td>
                                                     <td className="min-w-0 px-3 py-2.5 font-medium text-slate-700">
                                                         <TruncatedText
-                                                            value={
-                                                                typeLabels[
-                                                                    appointment
-                                                                        .type
-                                                                ] ??
-                                                                appointment.type.replaceAll(
-                                                                    '_',
-                                                                    ' ',
-                                                                )
-                                                            }
-                                                            className="dark:text-slate-300"
-                                                        />
-                                                        <TruncatedText
                                                             value={examinationPurposeLabel(
                                                                 appointment.examination_purpose,
                                                             )}
-                                                            className="mt-0.5 text-xs text-moss-700 dark:text-moss-300"
+                                                            className="text-sm text-moss-700 dark:text-moss-300"
                                                         />
                                                     </td>
                                                     <td className="min-w-0 px-3 py-2.5">
@@ -1369,7 +1355,7 @@ export default function AdminAppointmentsIndex() {
                         </DialogHeader>
 
                         <section>
-                            <p className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                            <p className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-moss-300">
                                 Patient information
                             </p>
                             <div className="grid gap-3 sm:grid-cols-2">
@@ -1436,7 +1422,7 @@ export default function AdminAppointmentsIndex() {
                         </section>
 
                         <section>
-                            <p className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                            <p className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-moss-300">
                                 Appointment information
                             </p>
                             <div className="grid gap-3 sm:grid-cols-2">
@@ -1480,7 +1466,7 @@ export default function AdminAppointmentsIndex() {
 
                         {bulkOnly && (
                             <section>
-                                <p className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                                <p className="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-moss-300">
                                     Assigned staff
                                 </p>
                                 <div className="grid gap-3 sm:grid-cols-2">
@@ -1505,19 +1491,19 @@ export default function AdminAppointmentsIndex() {
                             </section>
                         )}
 
-                        <div className="rounded-xl border border-slate-200 p-4">
+                        <div className="rounded-xl border border-slate-200 p-4 dark:border-border dark:bg-accent/20">
                             <div className="flex flex-wrap items-center gap-2">
                                 <TypeBadge type={selectedAppointment.type} />
                                 <StatusBadge
                                     status={selectedAppointment.status}
                                 />
                                 {selectedAppointment.batch_id && (
-                                    <span className="text-xs text-slate-500">
+                                    <span className="text-xs text-slate-500 dark:text-muted-foreground">
                                         Batch {selectedAppointment.batch_id}
                                     </span>
                                 )}
                             </div>
-                            <p className="mt-4 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                            <p className="mt-4 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-moss-300">
                                 Requested services
                             </p>
                             <div className="mt-2">
@@ -1527,10 +1513,10 @@ export default function AdminAppointmentsIndex() {
                             </div>
                             {selectedAppointment.notes && (
                                 <>
-                                    <p className="mt-4 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                                    <p className="mt-4 text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-moss-300">
                                         Administrative notes
                                     </p>
-                                    <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-slate-600">
+                                    <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-slate-600 dark:text-muted-foreground">
                                         {selectedAppointment.notes}
                                     </p>
                                 </>
@@ -1538,7 +1524,7 @@ export default function AdminAppointmentsIndex() {
                         </div>
 
                         {missingFields(selectedAppointment).length > 0 && (
-                            <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                            <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                                 <CircleAlert className="mt-0.5 size-4 shrink-0" />
                                 <div>
                                     <p className="font-semibold">
@@ -1558,7 +1544,7 @@ export default function AdminAppointmentsIndex() {
 
                         {selectedAppointment.status === 'pending' &&
                             isPastAppointment(selectedAppointment) && (
-                                <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                                <div className="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
                                     <CircleAlert className="mt-0.5 size-4 shrink-0" />
                                     <div>
                                         <p className="font-semibold">
@@ -1575,7 +1561,7 @@ export default function AdminAppointmentsIndex() {
                                 </div>
                             )}
 
-                        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+                        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end dark:border-border">
                             {selectedAppointment.type !== 'company_bulk' && (
                                 <Button
                                     variant="outline"
@@ -1929,19 +1915,19 @@ function DetailCard({
     detail?: string;
 }) {
     return (
-        <div className="flex gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-moss-700 shadow-sm">
+        <div className="flex gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-moss-800 dark:bg-moss-950/55">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-moss-700 shadow-sm dark:bg-moss-900 dark:text-moss-200 dark:shadow-none">
                 <Icon className="size-4" />
             </span>
             <div className="min-w-0">
-                <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
+                <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase dark:text-moss-300">
                     {label}
                 </p>
-                <p className="mt-1 truncate text-sm font-semibold text-slate-800">
+                <p className="mt-1 truncate text-sm font-semibold text-slate-800 dark:text-foreground">
                     {value}
                 </p>
                 {detail && (
-                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                    <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-muted-foreground">
                         {detail}
                     </p>
                 )}

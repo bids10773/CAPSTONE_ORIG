@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import { relativeNotificationTime } from '@/components/notification-bell';
 import type { AppNotification } from '@/components/notification-bell';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ type Props = {
         total: number;
     };
     filter: 'all' | 'unread';
+    notificationCenter: { unreadCount: number };
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -22,8 +23,19 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function NotificationsIndex() {
-    const { notifications, filter } = usePage().props as unknown as Props;
-    const unread = notifications.data.filter((item) => !item.read_at).length;
+    const { notifications, filter, notificationCenter } = usePage()
+        .props as unknown as Props;
+    const unread = notificationCenter.unreadCount;
+
+    const removeAllNotifications = () => {
+        if (
+            !window.confirm('Remove all notifications? This cannot be undone.')
+        ) {
+            return;
+        }
+
+        router.delete('/notifications', { preserveScroll: true });
+    };
 
     return (
         <>
@@ -42,16 +54,28 @@ export default function NotificationsIndex() {
                             account.
                         </p>
                     </div>
-                    {unread > 0 && (
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                router.patch('/notifications/read-all')
-                            }
-                        >
-                            <CheckCheck className="size-4" /> Mark all as read
-                        </Button>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {notifications.total > 0 && (
+                            <Button
+                                variant="outline"
+                                disabled={unread === 0}
+                                onClick={() =>
+                                    router.patch('/notifications/read-all')
+                                }
+                            >
+                                <CheckCheck className="size-4" /> Mark all as
+                                read
+                            </Button>
+                        )}
+                        {notifications.total > 0 && (
+                            <Button
+                                variant="destructive"
+                                onClick={removeAllNotifications}
+                            >
+                                <Trash2 className="size-4" /> Remove all
+                            </Button>
+                        )}
+                    </div>
                 </header>
 
                 <nav className="flex gap-2" aria-label="Notification filters">
@@ -127,6 +151,20 @@ export default function NotificationsIndex() {
                                         Mark as read
                                     </button>
                                 )}
+                                <button
+                                    type="button"
+                                    className="flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 focus-visible:ring-4 focus-visible:ring-red-500/20 focus-visible:outline-none dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                                    onClick={() =>
+                                        router.delete(
+                                            `/notifications/${notification.id}`,
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                    aria-label={`Remove ${notification.title}`}
+                                    title="Remove notification"
+                                >
+                                    <Trash2 className="size-4" />
+                                </button>
                             </article>
                         ))
                     )}

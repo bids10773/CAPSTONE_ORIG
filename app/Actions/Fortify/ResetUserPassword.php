@@ -25,6 +25,8 @@ class ResetUserPassword implements ResetsUserPasswords
 
         $user->forceFill([
             'password' => $input['password'],
+            'failed_login_attempts' => 0,
+            'login_locked_at' => null,
         ])->save();
 
         $user->notify(new PasswordChanged);

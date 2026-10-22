@@ -92,11 +92,12 @@ export default function CreateInquiry({
             {required && <span className="ml-1 text-red-600">*</span>}
         </span>
     );
+    const ContentRoot = isAuthenticated ? 'div' : 'main';
 
     const content = (
         <>
             <Head title="Send an Inquiry" />
-            <main
+            <ContentRoot
                 className="relative isolate min-h-screen overflow-hidden bg-moss-900 bg-cover bg-fixed bg-center text-white"
                 style={{
                     backgroundImage: "url('/images/lmic6.png')",
@@ -548,7 +549,7 @@ export default function CreateInquiry({
                         </form>
                     </div>
                 </div>
-            </main>
+            </ContentRoot>
         </>
     );
 

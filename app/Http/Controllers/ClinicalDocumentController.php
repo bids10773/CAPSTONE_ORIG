@@ -26,34 +26,15 @@ class ClinicalDocumentController extends Controller
             'xray' => $appointment->xrayReport,
             'laboratorySections' => $definitions->sectionsFor($appointment),
         ])->setPaper('letter', 'portrait');
-        $filename = "LMIC-Complete-PE-{$appointment->id}.pdf";
+        $filename = "medicalexam-pdf-{$appointment->reference_code}.pdf";
 
-        return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
-    }
-
-    public function peSection(Request $request, Appointment $appointment, string $section, ClinicalFormWorkflowService $workflow): Response
-    {
-        $this->loadPeAppointment($request, $appointment);
-        abort_if($section === 'medical-history' && ! $appointment->medicalHistory, 404, 'No medical history exists.');
-        abort_if($section === 'final-evaluation' && ! $appointment->medicalExamination?->finalized_at, 404, 'No final evaluation exists.');
-        $workflow->auditDocumentAccess($appointment, $request->user(), $section, $request);
-
-        $pdf = Pdf::loadView('pdf.pe-section', [
-            'appointment' => $appointment,
-            'section' => $section,
-            'physical' => $appointment->physicalExam,
-            'history' => $appointment->medicalHistory,
-            'examination' => $appointment->medicalExamination,
-        ])->setPaper('letter', 'portrait');
-        $filename = 'LMIC-'.str($section)->title()."-{$appointment->id}.pdf";
-
-        return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
+        return $this->secure($request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename));
     }
 
     private function loadPeAppointment(Request $request, Appointment $appointment): void
     {
         Gate::authorize('viewPhysicalExam', $appointment);
-        $this->ensurePatientResultIsReleased($request, $appointment);
+        $this->ensurePatientResultIsReleased($request, $appointment, 'physical_exam');
         abort_unless($appointment->isPePackage(), 404, 'This appointment has no PE form.');
         $appointment->load([
             'user.patientProfile', 'company', 'medicalExamination.examiningDoctor',
@@ -67,14 +48,18 @@ class ClinicalDocumentController extends Controller
     public function xray(Request $request, Appointment $appointment, ClinicalFormWorkflowService $workflow): Response
     {
         Gate::authorize('viewXray', $appointment);
-        $this->ensurePatientResultIsReleased($request, $appointment);
-        $appointment->load(['user.patientProfile', 'company', 'xrayReport.radiologist']);
+        $this->ensurePatientResultIsReleased($request, $appointment, 'xray');
+        $appointment->load(['user.patientProfile', 'company', 'xrayReport.radiologist', 'xrayReport.verifiedBy']);
         abort_unless($appointment->xrayReport, 404, 'No X-ray report exists.');
         $workflow->auditDocumentAccess($appointment, $request->user(), 'xray', $request);
 
         return $this->render($request, $appointment, 'Chest X-Ray Report', [
             'Findings' => $appointment->xrayReport->findings,
             'Impression' => $appointment->xrayReport->impression,
+            'Recommendation' => $appointment->xrayReport->recommendation,
+            'Remarks' => $appointment->xrayReport->remarks,
+            'Performed date' => $appointment->xrayReport->performed_at?->format('F j, Y g:i A'),
+            'Verification date' => $appointment->xrayReport->verified_at?->format('F j, Y g:i A'),
         ], 'xray');
     }
 
@@ -83,10 +68,20 @@ class ClinicalDocumentController extends Controller
         $pdf = Pdf::loadView('pdf.clinical-report', compact('appointment', 'title', 'fields'))->setPaper('letter');
         $filename = "LMIC-{$slug}-{$appointment->id}.pdf";
 
-        return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
+        return $this->secure($request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename));
     }
 
-    private function ensurePatientResultIsReleased(Request $request, Appointment $appointment): void
+    private function secure(Response $response): Response
+    {
+        $response->headers->set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
+        $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet');
+
+        return $response;
+    }
+
+    private function ensurePatientResultIsReleased(Request $request, Appointment $appointment, string $documentType): void
     {
         if (! in_array($request->user()->role, ['patient', 'company'], true)) {
             return;
@@ -96,12 +91,14 @@ class ClinicalDocumentController extends Controller
 
         if ($appointment->isPePackage()) {
             $appointment->loadMissing('medicalExamination');
-            abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final PE report has not been released yet.');
+            abort_unless($appointment->medicalExamination?->released_at !== null, 403, 'The final medical examination report has not been released yet.');
 
-            return;
+            if ($documentType === 'physical_exam') {
+                return;
+            }
         }
 
-        if ($appointment->requiresXray()) {
+        if ($documentType === 'xray') {
             $appointment->loadMissing('xrayReport');
             abort_unless($appointment->xrayReport?->isVerified(), 403, 'The official X-ray result has not been verified yet.');
         }

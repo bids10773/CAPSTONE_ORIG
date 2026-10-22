@@ -26,4 +26,9 @@ class InquiryPolicy
     {
         return false;
     }
+
+    public function delete(User $user, Inquiry $inquiry): bool
+    {
+        return false;
+    }
 }

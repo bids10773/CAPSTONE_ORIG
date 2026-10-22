@@ -28,7 +28,7 @@ class CompanyBulkMedicalReportService
         'Urinalysis' => ['key' => 'urinalysis', 'label' => 'URINALYSIS'],
         'Fecalysis' => ['key' => 'fecalysis', 'label' => 'FECALYSIS'],
         'Drug Test' => ['key' => 'drug_test', 'label' => 'DRUG TEST'],
-        'Hepatitis' => ['key' => 'serology', 'label' => 'HEPATITIS'],
+        'Hepatitis' => ['key' => 'serology', 'label' => 'HEPATITIS B'],
         'Blood Typing' => ['key' => 'blood_type', 'label' => 'BLOOD TYPE'],
         'Pregnancy Test' => ['key' => 'pregnancy', 'label' => 'PREGNANCY TEST'],
         'FBS' => ['key' => 'fbs', 'label' => 'FBS'],

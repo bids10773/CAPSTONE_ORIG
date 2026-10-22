@@ -115,7 +115,6 @@ function formatTime(value: string | null, fallback?: string | null): string {
 export default function TodayAppointments({
     appointments,
     filters,
-    today,
     summary,
 }: Props) {
     const [search, setSearch] = useState(filters.search);
@@ -177,16 +176,10 @@ export default function TodayAppointments({
         );
     }
 
-    const formattedDate = new Intl.DateTimeFormat('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-    }).format(new Date(`${today}T00:00:00`));
-
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Today's Clinic Overview" />
-            <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+            <div className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
                 <header className="relative overflow-hidden rounded-[2rem] bg-moss-800 p-6 text-white shadow-[0_18px_45px_-30px_rgba(23,50,34,.8)] sm:p-8">
                     <div className="absolute -top-20 -right-16 size-64 rounded-full bg-white/10 blur-3xl" />
                     <div className="absolute -bottom-28 left-1/3 size-56 rounded-full bg-moss-400/20 blur-3xl" />
@@ -203,10 +196,6 @@ export default function TodayAppointments({
                                 Monitor patient flow, current workload, and
                                 completed visits without taking over routine
                                 receptionist decisions.
-                            </p>
-                            <p className="mt-5 flex items-center gap-2 text-sm font-semibold text-moss-100">
-                                <CalendarClock className="size-4" />{' '}
-                                {formattedDate}
                             </p>
                         </div>
                         <div className="w-fit rounded-2xl border border-white/15 bg-white/10 px-6 py-4 backdrop-blur-sm">
@@ -477,7 +466,7 @@ export default function TodayAppointments({
                         </DialogContent>
                     )}
                 </Dialog>
-            </main>
+            </div>
         </AppLayout>
     );
 }
@@ -602,7 +591,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 function StatusBadge({ status }: { status: string }) {
     return (
         <span
-            className={`inline-flex text-xs font-bold whitespace-nowrap ${statusStyles[status] ?? 'text-slate-700 dark:text-slate-300'}`}
+            className={`status-text-only inline-flex text-xs font-bold whitespace-nowrap ${statusStyles[status] ?? 'text-slate-700 dark:text-slate-300'}`}
         >
             {appointmentStatusLabel(status)}
         </span>

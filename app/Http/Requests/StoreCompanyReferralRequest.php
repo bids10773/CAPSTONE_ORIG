@@ -22,7 +22,7 @@ class StoreCompanyReferralRequest extends FormRequest
             'email' => ['required', 'email', 'max:255'],
             'examination_purpose' => ['required', 'string', Rule::in(['pre_employment', 'medical_clearance'])],
             'service_types' => ['required', 'array', 'min:1'],
-            'service_types.*' => ['string', 'distinct', Rule::in(array_keys(Appointment::getServiceTypeOptions()))],
+            'service_types.*' => ['string', 'distinct', Rule::in(array_keys(Appointment::getBookableServiceTypeOptions()))],
         ];
     }
 }

@@ -22,7 +22,7 @@ export default function MyInquiries({
     return (
         <AppLayout>
             <Head title="My Inquiries" />
-            <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
+            <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
                 <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <p className="text-sm font-semibold text-moss-700">
@@ -85,7 +85,7 @@ export default function MyInquiries({
                         <Pagination pagination={inquiries} label="inquiries" />
                     )}
                 </section>
-            </main>
+            </div>
         </AppLayout>
     );
 }

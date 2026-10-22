@@ -9,9 +9,12 @@ use App\Models\Company;
 use App\Models\Inquiry;
 use App\Services\CompanyAccountService;
 use App\Support\SearchTerm;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
@@ -28,7 +31,7 @@ class CompanyController extends Controller
 
         $companies = Company::query()
             ->with(['account:id,company_id,first_name,middle_name,last_name,position,must_change_password'])
-            ->withCount('appointments')
+            ->withCount(['appointments', 'referrals'])
             ->when($search, fn ($query) => $query->where(fn ($q) => $q
                 ->where('company_name', 'like', "%{$likeSearch}%")
                 ->orWhere('email', 'like', "%{$likeSearch}%")
@@ -37,7 +40,15 @@ class CompanyController extends Controller
             ->when(in_array($status, ['active', 'inactive'], true), fn ($query) => $query->where('status', $status))
             ->orderBy('company_name')
             ->paginate($this->perPage($request))
-            ->withQueryString();
+            ->withQueryString()
+            ->through(function (Company $company): Company {
+                $company->setAttribute(
+                    'can_delete',
+                    $company->appointments_count === 0 && $company->referrals_count === 0,
+                );
+
+                return $company;
+            });
 
         return Inertia::render('admin/companies/index', [
             'companies' => $companies,
@@ -114,7 +125,31 @@ class CompanyController extends Controller
     {
         Gate::authorize('delete', $company);
 
-        return back()->with('error', 'Company records are retained for medical and transaction history. Deactivate the account instead.');
+        if ($company->appointments()->exists() || $company->referrals()->exists()) {
+            return back()->with('error', 'This company cannot be deleted because medical or referral history is linked to it. Deactivate the account instead.');
+        }
+
+        $name = $company->company_name;
+        $logoPath = $company->logo_path;
+
+        try {
+            DB::transaction(function () use ($company): void {
+                $company->account()->each(function ($account): void {
+                    DB::table(config('session.table', 'sessions'))->where('user_id', $account->id)->delete();
+                    $account->socialAccounts()->delete();
+                    $account->delete();
+                });
+                $company->delete();
+            });
+        } catch (QueryException) {
+            return back()->with('error', 'This company cannot be deleted because other records are linked to it. Deactivate the account instead.');
+        }
+
+        if ($logoPath) {
+            Storage::disk('public')->delete($logoPath);
+        }
+
+        return redirect()->route('admin.companies.index')->with('success', "{$name} has been deleted.");
     }
 
     public function toggleActive(Company $company, CompanyAccountService $service): RedirectResponse

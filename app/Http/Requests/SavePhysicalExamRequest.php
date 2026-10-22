@@ -35,19 +35,11 @@ class SavePhysicalExamRequest extends FormRequest
 
     public function rules(): array
     {
-        $limits = config('physical_exam.vital_limits');
-
         $rules = [
-            'height' => ['bail', 'required', 'regex:/^\d+(?:\.\d)?$/', 'numeric', 'between:'.$limits['height']['min'].','.$limits['height']['max']],
-            'weight' => ['bail', 'required', 'regex:/^\d+(?:\.\d)?$/', 'numeric', 'between:'.$limits['weight']['min'].','.$limits['weight']['max']],
-            'systolic_pressure' => ['bail', 'required', 'regex:/^\d+$/', 'integer', 'between:'.$limits['systolic_pressure']['min'].','.$limits['systolic_pressure']['max'], 'gt:diastolic_pressure'],
-            'diastolic_pressure' => ['bail', 'required', 'regex:/^\d+$/', 'integer', 'between:'.$limits['diastolic_pressure']['min'].','.$limits['diastolic_pressure']['max']],
-            'pulse_rate' => ['bail', 'required', 'regex:/^\d+$/', 'integer', 'between:'.$limits['pulse_rate']['min'].','.$limits['pulse_rate']['max']],
-            'respiration_rate' => ['required', 'integer', 'between:5,80'],
-            'temperature' => ['bail', 'required', 'regex:/^\d+(?:\.\d)?$/', 'numeric', 'between:'.$limits['temperature']['min'].','.$limits['temperature']['max']],
             'visual_acuity' => ['required', 'string', 'max:100'],
             'hearing' => ['required', 'string', 'max:100'],
             'remarks' => ['nullable', 'string', 'max:3000'],
+            'vital_signs_override_reason' => ['nullable', 'string', 'max:1000'],
         ];
 
         foreach ($this->bodyParts() as $field) {

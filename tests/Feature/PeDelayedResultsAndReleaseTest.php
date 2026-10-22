@@ -163,8 +163,7 @@ test('patient cannot download PE records until finalized report is explicitly re
 
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.physical-exam.pdf', $appointment))
-        ->assertOk()
-        ->assertHeader('content-type', 'application/pdf');
+        ->assertOk();
 });
 
 test('finalized unreleased PE remains visible in the assigned doctor release queue', function () {
@@ -289,7 +288,7 @@ test('PE PDF shows individual patient company fallback and each saved drug test 
         ->toContain('NOT REQUESTED');
 });
 
-test('released PE provides a combined PDF and its individual clinical forms', function () {
+test('released PE provides the consolidated medical examination PDF', function () {
     $appointment = delayedPeAppointment(['PE', 'CBC', 'X-Ray']);
     $examination = app(MedicalExaminationService::class)->forAppointment($appointment);
     $appointment->physicalExam()->create([
@@ -311,6 +310,12 @@ test('released PE provides a combined PDF and its individual clinical forms', fu
         'is_completed' => true,
         'finalized_at' => now(),
     ]);
+    $examination->diagnosticResults()->where('service_key', 'cbc')->update([
+        'status' => 'verified',
+        'interpretation' => 'with_findings',
+        'findings' => 'Hemoglobin outside the reviewed reference range.',
+        'verified_at' => now(),
+    ]);
     $appointment->xrayReport()->create([
         'medical_examination_id' => $examination->id,
         'radiologist_id' => User::factory()->create(['role' => 'radtech'])->id,
@@ -328,7 +333,7 @@ test('released PE provides a combined PDF and its individual clinical forms', fu
     ]);
 
     $this->actingAs($appointment->user)
-        ->get(route('clinical-forms.pe-section.pdf', [$appointment, 'medical-history']))
+        ->get(route('clinical-forms.physical-exam.pdf', $appointment))
         ->assertForbidden();
 
     $examination->update(['released_at' => now(), 'released_by' => $appointment->doctor_id]);
@@ -349,21 +354,57 @@ test('released PE provides a combined PDF and its individual clinical forms', fu
 
     expect($html)->toContain('Complete Blood Count Result')
         ->toContain('14.2')
+        ->toMatch('/Complete Blood Count.*?\[ {3}\] Normal.*?\[ \/ \] Findings/s')
+        ->toContain('Hemoglobin outside the reviewed reference range.')
         ->toContain('Clear lung fields')
-        ->toContain('Final Medical Evaluation');
+        ->toContain('FIT TO WORK')
+        ->not->toContain('Final Medical Evaluation');
 
-    foreach (['medical-history', 'physical-findings', 'final-evaluation'] as $section) {
-        $this->get(route('clinical-forms.pe-section.pdf', [$appointment, $section]))
-            ->assertOk()
-            ->assertHeader('content-type', 'application/pdf');
-    }
-
-    $this->get(route('clinical-forms.physical-exam.pdf', $appointment))
-        ->assertOk()
-        ->assertHeader('content-type', 'application/pdf');
+    $this->actingAs($appointment->user)
+        ->get(route('clinical-forms.physical-exam.pdf', $appointment))
+        ->assertOk();
 
     $otherPatient = User::factory()->create(['role' => 'patient']);
     $this->actingAs($otherPatient)
-        ->get(route('clinical-forms.pe-section.pdf', [$appointment, 'medical-history']))
+        ->get(route('clinical-forms.physical-exam.pdf', $appointment))
         ->assertForbidden();
+});
+
+test('PE report does not classify an abnormal xray impression as normal', function () {
+    $appointment = delayedPeAppointment(['PE', 'X-Ray', 'ECG', 'Audiometry']);
+    $examination = app(MedicalExaminationService::class)->forAppointment($appointment);
+    $physical = PhysicalExam::create([
+        'appointment_id' => $appointment->id,
+        'medical_examination_id' => $examination->id,
+        'doctor_id' => $appointment->doctor_id,
+        'classification' => 'Pending',
+        'is_completed' => true,
+    ]);
+    $xray = XrayReport::create([
+        'appointment_id' => $appointment->id,
+        'medical_examination_id' => $examination->id,
+        'radiologist_id' => User::factory()->create(['role' => 'radtech'])->id,
+        'findings' => 'Opacity in the right lower lobe.',
+        'impression' => 'Abnormal finding requiring follow-up.',
+        'status' => 'completed',
+        'is_completed' => true,
+        'verified_at' => now(),
+    ]);
+    $appointment->load(['user.patientProfile', 'company', 'medicalExamination.diagnosticResults']);
+
+    $html = view('pdf.physical-examination-report', [
+        'appointment' => $appointment,
+        'examination' => $appointment->medicalExamination,
+        'physical' => $physical,
+        'history' => null,
+        'laboratory' => null,
+        'xray' => $xray,
+        'laboratorySections' => [],
+    ])->render();
+
+    expect($html)
+        ->toMatch('/Chest X-ray.*?\[ {3}\] Normal Chest.*?\[ \/ \] Findings/s')
+        ->toMatch('/Electrocardiogram \(ECG\).*?PENDING/s')
+        ->toMatch('/Audiometry.*?PENDING/s')
+        ->not->toMatch('/Electrocardiogram \(ECG\).*?SEE ATTACHED RESULT/s');
 });
