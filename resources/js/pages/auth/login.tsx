@@ -115,7 +115,7 @@ export default function Login({
                                     htmlFor="email"
                                     className="mb-2 block text-sm font-medium text-slate-700"
                                 >
-                                    Email address *
+                                    Email address
                                 </label>
                                 <div className="auth-input-wrap">
                                     <Mail
@@ -168,7 +168,7 @@ export default function Login({
                                         htmlFor="password"
                                         className="text-sm font-medium text-slate-700"
                                     >
-                                        Password *
+                                        Password
                                     </label>
                                     {canResetPassword && (
                                         <TextLink

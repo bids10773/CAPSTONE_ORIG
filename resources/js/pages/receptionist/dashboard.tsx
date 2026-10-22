@@ -52,7 +52,7 @@ export default function ReceptionistDashboard({
     return (
         <>
             <Head title="Receptionist Dashboard" />
-            <div className="min-h-screen space-y-6 bg-gray-50 p-6">
+            <div className="min-h-screen space-y-6 bg-gray-50 p-4 sm:p-6 lg:p-8 dark:bg-background">
                 <StaffDashboardHero
                     name={auth?.user?.name ?? 'Receptionist'}
                     description="Keep today's online appointments and walk-in queue moving."

@@ -137,7 +137,7 @@ export default function DoctorDashboard(props: Props) {
         <>
             <Head title="Doctor Dashboard" />
 
-            <div className="min-h-screen space-y-6 bg-gray-50 p-6">
+            <div className="min-h-screen space-y-6 bg-gray-50 p-4 sm:p-6 lg:p-8 dark:bg-background">
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
                     <section className="relative overflow-hidden rounded-[2rem] bg-moss-800 p-7 text-white shadow-[0_10px_30px_-24px_rgba(48,63,52,.45)] sm:p-9">
                         <div className="absolute -top-20 -right-16 size-64 rounded-full bg-white/10 blur-3xl" />
@@ -251,7 +251,7 @@ export default function DoctorDashboard(props: Props) {
                 {/* SUPPORTING STATS */}
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
                     {/* Awaiting examination */}
-                    <div className="rounded-[2rem] border border-white bg-white/60 p-6 shadow-sm backdrop-blur-md transition-all hover:shadow-xl hover:shadow-moss-500/5">
+                    <div className="rounded-[2rem] border border-white bg-white/60 p-6 shadow-sm backdrop-blur-md transition-shadow hover:shadow-xl hover:shadow-moss-500/5">
                         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
                             <HeartPulse size={24} />
                         </div>
@@ -264,7 +264,7 @@ export default function DoctorDashboard(props: Props) {
                     </div>
 
                     {/* Completed Physical Exams */}
-                    <div className="rounded-[2rem] border border-white bg-white/60 p-6 shadow-sm backdrop-blur-md transition-all hover:shadow-xl hover:shadow-moss-500/5">
+                    <div className="rounded-[2rem] border border-white bg-white/60 p-6 shadow-sm backdrop-blur-md transition-shadow hover:shadow-xl hover:shadow-moss-500/5">
                         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-600">
                             <ClipboardList size={24} />
                         </div>
@@ -277,7 +277,7 @@ export default function DoctorDashboard(props: Props) {
                     </div>
 
                     {/* Quick Action */}
-                    <div className="flex flex-col justify-between rounded-[2rem] border border-moss-200 bg-gradient-to-br from-moss-700 to-moss-900 p-6 text-white shadow-sm transition-all hover:shadow-xl hover:shadow-moss-900/10 sm:col-span-2 xl:col-span-1">
+                    <div className="flex flex-col justify-between rounded-[2rem] border border-moss-200 bg-gradient-to-br from-moss-700 to-moss-900 p-6 text-white shadow-sm transition-shadow hover:shadow-xl hover:shadow-moss-900/10 sm:col-span-2 xl:col-span-1">
                         <div className="flex items-start justify-between gap-4">
                             <div>
                                 <p className="text-xs font-extrabold tracking-[0.14em] text-moss-200 uppercase">
@@ -354,7 +354,7 @@ export default function DoctorDashboard(props: Props) {
                                             key={apt.id}
                                             tabIndex={0}
                                             aria-label={`${patientName}, ${formatAppointmentDate(apt.appointment_date)}. Hover or focus to show appointment details.`}
-                                            className="group rounded-2xl border border-transparent bg-gray-50/50 p-4 transition-all duration-300 outline-none hover:border-moss-200 hover:bg-moss-50/40 focus-visible:border-moss-400 focus-visible:ring-4 focus-visible:ring-moss-500/10 dark:hover:border-moss-700"
+                                            className="group rounded-2xl border border-transparent bg-gray-50/50 p-4 transition-[background-color,border-color,box-shadow] duration-300 outline-none hover:border-moss-200 hover:bg-moss-50/40 focus-visible:border-moss-400 focus-visible:ring-4 focus-visible:ring-moss-500/10 dark:hover:border-moss-700"
                                         >
                                             <div className="flex items-center justify-between gap-4">
                                                 <div className="flex min-w-0 items-center gap-4">
@@ -384,7 +384,7 @@ export default function DoctorDashboard(props: Props) {
                                                 </div>
                                             </div>
 
-                                            <div className="grid max-h-0 grid-cols-1 gap-3 overflow-hidden opacity-0 transition-all duration-300 group-hover:mt-4 group-hover:max-h-96 group-hover:opacity-100 group-focus:mt-4 group-focus:max-h-96 group-focus:opacity-100 md:grid-cols-3">
+                                            <div className="grid max-h-0 grid-cols-1 gap-3 overflow-hidden opacity-0 transition-[max-height,margin,opacity] duration-300 group-hover:mt-4 group-hover:max-h-96 group-hover:opacity-100 group-focus:mt-4 group-focus:max-h-96 group-focus:opacity-100 md:grid-cols-3">
                                                 <div className="rounded-xl border border-moss-100 bg-white/70 p-4">
                                                     <p className="text-[10px] font-extrabold tracking-[0.14em] text-moss-600 uppercase">
                                                         Examination purpose

@@ -349,7 +349,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                     onClick={closeMobileSidebar}
                     className="flex min-w-0 items-center gap-3 rounded-xl p-1 group-data-[collapsible=icon]:mx-auto focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
                 >
-                    <ClinicStatusLogo className="size-10">
+                    <ClinicStatusLogo className="size-10 dark:bg-sidebar-accent">
                         <img
                             src={logo}
                             alt="LMIC"
@@ -357,10 +357,10 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                         />
                     </ClinicStatusLogo>
                     <span className="min-w-0 group-data-[collapsible=icon]:hidden">
-                        <span className="block truncate text-sm font-bold tracking-[-.02em] text-slate-950">
+                        <span className="block truncate text-sm font-bold tracking-[-.02em] text-slate-950 dark:text-sidebar-foreground">
                             Living Myth
                         </span>
-                        <span className="block truncate text-[10px] font-semibold tracking-[.12em] text-slate-400 uppercase">
+                        <span className="block truncate text-[10px] font-semibold tracking-[.12em] text-slate-400 uppercase dark:text-muted-foreground">
                             Industrial Clinic
                         </span>
                     </span>
@@ -376,7 +376,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                     event.currentTarget.blur();
                                 }
                             }}
-                            className="hidden size-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition group-data-[collapsible=icon]:hidden hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none md:flex"
+                            className="hidden size-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition group-data-[collapsible=icon]:hidden hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none md:flex dark:text-muted-foreground dark:hover:bg-sidebar-accent dark:hover:text-moss-200"
                             aria-label={
                                 isPinned ? 'Unlock sidebar' : 'Lock sidebar'
                             }
@@ -397,7 +397,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
 
             <SidebarContent className="px-3 py-5 group-data-[collapsible=icon]:px-2">
                 <SidebarGroup className="p-0">
-                    <SidebarGroupLabel className="mb-2 px-3 text-[10px] font-bold tracking-[.16em] text-slate-400 uppercase group-data-[collapsible=icon]:hidden">
+                    <SidebarGroupLabel className="mb-2 px-3 text-[10px] font-bold tracking-[.16em] text-slate-400 uppercase group-data-[collapsible=icon]:hidden dark:text-muted-foreground">
                         {roleLabels[role] || roleLabels.patient}
                     </SidebarGroupLabel>
                     <SidebarMenu className="gap-2 group-data-[collapsible=icon]:items-center">
@@ -453,9 +453,9 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                                 <SidebarMenuButton
                                                     tooltip={item.title}
                                                     isActive={active}
-                                                    className="relative h-12 rounded-xl px-3 text-slate-500 transition-all group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-1! hover:bg-transparent hover:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 hover:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:bg-moss-100"
+                                                    className="relative h-12 rounded-xl px-3 text-slate-500 transition-[width,height,padding,background-color,color] group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-1! hover:bg-transparent hover:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 dark:text-slate-300 dark:hover:text-moss-200 dark:data-[active=true]:text-moss-200 hover:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:bg-moss-100"
                                                 >
-                                                    <span className="sidebar-icon flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors">
+                                                    <span className="sidebar-icon flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors dark:bg-sidebar-accent">
                                                         <Icon className="size-6" />
                                                     </span>
                                                     <span className="group-data-[collapsible=icon]:hidden">
@@ -488,7 +488,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                                                         isActive={
                                                                             isChildActive
                                                                         }
-                                                                        className="h-11 rounded-lg px-2.5 text-xs text-slate-500 hover:bg-transparent hover:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 hover:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:bg-moss-100"
+                                                                        className="h-11 rounded-lg px-2.5 text-xs text-slate-500 hover:bg-transparent hover:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 dark:text-slate-300 dark:hover:text-moss-200 dark:data-[active=true]:text-moss-200 hover:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:bg-moss-100"
                                                                     >
                                                                         <Link
                                                                             href={
@@ -498,7 +498,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                                                                 closeMobileSidebar
                                                                             }
                                                                         >
-                                                                            <span className="sidebar-icon flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors">
+                                                                            <span className="sidebar-icon flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors dark:bg-sidebar-accent">
                                                                                 <ChildIcon className="size-5" />
                                                                             </span>
                                                                             <span>
@@ -525,13 +525,13 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                         asChild
                                         tooltip={item.title}
                                         isActive={active}
-                                        className="relative h-12 rounded-xl px-3 text-slate-500 transition-all group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-1! hover:bg-transparent hover:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 hover:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:bg-moss-100"
+                                        className="relative h-12 rounded-xl px-3 text-slate-500 transition-[width,height,padding,background-color,color] group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-1! hover:bg-transparent hover:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 dark:text-slate-300 dark:hover:text-moss-200 dark:data-[active=true]:text-moss-200 hover:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:bg-moss-100"
                                     >
                                         <Link
                                             href={item.href}
                                             onClick={closeMobileSidebar}
                                         >
-                                            <span className="sidebar-icon flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors">
+                                            <span className="sidebar-icon flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors dark:bg-sidebar-accent">
                                                 <Icon className="size-6" />
                                             </span>
                                             <span className="group-data-[collapsible=icon]:hidden">

@@ -109,8 +109,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/notifications/center', [NotificationController::class, 'center'])->name('notifications.center');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::patch('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::delete('/notifications', [NotificationController::class, 'destroyAll'])->name('notifications.destroy-all');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereUuid('notification')->name('notifications.read');
     Route::post('/notifications/{notification}/visit', [NotificationController::class, 'readAndVisit'])->whereUuid('notification')->name('notifications.visit');
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])->whereUuid('notification')->name('notifications.destroy');
     Route::get('/company-referrals/invitation/{token}/accept', [CompanyReferralController::class, 'accept'])
         ->middleware(['signed', 'throttle:10,1'])
         ->name('company-referrals.accept');

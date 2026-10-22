@@ -6,6 +6,7 @@ import {
     CheckCircle2,
     Clock3,
     ShieldAlert,
+    Trash2,
     XCircle,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
@@ -125,6 +126,37 @@ export function NotificationBell() {
         );
     };
 
+    const markAllAsRead = () => {
+        router.patch(
+            '/notifications/read-all',
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => void refreshCenter(),
+            },
+        );
+    };
+
+    const removeNotification = (notification: AppNotification) => {
+        router.delete(`/notifications/${notification.id}`, {
+            preserveScroll: true,
+            onSuccess: () => void refreshCenter(),
+        });
+    };
+
+    const removeAllNotifications = () => {
+        if (
+            !window.confirm('Remove all notifications? This cannot be undone.')
+        ) {
+            return;
+        }
+
+        router.delete('/notifications', {
+            preserveScroll: true,
+            onSuccess: () => void refreshCenter(),
+        });
+    };
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -155,21 +187,27 @@ export function NotificationBell() {
                             {unreadCount} unread
                         </p>
                     </div>
-                    {unreadCount > 0 && (
-                        <button
-                            type="button"
-                            onClick={() =>
-                                router.patch(
-                                    '/notifications/read-all',
-                                    {},
-                                    { preserveScroll: true },
-                                )
-                            }
-                            className="text-xs font-semibold text-moss-700 hover:text-moss-900 dark:text-moss-200 dark:hover:text-moss-100"
-                        >
-                            Mark all as read
-                        </button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {displayedCenter.latest.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={markAllAsRead}
+                                disabled={unreadCount === 0}
+                                className="text-xs font-semibold text-moss-700 hover:text-moss-900 disabled:cursor-default disabled:text-slate-400 dark:text-moss-200 dark:hover:text-moss-100 dark:disabled:text-slate-500"
+                            >
+                                Mark all as read
+                            </button>
+                        )}
+                        {displayedCenter.latest.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={removeAllNotifications}
+                                className="text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
+                            >
+                                Remove all
+                            </button>
+                        )}
+                    </div>
                 </div>
                 <div className="max-h-[28rem] overflow-y-auto">
                     {displayedCenter.latest.length === 0 ? (
@@ -185,39 +223,54 @@ export function NotificationBell() {
                         </div>
                     ) : (
                         displayedCenter.latest.map((notification) => (
-                            <button
+                            <div
                                 key={notification.id}
-                                type="button"
-                                onClick={() => visit(notification)}
                                 className={`flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 dark:border-border dark:hover:bg-accent ${notification.read_at ? 'bg-white dark:bg-card' : 'bg-moss-50/70 font-medium dark:bg-muted'}`}
                             >
-                                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-moss-700 shadow-sm dark:bg-accent dark:text-moss-200">
-                                    <NotificationIcon
-                                        type={notification.type}
-                                    />
-                                </span>
-                                <span className="min-w-0 flex-1">
-                                    <span className="flex items-start gap-2">
-                                        <span className="text-sm font-semibold text-slate-900 dark:text-foreground">
-                                            {notification.title}
+                                <button
+                                    type="button"
+                                    onClick={() => visit(notification)}
+                                    className="flex min-w-0 flex-1 gap-3 text-left focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none"
+                                >
+                                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-moss-700 shadow-sm dark:bg-accent dark:text-moss-200">
+                                        <NotificationIcon
+                                            type={notification.type}
+                                        />
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="flex items-start gap-2">
+                                            <span className="text-sm font-semibold text-slate-900 dark:text-foreground">
+                                                {notification.title}
+                                            </span>
+                                            {!notification.read_at && (
+                                                <span
+                                                    className="mt-1 size-2 shrink-0 rounded-full bg-moss-600"
+                                                    aria-label="Unread"
+                                                />
+                                            )}
                                         </span>
-                                        {!notification.read_at && (
-                                            <span
-                                                className="mt-1 size-2 shrink-0 rounded-full bg-moss-600"
-                                                aria-label="Unread"
-                                            />
-                                        )}
+                                        <span className="mt-0.5 line-clamp-2 block text-xs leading-5 text-slate-600 dark:text-muted-foreground">
+                                            {notification.message}
+                                        </span>
+                                        <span className="mt-1 block text-[11px] text-slate-400 dark:text-slate-500">
+                                            {relativeNotificationTime(
+                                                notification.created_at,
+                                            )}
+                                        </span>
                                     </span>
-                                    <span className="mt-0.5 line-clamp-2 block text-xs leading-5 text-slate-600 dark:text-muted-foreground">
-                                        {notification.message}
-                                    </span>
-                                    <span className="mt-1 block text-[11px] text-slate-400 dark:text-slate-500">
-                                        {relativeNotificationTime(
-                                            notification.created_at,
-                                        )}
-                                    </span>
-                                </span>
-                            </button>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        removeNotification(notification)
+                                    }
+                                    className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 focus-visible:ring-4 focus-visible:ring-red-500/20 focus-visible:outline-none dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                                    aria-label={`Remove ${notification.title}`}
+                                    title="Remove notification"
+                                >
+                                    <Trash2 className="size-4" />
+                                </button>
+                            </div>
                         ))
                     )}
                 </div>
