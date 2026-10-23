@@ -61,7 +61,7 @@ const rightNavItems: NavItem[] = [
     },
 ];
 
-const activeItemStyles = 'text-neutral-900';
+const activeItemStyles = 'text-foreground';
 
 export function AppHeader({ breadcrumbs = [] }: Props) {
     const page = usePage<SharedData>();
@@ -92,7 +92,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                                     Navigation Menu
                                 </SheetTitle>
                                 <SheetHeader className="flex justify-start text-left">
-                                    <AppLogoIcon className="h-6 w-6 fill-current text-black" />
+                                    <AppLogoIcon className="h-6 w-6 fill-current text-foreground" />
                                 </SheetHeader>
                                 <div className="flex h-full flex-1 flex-col space-y-4 p-4">
                                     <div className="flex h-full flex-col justify-between text-sm">
@@ -228,7 +228,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                                                 auth.user.name
                                             }
                                         />
-                                        <AvatarFallback className="rounded-lg bg-neutral-200 text-black">
+                                        <AvatarFallback className="rounded-lg bg-accent text-accent-foreground">
                                             {getInitials(
                                                 auth.user.full_name ||
                                                     auth.user.name,
@@ -246,7 +246,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
             </div>
             {breadcrumbs.length > 1 && (
                 <div className="flex w-full border-b border-sidebar-border/70">
-                    <div className="mx-auto flex h-12 w-full items-center justify-start px-4 text-neutral-500 md:max-w-7xl">
+                    <div className="mx-auto flex h-12 w-full items-center justify-start px-4 text-muted-foreground md:max-w-7xl">
                         <Breadcrumbs breadcrumbs={breadcrumbs} />
                     </div>
                 </div>

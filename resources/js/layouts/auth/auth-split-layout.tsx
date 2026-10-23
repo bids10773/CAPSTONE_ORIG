@@ -23,9 +23,9 @@ export default function AuthSplitLayout({
     const dashboardRoute = auth?.user ? '/dashboard' : '/';
 
     return (
-        <main className="auth-shell min-h-screen bg-[#f7faf7] text-slate-950">
+        <main className="auth-shell min-h-screen bg-background text-foreground">
             <div className="grid min-h-screen lg:grid-cols-[44%_56%]">
-                <section className="auth-visual relative hidden overflow-hidden border-r border-moss-200 bg-moss-50 lg:flex lg:flex-col">
+                <section className="auth-visual relative hidden overflow-hidden border-r border-border bg-secondary lg:flex lg:flex-col">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_12%,rgba(168,195,160,.28),transparent_27%),radial-gradient(circle_at_90%_75%,rgba(107,143,113,.42),transparent_38%)]" />
                     <div className="auth-grid absolute inset-0 opacity-25" />
 
@@ -34,16 +34,16 @@ export default function AuthSplitLayout({
                             href={dashboardRoute}
                             className="inline-flex w-fit items-center gap-3 rounded-xl focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none"
                         >
-                            <span className="flex size-11 items-center justify-center rounded-xl bg-white shadow-lg shadow-moss-950/10">
+                            <span className="flex size-11 items-center justify-center rounded-xl bg-card shadow-lg shadow-moss-950/10">
                                 <img
                                     src={logo}
                                     alt="Living Myth Industrial Clinic"
                                     className="h-8 w-auto object-contain"
                                 />
                             </span>
-                            <span className="text-sm font-semibold tracking-wide text-moss-900">
+                            <span className="text-sm font-semibold tracking-wide text-foreground">
                                 LIVING MYTH
-                                <span className="block text-[10px] font-medium tracking-[.18em] text-moss-600">
+                                <span className="block text-[10px] font-medium tracking-[.18em] text-primary">
                                     INDUSTRIAL CLINIC
                                 </span>
                             </span>
@@ -60,14 +60,14 @@ export default function AuthSplitLayout({
                             }}
                             className="mt-8 max-w-xl"
                         >
-                            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-moss-200 bg-white px-3.5 py-2 text-xs font-medium text-moss-700 shadow-sm">
+                            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-medium text-primary shadow-sm">
                                 <Sparkles className="size-3.5 text-moss-300" />
                                 Connected care, clearer decisions
                             </div>
-                            <h1 className="max-w-lg text-4xl leading-[1.12] font-semibold tracking-[-0.04em] text-slate-900 xl:text-5xl">
+                            <h1 className="max-w-lg text-4xl leading-[1.12] font-semibold tracking-[-0.04em] text-foreground xl:text-5xl">
                                 Healthcare operations, working in harmony.
                             </h1>
-                            <p className="mt-5 max-w-lg text-base leading-7 text-slate-600">
+                            <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground">
                                 One secure workspace for medical services,
                                 patient coordination, and client trend analysis.
                             </p>
@@ -84,14 +84,14 @@ export default function AuthSplitLayout({
                                         repeat: reduceMotion ? 0 : Infinity,
                                         ease: 'easeInOut',
                                     }}
-                                    className="absolute top-4 left-0 w-[72%] rounded-2xl border border-moss-200 bg-white p-5 shadow-[0_18px_45px_-28px_rgba(69,94,74,.35)]"
+                                    className="absolute top-4 left-0 w-[72%] rounded-2xl border border-border bg-card p-5 shadow-[0_18px_45px_-28px_rgba(69,94,74,.35)]"
                                 >
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-xs text-slate-500">
+                                            <p className="text-xs text-muted-foreground">
                                                 Patient wellness trend
                                             </p>
-                                            <p className="mt-1 text-2xl font-semibold text-slate-900">
+                                            <p className="mt-1 text-2xl font-semibold text-foreground">
                                                 94.8%
                                             </p>
                                         </div>
@@ -123,17 +123,17 @@ export default function AuthSplitLayout({
                                         repeat: reduceMotion ? 0 : Infinity,
                                         ease: 'easeInOut',
                                     }}
-                                    className="absolute right-0 bottom-0 w-52 rounded-2xl border border-moss-200 bg-white p-4 shadow-[0_18px_45px_-28px_rgba(69,94,74,.35)]"
+                                    className="absolute right-0 bottom-0 w-52 rounded-2xl border border-border bg-card p-4 shadow-[0_18px_45px_-28px_rgba(69,94,74,.35)]"
                                 >
                                     <div className="flex items-center gap-3">
                                         <span className="flex size-10 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300">
                                             <CheckCircle2 className="size-5" />
                                         </span>
                                         <div>
-                                            <p className="text-sm font-semibold text-slate-900">
+                                            <p className="text-sm font-semibold text-foreground">
                                                 Records secured
                                             </p>
-                                            <p className="mt-0.5 text-[11px] text-slate-500">
+                                            <p className="mt-0.5 text-[11px] text-muted-foreground">
                                                 Protected & synchronized
                                             </p>
                                         </div>
@@ -142,7 +142,7 @@ export default function AuthSplitLayout({
                             </div>
                         </motion.div>
 
-                        <div className="mt-auto flex items-center gap-6 pt-10 text-[11px] font-medium text-slate-500">
+                        <div className="mt-auto flex items-center gap-6 pt-10 text-[11px] font-medium text-muted-foreground">
                             <span className="flex items-center gap-2">
                                 <ShieldCheck className="size-4 text-moss-300" />{' '}
                                 Secure access
@@ -159,7 +159,7 @@ export default function AuthSplitLayout({
                     </div>
                 </section>
 
-                <section className="auth-panel-right relative flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto bg-[#f7faf7] px-5 py-8 sm:px-8 lg:px-12">
+                <section className="auth-panel-right relative flex min-h-screen items-center justify-center overflow-x-hidden overflow-y-auto bg-background px-5 py-8 sm:px-8 lg:px-12">
                     <div className="absolute top-0 right-0 size-72 translate-x-1/3 -translate-y-1/2 rounded-full bg-moss-100/60 blur-3xl" />
                     <motion.div
                         initial={reduceMotion ? false : { opacity: 0, y: 14 }}
@@ -172,7 +172,7 @@ export default function AuthSplitLayout({
                         className={`relative z-10 mx-auto w-full ${isRegister ? 'max-w-[720px]' : 'max-w-[480px]'}`}
                     >
                         <div className="mb-7 flex items-center justify-center gap-3 lg:hidden">
-                            <span className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+                            <span className="flex size-11 items-center justify-center rounded-xl border border-border bg-card shadow-sm">
                                 <img
                                     src={logo}
                                     alt="Living Myth Industrial Clinic"
@@ -180,24 +180,24 @@ export default function AuthSplitLayout({
                                 />
                             </span>
                             <div>
-                                <p className="text-sm font-bold tracking-wide text-slate-800">
+                                <p className="text-sm font-bold tracking-wide text-foreground">
                                     LIVING MYTH
                                 </p>
-                                <p className="text-[9px] font-semibold tracking-[.15em] text-slate-400">
+                                <p className="text-[9px] font-semibold tracking-[.15em] text-muted-foreground">
                                     INDUSTRIAL CLINIC
                                 </p>
                             </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-[0_24px_70px_-30px_rgba(15,43,75,.3)] sm:p-9">
+                        <div className="rounded-2xl border border-border bg-card p-6 shadow-[0_24px_70px_-30px_rgba(15,43,75,.3)] sm:p-9">
                             {(title || description) && (
                                 <header className="mb-7 text-center">
                                     {title && (
-                                        <h1 className="text-2xl font-semibold tracking-[-0.025em] text-slate-950">
+                                        <h1 className="text-2xl font-semibold tracking-[-0.025em] text-foreground">
                                             {title}
                                         </h1>
                                     )}
                                     {description && (
-                                        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                                        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
                                             {description}
                                         </p>
                                     )}
@@ -205,7 +205,7 @@ export default function AuthSplitLayout({
                             )}
                             {children}
                         </div>
-                        <p className="mt-6 text-center text-xs text-slate-400">
+                        <p className="mt-6 text-center text-xs text-muted-foreground">
                             © {new Date().getFullYear()} Living Myth Industrial
                             Clinic · Privacy protected
                         </p>

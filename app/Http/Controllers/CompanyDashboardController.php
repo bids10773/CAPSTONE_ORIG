@@ -34,7 +34,7 @@ class CompanyDashboardController extends Controller
             ->with('user:id,first_name,last_name')
             ->latest()
             ->take(10)
-            ->get()
+            ->get(['id', 'user_id', 'appointment_date', 'start_time', 'status', 'type', 'created_at'])
             ->map(fn ($appointment) => [
                 'id' => $appointment->id,
                 'patient_name' => $appointment->user?->name,
@@ -44,10 +44,15 @@ class CompanyDashboardController extends Controller
                 'appointment_type' => $appointment->type,
             ]);
 
+        $appointmentCounts = $company->appointments()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN appointment_date > ? THEN 1 ELSE 0 END) as upcoming', [now()])
+            ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
+            ->first();
         $appointmentStats = [
-            'total' => $company->appointments()->count(),
-            'upcoming' => $company->appointments()->where('appointment_date', '>', now())->count(),
-            'completed' => $company->appointments()->where('status', 'completed')->count(),
+            'total' => (int) $appointmentCounts->total,
+            'upcoming' => (int) $appointmentCounts->upcoming,
+            'completed' => (int) $appointmentCounts->completed,
         ];
 
         $bulkAppointments = $company->appointments()
@@ -81,7 +86,12 @@ class CompanyDashboardController extends Controller
                     ? route('company.bulk-medical-results.download', $appointment) : null,
             ]);
 
-        $employees = $company->users()->where('role', 'patient');
+        $employeeCounts = $company->users()
+            ->where('role', 'patient')
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active')
+            ->selectRaw('SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as preregistered')
+            ->first();
         $previewToken = (string) $request->query('preview_token', '');
         $bulkUploadId = $company->appointments()->whereKey($request->integer('bulk_upload'))
             ->where('user_id', $user->id)->where('type', 'company_bulk')
@@ -114,7 +124,18 @@ class CompanyDashboardController extends Controller
             ->with('appointment:id,company_referral_id,status,appointment_date')
             ->latest()
             ->take(50)
-            ->get()
+            ->get([
+                'id',
+                'company_id',
+                'referral_number',
+                'first_name',
+                'middle_name',
+                'last_name',
+                'status',
+                'examination_purpose',
+                'valid_until',
+                'created_at',
+            ])
             ->map(function ($referral): array {
                 $status = match ($referral->appointment?->status) {
                     'completed' => 'completed',
@@ -144,9 +165,9 @@ class CompanyDashboardController extends Controller
             'bulkAppointments' => $bulkAppointments,
             'stats' => $appointmentStats,
             'employeeStats' => [
-                'total' => (clone $employees)->count(),
-                'active' => (clone $employees)->where('is_active', true)->count(),
-                'preregistered' => (clone $employees)->where('is_active', false)->count(),
+                'total' => (int) $employeeCounts->total,
+                'active' => (int) $employeeCounts->active,
+                'preregistered' => (int) $employeeCounts->preregistered,
                 'rejected' => (int) $uploads->sum('failed'),
             ],
             'uploads' => $uploads,

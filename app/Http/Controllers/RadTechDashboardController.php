@@ -22,20 +22,24 @@ class RadTechDashboardController extends Controller
         });
 
         // ✅ Today's scans
-        $todayScans = $actionableQueue()
-            ->whereDate('appointment_date', today())
-            ->count();
+        $today = today()->toDateString();
+        $queueCounts = $staffQueue()
+            ->selectRaw("SUM(CASE WHEN status IN ('for_xray', 'awaiting_xray_result', 'verifying_xray') AND DATE(appointment_date) = ? THEN 1 ELSE 0 END) as today_actionable", [$today])
+            ->selectRaw("SUM(CASE WHEN status IN ('for_xray', 'awaiting_xray_result', 'verifying_xray') THEN 1 ELSE 0 END) as pending")
+            ->selectRaw("SUM(CASE WHEN status = 'completed' AND DATE(updated_at) = ? THEN 1 ELSE 0 END) as completed", [$today])
+            ->selectRaw('SUM(CASE WHEN DATE(appointment_date) = ? THEN 1 ELSE 0 END) as today_total', [$today])
+            ->first();
+
+        $todayScans = (int) $queueCounts->today_actionable;
 
         // ✅ Pending scans (waiting for X-ray)
-        $pendingScans = $actionableQueue()->count();
+        $pendingScans = (int) $queueCounts->pending;
 
         // ✅ Completed scans (today)
-        $completedScans = $staffQueue()->where('status', 'completed')
-            ->whereDate('updated_at', today())
-            ->count();
+        $completedScans = (int) $queueCounts->completed;
 
         // ✅ Capacity (same idea as MedTech)
-        $totalToday = $staffQueue()->whereDate('appointment_date', today())->count();
+        $totalToday = (int) $queueCounts->today_total;
 
         $pendingAppointments = $actionableQueue()->with('user')
             ->orderBy('appointment_date')

@@ -26,96 +26,131 @@ class AdminDashboardController extends Controller
         $thisWeek = Carbon::now()->startOfWeek();
         $thisMonth = Carbon::now()->startOfMonth();
         $clinicAppointments = fn () => Appointment::query()->where('type', '!=', 'company_bulk');
-        $bulkEmployees = fn () => Appointment::query()
-            ->where('type', 'company_bulk')
-            ->whereNotNull('bulk_appointment_id');
         $partnerCompanies = Company::query()
             ->where('status', 'active')
             ->orderBy('company_name')
             ->get(['id', 'company_name']);
 
+        $userCounts = User::query()
+            ->selectRaw("SUM(CASE WHEN role IN ('doctor', 'medtech', 'radtech') THEN 1 ELSE 0 END) as staff")
+            ->selectRaw("SUM(CASE WHEN role = 'patient' THEN 1 ELSE 0 END) as patients")
+            ->first();
+        $appointmentCounts = Appointment::query()
+            ->selectRaw("SUM(CASE WHEN type != 'company_bulk' AND DATE(appointment_date) = ? THEN 1 ELSE 0 END) as today_clinic", [$today->toDateString()])
+            ->selectRaw("SUM(CASE WHEN type = 'company_bulk' AND bulk_appointment_id IS NOT NULL AND DATE(appointment_date) = ? THEN 1 ELSE 0 END) as today_bulk", [$today->toDateString()])
+            ->selectRaw("SUM(CASE WHEN type != 'company_bulk' AND appointment_date >= ? THEN 1 ELSE 0 END) as week_clinic", [$thisWeek])
+            ->selectRaw("SUM(CASE WHEN type != 'company_bulk' AND appointment_date BETWEEN ? AND ? THEN 1 ELSE 0 END) as month_clinic", [$thisMonth, $thisMonth->copy()->endOfMonth()])
+            ->selectRaw("SUM(CASE WHEN type != 'company_bulk' AND status = 'completed' THEN 1 ELSE 0 END) as completed_clinic")
+            ->selectRaw("SUM(CASE WHEN type != 'company_bulk' AND status = 'pending' THEN 1 ELSE 0 END) as pending_clinic")
+            ->selectRaw("SUM(CASE WHEN type = 'individual' AND status = 'pending' THEN 1 ELSE 0 END) as pending_requests")
+            ->selectRaw("SUM(CASE WHEN type = 'company_bulk' AND bulk_appointment_id IS NULL THEN 1 ELSE 0 END) as bulk_events")
+            ->selectRaw("SUM(CASE WHEN type = 'company_bulk' AND bulk_appointment_id IS NOT NULL THEN 1 ELSE 0 END) as bulk_employees")
+            ->selectRaw("SUM(CASE WHEN type = 'company_bulk' AND bulk_appointment_id IS NOT NULL AND status = 'completed' THEN 1 ELSE 0 END) as bulk_completed")
+            ->selectRaw("SUM(CASE WHEN type = 'company_bulk' AND bulk_appointment_id IS NOT NULL AND status NOT IN ('completed', 'cancelled', 'rejected') THEN 1 ELSE 0 END) as bulk_active")
+            ->first();
+
         $stats = [
-            'totalStaff' => User::whereIn('role', ['doctor', 'medtech', 'radtech'])->count(),
+            'totalStaff' => (int) $userCounts->staff,
             'totalCompanies' => $partnerCompanies->count(),
-            'totalPatients' => User::where('role', 'patient')->count(),
-            'todayAppointments' => $clinicAppointments()->whereDate('appointment_date', $today)->count(),
-            'todayBulkEmployees' => $bulkEmployees()->whereDate('appointment_date', $today)->count(),
-            'weekAppointments' => $clinicAppointments()->where('appointment_date', '>=', $thisWeek)->count(),
-            'monthAppointments' => $clinicAppointments()
-                ->whereBetween('appointment_date', [$thisMonth, $thisMonth->copy()->endOfMonth()])
-                ->count(),
-            'completedAppointments' => $clinicAppointments()->where('status', 'completed')->count(),
-            'pendingAppointments' => $clinicAppointments()->where('status', 'pending')->count(),
-            'pendingAppointmentRequests' => Appointment::where('type', 'individual')->where('status', 'pending')->count(),
+            'totalPatients' => (int) $userCounts->patients,
+            'todayAppointments' => (int) $appointmentCounts->today_clinic,
+            'todayBulkEmployees' => (int) $appointmentCounts->today_bulk,
+            'weekAppointments' => (int) $appointmentCounts->week_clinic,
+            'monthAppointments' => (int) $appointmentCounts->month_clinic,
+            'completedAppointments' => (int) $appointmentCounts->completed_clinic,
+            'pendingAppointments' => (int) $appointmentCounts->pending_clinic,
+            'pendingAppointmentRequests' => (int) $appointmentCounts->pending_requests,
             'totalLabResults' => LabResult::count(),
             'totalPhysicalExams' => PhysicalExam::count(),
             'totalXrayReports' => XrayReport::count(),
         ];
 
-        $recentAppointments = Appointment::with(['user', 'company'])
+        $recentAppointments = Appointment::with([
+            'user:id,first_name,last_name',
+            'company:id,company_name',
+        ])
             ->whereIn('type', ['individual', 'walk_in', 'company_referral'])
             ->whereNotIn('status', ['completed', 'cancelled', 'rejected'])
             ->latest('created_at')
             ->limit(10)
-            ->get();
+            ->get(['id', 'user_id', 'company_id', 'appointment_date', 'start_time', 'status', 'type', 'created_at']);
 
-        $recentBulkEmployees = Appointment::with(['user', 'company'])
+        $recentBulkEmployees = Appointment::with([
+            'user:id,first_name,last_name',
+            'company:id,company_name',
+        ])
             ->where('type', 'company_bulk')
             ->whereNotNull('bulk_appointment_id')
             ->whereNotIn('status', ['completed', 'cancelled', 'rejected'])
             ->latest('created_at')
             ->limit(4)
-            ->get();
+            ->get(['id', 'user_id', 'company_id', 'appointment_date', 'start_time', 'status', 'type', 'created_at']);
 
-        $historyAppointments = Appointment::with(['user', 'company'])
+        $historyAppointments = Appointment::with([
+            'user:id,first_name,last_name',
+            'company:id,company_name',
+        ])
             ->where('status', 'completed')
             ->orderBy('appointment_date', 'desc')
             ->limit(10)
-            ->get();
+            ->get(['id', 'user_id', 'company_id', 'appointment_date', 'start_time', 'status', 'type']);
 
-        $todayAppointments = Appointment::with(['user', 'company'])
+        $todayAppointments = Appointment::with([
+            'user:id,first_name,last_name',
+            'company:id,company_name',
+        ])
             ->where('type', '!=', 'company_bulk')
             ->whereDate('appointment_date', $today)
             ->orderBy('appointment_date', 'asc')
             ->limit(10)
-            ->get();
+            ->get(['id', 'user_id', 'company_id', 'appointment_date', 'start_time', 'status', 'type']);
 
-        $upcomingAppointments = Appointment::with(['user', 'company'])
+        $upcomingAppointments = Appointment::with([
+            'user:id,first_name,last_name',
+            'company:id,company_name',
+        ])
             ->whereIn('type', ['individual', 'walk_in', 'company_referral'])
             ->where('status', 'accepted')
             ->whereDate('appointment_date', '>', $today)
             ->orderBy('appointment_date')
             ->orderBy('start_time')
             ->limit(50)
-            ->get();
+            ->get(['id', 'user_id', 'company_id', 'appointment_date', 'start_time', 'status', 'type']);
 
         $appointmentsByStatus = $clinicAppointments()->selectRaw('status, COUNT(*) as count')
             ->groupBy('status')->get()->pluck('count', 'status')->toArray();
 
-        $bulkEventCount = Appointment::query()->bulkParents()->count();
-
+        $serviceCounts = [];
+        $purposeCounts = [];
         $serviceAnalyticsAppointments = Appointment::query()
             ->whereIn('type', ['individual', 'company_referral', 'walk_in'])
-            ->get(['service_types', 'examination_purpose']);
+            ->select(['id', 'service_types', 'examination_purpose'])
+            ->lazyById(500);
 
-        $serviceSelections = $serviceAnalyticsAppointments
-            ->flatMap(fn (Appointment $appointment) => $appointment->service_types ?? [])
-            ->filter(fn ($service) => is_string($service) && filled(trim($service)))
-            ->map(fn (string $service) => trim($service))
-            ->countBy()
-            ->sortDesc()
-            ->take(8)
+        foreach ($serviceAnalyticsAppointments as $appointment) {
+            foreach ($appointment->service_types ?? [] as $service) {
+                if (is_string($service) && filled($service = trim($service))) {
+                    $serviceCounts[$service] = ($serviceCounts[$service] ?? 0) + 1;
+                }
+            }
+
+            $purpose = $appointment->examination_purpose;
+            if (is_string($purpose) && filled($purpose = trim($purpose))) {
+                $purposeCounts[$purpose] = ($purposeCounts[$purpose] ?? 0) + 1;
+            }
+        }
+
+        arsort($serviceCounts);
+        arsort($purposeCounts);
+
+        $serviceSelections = collect(array_slice($serviceCounts, 0, 8, true))
             ->map(fn (int $count, string $service): array => [
                 'service' => $service,
                 'count' => $count,
             ])
             ->values();
 
-        $examinationPurposes = $serviceAnalyticsAppointments
-            ->pluck('examination_purpose')
-            ->filter(fn ($purpose) => is_string($purpose) && filled(trim($purpose)))
-            ->countBy()
-            ->sortDesc()
+        $examinationPurposes = collect($purposeCounts)
             ->map(fn (int $count, string $purpose): array => [
                 'purpose' => $purpose,
                 'count' => $count,
@@ -124,13 +159,22 @@ class AdminDashboardController extends Controller
 
         // --- LEVEL 3 MACHINE LEARNING TRENDS ---
         $historicalTrends = [];
+        $monthRanges = [];
+        $monthBindings = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $month = Carbon::now()->subMonths($i);
+            $monthRanges[] = "SUM(CASE WHEN appointment_date BETWEEN ? AND ? THEN 1 ELSE 0 END) as month_{$i}";
+            $monthBindings[] = $month->copy()->startOfMonth();
+            $monthBindings[] = $month->copy()->endOfMonth();
+        }
+        $monthlyCounts = Appointment::query()
+            ->selectRaw(implode(', ', $monthRanges), $monthBindings)
+            ->first();
 
         for ($i = 5; $i >= 0; $i--) {
             $month = Carbon::now()->subMonths($i);
 
-            $actualCount = Appointment::whereYear('appointment_date', $month->year)
-                ->whereMonth('appointment_date', $month->month)
-                ->count();
+            $actualCount = (int) $monthlyCounts->{"month_{$i}"};
 
             $historicalTrends[] = [
                 'month' => $month->format('M Y'),
@@ -158,10 +202,10 @@ class AdminDashboardController extends Controller
             'serviceSelections' => $serviceSelections,
             'examinationPurposes' => $examinationPurposes,
             'bulkSummary' => [
-                'events' => $bulkEventCount,
-                'employees' => $bulkEmployees()->count(),
-                'completed' => $bulkEmployees()->where('status', 'completed')->count(),
-                'active' => $bulkEmployees()->whereNotIn('status', ['completed', 'cancelled', 'rejected'])->count(),
+                'events' => (int) $appointmentCounts->bulk_events,
+                'employees' => (int) $appointmentCounts->bulk_employees,
+                'completed' => (int) $appointmentCounts->bulk_completed,
+                'active' => (int) $appointmentCounts->bulk_active,
             ],
             'monthlyTrends' => $monthlyTrends,
         ]);
@@ -172,12 +216,18 @@ class AdminDashboardController extends Controller
         $perPage = in_array((int) $request->query('per_page'), [10, 15, 25, 50, 100], true)
             ? (int) $request->query('per_page')
             : 15;
+        $alertCounts = SecurityAudit::query()
+            ->where('status', 'review')
+            ->selectRaw("SUM(CASE WHEN action = 'possible_duplicate_account' THEN 1 ELSE 0 END) as duplicate_accounts")
+            ->selectRaw("SUM(CASE WHEN action = 'rapid_booking_attempts' THEN 1 ELSE 0 END) as booking_attempts")
+            ->selectRaw("SUM(CASE WHEN action = 'repeated_cancellation' THEN 1 ELSE 0 END) as cancellations")
+            ->first();
 
         return Inertia::render('admin/security', [
             'securityAlerts' => [
-                'possibleDuplicateAccounts' => SecurityAudit::where('action', 'possible_duplicate_account')->where('status', 'review')->count(),
-                'repeatedBookingAttempts' => SecurityAudit::where('action', 'rapid_booking_attempts')->where('status', 'review')->count(),
-                'highCancellationActivity' => SecurityAudit::where('action', 'repeated_cancellation')->where('status', 'review')->count(),
+                'possibleDuplicateAccounts' => (int) $alertCounts->duplicate_accounts,
+                'repeatedBookingAttempts' => (int) $alertCounts->booking_attempts,
+                'highCancellationActivity' => (int) $alertCounts->cancellations,
             ],
             'securityLogs' => SecurityAudit::query()
                 ->with(['actor:id,first_name,middle_name,last_name', 'targetUser:id,first_name,middle_name,last_name'])
@@ -235,6 +285,11 @@ class AdminDashboardController extends Controller
     {
         $startOfMonth = Carbon::now()->startOfMonth();
         $startOfYear = Carbon::now()->startOfYear();
+        $appointmentCounts = Appointment::query()
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN appointment_date >= ? THEN 1 ELSE 0 END) as monthly', [$startOfMonth])
+            ->selectRaw('SUM(CASE WHEN appointment_date >= ? THEN 1 ELSE 0 END) as yearly', [$startOfYear])
+            ->first();
 
         $companyAppointments = Company::query()
             ->has('appointments')
@@ -248,9 +303,9 @@ class AdminDashboardController extends Controller
             ])->all();
 
         return Inertia::render('admin/reports', [
-            'totalAppointments' => Appointment::count(),
-            'monthlyAppointments' => Appointment::where('appointment_date', '>=', $startOfMonth)->count(),
-            'yearlyAppointments' => Appointment::where('appointment_date', '>=', $startOfYear)->count(),
+            'totalAppointments' => (int) $appointmentCounts->total,
+            'monthlyAppointments' => (int) $appointmentCounts->monthly,
+            'yearlyAppointments' => (int) $appointmentCounts->yearly,
             'statusBreakdown' => Appointment::selectRaw('status, COUNT(*) as count')->groupBy('status')->get()->pluck('count', 'status')->toArray(),
             'typeBreakdown' => Appointment::selectRaw('type, COUNT(*) as count')->groupBy('type')->get()->pluck('count', 'type')->toArray(),
             'topCompanies' => array_values($companyAppointments),

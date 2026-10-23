@@ -92,7 +92,7 @@ export function Pagination<T>({
                         onChange={(event) =>
                             changePageSize(Number(event.target.value))
                         }
-                        className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm"
+                        className="rounded-lg border border-input bg-background px-2 py-1.5 text-sm text-foreground focus-visible:border-ring focus-visible:ring-4 focus-visible:ring-ring/20 focus-visible:outline-none"
                         aria-label="Records per page"
                     >
                         {pageSizes.map((size) => (

@@ -358,7 +358,10 @@ export default function CreateAppointment() {
     } = useClinicHours(clinicHours);
     const storageKey = `appointment-draft-${auth.user.id}`;
     const isCompanyAccount = auth.user.role === 'company';
-    const onsiteAddress = isCompanyAccount ? (companyAddress ?? '') : '';
+    const onsiteAddress =
+        isCompanyAccount && typeof companyAddress === 'string'
+            ? companyAddress
+            : '';
     const appointmentMinimumDate =
         isCompanyAccount && bookingPolicy.companyAnnualExamMinimumDate
             ? bookingPolicy.companyAnnualExamMinimumDate
@@ -725,48 +728,74 @@ export default function CreateAppointment() {
         }
         setSubmitting(true);
         setErrors({});
-        router.post(
-            '/appointments',
-            { ...formData },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    localStorage.removeItem(storageKey);
-                    setSubmitting(false);
-                },
-                onError: (serverErrors) => {
-                    setErrors(serverErrors);
-                    setSubmitting(false);
-                    const errorFields = Object.keys(serverErrors);
-                    if (
-                        errorFields.some((key) =>
-                            [
-                                'type',
-                                'company_id',
-                                'company_name',
-                                'examination_purpose',
-                                'service_types',
-                            ].includes(key),
-                        )
-                    ) {
-                        setCurrentStep(1);
-                    } else if (
-                        errorFields.some((key) =>
-                            [
-                                'appointment_date',
-                                'doctor_id',
-                                'start_time',
-                            ].includes(key),
-                        )
-                    ) {
-                        setCurrentStep(2);
-                    } else if (errorFields.includes('notes')) {
-                        setCurrentStep(3);
-                    }
-                },
-                onFinish: () => setSubmitting(false),
+        const bookingPayload = {
+            ...formData,
+            service_location: isCompanyAccount
+                ? formData.service_location
+                : undefined,
+            event_address:
+                isCompanyAccount && typeof formData.event_address === 'string'
+                    ? formData.event_address.trim()
+                    : undefined,
+            event_contact_name: isCompanyAccount
+                ? formData.event_contact_name
+                : undefined,
+            event_contact_number: isCompanyAccount
+                ? formData.event_contact_number
+                : undefined,
+            expected_employee_count: isCompanyAccount
+                ? formData.expected_employee_count
+                : undefined,
+        };
+        router.post('/appointments', bookingPayload, {
+            preserveScroll: true,
+            onSuccess: () => {
+                localStorage.removeItem(storageKey);
+                setSubmitting(false);
             },
-        );
+            onError: (serverErrors) => {
+                setErrors(serverErrors);
+                setSubmitting(false);
+                const errorFields = Object.keys(serverErrors);
+                if (
+                    errorFields.some((key) =>
+                        [
+                            'type',
+                            'company_id',
+                            'company_name',
+                            'examination_purpose',
+                            'service_types',
+                        ].includes(key),
+                    )
+                ) {
+                    setCurrentStep(1);
+                } else if (
+                    errorFields.some((key) =>
+                        [
+                            'appointment_date',
+                            'doctor_id',
+                            'start_time',
+                        ].includes(key),
+                    )
+                ) {
+                    setCurrentStep(2);
+                } else if (
+                    errorFields.some((key) =>
+                        [
+                            'service_location',
+                            'event_address',
+                            'event_contact_name',
+                            'event_contact_number',
+                            'expected_employee_count',
+                            'notes',
+                        ].includes(key),
+                    )
+                ) {
+                    setCurrentStep(3);
+                }
+            },
+            onFinish: () => setSubmitting(false),
+        });
     };
 
     return (
@@ -1200,7 +1229,7 @@ function Progress({ currentStep }: { currentStep: number }) {
                             )}
                             <div className="relative z-10 flex min-w-0 flex-col items-center gap-2">
                                 <span
-                                    className={`flex size-9 items-center justify-center rounded-full text-xs font-bold transition ${complete ? 'bg-moss-500 text-white' : active ? 'bg-moss-600 text-white ring-4 ring-moss-100 dark:ring-moss-900' : 'border border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-card'}`}
+                                    className={`flex size-9 items-center justify-center rounded-full text-xs font-bold transition ${complete ? 'bg-moss-600 text-white' : active ? 'bg-moss-700 text-white ring-4 ring-moss-100 dark:ring-moss-900' : 'border border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-card'}`}
                                 >
                                     {complete ? (
                                         <Check className="size-4" />

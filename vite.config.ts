@@ -29,10 +29,42 @@ export default defineConfig({
             output: {
                 manualChunks(id) {
                     if (!id.includes('node_modules')) return;
+                    if (
+                        id.includes('/clsx/') ||
+                        id.includes('/tailwind-merge/')
+                    ) {
+                        return 'vendor-utils';
+                    }
                     if (id.includes('recharts') || id.includes('d3-')) {
                         return 'vendor-charts';
                     }
                     if (id.includes('framer-motion')) return 'vendor-motion';
+                    if (id.includes('/@inertiajs/') || id.includes('/axios/')) {
+                        return 'vendor-inertia';
+                    }
+                    if (
+                        id.includes('/@radix-ui/') ||
+                        id.includes('/@floating-ui/') ||
+                        id.includes('/@headlessui/')
+                    ) {
+                        return 'vendor-ui';
+                    }
+                    if (
+                        id.includes('/@laravel/echo-react/') ||
+                        id.includes('/laravel-echo/') ||
+                        id.includes('/pusher-js/')
+                    ) {
+                        return 'vendor-realtime';
+                    }
+                    if (
+                        id.includes('/react/') ||
+                        id.includes('/react-dom/') ||
+                        id.includes('/scheduler/') ||
+                        id.includes('/use-sync-external-store/')
+                    ) {
+                        return 'vendor-react';
+                    }
+                    if (id.includes('/lucide-react/')) return 'vendor-icons';
                 },
             },
         },

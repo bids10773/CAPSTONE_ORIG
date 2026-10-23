@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="{{ ($appearance ?? 'light') === 'dark' ? '#0e1711' : '#ffffff' }}">
 
     {{-- Inertia MUST control the title --}}
     @inertiaHead
@@ -16,24 +17,26 @@
         (function() {
             const appearance = '{{ $appearance ?? "light" }}';
 
-            if (appearance === 'system') {
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const isDark = appearance === 'dark' || (
+                appearance === 'system' &&
+                window.matchMedia('(prefers-color-scheme: dark)').matches
+            );
 
-                if (prefersDark) {
-                    document.documentElement.classList.add('dark');
-                }
-            }
+            document.documentElement.classList.toggle('dark', isDark);
+            document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+            document.querySelector('meta[name="theme-color"]')
+                ?.setAttribute('content', isDark ? '#0e1711' : '#ffffff');
         })();
     </script>
 
     {{-- Background styling --}}
     <style>
         html {
-            background-color: oklch(1 0 0);
+            background-color: #ffffff;
         }
 
         html.dark {
-            background-color: oklch(0.145 0 0);
+            background-color: #0e1711;
         }
     </style>
 

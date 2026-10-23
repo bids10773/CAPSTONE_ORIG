@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
 export type ResolvedAppearance = 'light' | 'dark';
 export type Appearance = ResolvedAppearance | 'system';
@@ -41,6 +41,9 @@ const applyTheme = (appearance: Appearance): void => {
 
     document.documentElement.classList.toggle('dark', isDark);
     document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+    document
+        .querySelector('meta[name="theme-color"]')
+        ?.setAttribute('content', isDark ? '#0e1711' : '#ffffff');
 };
 
 const subscribe = (callback: () => void) => {
@@ -57,7 +60,10 @@ const mediaQuery = (): MediaQueryList | null => {
     return window.matchMedia('(prefers-color-scheme: dark)');
 };
 
-const handleSystemThemeChange = (): void => applyTheme(currentAppearance);
+const handleSystemThemeChange = (): void => {
+    applyTheme(currentAppearance);
+    notify();
+};
 
 export function initializeTheme(): void {
     if (typeof window === 'undefined') return;
@@ -75,16 +81,16 @@ export function initializeTheme(): void {
 }
 
 export function useAppearance(): UseAppearanceReturn {
-    const appearance: Appearance = useSyncExternalStore(
+    const snapshot = useSyncExternalStore(
         subscribe,
-        () => currentAppearance,
-        () => 'light',
+        () => `${currentAppearance}:${prefersDark() ? 'dark' : 'light'}`,
+        () => 'light:light',
     );
+    const appearance = snapshot.split(':', 1)[0] as Appearance;
 
-    const resolvedAppearance: ResolvedAppearance = useMemo(
-        () => (isDarkMode(appearance) ? 'dark' : 'light'),
-        [appearance],
-    );
+    const resolvedAppearance: ResolvedAppearance = isDarkMode(appearance)
+        ? 'dark'
+        : 'light';
 
     const updateAppearance = useCallback((mode: Appearance): void => {
         currentAppearance = mode;

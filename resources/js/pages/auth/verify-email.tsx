@@ -79,7 +79,7 @@ export default function VerifyEmail() {
                         className="relative mx-auto flex size-20 items-center justify-center rounded-2xl bg-gradient-to-br from-moss-50 to-moss-50 text-moss-600"
                     >
                         <MailCheck className="size-9" aria-hidden="true" />
-                        <span className="absolute -top-1.5 -right-1.5 flex size-7 items-center justify-center rounded-full border-4 border-white bg-moss-500 text-white">
+                        <span className="absolute -top-1.5 -right-1.5 flex size-7 items-center justify-center rounded-full border-4 border-white bg-moss-600 text-white">
                             <CheckCircle2 className="size-3.5" />
                         </span>
                     </motion.div>

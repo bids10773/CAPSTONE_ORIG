@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Support\ClinicHours;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -36,6 +37,7 @@ class HandleInertiaRequests extends Middleware
                 ])->values(),
             ] : ['unreadCount' => 0, 'latest' => []],
             'sidebarPinned' => $request->cookie('sidebar_pinned') === 'true',
+            'toastEventId' => (string) Str::uuid(),
 
             // ✅ Add flash messages
             'flash' => [

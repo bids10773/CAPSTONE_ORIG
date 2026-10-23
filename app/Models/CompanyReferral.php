@@ -60,8 +60,12 @@ class CompanyReferral extends Model
 
     public function isSchedulable(): bool
     {
+        $hasAppointment = $this->relationLoaded('appointment')
+            ? $this->getRelation('appointment') !== null
+            : $this->appointment()->exists();
+
         return ! $this->isExpired()
             && ! in_array($this->status, ['scheduled', 'completed', 'cancelled', 'expired'], true)
-            && $this->appointment()->doesntExist();
+            && ! $hasAppointment;
     }
 }

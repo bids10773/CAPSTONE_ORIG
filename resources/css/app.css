@@ -80,12 +80,12 @@
     --background: #ffffff;
     --foreground: #1f2937;
 
-    --primary: #6b8f71;
+    --primary: #56765c;
     --primary-foreground: #ffffff;
 
     --sidebar: #fafcf9;
     --sidebar-foreground: #374151;
-    --sidebar-primary: #6b8f71;
+    --sidebar-primary: #56765c;
     --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: #f3f7f2;
     --sidebar-accent-foreground: #455e4a;
@@ -103,12 +103,29 @@
     --accent: #e3ede1;
     --accent-foreground: var(--primary);
 
-    --destructive: #d65c5c;
+    --destructive: #b91c1c;
     --destructive-foreground: oklch(0.985 0 0);
 
     --border: #dce5dc;
     --input: #dce5dc;
     --ring: var(--primary);
+
+    --chart-1: #56765c;
+    --chart-2: #2563eb;
+    --chart-3: #7c3aed;
+    --chart-4: #b45309;
+    --chart-5: #0f766e;
+
+    --status-pending: #b45309;
+    --status-accepted: #56765c;
+    --status-arrived: #2563eb;
+    --status-examination: #7c3aed;
+    --status-diagnostics: #0891b2;
+    --status-xray: #4f46e5;
+    --status-awaiting: #6366f1;
+    --status-evaluation: #9333ea;
+    --status-completed: #15803d;
+    --status-cancelled: #dc2626;
     --radius: 0.875rem;
 }
 
@@ -139,11 +156,28 @@
     --accent: #243429;
     --accent-foreground: #e3ede1;
 
-    --destructive: #ef7777;
-    --destructive-foreground: #ffffff;
+    --destructive: #fca5a5;
+    --destructive-foreground: #310b0b;
     --border: #2b3b2f;
     --input: #35483a;
     --ring: #88aa82;
+
+    --chart-1: #a8c3a0;
+    --chart-2: #93c5fd;
+    --chart-3: #c4b5fd;
+    --chart-4: #fcd34d;
+    --chart-5: #5eead4;
+
+    --status-pending: #fcd34d;
+    --status-accepted: #a8c3a0;
+    --status-arrived: #93c5fd;
+    --status-examination: #c4b5fd;
+    --status-diagnostics: #67e8f9;
+    --status-xray: #a5b4fc;
+    --status-awaiting: #818cf8;
+    --status-evaluation: #d8b4fe;
+    --status-completed: #6ee7b7;
+    --status-cancelled: #fca5a5;
 }
 
 @layer base {
@@ -179,6 +213,11 @@
     ::selection {
         @apply bg-moss-200 text-moss-950;
     }
+
+    :where(button, a, input, select, textarea, [role='button']):focus-visible {
+        outline: 2px solid var(--ring) !important;
+        outline-offset: 2px !important;
+    }
 }
 
 @layer components {
@@ -204,24 +243,23 @@
 
     .auth-input,
     .auth-select {
-        @apply h-12 w-full rounded-xl border border-slate-200 bg-white text-sm text-slate-900 transition-[background-color,border-color,box-shadow,color] duration-200 outline-none placeholder:text-slate-400 hover:border-moss-300 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10;
+        @apply h-12 w-full rounded-xl border border-input bg-background text-sm text-foreground transition-[background-color,border-color,box-shadow,color] duration-200 outline-none placeholder:text-muted-foreground hover:border-moss-400 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/20;
     }
 
     .auth-input {
         @apply pr-4 pl-10;
     }
 
-    /* Auth screens stay light even when the application theme is dark. */
     .auth-shell {
-        color-scheme: light;
+        color-scheme: inherit;
     }
 
     .auth-shell .auth-input:-webkit-autofill,
     .auth-shell .auth-input:-webkit-autofill:hover,
     .auth-shell .auth-input:-webkit-autofill:focus {
-        -webkit-text-fill-color: #0f172a;
-        caret-color: #0f172a;
-        box-shadow: 0 0 0 1000px #ffffff inset;
+        -webkit-text-fill-color: var(--foreground);
+        caret-color: var(--foreground);
+        box-shadow: 0 0 0 1000px var(--background) inset;
         transition: background-color 9999s ease-out 0s;
     }
 
@@ -242,11 +280,11 @@
     }
 
     .auth-primary-button {
-        @apply flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-moss-500 px-5 text-sm font-semibold text-white shadow-lg shadow-moss-600/20 transition-[background-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:bg-moss-600 hover:shadow-xl hover:shadow-moss-600/25 focus-visible:ring-4 focus-visible:ring-moss-500/25 focus-visible:outline-none active:translate-y-0 disabled:pointer-events-none disabled:opacity-60 disabled:shadow-none;
+        @apply flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-moss-600 px-5 text-sm font-semibold text-white shadow-lg shadow-moss-600/20 transition-[background-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:bg-moss-700 hover:shadow-xl hover:shadow-moss-600/25 focus-visible:ring-4 focus-visible:ring-moss-500/25 focus-visible:outline-none active:translate-y-0 disabled:pointer-events-none disabled:opacity-60 disabled:shadow-none;
     }
 
     .topbar-icon {
-        @apply flex size-10 items-center justify-center rounded-xl text-slate-500 transition-[background-color,color,box-shadow] hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none;
+        @apply flex size-10 touch-manipulation items-center justify-center rounded-xl text-slate-500 transition-[background-color,color,box-shadow,transform] hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-none active:scale-95 active:bg-moss-100 motion-reduce:transition-none;
     }
 
     .dark .topbar-icon:hover {
@@ -263,6 +301,14 @@
     .app-workspace main,
     .patient-portal main {
         color: var(--foreground);
+    }
+
+    /* Slate 400 is below AA contrast for small text on white. Legacy pages use
+       it for timestamps, helper copy, and icons, so normalize it to the
+       theme's accessible muted foreground in both modes. */
+    :where(.app-workspace, .patient-portal)
+        :is(.text-slate-400, .text-gray-400) {
+        color: var(--muted-foreground);
     }
 
     .app-workspace main > div > div[class*='p-6'],
@@ -799,12 +845,11 @@
     .dark .patient-portal select,
     .dark .patient-portal textarea {
         border-color: var(--input) !important;
-        background-color: #111b14 !important;
+        background-color: var(--background) !important;
         color: var(--foreground) !important;
     }
 
-    .dark
-        :where(.app-workspace, .patient-portal)
+    :where(.app-workspace, .patient-portal)
         :is(input, select, textarea)::placeholder {
         color: var(--muted-foreground) !important;
         opacity: 1;
@@ -1063,6 +1108,97 @@
         .sidebar-icon {
         background-color: #314a36 !important;
         color: var(--color-moss-200) !important;
+    }
+
+    /* The public landing page uses the same legacy utility palette as the
+       workspaces, but it is not wrapped by an authenticated layout. */
+    .dark .public-page :is(.bg-white, .bg-slate-50, .bg-slate-100) {
+        background-color: var(--card) !important;
+    }
+
+    .dark
+        .public-page
+        :is(
+            [class~='bg-white/80'],
+            [class~='bg-white/90'],
+            [class~='bg-white/95'],
+            .bg-moss-50,
+            .bg-moss-100
+        ) {
+        background-color: var(--muted) !important;
+    }
+
+    .dark
+        .public-page
+        :is(
+            .text-slate-950,
+            .text-slate-900,
+            .text-slate-800,
+            .text-gray-950,
+            .text-gray-900,
+            .text-gray-800
+        ) {
+        color: var(--foreground) !important;
+    }
+
+    .dark
+        .public-page
+        :is(
+            .text-slate-700,
+            .text-slate-600,
+            .text-slate-500,
+            .text-slate-400,
+            .text-gray-700,
+            .text-gray-600,
+            .text-gray-500
+        ) {
+        color: var(--muted-foreground) !important;
+    }
+
+    .dark
+        .public-page
+        :is(
+            .text-moss-950,
+            .text-moss-900,
+            .text-moss-800,
+            .text-moss-700,
+            .text-moss-600
+        ) {
+        color: var(--color-moss-200) !important;
+    }
+
+    .dark
+        .public-page
+        :is(
+            .border-slate-100,
+            .border-slate-200,
+            .border-slate-300,
+            .border-moss-100,
+            .border-moss-200,
+            .border-moss-300
+        ) {
+        border-color: var(--border) !important;
+    }
+
+    .dark
+        .public-page
+        :is(
+            [class~='hover:bg-white'],
+            [class~='hover:bg-slate-50'],
+            [class~='hover:bg-moss-50']
+        ):hover {
+        background-color: var(--accent) !important;
+    }
+
+    .dark
+        .public-page
+        :is(
+            [class~='hover:text-slate-700'],
+            [class~='hover:text-slate-800'],
+            [class~='hover:text-moss-700'],
+            [class~='hover:text-moss-800']
+        ):hover {
+        color: var(--accent-foreground) !important;
     }
 }
 
@@ -1570,53 +1706,135 @@
     }
 }
 
-/* ─── Auth right panel: force dark text on white bg ─── */
+/* Authentication surfaces share the application theme tokens. */
 @layer components {
     .auth-panel-right {
-        color: oklch(0.145 0 0) !important;
-    }
-    .auth-panel-right label,
-    .auth-panel-right input,
-    .auth-panel-right a,
-    .auth-panel-right p,
-    .auth-panel-right span {
-        color: oklch(0.145 0 0);
+        color: var(--foreground);
     }
     .auth-shell input::placeholder {
-        color: #94a3b8 !important;
-        -webkit-text-fill-color: #94a3b8 !important;
+        color: var(--muted-foreground) !important;
+        -webkit-text-fill-color: var(--muted-foreground) !important;
         opacity: 1;
     }
     .auth-shell .registration-form input::placeholder {
-        color: oklch(0.72 0 0) !important;
-        -webkit-text-fill-color: oklch(0.72 0 0) !important;
+        color: var(--muted-foreground) !important;
+        -webkit-text-fill-color: var(--muted-foreground) !important;
         opacity: 1;
     }
     .auth-panel-right .text-muted-foreground {
-        color: oklch(0.45 0 0) !important;
+        color: var(--muted-foreground) !important;
     }
-    /* Input fields: visible bg + dark text */
+    /* Keep browser-managed input text in sync with the active theme. */
     .auth-shell input[type='email'],
     .auth-shell input[type='password'],
     .auth-shell input[type='text'] {
-        background-color: #ffffff !important;
-        color: oklch(0.145 0 0) !important;
-        border-color: oklch(0.88 0 0) !important;
-        -webkit-text-fill-color: oklch(0.145 0 0);
+        border-color: var(--input) !important;
+        background-color: var(--background) !important;
+        color: var(--foreground) !important;
+        -webkit-text-fill-color: var(--foreground);
     }
 
-    /* ─── Checkbox fix ─── */
+    /* Checkbox colors follow the shared primary and input tokens. */
     .auth-panel-right button[role='checkbox'] {
-        border: 2px solid oklch(0.5 0 0) !important;
-        background-color: oklch(0.96 0.005 240) !important;
+        border-color: var(--input) !important;
+        background-color: var(--background) !important;
     }
     .auth-panel-right button[role='checkbox'][data-state='checked'] {
-        background-color: #6b8f71 !important;
-        border-color: #6b8f71 !important;
+        background-color: var(--primary) !important;
+        border-color: var(--primary) !important;
     }
     .auth-panel-right button[role='checkbox'][data-state='checked'] svg {
-        color: white !important;
-        stroke: white !important;
+        color: var(--primary-foreground) !important;
+        stroke: var(--primary-foreground) !important;
+    }
+
+    .dark
+        .auth-panel-right
+        :is(
+            .text-slate-950,
+            .text-slate-900,
+            .text-slate-800,
+            .text-gray-950,
+            .text-gray-900,
+            .text-gray-800
+        ) {
+        color: var(--foreground) !important;
+    }
+
+    .dark
+        .auth-panel-right
+        :is(
+            .text-slate-700,
+            .text-slate-600,
+            .text-slate-500,
+            .text-slate-400,
+            .text-gray-700,
+            .text-gray-600,
+            .text-gray-500,
+            .text-gray-400
+        ) {
+        color: var(--muted-foreground) !important;
+    }
+
+    .dark
+        .auth-panel-right
+        :is(
+            .text-moss-950,
+            .text-moss-900,
+            .text-moss-800,
+            .text-moss-700,
+            .text-moss-600
+        ) {
+        color: var(--color-moss-200) !important;
+    }
+
+    .dark .auth-panel-right :is(.text-red-600, .text-red-700, .text-red-800) {
+        color: var(--destructive) !important;
+    }
+
+    .dark
+        .auth-panel-right
+        :is(
+            .text-emerald-600,
+            .text-emerald-700,
+            .text-green-600,
+            .text-green-700
+        ) {
+        color: rgb(110 231 183) !important;
+    }
+
+    .dark
+        .auth-panel-right
+        :is(.bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100) {
+        background-color: var(--card) !important;
+    }
+
+    .dark
+        .auth-panel-right
+        :is(.bg-moss-50, .bg-moss-100, [class~='bg-slate-50/80']) {
+        background-color: var(--muted) !important;
+    }
+
+    .dark .auth-panel-right :is(.bg-red-50, .bg-red-100, .bg-rose-50) {
+        background-color: rgb(127 29 29 / 0.3) !important;
+    }
+
+    .dark .auth-panel-right :is(.bg-emerald-50, .bg-emerald-100, .bg-green-50) {
+        background-color: rgb(6 78 59 / 0.3) !important;
+    }
+
+    .dark
+        .auth-panel-right
+        :is(
+            .border-slate-100,
+            .border-slate-200,
+            .border-slate-300,
+            .border-gray-100,
+            .border-gray-200,
+            .border-moss-100,
+            .border-moss-200
+        ) {
+        border-color: var(--border) !important;
     }
 }
 

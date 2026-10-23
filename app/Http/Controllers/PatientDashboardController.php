@@ -98,27 +98,26 @@ class PatientDashboardController extends Controller
         | 4. DASHBOARD STATS (PATIENT METRICS)
         |--------------------------------------------------------------------------
         */
-        $stats = [
-            'total' => Appointment::where('user_id', $user->id)->count(),
-            'completed' => Appointment::where('user_id', $user->id)
-                ->where('status', 'completed')
-                ->count(),
-            'pending' => Appointment::where('user_id', $user->id)
-                ->where('status', 'pending')
-                ->count(),
-            'accepted' => Appointment::where('user_id', $user->id)
-                ->where('status', 'accepted')
-                ->count(),
-            'physical' => Appointment::where('user_id', $user->id)
-                ->where('status', 'arrived')
-                ->count(),
-            'laboratory' => Appointment::where('user_id', $user->id)
-                ->where('status', 'for_diagnostics')
-                ->count(),
-            'final_evaluation' => Appointment::where('user_id', $user->id)
-                ->where('status', 'for_final_evaluation')
-                ->count(),
-        ];
+        $appointmentCounts = Appointment::query()
+            ->where('user_id', $user->id)
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
+            ->selectRaw("SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending")
+            ->selectRaw("SUM(CASE WHEN status = 'accepted' THEN 1 ELSE 0 END) as accepted")
+            ->selectRaw("SUM(CASE WHEN status = 'arrived' THEN 1 ELSE 0 END) as physical")
+            ->selectRaw("SUM(CASE WHEN status = 'for_diagnostics' THEN 1 ELSE 0 END) as laboratory")
+            ->selectRaw("SUM(CASE WHEN status = 'for_final_evaluation' THEN 1 ELSE 0 END) as final_evaluation")
+            ->first();
+
+        $stats = collect([
+            'total',
+            'completed',
+            'pending',
+            'accepted',
+            'physical',
+            'laboratory',
+            'final_evaluation',
+        ])->mapWithKeys(fn (string $key): array => [$key => (int) $appointmentCounts->{$key}])->all();
 
         /*
         |--------------------------------------------------------------------------

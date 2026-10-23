@@ -70,11 +70,23 @@ export default function StaffIndex() {
     }, [search, selectedRole, selectedStatus, staff.per_page]);
 
     useEffect(() => {
-        const refresh = window.setInterval(() => {
+        const refresh = () => {
+            if (document.visibilityState !== 'visible') return;
             router.reload({ only: ['staff'] });
-        }, 60_000);
+        };
+        const refreshWhenVisible = () => {
+            if (document.visibilityState === 'visible') refresh();
+        };
+        const interval = window.setInterval(refresh, 60_000);
+        document.addEventListener('visibilitychange', refreshWhenVisible);
 
-        return () => window.clearInterval(refresh);
+        return () => {
+            window.clearInterval(interval);
+            document.removeEventListener(
+                'visibilitychange',
+                refreshWhenVisible,
+            );
+        };
     }, []);
 
     const getRoleBadgeColor = (role: string) => {

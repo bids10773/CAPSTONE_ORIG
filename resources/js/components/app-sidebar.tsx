@@ -332,6 +332,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
     const { isMobile, isPinned, setPinned, setOpenMobile } = useSidebar();
     const role = (props.auth as any)?.user?.role || 'patient';
     const items = navigation[role] || navigation.patient;
+    const currentPath = url.split(/[?#]/)[0];
     const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
     const home = items[0].href;
     const closeMobileSidebar = () => {
@@ -347,7 +348,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                 <Link
                     href={home}
                     onClick={closeMobileSidebar}
-                    className="flex min-w-0 items-center gap-3 rounded-xl p-1 group-data-[collapsible=icon]:mx-auto focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
+                    className="flex min-w-0 touch-manipulation items-center gap-3 rounded-xl p-1 transition-[background-color,box-shadow,transform] group-data-[collapsible=icon]:mx-auto hover:bg-moss-50 focus-visible:bg-moss-50 focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none active:scale-[0.98] motion-reduce:transition-none dark:hover:bg-sidebar-accent dark:focus-visible:bg-sidebar-accent"
                 >
                     <ClinicStatusLogo className="size-10 dark:bg-sidebar-accent">
                         <img
@@ -376,7 +377,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                     event.currentTarget.blur();
                                 }
                             }}
-                            className="hidden size-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition group-data-[collapsible=icon]:hidden hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none md:flex dark:text-muted-foreground dark:hover:bg-sidebar-accent dark:hover:text-moss-200"
+                            className="hidden size-9 shrink-0 touch-manipulation items-center justify-center rounded-xl text-slate-400 transition-[background-color,color,box-shadow,transform] group-data-[collapsible=icon]:hidden hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none active:scale-95 active:bg-moss-100 motion-reduce:transition-none md:flex dark:text-muted-foreground dark:hover:bg-sidebar-accent dark:hover:text-moss-200 dark:active:bg-sidebar-accent"
                             aria-label={
                                 isPinned ? 'Unlock sidebar' : 'Lock sidebar'
                             }
@@ -404,13 +405,13 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                         {items.map((item) => {
                             const childIsActive = item.children?.some(
                                 (child) =>
-                                    url === child.href ||
-                                    url.startsWith(`${child.href}/`),
+                                    currentPath === child.href ||
+                                    currentPath.startsWith(`${child.href}/`),
                             );
                             const active =
-                                url === item.href ||
+                                currentPath === item.href ||
                                 (item.href !== '/dashboard' &&
-                                    url.startsWith(`${item.href}/`)) ||
+                                    currentPath.startsWith(`${item.href}/`)) ||
                                 childIsActive;
                             const Icon = item.icon;
 
@@ -453,9 +454,9 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                                 <SidebarMenuButton
                                                     tooltip={item.title}
                                                     isActive={active}
-                                                    className="relative h-12 rounded-xl px-3 text-slate-500 transition-[width,height,padding,background-color,color] group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-1! hover:bg-transparent hover:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 dark:text-slate-300 dark:hover:text-moss-200 dark:data-[active=true]:text-moss-200 hover:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:bg-moss-100"
+                                                    className="relative h-12 rounded-xl px-3 text-slate-500 transition-[width,height,padding,background-color,color,box-shadow,transform] group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-1! hover:bg-transparent hover:text-moss-700 focus-visible:bg-moss-50 focus-visible:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 data-[active=true]:focus-visible:bg-moss-50 dark:text-slate-300 dark:hover:text-moss-200 dark:focus-visible:bg-sidebar-accent dark:focus-visible:text-moss-200 dark:data-[active=true]:text-moss-200 dark:data-[active=true]:focus-visible:bg-sidebar-accent hover:[&_.sidebar-icon]:bg-moss-100 focus-visible:[&_.sidebar-icon]:border-moss-600 focus-visible:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:border-moss-600 data-[active=true]:[&_.sidebar-icon]:bg-moss-100 dark:focus-visible:[&_.sidebar-icon]:border-moss-400 dark:data-[active=true]:[&_.sidebar-icon]:border-moss-400"
                                                 >
-                                                    <span className="sidebar-icon flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors dark:bg-sidebar-accent">
+                                                    <span className="sidebar-icon flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent bg-slate-100 transition-[background-color,border-color] dark:bg-sidebar-accent">
                                                         <Icon className="size-6" />
                                                     </span>
                                                     <span className="group-data-[collapsible=icon]:hidden">
@@ -471,9 +472,9 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                                             const ChildIcon =
                                                                 child.icon;
                                                             const isChildActive =
-                                                                url ===
+                                                                currentPath ===
                                                                     child.href ||
-                                                                url.startsWith(
+                                                                currentPath.startsWith(
                                                                     `${child.href}/`,
                                                                 );
 
@@ -488,7 +489,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                                                         isActive={
                                                                             isChildActive
                                                                         }
-                                                                        className="h-11 rounded-lg px-2.5 text-xs text-slate-500 hover:bg-transparent hover:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 dark:text-slate-300 dark:hover:text-moss-200 dark:data-[active=true]:text-moss-200 hover:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:bg-moss-100"
+                                                                        className="h-11 rounded-lg px-2.5 text-xs text-slate-500 hover:bg-transparent hover:text-moss-700 focus-visible:bg-moss-50 focus-visible:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 data-[active=true]:focus-visible:bg-moss-50 dark:text-slate-300 dark:hover:text-moss-200 dark:focus-visible:bg-sidebar-accent dark:focus-visible:text-moss-200 dark:data-[active=true]:text-moss-200 dark:data-[active=true]:focus-visible:bg-sidebar-accent hover:[&_.sidebar-icon]:bg-moss-100 focus-visible:[&_.sidebar-icon]:border-moss-600 focus-visible:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:border-moss-600 data-[active=true]:[&_.sidebar-icon]:bg-moss-100 dark:focus-visible:[&_.sidebar-icon]:border-moss-400 dark:data-[active=true]:[&_.sidebar-icon]:border-moss-400"
                                                                     >
                                                                         <Link
                                                                             href={
@@ -498,7 +499,7 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                                                                 closeMobileSidebar
                                                                             }
                                                                         >
-                                                                            <span className="sidebar-icon flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors dark:bg-sidebar-accent">
+                                                                            <span className="sidebar-icon flex size-9 shrink-0 items-center justify-center rounded-full border border-transparent bg-slate-100 transition-[background-color,border-color] dark:bg-sidebar-accent">
                                                                                 <ChildIcon className="size-5" />
                                                                             </span>
                                                                             <span>
@@ -525,13 +526,13 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                         asChild
                                         tooltip={item.title}
                                         isActive={active}
-                                        className="relative h-12 rounded-xl px-3 text-slate-500 transition-[width,height,padding,background-color,color] group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-1! hover:bg-transparent hover:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 dark:text-slate-300 dark:hover:text-moss-200 dark:data-[active=true]:text-moss-200 hover:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:bg-moss-100"
+                                        className="relative h-12 rounded-xl px-3 text-slate-500 transition-[width,height,padding,background-color,color,box-shadow,transform] group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:p-1! hover:bg-transparent hover:text-moss-700 focus-visible:bg-moss-50 focus-visible:text-moss-700 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:text-moss-700 data-[active=true]:focus-visible:bg-moss-50 dark:text-slate-300 dark:hover:text-moss-200 dark:focus-visible:bg-sidebar-accent dark:focus-visible:text-moss-200 dark:data-[active=true]:text-moss-200 dark:data-[active=true]:focus-visible:bg-sidebar-accent hover:[&_.sidebar-icon]:bg-moss-100 focus-visible:[&_.sidebar-icon]:border-moss-600 focus-visible:[&_.sidebar-icon]:bg-moss-100 data-[active=true]:[&_.sidebar-icon]:border-moss-600 data-[active=true]:[&_.sidebar-icon]:bg-moss-100 dark:focus-visible:[&_.sidebar-icon]:border-moss-400 dark:data-[active=true]:[&_.sidebar-icon]:border-moss-400"
                                     >
                                         <Link
                                             href={item.href}
                                             onClick={closeMobileSidebar}
                                         >
-                                            <span className="sidebar-icon flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-100 transition-colors dark:bg-sidebar-accent">
+                                            <span className="sidebar-icon flex size-10 shrink-0 items-center justify-center rounded-full border border-transparent bg-slate-100 transition-[background-color,border-color] dark:bg-sidebar-accent">
                                                 <Icon className="size-6" />
                                             </span>
                                             <span className="group-data-[collapsible=icon]:hidden">

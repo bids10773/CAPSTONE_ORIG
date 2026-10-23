@@ -25,16 +25,20 @@ class MedTechDashboardController extends Controller
         });
 
         // ✅ Completed Tests (after final evaluation)
-        $completedTests = $staffQueue()->where('status', 'completed')
-            ->whereDate('updated_at', today()) // remove this if you want ALL completed
-            ->count();
+        $today = today()->toDateString();
+        $queueCounts = $staffQueue()
+            ->selectRaw("SUM(CASE WHEN status = 'completed' AND DATE(updated_at) = ? THEN 1 ELSE 0 END) as completed", [$today])
+            ->selectRaw("SUM(CASE WHEN status IN ('for_diagnostics', 'verifying_drug_test') THEN 1 ELSE 0 END) as pending")
+            ->selectRaw("SUM(CASE WHEN status IN ('for_diagnostics', 'verifying_drug_test') AND DATE(appointment_date) = ? THEN 1 ELSE 0 END) as today_actionable", [$today])
+            ->selectRaw('SUM(CASE WHEN DATE(appointment_date) = ? THEN 1 ELSE 0 END) as today_total', [$today])
+            ->first();
+
+        $completedTests = (int) $queueCounts->completed;
 
         // ✅ Pending Tests (waiting for lab)
-        $pendingTests = $actionableQueue()->count();
+        $pendingTests = (int) $queueCounts->pending;
 
-        $todayCount = $actionableQueue()
-            ->whereDate('appointment_date', today())
-            ->count();
+        $todayCount = (int) $queueCounts->today_actionable;
 
         // Upcoming Lab Tests
         $pendingAppointments = $actionableQueue()->with('user')
@@ -43,7 +47,7 @@ class MedTechDashboardController extends Controller
             ->get();
 
         // 📊 Lab Capacity (example: percentage of active workload)
-        $totalToday = $staffQueue()->whereDate('appointment_date', today())->count();
+        $totalToday = (int) $queueCounts->today_total;
         $labCapacity = $totalToday > 0
             ? round(($pendingTests / $totalToday) * 100).'%'
             : '0%';

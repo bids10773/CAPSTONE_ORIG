@@ -60,14 +60,14 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-white data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100vh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-5 overflow-y-auto rounded-2xl border border-border p-6 shadow-[0_14px_42px_-26px_rgba(31,41,55,.22)] duration-200 sm:max-w-lg dark:bg-card dark:text-foreground",
+          "bg-card text-card-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100vh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-5 overflow-y-auto overscroll-contain rounded-2xl border border-border p-6 shadow-[0_14px_42px_-26px_rgba(31,41,55,.22)] duration-200 sm:max-w-lg",
           className
         )}
         {...props}
       >
         {children}
         {showCloseButton && (
-          <DialogPrimitive.Close className="absolute top-4 right-4 flex size-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 dark:hover:bg-accent dark:hover:text-moss-200">
+          <DialogPrimitive.Close className="absolute top-4 right-4 flex size-9 touch-manipulation items-center justify-center rounded-xl text-muted-foreground transition-[background-color,color,box-shadow,transform] hover:bg-accent hover:text-accent-foreground active:scale-95 active:bg-accent/80 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-none motion-reduce:transition-none disabled:pointer-events-none disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
             <XIcon />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>

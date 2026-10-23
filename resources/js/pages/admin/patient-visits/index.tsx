@@ -233,7 +233,7 @@ function HistoryChart({
                             <Bar
                                 dataKey="count"
                                 name="Actual patients"
-                                fill="#287454"
+                                fill="var(--chart-1)"
                                 radius={[5, 5, 0, 0]}
                             />
                         </BarChart>
@@ -338,7 +338,7 @@ function ForecastChart({
                                 type="monotone"
                                 dataKey="actual"
                                 name="Actual"
-                                stroke="#287454"
+                                stroke="var(--chart-1)"
                                 strokeWidth={3}
                                 dot={false}
                                 connectNulls={false}
@@ -347,7 +347,7 @@ function ForecastChart({
                                 type="monotone"
                                 dataKey="forecast"
                                 name="Forecast estimate"
-                                stroke="#2563eb"
+                                stroke="var(--chart-2)"
                                 strokeWidth={3}
                                 strokeDasharray="7 5"
                                 dot={false}
@@ -357,7 +357,7 @@ function ForecastChart({
                                 type="monotone"
                                 dataKey="lower"
                                 name="Lower estimate"
-                                stroke="#93c5fd"
+                                stroke="var(--chart-2)"
                                 strokeWidth={1.5}
                                 strokeDasharray="3 4"
                                 dot={false}
@@ -367,7 +367,7 @@ function ForecastChart({
                                 type="monotone"
                                 dataKey="upper"
                                 name="Upper estimate"
-                                stroke="#93c5fd"
+                                stroke="var(--chart-2)"
                                 strokeWidth={1.5}
                                 strokeDasharray="3 4"
                                 dot={false}
@@ -648,7 +648,7 @@ export default function PatientVisitDashboard({
                                     type="button"
                                     onClick={applyFilters}
                                     disabled={loading}
-                                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#287454] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1f6045] disabled:opacity-60"
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-4 focus-visible:ring-ring/20 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     <RefreshCw
                                         className={`size-4 ${loading ? 'animate-spin' : ''}`}
@@ -707,7 +707,7 @@ export default function PatientVisitDashboard({
                                         key={value}
                                         type="button"
                                         onClick={() => setFrequency(value)}
-                                        className={`rounded-lg px-5 py-2 text-sm font-semibold capitalize ${frequency === value ? 'bg-[#287454] text-white' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+                                        className={`rounded-lg px-5 py-2 text-sm font-semibold capitalize transition-colors focus-visible:ring-4 focus-visible:ring-ring/20 focus-visible:outline-none ${frequency === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}
                                     >
                                         {value}
                                     </button>
