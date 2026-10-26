@@ -1,5 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { useEcho } from '@laravel/echo-react';
+import { configureEcho, useEcho } from '@laravel/echo-react';
 import {
     Bell,
     CalendarDays,
@@ -9,12 +9,24 @@ import {
     Trash2,
     XCircle,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+configureEcho({
+    broadcaster: 'reverb',
+});
 
 export interface AppNotification {
     id: string;
@@ -61,24 +73,40 @@ export function NotificationBell() {
     const [liveCenter, setLiveCenter] = useState<NotificationCenter | null>(
         null,
     );
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isRemoveAllOpen, setIsRemoveAllOpen] = useState(false);
+    const [isRemovingAll, setIsRemovingAll] = useState(false);
+    const refreshInFlight = useRef<Promise<void> | null>(null);
 
     const displayedCenter = liveCenter ?? center;
     const unreadCount = displayedCenter.unreadCount;
 
-    const refreshCenter = useCallback(async () => {
-        const response = await fetch('/notifications/center', {
+    const refreshCenter = useCallback((): Promise<void> => {
+        if (refreshInFlight.current) return refreshInFlight.current;
+
+        const request = fetch('/notifications/center', {
             credentials: 'same-origin',
             headers: {
                 Accept: 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
             },
-        });
+        })
+            .then(async (response) => {
+                if (!response.ok) {
+                    throw new Error('Unable to refresh notifications.');
+                }
 
-        if (!response.ok) {
-            throw new Error('Unable to refresh notifications.');
-        }
+                setLiveCenter((await response.json()) as NotificationCenter);
+            })
+            .finally(() => {
+                if (refreshInFlight.current === request) {
+                    refreshInFlight.current = null;
+                }
+            });
 
-        setLiveCenter((await response.json()) as NotificationCenter);
+        refreshInFlight.current = request;
+
+        return request;
     }, []);
 
     useEffect(() => {
@@ -88,9 +116,8 @@ export function NotificationBell() {
         const syncWhenVisible = () => {
             if (document.visibilityState === 'visible') sync();
         };
-        const interval = window.setInterval(sync, 10_000);
+        const interval = window.setInterval(syncWhenVisible, 60_000);
 
-        sync();
         window.addEventListener('focus', sync);
         document.addEventListener('visibilitychange', syncWhenVisible);
 
@@ -145,142 +172,186 @@ export function NotificationBell() {
     };
 
     const removeAllNotifications = () => {
-        if (
-            !window.confirm('Remove all notifications? This cannot be undone.')
-        ) {
-            return;
-        }
-
         router.delete('/notifications', {
             preserveScroll: true,
-            onSuccess: () => void refreshCenter(),
+            onStart: () => setIsRemovingAll(true),
+            onSuccess: () => {
+                setIsRemoveAllOpen(false);
+                void refreshCenter();
+            },
+            onFinish: () => setIsRemovingAll(false),
         });
     };
 
+    const openRemoveAllDialog = () => {
+        setIsMenuOpen(false);
+        setIsRemoveAllOpen(true);
+    };
+
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <button
-                    type="button"
-                    className="topbar-icon relative"
-                    aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
+        <>
+            <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                    <button
+                        type="button"
+                        className="topbar-icon relative"
+                        aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
+                    >
+                        <Bell className="size-[18px]" />
+                        {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-card">
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                        )}
+                    </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                    align="end"
+                    sideOffset={10}
+                    className="w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-2xl p-0"
                 >
-                    <Bell className="size-[18px]" />
-                    {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white ring-2 ring-card">
-                            {unreadCount > 99 ? '99+' : unreadCount}
-                        </span>
-                    )}
-                </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-                align="end"
-                sideOffset={10}
-                className="w-[min(24rem,calc(100vw-1rem))] overflow-hidden rounded-2xl p-0"
-            >
-                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-border">
-                    <div>
-                        <p className="font-semibold text-slate-900 dark:text-foreground">
-                            Notifications
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-muted-foreground">
-                            {unreadCount} unread
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        {displayedCenter.latest.length > 0 && (
-                            <button
-                                type="button"
-                                onClick={markAllAsRead}
-                                disabled={unreadCount === 0}
-                                className="text-xs font-semibold text-moss-700 hover:text-moss-900 disabled:cursor-default disabled:text-slate-400 dark:text-moss-200 dark:hover:text-moss-100 dark:disabled:text-slate-500"
-                            >
-                                Mark all as read
-                            </button>
-                        )}
-                        {displayedCenter.latest.length > 0 && (
-                            <button
-                                type="button"
-                                onClick={removeAllNotifications}
-                                className="text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
-                            >
-                                Remove all
-                            </button>
-                        )}
-                    </div>
-                </div>
-                <div className="max-h-[28rem] overflow-y-auto">
-                    {displayedCenter.latest.length === 0 ? (
-                        <div className="px-6 py-10 text-center">
-                            <Bell className="mx-auto size-7 text-slate-300 dark:text-slate-600" />
-                            <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-foreground">
-                                No notifications yet
+                    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-border">
+                        <div>
+                            <p className="font-semibold text-slate-900 dark:text-foreground">
+                                Notifications
                             </p>
-                            <p className="mt-1 text-xs text-slate-500 dark:text-muted-foreground">
-                                Important appointment and account updates will
-                                appear here.
+                            <p className="text-xs text-slate-500 dark:text-muted-foreground">
+                                {unreadCount} unread
                             </p>
                         </div>
-                    ) : (
-                        displayedCenter.latest.map((notification) => (
-                            <div
-                                key={notification.id}
-                                className={`flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 dark:border-border dark:hover:bg-accent ${notification.read_at ? 'bg-white dark:bg-card' : 'bg-moss-50/70 font-medium dark:bg-muted'}`}
-                            >
+                        <div className="flex items-center gap-3">
+                            {displayedCenter.latest.length > 0 && (
                                 <button
                                     type="button"
-                                    onClick={() => visit(notification)}
-                                    className="flex min-w-0 flex-1 gap-3 text-left focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none"
+                                    onClick={markAllAsRead}
+                                    disabled={unreadCount === 0}
+                                    className="rounded-md px-1.5 py-1 text-xs font-semibold text-primary transition-[background-color,color,box-shadow] hover:bg-accent hover:text-primary/80 focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-popover focus-visible:outline-none disabled:cursor-default disabled:bg-transparent disabled:text-muted-foreground"
                                 >
-                                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-moss-700 shadow-sm dark:bg-accent dark:text-moss-200">
-                                        <NotificationIcon
-                                            type={notification.type}
-                                        />
-                                    </span>
-                                    <span className="min-w-0 flex-1">
-                                        <span className="flex items-start gap-2">
-                                            <span className="text-sm font-semibold text-slate-900 dark:text-foreground">
-                                                {notification.title}
-                                            </span>
-                                            {!notification.read_at && (
-                                                <span
-                                                    className="mt-1 size-2 shrink-0 rounded-full bg-moss-600"
-                                                    aria-label="Unread"
-                                                />
-                                            )}
-                                        </span>
-                                        <span className="mt-0.5 line-clamp-2 block text-xs leading-5 text-slate-600 dark:text-muted-foreground">
-                                            {notification.message}
-                                        </span>
-                                        <span className="mt-1 block text-[11px] text-slate-400 dark:text-slate-500">
-                                            {relativeNotificationTime(
-                                                notification.created_at,
-                                            )}
-                                        </span>
-                                    </span>
+                                    Mark all as read
                                 </button>
+                            )}
+                            {displayedCenter.latest.length > 0 && (
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        removeNotification(notification)
-                                    }
-                                    className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 focus-visible:ring-4 focus-visible:ring-red-500/20 focus-visible:outline-none dark:hover:bg-red-950/40 dark:hover:text-red-300"
-                                    aria-label={`Remove ${notification.title}`}
-                                    title="Remove notification"
+                                    onClick={openRemoveAllDialog}
+                                    className="rounded-md px-1.5 py-1 text-xs font-semibold text-destructive transition-[background-color,color,box-shadow] hover:bg-destructive/10 hover:text-destructive/80 focus-visible:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-destructive/60 focus-visible:ring-offset-2 focus-visible:ring-offset-popover focus-visible:outline-none"
                                 >
-                                    <Trash2 className="size-4" />
+                                    Remove all
                                 </button>
+                            )}
+                        </div>
+                    </div>
+                    <div className="max-h-[28rem] overflow-y-auto">
+                        {displayedCenter.latest.length === 0 ? (
+                            <div className="px-6 py-10 text-center">
+                                <Bell className="mx-auto size-7 text-slate-300 dark:text-slate-600" />
+                                <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-foreground">
+                                    No notifications yet
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500 dark:text-muted-foreground">
+                                    Important appointment and account updates
+                                    will appear here.
+                                </p>
                             </div>
-                        ))
-                    )}
-                </div>
-                <Link
-                    href="/notifications"
-                    className="block px-4 py-3 text-center text-sm font-semibold text-moss-700 hover:bg-moss-50 dark:text-moss-200 dark:hover:bg-accent"
-                >
-                    View All Notifications
-                </Link>
-            </DropdownMenuContent>
-        </DropdownMenu>
+                        ) : (
+                            displayedCenter.latest.map((notification) => (
+                                <div
+                                    key={notification.id}
+                                    className={`flex w-full gap-3 border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 dark:border-border dark:hover:bg-accent ${notification.read_at ? 'bg-white dark:bg-card' : 'bg-moss-50/70 font-medium dark:bg-muted'}`}
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => visit(notification)}
+                                        className="flex min-w-0 flex-1 gap-3 text-left focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none"
+                                    >
+                                        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-moss-700 shadow-sm dark:bg-accent dark:text-moss-200">
+                                            <NotificationIcon
+                                                type={notification.type}
+                                            />
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="flex items-start gap-2">
+                                                <span className="text-sm font-semibold text-slate-900 dark:text-foreground">
+                                                    {notification.title}
+                                                </span>
+                                                {!notification.read_at && (
+                                                    <span
+                                                        className="mt-1 size-2 shrink-0 rounded-full bg-moss-600"
+                                                        aria-label="Unread"
+                                                    />
+                                                )}
+                                            </span>
+                                            <span className="mt-0.5 line-clamp-2 block text-xs leading-5 text-slate-600 dark:text-muted-foreground">
+                                                {notification.message}
+                                            </span>
+                                            <span className="mt-1 block text-[11px] text-slate-400 dark:text-slate-500">
+                                                {relativeNotificationTime(
+                                                    notification.created_at,
+                                                )}
+                                            </span>
+                                        </span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            removeNotification(notification)
+                                        }
+                                        className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 focus-visible:ring-4 focus-visible:ring-red-500/20 focus-visible:outline-none dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                                        aria-label={`Remove ${notification.title}`}
+                                        title="Remove notification"
+                                    >
+                                        <Trash2 className="size-4" />
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                    <Link
+                        href="/notifications"
+                        className="block px-4 py-3 text-center text-sm font-semibold text-primary transition-[background-color,color,box-shadow] hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:outline-none focus-visible:ring-inset"
+                    >
+                        View All Notifications
+                    </Link>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Dialog
+                open={isRemoveAllOpen}
+                onOpenChange={(open) => {
+                    if (!isRemovingAll) setIsRemoveAllOpen(open);
+                }}
+            >
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="mb-1 flex size-11 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                            <Trash2 className="size-5" />
+                        </div>
+                        <DialogTitle>Remove all notifications?</DialogTitle>
+                        <DialogDescription>
+                            This permanently removes every notification from
+                            your list. This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <button
+                            type="button"
+                            onClick={() => setIsRemoveAllOpen(false)}
+                            disabled={isRemovingAll}
+                            className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-background px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:ring-4 focus-visible:ring-ring/20 focus-visible:outline-none disabled:pointer-events-none disabled:text-muted-foreground disabled:opacity-70"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={removeAllNotifications}
+                            disabled={isRemovingAll}
+                            className="inline-flex h-10 items-center justify-center rounded-xl bg-destructive px-4 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90 focus-visible:ring-4 focus-visible:ring-destructive/30 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-60"
+                        >
+                            {isRemovingAll ? 'Removing…' : 'Remove all'}
+                        </button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }

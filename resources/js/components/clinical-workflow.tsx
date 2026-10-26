@@ -205,7 +205,7 @@ export function WorkflowTimeline({
                                         'flex items-center justify-center rounded-full border text-xs font-semibold transition-all',
                                         embedded ? 'size-7' : 'size-8',
                                         complete &&
-                                            'border-moss-500 bg-moss-500 text-white',
+                                            'border-moss-600 bg-moss-600 text-white',
                                         active &&
                                             'border-moss-500 bg-moss-50 text-moss-800 ring-4 ring-moss-100',
                                         !complete &&

@@ -9,7 +9,8 @@ import type { ReactNode } from 'react';
 
 interface LogoutModalContextValue {
     isOpen: boolean;
-    openModal: (trigger?: HTMLElement | null) => void;
+    userId?: number;
+    openModal: (userId: number, trigger?: HTMLElement | null) => void;
     closeModal: () => void;
 }
 
@@ -19,12 +20,17 @@ const LogoutModalContext = createContext<LogoutModalContextValue | undefined>(
 
 export function LogoutModalProvider({ children }: { children: ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [userId, setUserId] = useState<number>();
     const triggerRef = useRef<HTMLElement | null>(null);
 
-    const openModal = useCallback((trigger?: HTMLElement | null) => {
-        triggerRef.current = trigger ?? null;
-        setIsOpen(true);
-    }, []);
+    const openModal = useCallback(
+        (currentUserId: number, trigger?: HTMLElement | null) => {
+            triggerRef.current = trigger ?? null;
+            setUserId(currentUserId);
+            setIsOpen(true);
+        },
+        [],
+    );
 
     const closeModal = useCallback(() => {
         setIsOpen(false);
@@ -39,11 +45,14 @@ export function LogoutModalProvider({ children }: { children: ReactNode }) {
                 : accountMenuTrigger
             )?.focus();
             triggerRef.current = null;
+            setUserId(undefined);
         });
     }, []);
 
     return (
-        <LogoutModalContext.Provider value={{ isOpen, openModal, closeModal }}>
+        <LogoutModalContext.Provider
+            value={{ isOpen, userId, openModal, closeModal }}
+        >
             {children}
         </LogoutModalContext.Provider>
     );

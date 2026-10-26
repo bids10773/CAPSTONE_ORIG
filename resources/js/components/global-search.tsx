@@ -181,7 +181,7 @@ export function GlobalSearch() {
                     triggerRef.current = event.currentTarget;
                     setOpen(true);
                 }}
-                className="mx-auto hidden h-10 w-full max-w-md items-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-500 transition hover:border-moss-300 hover:bg-white lg:flex dark:hover:bg-card"
+                className="mx-auto hidden h-10 w-full max-w-md touch-manipulation items-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-500 transition-[background-color,border-color,color,box-shadow,transform] hover:border-moss-300 hover:bg-white hover:text-slate-700 focus-visible:border-moss-500 focus-visible:ring-2 focus-visible:ring-moss-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-none active:scale-[0.99] motion-reduce:transition-none lg:flex dark:hover:bg-card dark:hover:text-foreground"
                 aria-label="Open global search"
             >
                 <Search className="mr-2.5 size-4" />
@@ -284,8 +284,9 @@ export function GlobalSearch() {
                                         onMouseEnter={() =>
                                             setActiveIndex(index)
                                         }
+                                        onFocus={() => setActiveIndex(index)}
                                         onClick={() => navigate(item)}
-                                        className={`flex w-full items-center gap-3 rounded-xl p-3 text-left ${activeIndex === index ? 'bg-moss-50 ring-1 ring-moss-200 dark:bg-accent dark:ring-border' : 'hover:bg-slate-50 dark:hover:bg-muted'}`}
+                                        className={`flex w-full touch-manipulation items-center gap-3 rounded-xl p-3 text-left transition-[background-color,color,box-shadow,transform] focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card focus-visible:outline-none active:scale-[0.99] motion-reduce:transition-none ${activeIndex === index ? 'bg-moss-50 ring-1 ring-moss-200 dark:bg-accent dark:ring-border' : 'hover:bg-slate-50 dark:hover:bg-muted'}`}
                                     >
                                         <span className="rounded-xl bg-card p-2 text-moss-700 shadow-sm dark:text-moss-200">
                                             <Icon className="size-5" />

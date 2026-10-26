@@ -149,11 +149,23 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
     }, [search, presence, activeDays, patients.per_page]);
 
     useEffect(() => {
-        const refresh = window.setInterval(() => {
+        const refresh = () => {
+            if (document.visibilityState !== 'visible') return;
             router.reload({ only: ['patients'] });
-        }, 60_000);
+        };
+        const refreshWhenVisible = () => {
+            if (document.visibilityState === 'visible') refresh();
+        };
+        const interval = window.setInterval(refresh, 60_000);
+        document.addEventListener('visibilitychange', refreshWhenVisible);
 
-        return () => window.clearInterval(refresh);
+        return () => {
+            window.clearInterval(interval);
+            document.removeEventListener(
+                'visibilitychange',
+                refreshWhenVisible,
+            );
+        };
     }, []);
 
     return (

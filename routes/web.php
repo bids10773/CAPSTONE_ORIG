@@ -5,6 +5,7 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminDataManagementController;
 use App\Http\Controllers\AdminPatientController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\PatientProfileCompletionController;
 use App\Http\Controllers\Auth\SocialAuthenticationController;
 use App\Http\Controllers\ClinicalDocumentController;
@@ -43,6 +44,10 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::middleware('guest')->group(function () {
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:password-reset-link')
+        ->name('password.email');
+
     Route::get('/auth/{provider}/redirect', [SocialAuthenticationController::class, 'redirect'])
         ->whereIn('provider', ['google', 'facebook'])
         ->middleware('throttle:20,1')

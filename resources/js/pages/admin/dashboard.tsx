@@ -107,16 +107,16 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-    pending: '#d97706',
-    accepted: '#6b8f71',
-    arrived: '#2563eb',
-    for_physical_examination: '#7c3aed',
-    for_diagnostics: '#0891b2',
-    for_xray: '#4f46e5',
-    awaiting_xray_result: '#6366f1',
-    for_final_evaluation: '#9333ea',
-    completed: '#15803d',
-    cancelled: '#dc2626',
+    pending: 'var(--status-pending)',
+    accepted: 'var(--status-accepted)',
+    arrived: 'var(--status-arrived)',
+    for_physical_examination: 'var(--status-examination)',
+    for_diagnostics: 'var(--status-diagnostics)',
+    for_xray: 'var(--status-xray)',
+    awaiting_xray_result: 'var(--status-awaiting)',
+    for_final_evaluation: 'var(--status-evaluation)',
+    completed: 'var(--status-completed)',
+    cancelled: 'var(--status-cancelled)',
 };
 
 function humanize(value: string): string {
@@ -667,7 +667,7 @@ export default function AdminDashboard() {
                                                 dataKey="count"
                                                 radius={[0, 7, 7, 0]}
                                                 maxBarSize={25}
-                                                fill="#6b8f71"
+                                                fill="var(--chart-1)"
                                             />
                                         </BarChart>
                                     </ResponsiveContainer>
@@ -809,7 +809,8 @@ export default function AdminDashboard() {
                                                             fill={
                                                                 statusColors[
                                                                     entry.status
-                                                                ] ?? '#6b8f71'
+                                                                ] ??
+                                                                'var(--chart-1)'
                                                             }
                                                         />
                                                     ))}
@@ -841,7 +842,7 @@ export default function AdminDashboard() {
                                                         statusColors[
                                                             highlightedStatus
                                                                 .status
-                                                        ] ?? '#6b8f71',
+                                                        ] ?? 'var(--chart-1)',
                                                 }}
                                             >
                                                 {highlightedPercentage}%
@@ -863,7 +864,8 @@ export default function AdminDashboard() {
                                                         backgroundColor:
                                                             statusColors[
                                                                 entry.status
-                                                            ] ?? '#6b8f71',
+                                                            ] ??
+                                                            'var(--chart-1)',
                                                     }}
                                                 />
                                                 <span className="min-w-0 flex-1 text-slate-600 dark:text-slate-300">

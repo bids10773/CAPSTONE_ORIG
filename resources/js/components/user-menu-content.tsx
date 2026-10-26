@@ -41,8 +41,11 @@ export function UserMenuContent({ user, showProfileSettings = false }: Props) {
             </DropdownMenuGroup>
             {showProfileSettings && <DropdownMenuSeparator />}
             <DropdownMenuItem
+                variant="destructive"
                 className="cursor-pointer"
-                onSelect={() => openModal()}
+                onSelect={(event) =>
+                    openModal(user.id, event.currentTarget as HTMLElement)
+                }
                 data-test="logout-button"
             >
                 <LogOut className="mr-2" />

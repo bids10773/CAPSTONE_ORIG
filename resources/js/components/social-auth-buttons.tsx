@@ -52,7 +52,7 @@ export default function SocialAuthButtons({
                 type="button"
                 disabled={connecting !== null}
                 onClick={() => connect('google')}
-                className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60"
+                className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-border bg-background px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
             >
                 {connecting === 'google' ? (
                     <Spinner className="size-4" />
@@ -67,7 +67,7 @@ export default function SocialAuthButtons({
                 type="button"
                 disabled={connecting !== null}
                 onClick={() => connect('facebook')}
-                className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-60"
+                className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-border bg-background px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
             >
                 {connecting === 'facebook' ? (
                     <Spinner className="size-4" />

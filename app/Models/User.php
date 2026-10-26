@@ -97,8 +97,14 @@ class User extends Authenticatable implements MustVerifyEmail
             'temporary_password_created_at' => 'datetime',
             'temporary_password_expires_at' => 'datetime',
             'login_locked_at' => 'datetime',
+            'failed_login_attempts' => 'integer',
             'license_verified_at' => 'datetime',
         ];
+    }
+
+    public function isLoginLocked(): bool
+    {
+        return $this->login_locked_at !== null || $this->failed_login_attempts >= \App\Security\LoginRateLimiter::MAX_ATTEMPTS;
     }
 
     /**

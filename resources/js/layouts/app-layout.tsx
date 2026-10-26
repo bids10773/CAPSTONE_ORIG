@@ -6,6 +6,7 @@ import PatientPortalLayout from '@/layouts/patient-portal-layout';
 import type { AppLayoutProps } from '@/types';
 
 type ToastProps = {
+    toastEventId: string;
     flash?: {
         success?: string;
         error?: string;
@@ -16,7 +17,9 @@ type ToastProps = {
 
 function showToastMessages(props: ToastProps) {
     if (props.flash?.success) {
-        toast.success(props.flash.success);
+        toast.success(props.flash.success, {
+            id: `${props.toastEventId}:success`,
+        });
     }
 
     const validationError = Object.values(props.errors ?? {}).find(
@@ -24,13 +27,20 @@ function showToastMessages(props: ToastProps) {
     );
 
     if (props.flash?.error) {
-        toast.error(props.flash.error);
+        toast.error(props.flash.error, {
+            id: `${props.toastEventId}:error`,
+        });
     } else if (validationError) {
-        toast.error(validationError);
+        toast.error(validationError, {
+            id: `${props.toastEventId}:validation`,
+        });
     }
 
     if (props.flash?.warning) {
-        toast.warning(props.flash.warning, { duration: 8000 });
+        toast.warning(props.flash.warning, {
+            id: `${props.toastEventId}:warning`,
+            duration: 8000,
+        });
     }
 }
 
@@ -38,7 +48,7 @@ export default function AppLayout({
     children,
     breadcrumbs = [],
 }: AppLayoutProps) {
-    const { auth, flash, errors } = usePage().props as any;
+    const { auth, flash, errors, toastEventId } = usePage().props as any;
     const successMessage = flash?.success as string | undefined;
     const errorMessage = flash?.error as string | undefined;
     const warningMessage = flash?.warning as string | undefined;
@@ -48,6 +58,7 @@ export default function AppLayout({
 
     useEffect(() => {
         showToastMessages({
+            toastEventId,
             flash: {
                 success: successMessage,
                 error: errorMessage,
@@ -55,7 +66,13 @@ export default function AppLayout({
             },
             errors: validationError ? { validationError } : {},
         });
-    }, [successMessage, errorMessage, warningMessage, validationError]);
+    }, [
+        toastEventId,
+        successMessage,
+        errorMessage,
+        warningMessage,
+        validationError,
+    ]);
 
     if (auth?.user?.role === 'patient') {
         return <PatientPortalLayout>{children}</PatientPortalLayout>;

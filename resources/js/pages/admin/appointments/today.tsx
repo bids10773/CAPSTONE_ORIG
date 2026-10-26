@@ -142,12 +142,25 @@ export default function TodayAppointments({
     }, [search, appointments.per_page]);
 
     useEffect(() => {
-        const interval = window.setInterval(() => {
+        const refresh = () => {
+            if (document.visibilityState !== 'visible') return;
             router.reload({
                 only: ['appointments', 'summary'],
             });
-        }, 30_000);
-        return () => window.clearInterval(interval);
+        };
+        const refreshWhenVisible = () => {
+            if (document.visibilityState === 'visible') refresh();
+        };
+        const interval = window.setInterval(refresh, 30_000);
+        document.addEventListener('visibilitychange', refreshWhenVisible);
+
+        return () => {
+            window.clearInterval(interval);
+            document.removeEventListener(
+                'visibilitychange',
+                refreshWhenVisible,
+            );
+        };
     }, []);
 
     function updateStatus(appointment: Appointment, status: string) {

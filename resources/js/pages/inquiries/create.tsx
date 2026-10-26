@@ -100,7 +100,7 @@ export default function CreateInquiry({
             <ContentRoot
                 className="relative isolate min-h-screen overflow-hidden bg-moss-900 bg-cover bg-fixed bg-center text-white"
                 style={{
-                    backgroundImage: "url('/images/lmic6.png')",
+                    backgroundImage: "url('/images/lmic6-1600.webp')",
                 }}
             >
                 <div

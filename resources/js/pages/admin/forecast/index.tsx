@@ -503,13 +503,13 @@ export default function ForecastDashboard() {
                                             <Bar
                                                 dataKey="predicted_cases"
                                                 name="Simulated cases"
-                                                fill="#2563eb"
+                                                fill="var(--chart-2)"
                                                 radius={[0, 5, 5, 0]}
                                             >
                                                 <LabelList
                                                     dataKey="predicted_cases"
                                                     position="right"
-                                                    fill="#1e3a8a"
+                                                    fill="var(--chart-3)"
                                                     fontSize={12}
                                                 />
                                             </Bar>
@@ -694,7 +694,7 @@ export default function ForecastDashboard() {
                                                         <Bar
                                                             dataKey="baseline"
                                                             name="Synthetic baseline"
-                                                            fill="#2563eb"
+                                                            fill="var(--chart-2)"
                                                             radius={[
                                                                 0, 4, 4, 0,
                                                             ]}
@@ -702,7 +702,7 @@ export default function ForecastDashboard() {
                                                         <Bar
                                                             dataKey="scenario"
                                                             name="Weather scenario"
-                                                            fill="#7c3aed"
+                                                            fill="var(--chart-3)"
                                                             radius={[
                                                                 0, 4, 4, 0,
                                                             ]}

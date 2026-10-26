@@ -9,6 +9,9 @@ use App\Services\BulkAppointmentEnrollmentService;
 use App\Services\OnsiteEventWorkflowService;
 use Illuminate\Validation\ValidationException;
 
+// Keep UTC and the clinic on the same fixture day, including overnight CI runs.
+beforeEach(fn () => $this->travelTo(\Carbon\Carbon::parse('2026-10-27 04:00:00', 'UTC')));
+
 function onsiteFixture(): array
 {
     $company = Company::create(['company_name' => 'Onsite Factory']);

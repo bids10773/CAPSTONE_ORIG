@@ -15,13 +15,18 @@ export function Breadcrumbs({
 }: {
     breadcrumbs: BreadcrumbItemType[];
 }) {
+    const visibleBreadcrumbs = breadcrumbs.filter(
+        (item) => !/dashboard$/i.test(item.title.trim()),
+    );
+
     return (
         <>
-            {breadcrumbs.length > 0 && (
+            {visibleBreadcrumbs.length > 0 && (
                 <Breadcrumb>
                     <BreadcrumbList className="font-bold">
-                        {breadcrumbs.map((item, index) => {
-                            const isLast = index === breadcrumbs.length - 1;
+                        {visibleBreadcrumbs.map((item, index) => {
+                            const isLast =
+                                index === visibleBreadcrumbs.length - 1;
                             return (
                                 <Fragment key={index}>
                                     <BreadcrumbItem>
@@ -31,7 +36,10 @@ export function Breadcrumbs({
                                             </BreadcrumbPage>
                                         ) : (
                                             <BreadcrumbLink asChild>
-                                                <Link href={item.href}>
+                                                <Link
+                                                    href={item.href}
+                                                    className="rounded-md focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-none"
+                                                >
                                                     {item.title}
                                                 </Link>
                                             </BreadcrumbLink>

@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Reveal, StaggerGroup, StaggerItem } from '@/components/motion';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { useClinicHours } from '@/lib/clinic-hours';
 import type { ClinicHoursSettings } from '@/lib/clinic-hours';
 import logo from '/public/images/full_logo2-optimized.webp';
@@ -69,19 +70,23 @@ const services = [
 
 const clinicGallery = [
     {
-        src: '/images/lmic3.png',
+        src: '/images/lmic3-1600.webp',
+        srcSet: '/images/lmic3-800.webp 800w, /images/lmic3-1600.webp 1600w',
         alt: 'Vision examination area inside Living Myth clinic',
     },
     {
-        src: '/images/lmic4.png',
+        src: '/images/lmic4-1600.webp',
+        srcSet: '/images/lmic4-800.webp 800w, /images/lmic4-1600.webp 1600w',
         alt: 'Patient waiting area inside Living Myth clinic',
     },
     {
-        src: '/images/lmic5.png',
+        src: '/images/lmic5-1600.webp',
+        srcSet: '/images/lmic5-800.webp 800w, /images/lmic5-1600.webp 1600w',
         alt: 'Patient completing clinic documents at the service counter',
     },
     {
-        src: '/images/lmic7.png',
+        src: '/images/lmic7-1600.webp',
+        srcSet: '/images/lmic7-800.webp 800w, /images/lmic7-1600.webp 1600w',
         alt: 'Patient care and waiting area at Living Myth clinic',
     },
 ];
@@ -270,33 +275,37 @@ function Navbar() {
                             </div>
                         ))}
                     </div>
-                    <div className="hidden items-center gap-3 sm:flex">
-                        <Link
-                            href="/login"
-                            className="motion-press inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
+                    <div className="flex items-center gap-1 sm:gap-2">
+                        <ThemeToggle />
+                        <div className="hidden items-center gap-3 sm:flex">
+                            <Link
+                                href="/login"
+                                className="motion-press inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
+                            >
+                                <LogIn className="size-4" />
+                                Login
+                            </Link>
+                            <Link
+                                href="/register"
+                                className="motion-press inline-flex items-center gap-2 rounded-xl bg-moss-800 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-moss-900/10 transition hover:-translate-y-0.5 hover:bg-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:ring-offset-2 focus-visible:outline-none"
+                            >
+                                <CalendarPlus className="size-4" />
+                                Book a consultation
+                            </Link>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setOpen((current) => !current);
+                                setMobileDropdown(null);
+                            }}
+                            className="motion-press grid h-10 w-10 place-items-center rounded-xl text-slate-800 transition-colors hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none lg:hidden"
+                            aria-label="Toggle navigation"
+                            aria-expanded={open}
                         >
-                            <LogIn className="size-4" />
-                            Login
-                        </Link>
-                        <Link
-                            href="/register"
-                            className="motion-press inline-flex items-center gap-2 rounded-xl bg-moss-800 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-moss-900/10 transition hover:-translate-y-0.5 hover:bg-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:ring-offset-2 focus-visible:outline-none"
-                        >
-                            <CalendarPlus className="size-4" />
-                            Book a consultation
-                        </Link>
+                            {open ? <X size={21} /> : <Menu size={21} />}
+                        </button>
                     </div>
-                    <button
-                        onClick={() => {
-                            setOpen((current) => !current);
-                            setMobileDropdown(null);
-                        }}
-                        className="motion-press grid h-10 w-10 place-items-center rounded-xl text-slate-800 lg:hidden"
-                        aria-label="Toggle navigation"
-                        aria-expanded={open}
-                    >
-                        {open ? <X size={21} /> : <Menu size={21} />}
-                    </button>
                 </nav>
                 <AnimatePresence>
                     {open && (
@@ -409,9 +418,9 @@ export default function Welcome() {
                     content="Occupational healthcare, medical examinations and corporate wellness programs for modern workforces."
                 />
             </Head>
-            <main className="min-w-0 overflow-x-clip bg-white font-sans text-slate-900">
+            <main className="public-page min-w-0 overflow-x-clip bg-background font-sans text-foreground">
                 <Navbar />
-                <section className="relative isolate bg-[#f4f7f3]">
+                <section className="relative isolate bg-secondary">
                     <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_82%_20%,rgba(168,195,160,.18),transparent_24rem),radial-gradient(circle_at_14%_85%,rgba(14,116,144,.12),transparent_26rem)]" />
                     <div className="mx-auto grid max-w-7xl gap-10 px-5 pb-10 sm:px-7 lg:grid-cols-[1.04fr_.96fr] lg:items-stretch lg:gap-10 lg:pb-12">
                         <motion.div
@@ -525,8 +534,14 @@ export default function Welcome() {
                         >
                             <div className="relative overflow-hidden rounded-[2rem] bg-slate-300 shadow-2xl shadow-moss-900/10 lg:h-full lg:w-full">
                                 <img
-                                    src="/images/lmic1.png"
+                                    src="/images/lmic1-1600.webp"
+                                    srcSet="/images/lmic1-800.webp 800w, /images/lmic1-1600.webp 1600w"
+                                    sizes="(min-width: 1280px) 600px, (min-width: 1024px) 48vw, 100vw"
                                     alt="Living Myth clinician consulting with a patient"
+                                    width={1600}
+                                    height={1200}
+                                    fetchPriority="high"
+                                    decoding="async"
                                     className="h-[22rem] w-full object-cover object-center sm:h-[clamp(24rem,58svh,32rem)] lg:h-full lg:min-h-0"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent" />
@@ -579,8 +594,12 @@ export default function Welcome() {
                     <Reveal className="mx-auto grid w-full max-w-7xl gap-9 px-5 sm:px-7 lg:grid-cols-[.9fr_1.1fr] lg:items-center lg:gap-12">
                         <div className="group relative overflow-hidden rounded-[1.75rem] bg-moss-50 shadow-xl shadow-moss-900/10">
                             <img
-                                src="/images/lmic6.png"
+                                src="/images/lmic6-1600.webp"
+                                srcSet="/images/lmic6-800.webp 800w, /images/lmic6-1600.webp 1600w"
+                                sizes="(min-width: 1280px) 540px, (min-width: 1024px) 45vw, 100vw"
                                 alt="Living Myth clinic reception staff assisting a patient"
+                                width={1600}
+                                height={1200}
                                 loading="lazy"
                                 decoding="async"
                                 className="h-80 w-full object-cover object-center transition duration-700 group-hover:scale-[1.02] sm:h-[clamp(22rem,52svh,30rem)]"
@@ -647,7 +666,7 @@ export default function Welcome() {
                 <section
                     id="clinic-gallery"
                     aria-labelledby="clinic-gallery-title"
-                    className="scroll-mt-36 border-y border-slate-200 bg-[#f4f7f3] py-12 sm:py-16 lg:flex lg:min-h-[calc(100svh-9rem)] lg:items-center"
+                    className="scroll-mt-36 border-y border-slate-200 bg-secondary py-12 sm:py-16 lg:flex lg:min-h-[calc(100svh-9rem)] lg:items-center"
                 >
                     <Reveal className="mx-auto grid w-full max-w-7xl gap-9 px-5 sm:px-7 lg:grid-cols-[minmax(16rem,.55fr)_minmax(0,1.45fr)] lg:items-center lg:gap-12">
                         <div className="lg:pr-2">
@@ -693,9 +712,16 @@ export default function Welcome() {
                                             src={
                                                 clinicGallery[galleryIndex].src
                                             }
+                                            srcSet={
+                                                clinicGallery[galleryIndex]
+                                                    .srcSet
+                                            }
+                                            sizes="(min-width: 1280px) 800px, (min-width: 1024px) 68vw, 100vw"
                                             alt={
                                                 clinicGallery[galleryIndex].alt
                                             }
+                                            width={1600}
+                                            height={1200}
                                             loading="lazy"
                                             decoding="async"
                                             className="h-full w-full object-cover object-center select-none"
@@ -837,7 +863,7 @@ export default function Welcome() {
                         </div>
 
                         <div className="mt-7 grid items-stretch gap-5 lg:grid-cols-2 lg:gap-7">
-                            <div className="flex h-full flex-col rounded-[1.5rem] border border-moss-100 bg-[#edf4eb] p-5 sm:p-6">
+                            <div className="flex h-full flex-col rounded-[1.5rem] border border-moss-100 bg-secondary p-5 sm:p-6">
                                 <div className="flex items-center gap-3">
                                     <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-moss-700 text-white">
                                         <Building2 size={20} />
@@ -876,8 +902,12 @@ export default function Welcome() {
                             </div>
                             <figure className="relative min-h-72 overflow-hidden rounded-[1.5rem] bg-moss-50 shadow-xl shadow-moss-900/10">
                                 <img
-                                    src="/images/lmic2.png"
+                                    src="/images/lmic2-1600.webp"
+                                    srcSet="/images/lmic2-800.webp 800w, /images/lmic2-1600.webp 1600w"
+                                    sizes="(min-width: 1024px) 50vw, 100vw"
                                     alt="Living Myth clinic staff assisting a patient at the service window"
+                                    width={1600}
+                                    height={1200}
                                     loading="lazy"
                                     decoding="async"
                                     className="absolute inset-0 h-full w-full object-cover object-center"
@@ -1041,7 +1071,8 @@ export default function Welcome() {
                     id="contact"
                     className="relative isolate scroll-mt-36 overflow-hidden bg-moss-900 py-14 text-white sm:py-20"
                     style={{
-                        backgroundImage: "url('/images/BGofMaps.png')",
+                        backgroundImage:
+                            "url('/images/BGofMaps-optimized.webp')",
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
                         backgroundRepeat: 'no-repeat',
@@ -1117,8 +1148,10 @@ export default function Welcome() {
                                 <figure className="h-full overflow-hidden rounded-[1.5rem] border border-white/25 bg-white p-2.5 shadow-[0_20px_55px_rgba(12,25,15,.28)] sm:p-3">
                                     <div className="flex h-full min-h-64 items-center overflow-hidden rounded-[1.05rem] bg-slate-100 sm:min-h-72">
                                         <img
-                                            src="/images/Maps.png"
+                                            src="/images/Maps-optimized.webp"
                                             alt="Map showing the location of Living Myth Industrial Clinic"
+                                            width={1119}
+                                            height={595}
                                             className="h-full w-full object-contain"
                                             loading="lazy"
                                             decoding="async"

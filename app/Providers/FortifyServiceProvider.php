@@ -6,7 +6,9 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\CustomLoginResponse;
 use App\Actions\Fortify\NormalizeLoginEmail;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Requests\Auth\TwoFactorLoginRequest;
 use App\Http\Responses\LoginLockoutResponse;
+use App\Http\Responses\PasswordResetLinkResponse;
 use App\Models\SecurityAudit;
 use App\Security\LoginRateLimiter as ApplicationLoginRateLimiter;
 use App\Support\RoleDashboard;
@@ -23,9 +25,11 @@ use Laravel\Fortify\Actions\AttemptToAuthenticate;
 use Laravel\Fortify\Actions\CanonicalizeUsername;
 use Laravel\Fortify\Actions\EnsureLoginIsNotThrottled;
 use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
+use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Contracts\LockoutResponse;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\RedirectsIfTwoFactorAuthenticatable;
+use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Contracts\VerifyEmailResponse;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
@@ -41,6 +45,9 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->singleton(LoginResponse::class, CustomLoginResponse::class);
         $this->app->singleton(LockoutResponse::class, LoginLockoutResponse::class);
         $this->app->singleton(LoginRateLimiter::class, ApplicationLoginRateLimiter::class);
+        $this->app->bind(\Laravel\Fortify\Http\Requests\TwoFactorLoginRequest::class, TwoFactorLoginRequest::class);
+        $this->app->bind(SuccessfulPasswordResetLinkRequestResponse::class, PasswordResetLinkResponse::class);
+        $this->app->bind(FailedPasswordResetLinkRequestResponse::class, PasswordResetLinkResponse::class);
         $this->app->singleton(VerifyEmailResponse::class, fn () => new class implements VerifyEmailResponse
         {
             public function toResponse($request)
@@ -107,9 +114,9 @@ class FortifyServiceProvider extends ServiceProvider
                 return null;
             }
 
-            if ($user->login_locked_at !== null) {
+            if ($user->isLoginLocked()) {
                 throw ValidationException::withMessages([
-                    'email' => 'Your account is locked. Reset your password by email to unlock it.',
+                    'email' => ApplicationLoginRateLimiter::ACCOUNT_LOCK_MESSAGE,
                 ]);
             }
 
@@ -177,6 +184,8 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureRateLimiting(): void
     {
+        RateLimiter::for('password-reset-link', fn (Request $request) => Limit::perMinute(5)->by($request->ip()));
+
         RateLimiter::for('appointment-booking', function (Request $request) {
             return Limit::perMinute((int) config('medical.booking_security.booking_attempts_per_minute', 5))
                 ->by(($request->user()?->id ?? 'guest').'|'.$request->ip())

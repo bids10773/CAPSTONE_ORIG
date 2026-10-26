@@ -70,6 +70,32 @@ test('patient can book only one active appointment', function () {
     expect(Appointment::where('user_id', $patient->id)->count())->toBe(1);
 });
 
+test('individual booking ignores company event fields', function () {
+    $patient = bookingPatient();
+    $doctor = bookingDoctor();
+
+    $this->actingAs($patient)->post(route('appointments.store'), [
+        'type' => 'individual',
+        'doctor_id' => $doctor->id,
+        'appointment_date' => '2026-08-18',
+        'start_time' => '08:00',
+        'service_types' => ['CBC'],
+        'service_location' => 'onsite',
+        'event_address' => null,
+        'event_contact_name' => null,
+        'event_contact_number' => null,
+        'expected_employee_count' => null,
+    ])->assertSessionDoesntHaveErrors();
+
+    $appointment = Appointment::query()
+        ->where('user_id', $patient->id)
+        ->firstOrFail();
+
+    expect($appointment->type)->toBe('individual')
+        ->and($appointment->service_location)->toBeNull()
+        ->and($appointment->event_address)->toBeNull();
+});
+
 test('patient cannot book a weekend appointment', function () {
     $patient = bookingPatient();
     $doctor = bookingDoctor();

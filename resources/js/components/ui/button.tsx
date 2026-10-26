@@ -11,7 +11,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-moss-500 text-white shadow-[0_8px_22px_rgba(107,143,113,0.2)] hover:-translate-y-0.5 hover:bg-moss-600 hover:shadow-lg",
+          "bg-primary text-primary-foreground shadow-[0_8px_22px_rgba(86,118,92,0.2)] hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-lg",
         
         // Safety/Emergency Red
         destructive:
@@ -19,7 +19,7 @@ const buttonVariants = cva(
         
         // Glass effect for moss-background panels
         outline:
-          "border border-moss-500 bg-white text-moss-700 hover:bg-moss-50 dark:bg-card dark:text-moss-200 dark:hover:bg-accent",
+          "border border-moss-500 bg-background text-moss-700 hover:bg-accent dark:text-moss-200",
         
         // High-contrast white for primary actions on blue backgrounds
         secondary:

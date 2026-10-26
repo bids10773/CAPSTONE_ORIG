@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
 use App\Notifications\PasswordChanged;
+use App\Services\SessionRevocationService;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -22,11 +23,13 @@ class PasswordController extends Controller
     /**
      * Update the user's password.
      */
-    public function update(PasswordUpdateRequest $request): RedirectResponse
+    public function update(PasswordUpdateRequest $request, SessionRevocationService $sessions): RedirectResponse
     {
         $request->user()->update([
             'password' => $request->password,
         ]);
+
+        $sessions->revoke($request->user(), $request->session()->getId());
 
         $request->user()->notify(new PasswordChanged);
 

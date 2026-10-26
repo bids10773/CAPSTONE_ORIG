@@ -57,7 +57,7 @@ export default function ClinicDashboardLayout({
             <SidebarInset className="min-w-0 bg-background">
                 <header className="sticky top-0 z-30 flex h-[72px] shrink-0 items-center border-b border-border bg-card/95 px-4 backdrop-blur-xl sm:px-6">
                     <div className="flex w-full items-center gap-3">
-                        <SidebarTrigger className="size-10 rounded-xl text-slate-500 hover:bg-moss-50 hover:text-moss-700 md:hidden" />
+                        <SidebarTrigger className="size-10 rounded-xl text-slate-500 hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card md:hidden" />
                         <div className="hidden min-w-0 sm:block">
                             <Breadcrumbs breadcrumbs={breadcrumbs} />
                         </div>
@@ -74,7 +74,7 @@ export default function ClinicDashboardLayout({
                                         type="button"
                                         data-test="navbar-user-menu-button"
                                         aria-label="Open account menu"
-                                        className="ml-1 flex items-center gap-2 rounded-xl border-l border-slate-200 py-1 pr-1 pl-3 text-left transition outline-none hover:bg-moss-50 focus-visible:ring-4 focus-visible:ring-moss-500/15 data-[state=open]:bg-moss-50 sm:ml-2 sm:pl-4 dark:hover:bg-moss-900 dark:data-[state=open]:bg-moss-900"
+                                        className="ml-1 flex touch-manipulation items-center gap-2 rounded-xl border-l border-slate-200 py-1 pr-1 pl-3 text-left transition-[background-color,color,box-shadow,transform] hover:bg-moss-50 focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-none active:scale-[0.98] active:bg-moss-100 data-[state=open]:bg-moss-50 data-[state=open]:text-moss-800 motion-reduce:transition-none sm:ml-2 sm:pl-4 dark:hover:bg-moss-900 dark:active:bg-moss-900 dark:data-[state=open]:bg-moss-900 dark:data-[state=open]:text-moss-200"
                                     >
                                         <span className="relative shrink-0">
                                             <Avatar className="size-9">

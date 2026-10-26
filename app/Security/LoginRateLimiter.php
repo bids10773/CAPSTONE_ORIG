@@ -15,48 +15,54 @@ class LoginRateLimiter extends FortifyLoginRateLimiter
 
     public const WARNING_AFTER_ATTEMPTS = 3;
 
+    public const IP_MAX_ATTEMPTS = 20;
+
+    public const IP_HOURLY_MAX_ATTEMPTS = 50;
+
+    public const ACCOUNT_LOCK_MESSAGE = 'Your account is locked after five failed sign-in attempts. Reset your password to unlock it.';
+
     public function tooManyAttempts(Request $request): bool
     {
-        $user = $this->userFor($request);
-
-        return $user
-            ? $user->login_locked_at !== null
-            : parent::tooManyAttempts($request);
+        return parent::tooManyAttempts($request)
+            || $this->limiter->tooManyAttempts($this->ipKey($request), self::IP_MAX_ATTEMPTS)
+            || $this->limiter->tooManyAttempts($this->hourlyIpKey($request), self::IP_HOURLY_MAX_ATTEMPTS);
     }
 
     public function increment(Request $request): void
     {
         parent::increment($request);
+        $ipAttempts = $this->limiter->hit($this->ipKey($request), 60);
+        $hourlyAttempts = $this->limiter->hit($this->hourlyIpKey($request), 3600);
 
-        $user = $this->userFor($request);
+        DB::transaction(function () use ($request): void {
+            $user = $this->userFor($request, lock: true);
 
-        if ($user) {
-            DB::transaction(function () use ($request, $user): void {
-                $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+            if (! $user || $user->isLoginLocked()) {
+                return;
+            }
 
-                if ($lockedUser->login_locked_at !== null) {
-                    return;
-                }
+            $user->failed_login_attempts = min(self::MAX_ATTEMPTS, $user->failed_login_attempts + 1);
 
-                $attempts = min(self::MAX_ATTEMPTS, $lockedUser->failed_login_attempts + 1);
+            if ($user->failed_login_attempts === self::MAX_ATTEMPTS) {
+                $user->login_locked_at = now();
+                SecurityAudit::create([
+                    'target_user_id' => $user->id,
+                    'action' => 'account_locked_after_failed_attempts',
+                    'status' => 'blocked',
+                    'metadata' => ['failed_attempts' => self::MAX_ATTEMPTS, 'ip' => $request->ip()],
+                ]);
+            }
 
-                $lockedUser->forceFill([
-                    'failed_login_attempts' => $attempts,
-                    'login_locked_at' => $attempts >= self::MAX_ATTEMPTS ? now() : null,
-                ])->save();
+            $user->save();
+        });
 
-                if ($lockedUser->login_locked_at !== null) {
-                    SecurityAudit::create([
-                        'target_user_id' => $lockedUser->id,
-                        'action' => 'account_locked_after_failed_logins',
-                        'status' => 'blocked',
-                        'metadata' => [
-                            'failed_attempts' => $attempts,
-                            'ip' => $request->ip(),
-                        ],
-                    ]);
-                }
-            });
+        if ($this->attempts($request) === self::MAX_ATTEMPTS || $ipAttempts === self::IP_MAX_ATTEMPTS || $hourlyAttempts === self::IP_HOURLY_MAX_ATTEMPTS) {
+            SecurityAudit::create([
+                'target_user_id' => $this->userFor($request)?->id,
+                'action' => 'login_throttled_after_failed_attempts',
+                'status' => 'blocked',
+                'metadata' => ['failed_attempts' => $this->attempts($request), 'ip' => $request->ip()],
+            ]);
         }
 
         $this->flashState($request);
@@ -65,18 +71,24 @@ class LoginRateLimiter extends FortifyLoginRateLimiter
     public function clear(Request $request): void
     {
         parent::clear($request);
+        // Aggregate IP budgets survive both successful sign-in and password recovery.
+    }
 
-        $this->userFor($request)?->forceFill([
-            'failed_login_attempts' => 0,
-            'login_locked_at' => null,
-        ])->save();
+    public function availableIn(Request $request)
+    {
+        return max(
+            parent::availableIn($request),
+            $this->limiter->tooManyAttempts($this->ipKey($request), self::IP_MAX_ATTEMPTS)
+                ? $this->limiter->availableIn($this->ipKey($request)) : 0,
+            $this->limiter->tooManyAttempts($this->hourlyIpKey($request), self::IP_HOURLY_MAX_ATTEMPTS)
+                ? $this->limiter->availableIn($this->hourlyIpKey($request)) : 0,
+        );
     }
 
     public function flashState(Request $request): void
     {
-        $user = $this->userFor($request);
-        $attempts = $user?->failed_login_attempts ?? $this->attempts($request);
-        $locked = $user?->login_locked_at !== null || $attempts >= self::MAX_ATTEMPTS;
+        $attempts = $this->attempts($request);
+        $locked = $this->tooManyAttempts($request);
 
         $request->session()->flash('login_attempt_limit', [
             'maxAttempts' => self::MAX_ATTEMPTS,
@@ -87,10 +99,24 @@ class LoginRateLimiter extends FortifyLoginRateLimiter
         ]);
     }
 
-    private function userFor(Request $request): ?User
+    private function ipKey(Request $request): string
+    {
+        return 'login-ip:'.hash('sha256', (string) $request->ip());
+    }
+
+    private function hourlyIpKey(Request $request): string
+    {
+        return 'login-ip-hour:'.hash('sha256', (string) $request->ip());
+    }
+
+    private function userFor(Request $request, bool $lock = false): ?User
     {
         $email = Str::lower(trim((string) $request->input('email')));
 
-        return $email === '' ? null : User::query()->where('email', $email)->first();
+        if ($email === '') {
+            return null;
+        }
+
+        return User::query()->where('email', $email)->when($lock, fn ($query) => $query->lockForUpdate())->first();
     }
 }

@@ -1,16 +1,31 @@
 import { createInertiaApp } from '@inertiajs/react';
-import { configureEcho } from '@laravel/echo-react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import type { ComponentType } from 'react';
+import { lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from 'sonner';
 import '../css/app.css';
-import LogoutModal from './components/logout-modal';
-import { LogoutModalProvider } from './contexts/logout-modal-context';
-import { initializeTheme } from './hooks/use-appearance';
-configureEcho({
-    broadcaster: 'reverb',
-});
+import {
+    LogoutModalProvider,
+    useLogoutModal,
+} from './contexts/logout-modal-context';
+import { initializeTheme, useAppearance } from './hooks/use-appearance';
+import { initializeClinicalDraftSession } from './lib/clinical-draft-storage';
+import type { Auth } from './types';
+
+const LogoutModal = lazy(() => import('./components/logout-modal'));
+
+function LazyLogoutModal() {
+    const { isOpen } = useLogoutModal();
+
+    if (!isOpen) return null;
+
+    return (
+        <Suspense fallback={null}>
+            <LogoutModal />
+        </Suspense>
+    );
+}
 
 // Keeping the glob options explicit makes Vite rebuild the Inertia page map
 // whenever a new page module is added during development.
@@ -43,6 +58,28 @@ const pages: Record<string, () => Promise<InertiaPageModule>> = {
         import('./pages/radtech/xray-report-form'),
 };
 
+function ThemeAwareToaster() {
+    const { resolvedAppearance } = useAppearance();
+
+    return (
+        <Toaster
+            position="top-right"
+            richColors
+            theme={resolvedAppearance}
+            toastOptions={{
+                classNames: {
+                    toast: 'border-border bg-popover text-popover-foreground',
+                    description: 'text-muted-foreground',
+                    actionButton:
+                        'bg-primary text-primary-foreground hover:bg-primary/90',
+                    cancelButton:
+                        'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                },
+            }}
+        />
+    );
+}
+
 createInertiaApp({
     // Template: "Page Title - LMIC" or just "LMIC" if no title is set
     title: (title) => `${title} - LMIC`,
@@ -55,16 +92,14 @@ createInertiaApp({
         return resolvePageComponent(`./pages/${normalizedName}.tsx`, pages);
     },
     setup({ el, App, props }) {
+        const auth = props.initialPage.props.auth as Auth | undefined;
+        initializeClinicalDraftSession(auth?.user?.id ?? null);
         const root = createRoot(el);
-        const pageProps = props.initialPage.props as {
-            auth?: { user?: { id?: number } };
-        };
-
         root.render(
             <LogoutModalProvider>
                 <App {...props} />
-                <LogoutModal userId={pageProps.auth?.user?.id} />
-                <Toaster position="top-right" richColors />
+                <LazyLogoutModal />
+                <ThemeAwareToaster />
             </LogoutModalProvider>,
         );
     },

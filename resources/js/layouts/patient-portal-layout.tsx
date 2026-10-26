@@ -91,9 +91,9 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                                     href={href}
                                     aria-current={active ? 'page' : undefined}
                                     className={cn(
-                                        'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:ring-offset-2 focus-visible:outline-none',
+                                        'inline-flex items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm font-semibold transition-[background-color,color,border-color,box-shadow] focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:ring-offset-2 focus-visible:outline-none',
                                         active
-                                            ? 'bg-moss-100 text-moss-800'
+                                            ? 'border-moss-600 bg-moss-100 text-moss-800 dark:border-moss-400'
                                             : 'text-slate-600 hover:bg-moss-50 hover:text-moss-800',
                                     )}
                                 >
@@ -184,9 +184,9 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                                             active ? 'page' : undefined
                                         }
                                         className={cn(
-                                            'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none',
+                                            'flex items-center gap-3 rounded-xl border border-transparent px-4 py-3 text-sm font-semibold transition-[background-color,color,border-color,box-shadow] focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none',
                                             active
-                                                ? 'bg-moss-100 text-moss-800'
+                                                ? 'border-moss-600 bg-moss-100 text-moss-800 dark:border-moss-400'
                                                 : 'text-slate-700 hover:bg-moss-50 hover:text-moss-800',
                                         )}
                                     >

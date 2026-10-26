@@ -2,10 +2,8 @@
 
 namespace App\Http\Responses;
 
-use App\Models\User;
 use App\Security\LoginRateLimiter;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\LockoutResponse as LockoutResponseContract;
 use Laravel\Fortify\Fortify;
@@ -18,16 +16,9 @@ class LoginLockoutResponse implements LockoutResponseContract
     {
         /** @var Request $request */
         $this->limiter->flashState($request);
-        $email = Str::lower(trim((string) $request->input(Fortify::username())));
-        $permanentlyLocked = User::query()
-            ->where('email', $email)
-            ->whereNotNull('login_locked_at')
-            ->exists();
 
         throw ValidationException::withMessages([
-            Fortify::username() => [$permanentlyLocked
-                ? 'Your account is locked. Reset your password by email to unlock it.'
-                : 'Too many failed login attempts. Please try again shortly.'],
+            Fortify::username() => ['Too many sign-in attempts. Please wait before trying again, or reset your password if your account is locked.'],
         ])->status(429);
     }
 }

@@ -30,18 +30,18 @@ export function ChartCard({
     return (
         <section
             className={cn(
-                'min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm',
+                'min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-sm',
                 className,
             )}
         >
-            <header className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:px-6">
+            <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-4 sm:px-6">
                 <div className="min-w-0">
                     {eyebrow && <div className="mb-2">{eyebrow}</div>}
-                    <h2 className="text-sm font-semibold tracking-tight text-slate-950 sm:text-base">
+                    <h2 className="text-sm font-semibold tracking-tight text-foreground sm:text-base">
                         {title}
                     </h2>
                     {description && (
-                        <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500 sm:text-sm">
+                        <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground sm:text-sm">
                             {description}
                         </p>
                     )}
@@ -50,7 +50,7 @@ export function ChartCard({
             </header>
             <div className="min-w-0 p-3 sm:p-5">{children}</div>
             {footer && (
-                <footer className="border-t border-slate-100 px-4 py-3 text-xs text-slate-500 sm:px-6">
+                <footer className="border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-6">
                     {footer}
                 </footer>
             )}
@@ -80,9 +80,9 @@ export function ChartTooltip({
     if (!active || !visible?.length) return null;
 
     return (
-        <div className="min-w-40 rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 shadow-xl shadow-slate-900/10 backdrop-blur-sm">
+        <div className="min-w-40 rounded-xl border border-border bg-popover/95 px-3 py-2.5 text-popover-foreground shadow-xl backdrop-blur-sm">
             {label !== undefined && (
-                <p className="mb-2 border-b border-slate-100 pb-2 text-xs font-semibold text-slate-900">
+                <p className="mb-2 border-b border-border pb-2 text-xs font-semibold text-foreground">
                     {labelFormatter ? labelFormatter(label) : String(label)}
                 </p>
             )}
@@ -92,7 +92,7 @@ export function ChartTooltip({
                         key={`${String(item.dataKey ?? item.name)}-${index}`}
                         className="flex items-center justify-between gap-5 text-xs"
                     >
-                        <span className="flex min-w-0 items-center gap-2 text-slate-600">
+                        <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
                             <span
                                 className="size-2 shrink-0 rounded-full"
                                 style={{
@@ -102,7 +102,7 @@ export function ChartTooltip({
                             />
                             <span className="truncate">{item.name}</span>
                         </span>
-                        <strong className="font-semibold whitespace-nowrap text-slate-950 tabular-nums">
+                        <strong className="font-semibold whitespace-nowrap text-foreground tabular-nums">
                             {valueFormatter(item.value!)}
                             {unit ? ` ${unit}` : ''}
                         </strong>
@@ -123,14 +123,14 @@ export function ChartEmptyState({
     return (
         <div
             className={cn(
-                'flex h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 text-center',
+                'flex h-[260px] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/50 px-6 text-center',
                 className,
             )}
         >
-            <span className="mb-3 rounded-xl bg-white p-2.5 text-slate-400 shadow-sm ring-1 ring-slate-200">
+            <span className="mb-3 rounded-xl bg-card p-2.5 text-muted-foreground shadow-sm ring-1 ring-border">
                 <BarChart3 className="size-5" aria-hidden="true" />
             </span>
-            <p className="max-w-sm text-sm font-medium text-slate-600">
+            <p className="max-w-sm text-sm font-medium text-muted-foreground">
                 {message}
             </p>
         </div>
