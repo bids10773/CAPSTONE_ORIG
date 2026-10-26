@@ -58,5 +58,8 @@ jobs:
       - name: Audit Production Node Dependencies
         run: npm audit --omit=dev
 
+      - name: Frontend Security Regression Tests
+        run: npm run test:frontend
+
       - name: Tests
         run: php -d memory_limit=512M artisan test

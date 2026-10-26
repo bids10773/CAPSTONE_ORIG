@@ -210,7 +210,7 @@ test('users can logout', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('users are warned after three failures and locked after five until password reset', function () {
+test('users are warned after three failures and require password recovery after five', function () {
     $user = User::factory()->create();
 
     foreach ([4, 3, 2, 1] as $index => $remaining) {
@@ -245,7 +245,7 @@ test('users are warned after three failures and locked after five until password
         ->and($user->login_locked_at)->not->toBeNull();
     $this->assertDatabaseHas('security_audits', [
         'target_user_id' => $user->id,
-        'action' => 'account_locked_after_failed_logins',
+        'action' => 'account_locked_after_failed_attempts',
         'status' => 'blocked',
     ]);
 
@@ -256,20 +256,20 @@ test('users are warned after three failures and locked after five until password
 
     $this->assertGuest();
     $blockedAttempt->assertSessionHasErrors([
-        'email' => 'Your account is locked. Reset your password by email to unlock it.',
+        'email' => 'Too many sign-in attempts. Please wait before trying again, or reset your password if your account is locked.',
     ]);
 
     $this->travel(61)->seconds();
 
-    $stillBlocked = $this->post(route('login.store'), [
+    $stillLocked = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'password',
     ]);
 
-    $this->assertGuest();
-    $stillBlocked->assertSessionHasErrors([
-        'email' => 'Your account is locked. Reset your password by email to unlock it.',
+    $stillLocked->assertSessionHasErrors([
+        'email' => \App\Security\LoginRateLimiter::ACCOUNT_LOCK_MESSAGE,
     ]);
+    $this->assertGuest();
 });
 
 test('validation failures do not consume login attempts', function () {

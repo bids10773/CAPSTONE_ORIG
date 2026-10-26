@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PatientProfile;
 use App\Models\SocialAccount;
 use App\Models\User;
+use App\Security\LoginRateLimiter;
 use App\Support\RoleDashboard;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Laravel\Fortify\Events\TwoFactorAuthenticationChallenged;
+use Laravel\Fortify\Features;
 use Laravel\Socialite\Facades\Socialite;
 use Throwable;
 
@@ -169,12 +172,24 @@ class SocialAuthenticationController extends Controller
 
     private function login(Request $request, User $user): RedirectResponse
     {
-        if ($user->login_locked_at !== null) {
-            return to_route('login')->with('error', 'Your account is locked. Reset your password by email to unlock it.');
+        if ($user->isLoginLocked()) {
+            return to_route('login')->with('error', LoginRateLimiter::ACCOUNT_LOCK_MESSAGE);
         }
 
         if (! $user->isActive()) {
             return to_route('login')->with('error', 'Your account is currently unavailable. Please contact the administrator.');
+        }
+
+        if (Features::enabled(Features::twoFactorAuthentication()) && $user->hasEnabledTwoFactorAuthentication()) {
+            $request->session()->regenerate();
+            $request->session()->put([
+                'login.id' => $user->getKey(),
+                'login.remember' => true,
+            ]);
+
+            TwoFactorAuthenticationChallenged::dispatch($user);
+
+            return to_route('two-factor.login');
         }
 
         Auth::login($user, true);

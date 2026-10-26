@@ -245,6 +245,8 @@ class AppointmentController extends Controller
             ]);
         }
 
+        abort_if($request->input('type') === 'company_bulk' && $user->role !== 'company', 403);
+
         if ($user->role === 'company') {
             $company = Company::query()
                 ->whereKey($user->company_id)
@@ -525,13 +527,17 @@ class AppointmentController extends Controller
             );
 
         $appointmentPayload = $appointment;
-        if ($request->user()->role === 'patient') {
+        if (in_array($request->user()->role, ['patient', 'company'], true)) {
             $appointmentPayload = $appointment->toArray();
             $appointmentPayload['medical_history'] = null;
             $appointmentPayload['physical_exam'] = $appointment->physicalExam ? ['is_completed' => (bool) $appointment->physicalExam->is_completed] : null;
             $appointmentPayload['lab_result'] = $appointment->labResult ? ['status' => $appointment->labResult->status, 'finalized_at' => $appointment->labResult->finalized_at] : null;
             $appointmentPayload['xray_report'] = $appointment->xrayReport ? ['status' => $appointment->xrayReport->status, 'performed_at' => $appointment->xrayReport->performed_at, 'verified_at' => $appointment->xrayReport->verified_at] : null;
             $appointmentPayload['medical_examination'] = $appointment->medicalExamination ? ['status' => $appointment->medicalExamination->status, 'finalized_at' => $appointment->medicalExamination->finalized_at, 'released_at' => $appointment->medicalExamination->released_at] : null;
+
+            if ($request->user()->role === 'company' && $appointmentPayload['xray_report'] !== null) {
+                $appointmentPayload['xray_report']['is_completed'] = (bool) $appointment->xrayReport->is_completed;
+            }
         }
 
         return Inertia::render('appointments/show', [

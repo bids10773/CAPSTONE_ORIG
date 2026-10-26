@@ -10,6 +10,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { useLogoutModal } from '@/contexts/logout-modal-context';
+import { clearClinicalDrafts } from '@/lib/clinical-draft-storage';
 import { logout } from '@/routes';
 
 export default function LogoutModal() {
@@ -36,8 +37,15 @@ export default function LogoutModal() {
                 preserveScroll: false,
                 preserveState: false,
                 onSuccess: () => {
-                    if (userId !== undefined) {
-                        localStorage.removeItem(`appointment-draft-${userId}`);
+                    clearClinicalDrafts();
+                    try {
+                        if (userId !== undefined) {
+                            localStorage.removeItem(
+                                `appointment-draft-${userId}`,
+                            );
+                        }
+                    } catch {
+                        // Storage restrictions must not interrupt successful logout.
                     }
                     closeModal();
                 },

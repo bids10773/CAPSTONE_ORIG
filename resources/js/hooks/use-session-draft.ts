@@ -1,4 +1,11 @@
+import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef } from 'react';
+import {
+    clinicalDraftStorageKey,
+    ownsClinicalDrafts,
+    synchronizeClinicalDraftOwner,
+} from '@/lib/clinical-draft-storage';
+import type { SharedData } from '@/types';
 
 const DRAFT_LIFETIME_MS = 24 * 60 * 60 * 1000;
 
@@ -15,7 +22,8 @@ export function useSessionDraft<T extends object>(
     restore: (draft: T) => void,
     enabled = true,
 ) {
-    const storageKey = `clinical-form-draft:v1:${key}`;
+    const userId = usePage<SharedData>().props.auth?.user?.id ?? null;
+    const storageKey = clinicalDraftStorageKey(userId, key);
     const restoreRef = useRef(restore);
     const clearedRef = useRef(false);
     const loadedKeyRef = useRef<string | null>(null);
@@ -30,8 +38,10 @@ export function useSessionDraft<T extends object>(
         loadedKeyRef.current = storageKey;
         skipNextSaveRef.current = true;
 
+        synchronizeClinicalDraftOwner(userId);
+
         try {
-            if (!enabled) {
+            if (!enabled || !ownsClinicalDrafts(userId)) {
                 sessionStorage.removeItem(storageKey);
             } else {
                 const raw = sessionStorage.getItem(storageKey);
@@ -54,12 +64,13 @@ export function useSessionDraft<T extends object>(
         } catch {
             // Storage may be unavailable; the form remains usable without a draft.
         }
-    }, [enabled, storageKey]);
+    }, [enabled, storageKey, userId]);
 
     useEffect(() => {
         if (
             loadedKeyRef.current !== storageKey ||
             !enabled ||
+            !ownsClinicalDrafts(userId) ||
             clearedRef.current
         )
             return;
@@ -81,7 +92,7 @@ export function useSessionDraft<T extends object>(
         } catch {
             // A storage quota or browser setting must not block data entry.
         }
-    }, [data, enabled, isDirty, storageKey]);
+    }, [data, enabled, isDirty, storageKey, userId]);
 
     const clearDraft = useCallback(() => {
         clearedRef.current = true;

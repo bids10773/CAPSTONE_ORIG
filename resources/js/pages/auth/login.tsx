@@ -267,20 +267,18 @@ export default function Login({
                                             aria-live="polite"
                                         >
                                             {isLocked
-                                                ? 'Account locked after 5 failed attempts. Reset your password by email to unlock it.'
-                                                : `${loginAttemptLimit?.failedAttempts} failed attempts. Your account will be locked after 5 failed attempts.`}
+                                                ? 'Sign-in attempts are limited. After 5 failed attempts, your account is locked until you reset your password.'
+                                                : `${loginAttemptLimit?.failedAttempts} failed attempts from this connection. After 5 failed attempts, your account is locked until you reset your password.`}
                                         </p>
                                     )}
                                 </div>
                             </div>
                             <button
                                 type="submit"
-                                disabled={processing || isLocked}
+                                disabled={processing}
                                 className="auth-primary-button"
                             >
-                                {isLocked ? (
-                                    'Account Locked'
-                                ) : processing ? (
+                                {processing ? (
                                     <>
                                         <Spinner className="size-4" /> Signing
                                         in securely…

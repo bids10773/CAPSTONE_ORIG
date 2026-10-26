@@ -9,7 +9,28 @@ use App\Services\LaboratoryFormDefinition;
 use Carbon\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
+// Keep UTC and the clinic on the same fixture day, including overnight CI runs.
+beforeEach(fn () => $this->travelTo(Carbon::parse('2026-10-27 04:00:00', 'UTC')));
 afterEach(fn () => Carbon::setTestNow());
+
+test('patients cannot create company bulk drafts even for their own company', function (bool $sameCompany) {
+    $company = Company::create(['company_name' => 'Synthetic Company', 'status' => 'active']);
+    $patient = User::factory()->create(['role' => 'patient', 'company_id' => $sameCompany ? $company->id : null]);
+    $patient->patientProfile()->create(['birthdate' => '1990-01-01', 'sex' => 'Male']);
+
+    $this->actingAs($patient)->post(route('appointments.store'), [
+        'type' => 'company_bulk',
+        'company_id' => $company->id,
+        'appointment_date' => today()->addMonths(2)->nextWeekday()->toDateString(),
+        'service_types' => ['CBC'],
+        'service_location' => 'clinic',
+        'event_contact_name' => 'Synthetic Contact',
+        'event_contact_number' => '09171234567',
+        'expected_employee_count' => 1,
+    ])->assertForbidden();
+
+    $this->assertDatabaseCount('appointments', 0);
+})->with(['foreign company' => false, 'patient employer' => true]);
 
 function createBulkApprovalAssignments(array $staffCounts): array
 {

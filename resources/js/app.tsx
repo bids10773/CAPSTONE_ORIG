@@ -10,6 +10,8 @@ import {
     useLogoutModal,
 } from './contexts/logout-modal-context';
 import { initializeTheme, useAppearance } from './hooks/use-appearance';
+import { initializeClinicalDraftSession } from './lib/clinical-draft-storage';
+import type { Auth } from './types';
 
 const LogoutModal = lazy(() => import('./components/logout-modal'));
 
@@ -90,6 +92,8 @@ createInertiaApp({
         return resolvePageComponent(`./pages/${normalizedName}.tsx`, pages);
     },
     setup({ el, App, props }) {
+        const auth = props.initialPage.props.auth as Auth | undefined;
+        initializeClinicalDraftSession(auth?.user?.id ?? null);
         const root = createRoot(el);
         root.render(
             <LogoutModalProvider>

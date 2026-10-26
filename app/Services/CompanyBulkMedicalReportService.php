@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -200,7 +201,7 @@ class CompanyBulkMedicalReportService
         $sheet->setTitle('Medical Results');
         $last = Coordinate::stringFromColumnIndex(count($columns));
         $sheet->mergeCells("A1:{$last}1")->setCellValue('A1', 'COMPANY BULK MEDICAL RESULTS');
-        $sheet->mergeCells("A2:{$last}2")->setCellValue('A2', $event->company?->company_name ?? 'Company');
+        $sheet->mergeCells("A2:{$last}2")->setCellValueExplicit('A2', $event->company?->company_name ?? 'Company', DataType::TYPE_STRING);
         $sheet->mergeCells("A3:{$last}3")->setCellValue('A3', 'Examination date: '.$event->appointment_date?->format('F j, Y').'  |  Generated: '.now()->format('F j, Y g:i A'));
         $sheet->mergeCells("A4:{$last}4")->setCellValue('A4', 'Selected services: '.implode(', ', $event->service_types ?? []));
         $sheet->mergeCells("A5:{$last}5")->setCellValue('A5', 'Employees: '.count($rows));
@@ -209,7 +210,12 @@ class CompanyBulkMedicalReportService
         }
         foreach ($rows as $r => $row) {
             foreach ($columns as $c => $column) {
-                $sheet->setCellValue([$c + 1, $r + 8], $row[$column['key']] ?? '-');
+                $value = $row[$column['key']] ?? '-';
+                if ($column['key'] === 'number') {
+                    $sheet->setCellValue([$c + 1, $r + 8], $value);
+                } else {
+                    $sheet->setCellValueExplicit([$c + 1, $r + 8], (string) $value, DataType::TYPE_STRING);
+                }
             }
         }
         $sheet->freezePane('F8')->setAutoFilter("A7:{$last}7");
