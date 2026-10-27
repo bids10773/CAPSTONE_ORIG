@@ -1,7 +1,8 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Download, Save, ShieldCheck, ShieldX } from 'lucide-react';
+import { ArrowLeft, Save, ShieldCheck, ShieldX } from 'lucide-react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
+import { LicenseProofDialog } from '@/components/license-proof-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -365,85 +366,67 @@ export default function EditStaff({
                         {staff.has_license_document_front &&
                         staff.has_license_document_back ? (
                             <div className="mt-5 space-y-4 border-t border-slate-100 pt-5 dark:border-border">
-                                <div className="flex flex-wrap gap-3">
-                                    <Button
-                                        variant="outline"
-                                        asChild
-                                        className="gap-2"
-                                    >
-                                        <a
-                                            href={`/admin/staff/${staff.id}/license-document/front`}
+                                <LicenseProofDialog
+                                    staffId={staff.id}
+                                    name={`${staff.first_name} ${staff.last_name}`}
+                                    licenseNumber={staff.license_no}
+                                >
+                                    <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-start">
+                                        <div>
+                                            <Label htmlFor="rejection_reason">
+                                                Reason if rejected
+                                            </Label>
+                                            <Input
+                                                id="rejection_reason"
+                                                value={
+                                                    reviewForm.data
+                                                        .rejection_reason
+                                                }
+                                                onChange={(event) =>
+                                                    reviewForm.setData(
+                                                        'rejection_reason',
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                placeholder="Explain what must be corrected"
+                                                className="mt-1.5"
+                                            />
+                                            <InputError
+                                                message={
+                                                    reviewForm.errors
+                                                        .rejection_reason
+                                                }
+                                                className="mt-1.5"
+                                            />
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            onClick={() =>
+                                                reviewLicense('verified')
+                                            }
+                                            disabled={reviewForm.processing}
+                                            className="gap-2 lg:mt-6"
                                         >
-                                            <Download className="size-4" />
-                                            Review ID front
-                                        </a>
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        asChild
-                                        className="gap-2"
-                                    >
-                                        <a
-                                            href={`/admin/staff/${staff.id}/license-document/back`}
+                                            <ShieldCheck className="size-4" />{' '}
+                                            Verify
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            onClick={() =>
+                                                reviewLicense('rejected')
+                                            }
+                                            disabled={
+                                                reviewForm.processing ||
+                                                !reviewForm.data.rejection_reason.trim()
+                                            }
+                                            className="gap-2 lg:mt-6"
                                         >
-                                            <Download className="size-4" />
-                                            Review ID back
-                                        </a>
-                                    </Button>
-                                </div>
-                                <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-start">
-                                    <div>
-                                        <Label htmlFor="rejection_reason">
-                                            Reason if rejected
-                                        </Label>
-                                        <Input
-                                            id="rejection_reason"
-                                            value={
-                                                reviewForm.data.rejection_reason
-                                            }
-                                            onChange={(event) =>
-                                                reviewForm.setData(
-                                                    'rejection_reason',
-                                                    event.target.value,
-                                                )
-                                            }
-                                            placeholder="Explain what must be corrected"
-                                            className="mt-1.5"
-                                        />
-                                        <InputError
-                                            message={
-                                                reviewForm.errors
-                                                    .rejection_reason
-                                            }
-                                            className="mt-1.5"
-                                        />
+                                            <ShieldX className="size-4" />{' '}
+                                            Reject
+                                        </Button>
                                     </div>
-                                    <Button
-                                        type="button"
-                                        onClick={() =>
-                                            reviewLicense('verified')
-                                        }
-                                        disabled={reviewForm.processing}
-                                        className="gap-2 lg:mt-6"
-                                    >
-                                        <ShieldCheck className="size-4" />{' '}
-                                        Verify
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="destructive"
-                                        onClick={() =>
-                                            reviewLicense('rejected')
-                                        }
-                                        disabled={
-                                            reviewForm.processing ||
-                                            !reviewForm.data.rejection_reason.trim()
-                                        }
-                                        className="gap-2 lg:mt-6"
-                                    >
-                                        <ShieldX className="size-4" /> Reject
-                                    </Button>
-                                </div>
+                                </LicenseProofDialog>
                             </div>
                         ) : (
                             <p className="mt-5 border-t border-slate-100 pt-5 text-sm text-slate-500 dark:border-border dark:text-slate-400">

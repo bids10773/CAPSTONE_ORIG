@@ -42,6 +42,7 @@ The test suite uses an isolated in-memory SQLite database and a 512 MB PHP CLI m
 
 ## Operations
 
+- User manual: [Markdown](docs/USER_MANUAL.md)
 - Deployment: `docs/DEPLOYMENT.md`
 - Backup and recovery: `docs/BACKUP_RECOVERY.md`
 - User acceptance testing: `docs/UAT_CHECKLIST.md`

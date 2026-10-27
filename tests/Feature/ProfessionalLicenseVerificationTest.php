@@ -75,6 +75,70 @@ test('an administrator can download and verify submitted license proof', functio
     expect(SecurityAudit::where('action', 'professional_license_verified')->exists())->toBeTrue();
 });
 
+test('an administrator can preview either license image without downloading it', function (string $side) {
+    Storage::fake('local');
+    $admin = User::factory()->create(['role' => 'admin']);
+    $doctor = User::factory()->create([
+        'role' => 'doctor',
+        'license_no' => '7654321',
+        'license_verification_status' => 'pending',
+        'license_document_path' => 'license-documents/doctor/front.png',
+        'license_document_back_path' => 'license-documents/doctor/back.png',
+    ]);
+    $image = UploadedFile::fake()->image("{$side}.png");
+    $contents = file_get_contents($image->getPathname());
+    Storage::disk('local')->put("license-documents/doctor/{$side}.png", $contents);
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.staff.license-document.download', [$doctor, $side, 'preview' => 1]))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'image/png')
+        ->assertHeader('Content-Disposition', "inline; filename=prc-id-{$side}.png");
+
+    expect($response->headers->get('Cache-Control'))->toContain('private', 'no-store')
+        ->and($response->streamedContent())->toBe($contents)
+        ->and($doctor->refresh()->license_verification_status)->toBe('pending');
+})->with(['front', 'back']);
+
+test('non administrators cannot preview private license proof', function (string $role) {
+    Storage::fake('local');
+    $viewer = User::factory()->create(['role' => $role]);
+    $doctor = User::factory()->create([
+        'role' => 'doctor',
+        'license_document_path' => 'license-documents/doctor/front.jpg',
+        'license_document_back_path' => 'license-documents/doctor/back.jpg',
+    ]);
+    Storage::disk('local')->put($doctor->license_document_path, 'private front');
+    Storage::disk('local')->put($doctor->license_document_back_path, 'private back');
+
+    foreach (['front', 'back'] as $side) {
+        $this->actingAs($viewer)
+            ->get(route('admin.staff.license-document.download', [$doctor, $side, 'preview' => 1]))
+            ->assertForbidden();
+    }
+})->with(['patient', 'company', 'receptionist', 'doctor', 'medtech', 'radtech']);
+
+test('license previews require login', function () {
+    $doctor = User::factory()->create(['role' => 'doctor']);
+
+    $this->get(route('admin.staff.license-document.download', [$doctor, 'front', 'preview' => 1]))
+        ->assertRedirect(route('login'));
+});
+
+test('missing license images return not found when previewed', function (string $side) {
+    Storage::fake('local');
+    $admin = User::factory()->create(['role' => 'admin']);
+    $doctor = User::factory()->create([
+        'role' => 'doctor',
+        'license_document_path' => 'license-documents/doctor/missing-front.png',
+        'license_document_back_path' => 'license-documents/doctor/missing-back.png',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.staff.license-document.download', [$doctor, $side, 'preview' => 1]))
+        ->assertNotFound();
+})->with(['front', 'back']);
+
 test('changing a license number removes old proof and requires verification again', function () {
     Storage::fake('local');
     $doctor = User::factory()->create([

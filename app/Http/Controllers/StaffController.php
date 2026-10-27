@@ -417,7 +417,7 @@ class StaffController extends Controller
         return back()->with('success', 'Signature uploaded successfully.');
     }
 
-    public function downloadLicenseDocument(User $staff, string $side = 'front')
+    public function downloadLicenseDocument(Request $request, User $staff, string $side = 'front')
     {
         $this->ensureClinicalStaff($staff);
         $path = $side === 'back'
@@ -429,10 +429,17 @@ class StaffController extends Controller
         );
 
         $extension = pathinfo($path, PATHINFO_EXTENSION);
+        $filename = "prc-id-{$side}".($extension ? ".{$extension}" : '');
+        $headers = ['Cache-Control' => 'private, no-store, max-age=0'];
+
+        if ($request->boolean('preview')) {
+            return Storage::disk('local')->response($path, $filename, $headers);
+        }
 
         return Storage::disk('local')->download(
             $path,
-            "prc-id-{$side}".($extension ? ".{$extension}" : ''),
+            $filename,
+            $headers,
         );
     }
 

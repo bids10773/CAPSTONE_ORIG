@@ -28,3 +28,7 @@ yarn-error.log
 /.zed
 /.agents/
 /skills-lock.json
+/.tmp/
+/.tmp-appdata/
+__pycache__/
+*.py[cod]
