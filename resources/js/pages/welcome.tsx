@@ -1291,6 +1291,18 @@ export default function Welcome() {
                             </span>
                             <div className="flex flex-wrap gap-x-6 gap-y-2">
                                 <a
+                                    href="/privacy-policy"
+                                    className="underline-offset-4 hover:text-moss-200 hover:underline focus-visible:underline"
+                                >
+                                    Privacy Policy
+                                </a>
+                                <a
+                                    href="/data-deletion"
+                                    className="underline-offset-4 hover:text-moss-200 hover:underline focus-visible:underline"
+                                >
+                                    Data Deletion
+                                </a>
+                                <a
                                     href="#contact"
                                     className="underline-offset-4 hover:text-moss-200 hover:underline"
                                 >

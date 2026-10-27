@@ -30,7 +30,7 @@ export default function CompletePatientProfile({
                     <p className="text-xs font-semibold tracking-[.16em] text-moss-600 uppercase">
                         Complete your profile
                     </p>
-                    <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
+                    <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-slate-950">
                         A few details before you continue
                     </h1>
                     <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -41,7 +41,7 @@ export default function CompletePatientProfile({
                 <Form
                     action="/complete-patient-profile"
                     method="put"
-                    className="space-y-5"
+                    className="registration-form space-y-5"
                 >
                     {({ processing, errors }) => (
                         <>
@@ -55,8 +55,10 @@ export default function CompletePatientProfile({
                                         <input
                                             name="first_name"
                                             required
+                                            autoFocus
                                             defaultValue={profile.first_name}
                                             autoComplete="given-name"
+                                            placeholder="Juan"
                                             className="auth-input"
                                         />
                                     </div>
@@ -72,47 +74,55 @@ export default function CompletePatientProfile({
                                             required
                                             defaultValue={profile.last_name}
                                             autoComplete="family-name"
+                                            placeholder="Dela Cruz"
                                             className="auth-input"
                                         />
                                     </div>
                                 </Field>
                             </div>
-                            <Field
-                                label="Middle name"
-                                optional
-                                error={errors.middle_name}
-                            >
-                                <div className="auth-input-wrap">
-                                    <UserRound className="auth-input-icon" />
-                                    <input
-                                        name="middle_name"
-                                        defaultValue={profile.middle_name}
-                                        autoComplete="additional-name"
-                                        className="auth-input"
-                                    />
-                                </div>
-                            </Field>
-                            <Field label="Email address">
-                                <div className="auth-input-wrap">
-                                    <Mail className="auth-input-icon" />
-                                    <input
-                                        value={profile.email}
-                                        readOnly
-                                        className="auth-input bg-slate-50 text-slate-500"
-                                    />
-                                </div>
-                                <p className="mt-1.5 text-xs text-slate-500">
-                                    Verified authentication email
-                                </p>
-                            </Field>
-                            <div className="grid gap-4 sm:grid-cols-3">
+                            <div className="grid gap-4 sm:grid-cols-2">
                                 <Field
-                                    label="Birthdate"
-                                    error={errors.birthdate}
+                                    label="Middle name"
+                                    optional
+                                    error={errors.middle_name}
                                 >
+                                    <div className="auth-input-wrap">
+                                        <UserRound className="auth-input-icon" />
+                                        <input
+                                            name="middle_name"
+                                            defaultValue={profile.middle_name}
+                                            autoComplete="additional-name"
+                                            placeholder="Optional"
+                                            className="auth-input"
+                                        />
+                                    </div>
+                                </Field>
+                                <Field
+                                    label="Phone number"
+                                    error={errors.contact}
+                                >
+                                    <div className="auth-input-wrap">
+                                        <Phone className="auth-input-icon" />
+                                        <input
+                                            name="contact"
+                                            type="tel"
+                                            required
+                                            defaultValue={profile.contact}
+                                            inputMode="numeric"
+                                            maxLength={11}
+                                            autoComplete="tel"
+                                            placeholder="09XX XXX XXXX"
+                                            className="auth-input"
+                                        />
+                                    </div>
+                                </Field>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-[minmax(18rem,2fr)_minmax(6.5rem,.65fr)_minmax(8rem,.85fr)]">
+                                <Field label="Birthdate">
                                     <BirthdateInput
                                         required
                                         minimumAge={18}
+                                        showPartLabels={false}
                                         value={profile.birthdate}
                                         error={errors.birthdate}
                                     />
@@ -140,37 +150,34 @@ export default function CompletePatientProfile({
                                     />
                                 </Field>
                             </div>
-                            <Field
-                                label="Contact number"
-                                error={errors.contact}
-                            >
+                            <Field label="Address" error={errors.address}>
                                 <div className="auth-input-wrap">
-                                    <Phone className="auth-input-icon" />
+                                    <MapPin className="auth-input-icon" />
                                     <input
-                                        name="contact"
-                                        type="tel"
+                                        name="address"
+                                        type="text"
                                         required
-                                        defaultValue={profile.contact}
-                                        inputMode="numeric"
-                                        maxLength={11}
-                                        autoComplete="tel"
-                                        placeholder="09XX XXX XXXX"
+                                        defaultValue={profile.address}
+                                        autoComplete="street-address"
+                                        placeholder="House/Unit, Street, Barangay, City/Municipality"
                                         className="auth-input"
                                     />
                                 </div>
                             </Field>
-                            <Field label="Address" error={errors.address}>
-                                <div className="auth-input-wrap items-start">
-                                    <MapPin className="auth-input-icon top-4" />
-                                    <textarea
-                                        name="address"
-                                        required
-                                        defaultValue={profile.address}
-                                        autoComplete="street-address"
-                                        rows={3}
-                                        className="auth-input h-auto py-3"
+                            <Field label="Email address">
+                                <div className="auth-input-wrap">
+                                    <Mail className="auth-input-icon" />
+                                    <input
+                                        type="email"
+                                        value={profile.email}
+                                        readOnly
+                                        autoComplete="email"
+                                        className="auth-input bg-slate-50 text-slate-500"
                                     />
                                 </div>
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Your verified email address
+                                </p>
                             </Field>
                             <button
                                 type="submit"

@@ -1,3 +1,5 @@
+import privacyPolicy from '../../content/privacy-policy.json';
+
 type PolicySection = {
     title: string;
     paragraphs?: string[];
@@ -95,129 +97,7 @@ const termsSections: PolicySection[] = [
     },
 ];
 
-const privacySections: PolicySection[] = [
-    {
-        title: 'Information we collect',
-        paragraphs: [
-            "Depending on the user's role and the services being used, the system may collect:",
-        ],
-        items: [
-            'Name and basic personal information',
-            'Date of birth, age, sex, and contact information',
-            'Email address and account information',
-            'Appointment information',
-            'Company and employment-related information',
-            'Company representative information',
-            'Medical service requirements',
-            'Medical examination and laboratory-related records',
-            'X-ray and diagnostic information',
-            'Medical clearance information',
-            'Uploaded documents and files',
-            'Inquiry messages',
-            'System activity and transaction records',
-            'Other information necessary to provide clinic services',
-        ],
-    },
-    {
-        title: 'Data minimization and sensitive information',
-        paragraphs: [
-            'Only information relevant to legitimate clinic and system purposes should be collected.',
-            'Because LMIC provides medical services, some information processed through the system may be considered sensitive personal information.',
-            'Medical information is handled with additional care and should only be accessed by authorized personnel according to their assigned responsibilities.',
-        ],
-    },
-    {
-        title: 'How information is used',
-        paragraphs: ['Information may be used to:'],
-        items: [
-            'Create and manage user accounts',
-            'Schedule and manage appointments',
-            'Process walk-in patients',
-            'Track completion of medical services',
-            'Manage company referrals',
-            'Process bulk or onsite medical service requests',
-            'Record and manage examination or diagnostic information',
-            'Generate authorized medical clearances and reports',
-            'Communicate with patients and company users',
-            'Respond to inquiries',
-            'Send account, appointment, and service notifications',
-            'Maintain system security',
-            'Generate operational and statistical reports',
-            'Improve clinic processes and system performance',
-            'Meet applicable legal, regulatory, academic, and administrative requirements',
-        ],
-    },
-    {
-        title: 'Access and disclosure',
-        paragraphs: [
-            'Access to information is restricted according to user role and responsibility.',
-            'For example, patients should only access their own authorized records, company users should only access information related to authorized company transactions, and clinic personnel should only access information necessary to perform their assigned duties.',
-            'Administrators may access information necessary for authorized system and clinic administration.',
-            'LMIC does not disclose personal or medical information to unauthorized parties.',
-            'Information may be shared with authorized clinic personnel, diagnostic personnel, partner service providers, company representatives when properly authorized, or government and regulatory authorities when required by applicable law or legitimate public-health requirements.',
-            'Only the information necessary for the intended purpose should be disclosed.',
-        ],
-    },
-    {
-        title: 'Company-submitted information',
-        paragraphs: [
-            'Companies submitting employee information through referrals or bulk medical service requests are responsible for ensuring that they have the appropriate authority or lawful basis to provide such information to LMIC.',
-            'LMIC will use submitted employee information only for legitimate clinic and medical service purposes.',
-        ],
-    },
-    {
-        title: 'Security',
-        paragraphs: [
-            'LMIC and the system administrators may use reasonable technical and organizational safeguards such as authentication, access controls, secure passwords, role-based permissions, database protections, activity monitoring, backups, and restricted access to sensitive information.',
-            'However, no electronic system can guarantee absolute security.',
-            'Users must also protect their credentials and avoid sharing passwords.',
-        ],
-    },
-    {
-        title: 'Data retention',
-        paragraphs: [
-            'Personal and medical information will be retained only for as long as necessary for legitimate clinic, medical, administrative, legal, academic, or regulatory purposes.',
-            "Actual retention periods should follow LMIC's approved records-management policy and applicable requirements.",
-        ],
-    },
-    {
-        title: 'Your privacy rights',
-        paragraphs: [
-            'Subject to applicable Philippine data-protection requirements, users may have rights concerning their personal information, including requesting access to information, requesting correction of inaccurate information, raising concerns about processing, and requesting appropriate action regarding their personal data.',
-            'Certain medical, administrative, or legally required records may need to be retained even when a user requests deletion.',
-        ],
-    },
-    {
-        title: 'Cookies and system communications',
-        paragraphs: [
-            'The system may use cookies or similar technologies necessary for login sessions, account authentication, security, user preferences, and proper system operation.',
-            'These technologies should not be used to disclose confidential medical information to unauthorized parties.',
-            'The system may send emails for purposes such as account verification, temporary credentials, password-related notifications, appointment updates, inquiry responses, and other legitimate clinic communications.',
-            'Users are responsible for ensuring that the email address associated with their account is accurate.',
-        ],
-    },
-    {
-        title: 'Analytics and planning',
-        paragraphs: [
-            'The system may use de-identified or aggregated information for operational analysis, patient-volume analysis, trend analysis, forecasting, research, and clinic resource planning.',
-            'Where possible, information used for statistical or forecasting purposes should avoid directly identifying individual patients unless identification is legitimately required.',
-        ],
-    },
-    {
-        title: 'Medical results',
-        paragraphs: [
-            'Medical results must not be made publicly available.',
-            'Results should only be accessible to authorized users after applicable clinic procedures, verification, and final evaluation requirements have been completed.',
-        ],
-    },
-    {
-        title: 'Changes to this Privacy Policy',
-        paragraphs: [
-            'This Privacy Policy may be updated when the system, clinic procedures, or applicable privacy requirements change.',
-            'Significant updates should be communicated through the system where appropriate.',
-        ],
-    },
-];
+const privacySections: PolicySection[] = privacyPolicy.sections;
 
 function PolicySections({ sections }: { sections: PolicySection[] }) {
     return sections.map((section, index) => (
@@ -243,11 +123,11 @@ function ContactDetails() {
     return (
         <address className="rounded-xl border border-moss-100 bg-moss-50 p-4 not-italic">
             <p className="font-semibold text-slate-900">
-                Living Myth Industrial Clinic
+                {privacyPolicy.contact.name}
             </p>
-            <p>Brgy. Banlic, Canlubang, Calamba City, Laguna</p>
-            <p>Email: {' livingmythindustrialclinic@gmail.com'}</p>
-            <p>Contact Number: +63 922 889 6850</p>
+            <p>{privacyPolicy.contact.address}</p>
+            <p>Email: {privacyPolicy.contact.email}</p>
+            <p>Contact Number: {privacyPolicy.contact.phone}</p>
         </address>
     );
 }
@@ -297,7 +177,7 @@ export default function TermsPrivacyContent() {
                         Privacy Policy
                     </h3>
                     <p className="mt-1 text-xs font-medium text-moss-700">
-                        Last Updated: September 2026
+                        Last Updated: {privacyPolicy.updated}
                     </p>
                 </header>
                 <p>
@@ -314,7 +194,7 @@ export default function TermsPrivacyContent() {
                 <PolicySections sections={privacySections} />
                 <section className="space-y-2">
                     <h4 className="font-semibold text-slate-900">
-                        13. Contact us
+                        {privacySections.length + 1}. Contact us
                     </h4>
                     <p>
                         Users who have questions or concerns regarding privacy

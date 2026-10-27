@@ -43,6 +43,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy');
+Route::view('/data-deletion', 'data-deletion')->name('data-deletion');
+
 Route::middleware('guest')->group(function () {
     Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
         ->middleware('throttle:password-reset-link')
