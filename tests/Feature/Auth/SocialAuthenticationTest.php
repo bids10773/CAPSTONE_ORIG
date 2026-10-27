@@ -3,6 +3,9 @@
 use App\Models\PatientProfile;
 use App\Models\SocialAccount;
 use App\Models\User;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -13,6 +16,32 @@ function fakeSocialIdentity(string $provider, array $attributes): void
     $driver->shouldReceive('user')->once()->andReturn($identity);
     Socialite::shouldReceive('driver')->with($provider)->once()->andReturn($driver);
 }
+
+test('new Facebook patients receive the initial verification notification', function () {
+    Notification::fake();
+    fakeSocialIdentity('facebook', ['id' => 'new-facebook', 'name' => 'New Patient', 'email' => 'new@example.com']);
+
+    $this->get('/auth/facebook/callback')->assertRedirect(route('verification.notice'));
+
+    $user = User::where('email', 'new@example.com')->firstOrFail();
+    Notification::assertSentTo($user, VerifyEmail::class);
+    expect($user->hasVerifiedEmail())->toBeFalse();
+});
+
+test('Facebook sign in resumes an email verification link opened without a session', function () {
+    $user = User::factory()->unverified()->create(['role' => 'patient']);
+    SocialAccount::create(['user_id' => $user->id, 'provider' => 'facebook', 'provider_user_id' => 'verify-facebook']);
+    $verificationUrl = URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), [
+        'id' => $user->id, 'hash' => sha1($user->email),
+    ]);
+
+    $this->get($verificationUrl)->assertRedirect(route('login'));
+    fakeSocialIdentity('facebook', ['id' => 'verify-facebook', 'name' => 'Patient', 'email' => $user->email]);
+
+    $this->get('/auth/facebook/callback')->assertRedirect($verificationUrl);
+    $this->get($verificationUrl)->assertRedirect();
+    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
+});
 
 test('new verified Google identity creates only a patient and requires profile completion', function () {
     fakeSocialIdentity('google', [

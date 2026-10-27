@@ -196,7 +196,9 @@ class SocialAuthenticationController extends Controller
         $request->session()->regenerate();
 
         if (! $user->hasVerifiedEmail()) {
-            return to_route('verification.notice')->with('error', 'Please verify your email first.');
+            // Resume the signed email link saved when it required authentication.
+            return redirect()->intended(route('verification.notice'))
+                ->with('error', 'Please verify your email first.');
         }
 
         if ($user->role === 'patient' && ! $user->hasCompletePatientProfile()) {
