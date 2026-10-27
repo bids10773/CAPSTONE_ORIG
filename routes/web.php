@@ -44,6 +44,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy');
+Route::view('/terms', 'terms')->name('terms');
 Route::view('/data-deletion', 'data-deletion')->name('data-deletion');
 
 Route::middleware('guest')->group(function () {

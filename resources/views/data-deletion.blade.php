@@ -38,5 +38,5 @@
     <h2>Questions or follow-up</h2>
     <p>Contact <a href="mailto:{{ $policy['contact']['email'] }}">{{ $policy['contact']['email'] }}</a> and see our <a href="{{ url('/privacy-policy') }}">Privacy Policy</a> for details on data handling.</p>
   </main>
-  <footer><div class="inner"><a href="{{ url('/privacy-policy') }}">Privacy Policy</a><a href="{{ url('/data-deletion') }}">Data Deletion</a></div></footer>
+  <footer><div class="inner"><a href="{{ url('/terms') }}">Terms of Service</a><a href="{{ url('/privacy-policy') }}">Privacy Policy</a><a href="{{ url('/data-deletion') }}">Data Deletion</a></div></footer>
 </body></html>

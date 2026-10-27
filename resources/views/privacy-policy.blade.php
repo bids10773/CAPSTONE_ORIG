@@ -46,5 +46,5 @@
       Contact number: {{ $policy['contact']['phone'] }}
     </address>
   </main>
-  <footer><div class="inner"><a href="{{ url('/privacy-policy') }}">Privacy Policy</a><a href="{{ url('/data-deletion') }}">Data Deletion</a></div></footer>
+  <footer><div class="inner"><a href="{{ url('/terms') }}">Terms of Service</a><a href="{{ url('/privacy-policy') }}">Privacy Policy</a><a href="{{ url('/data-deletion') }}">Data Deletion</a></div></footer>
 </body></html>

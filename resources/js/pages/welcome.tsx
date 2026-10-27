@@ -1291,6 +1291,12 @@ export default function Welcome() {
                             </span>
                             <div className="flex flex-wrap gap-x-6 gap-y-2">
                                 <a
+                                    href="/terms"
+                                    className="underline-offset-4 hover:text-moss-200 hover:underline focus-visible:underline"
+                                >
+                                    Terms of Service
+                                </a>
+                                <a
                                     href="/privacy-policy"
                                     className="underline-offset-4 hover:text-moss-200 hover:underline focus-visible:underline"
                                 >

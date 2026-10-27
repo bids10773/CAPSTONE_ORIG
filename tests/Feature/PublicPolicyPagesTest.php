@@ -10,10 +10,12 @@ it('makes policy pages accessible without authentication', function (string $pat
         ->assertDontSee('[INSERT')
         ->assertDontSee('Before publishing:')
         ->assertSee(url('/privacy-policy'))
+        ->assertSee(url('/terms'))
         ->assertSee(url('/data-deletion'));
 
     $this->assertGuest();
 })->with([
     ['/privacy-policy', 'Privacy Policy'],
     ['/data-deletion', 'Facebook-Linked Data Deletion'],
+    ['/terms', 'Terms and Conditions'],
 ]);
