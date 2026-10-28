@@ -58,13 +58,13 @@ export default function ClinicDashboardLayout({
                 <header className="sticky top-0 z-30 flex h-[72px] shrink-0 items-center border-b border-border bg-card/95 px-4 backdrop-blur-xl sm:px-6">
                     <div className="flex w-full items-center gap-3">
                         <SidebarTrigger className="size-10 rounded-xl text-slate-500 hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card md:hidden" />
-                        <div className="hidden min-w-0 sm:block">
+                        <div className="hidden max-w-[45%] min-w-0 shrink-0 sm:block lg:max-w-[30%]">
                             <Breadcrumbs breadcrumbs={breadcrumbs} />
                         </div>
 
                         <GlobalSearch />
 
-                        <div className="ml-auto flex items-center gap-1.5">
+                        <div className="ml-auto flex shrink-0 items-center gap-1.5">
                             <LiveDateTime className="mr-1 hidden lg:flex" />
                             <ThemeToggle />
                             <NotificationBell />

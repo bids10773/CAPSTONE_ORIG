@@ -16,6 +16,7 @@ import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
+import { confirmAction } from '@/lib/dialogs';
 
 type Period = { day: string; start: string; end: string };
 type Doctor = {
@@ -165,14 +166,14 @@ export default function DoctorAvailability({
             { preserveScroll: true },
         );
     };
-    const clearSchedule = () => {
+    const clearSchedule = async () => {
         if (
             !selected ||
-            !window.confirm(
+            !(await confirmAction(
                 isAdmin
                     ? `Clear all recurring availability for Dr. ${selected.last_name}? Existing future appointments will prevent this change.`
                     : 'Submit a request to clear your recurring availability?',
-            )
+            ))
         )
             return;
         router.patch(

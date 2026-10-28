@@ -11,6 +11,7 @@ class VitalSign extends Model
         'patient_id', 'appointment_id', 'medical_examination_id', 'recorded_by', 'supersedes_id', 'submission_key',
         'measurement_type', 'systolic_pressure', 'diastolic_pressure', 'heart_rate', 'respiratory_rate',
         'temperature', 'oxygen_saturation', 'height', 'weight', 'bmi', 'notes', 'measured_at',
+        'visual_acuity', 'hearing',
     ];
 
     protected function casts(): array

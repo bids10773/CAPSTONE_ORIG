@@ -33,6 +33,16 @@ function cbcPayload(bool $finalize = true): array
         ]]];
 }
 
+function completeRequiredPhysicalExam(Appointment $appointment): void
+{
+    $examination = app(\App\Services\MedicalExaminationService::class)->forAppointment($appointment);
+    $appointment->physicalExam()->create([
+        'medical_examination_id' => $examination->id,
+        'doctor_id' => $appointment->doctor_id ?? User::factory()->create(['role' => 'doctor'])->id,
+        'classification' => 'Pending', 'is_completed' => true,
+    ]);
+}
+
 function peLaboratoryPayload(): array
 {
     $appointment = new Appointment(['service_types' => ['PE', 'CBC', 'Urinalysis', 'Fecalysis', 'X-Ray']]);
@@ -107,6 +117,7 @@ test('pregnancy testing is available only for female patients', function () {
 
 test('medtech saves structured laboratory results and finalization advances workflow', function () {
     $appointment = clinicalAppointment();
+    completeRequiredPhysicalExam($appointment);
     $medtech = User::factory()->create(['role' => 'medtech']);
 
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload())
@@ -159,6 +170,7 @@ test('laboratory finalization requires an explicit section interpretation and fi
 
 test('requested xray controls the next workflow stage', function () {
     $appointment = clinicalAppointment(['CBC', 'X-Ray']);
+    completeRequiredPhysicalExam($appointment);
     $medtech = User::factory()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
     expect($appointment->fresh()->status)->toBe('for_xray');
@@ -404,6 +416,7 @@ test('doctor records structured physical findings and final approval locks the e
 
 test('radtech completion stores one xray report and advances to final evaluation', function () {
     $appointment = clinicalAppointment(['X-Ray']);
+    completeRequiredPhysicalExam($appointment);
     $appointment->update(['status' => 'for_xray']);
     $radtech = User::factory()->create(['role' => 'radtech']);
 
@@ -435,7 +448,7 @@ test('performed xray remains in the radtech queue until its official result is v
         ->assertInertia(fn ($page) => $page->has('appointments.data', 1));
 });
 
-test('individual final evaluation requires only the services selected for that appointment', function () {
+test('final evaluation requires physical examination even when only CBC was selected', function () {
     $appointment = clinicalAppointment(['CBC']);
     $medtech = User::factory()->create(['role' => 'medtech']);
     $doctor = User::factory()->create(['role' => 'doctor']);
@@ -448,14 +461,21 @@ test('individual final evaluation requires only the services selected for that a
             ->component('doctor/final-evaluation')
             ->where('selectedServices', ['CBC']));
 
-    $this->actingAs($doctor)->post(route('doctor.final-evaluation.store', $appointment), [
+    $evaluation = [
         'medical_class' => 'A', 'final_diagnosis' => 'CBC within acceptable limits.',
         'final_remarks' => 'Fit based on selected CBC service.',
-    ])->assertSessionHas('success');
+    ];
+    $this->actingAs($doctor)->post(route('doctor.final-evaluation.store', $appointment), $evaluation)
+        ->assertSessionHasErrors('medical_class');
+
+    completeRequiredPhysicalExam($appointment);
+    $this->post(route('doctor.final-evaluation.store', $appointment), $evaluation)
+        ->assertSessionHas('success');
 
     expect($appointment->fresh()->status)->toBe('completed')
         ->and($appointment->medicalExamination->medical_classification)->toBe('Class A')
-        ->and($appointment->physicalExam)->toBeNull();
+        ->and($appointment->physicalExam()->firstOrFail()->is_completed)->toBeTrue()
+        ->and($appointment->fresh()->service_types)->toBe(['CBC']);
 });
 
 test('unselected diagnostics do not block final evaluation while selected xray does', function () {
@@ -470,3 +490,60 @@ test('unselected diagnostics do not block final evaluation while selected xray d
 
     $this->assertDatabaseMissing('physical_exams', ['appointment_id' => $appointment->id]);
 });
+
+test('medical certificate purpose generates a trusted draft only after CBC and physical examination are completed', function () {
+    $appointment = clinicalAppointment(['CBC']);
+    $doctor = User::factory()->create(['role' => 'doctor', 'license_no' => 'PRC-7654321']);
+    $appointment->update(['doctor_id' => $doctor->id, 'examination_purpose' => 'medical_clearance']);
+    $appointment->medicalHistory()->create(['present_illness' => 'Medical certificate requested following examination.']);
+    $evaluation = [
+        'medical_class' => 'B', 'final_diagnosis' => 'Findings reviewed by the attending physician.',
+        'final_remarks' => 'Follow-up advised.', 'recommendations' => 'Return for follow-up in one week.',
+    ];
+
+    completeRequiredPhysicalExam($appointment);
+    $this->actingAs($doctor)->post(route('doctor.final-evaluation.store', $appointment), $evaluation)
+        ->assertSessionHasErrors('medical_class');
+    $this->assertDatabaseCount('medical_certificates', 0);
+
+    $medtech = User::factory()->create(['role' => 'medtech']);
+    $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload())
+        ->assertSessionHasNoErrors();
+    $response = $this->actingAs($doctor)->post(route('doctor.final-evaluation.store', $appointment), $evaluation)
+        ->assertSessionHasNoErrors();
+
+    $certificate = \App\Models\MedicalCertificate::query()->where('appointment_id', $appointment->id)->sole();
+    $response->assertRedirect(route('medical-certificates.show', $certificate));
+    expect($certificate->status)->toBe('draft')
+        ->and($certificate->patient_id)->toBe($appointment->user_id)
+        ->and($certificate->patient_name)->toBe($appointment->user->name)
+        ->and($certificate->patient_sex)->toBe('Female')
+        ->and($certificate->salutation)->toBe('Ms.')
+        ->and($certificate->attending_physician_id)->toBe($doctor->id)
+        ->and($certificate->physician_license_no)->toBe('PRC-7654321')
+        ->and($certificate->consultation_date->toDateString())->toBe($appointment->appointment_date->toDateString())
+        ->and($certificate->reason_for_consultation)->toBe('Medical certificate requested following examination.')
+        ->and($certificate->clinical_impression)->toBe($evaluation['final_diagnosis'])
+        ->and($certificate->recommendation)->toBe($evaluation['recommendations'])
+        ->and($certificate->approved_at)->toBeNull()
+        ->and($certificate->issued_at)->toBeNull()
+        ->and($certificate->audits()->where('action', 'created')->count())->toBe(1)
+        ->and($appointment->fresh()->status)->toBe('completed');
+
+    $this->get(route('medical-certificates.show', $certificate))->assertOk();
+    $this->post(route('doctor.final-evaluation.store', $appointment), $evaluation);
+    $this->assertDatabaseCount('medical_certificates', 1);
+});
+
+test('final evaluation does not generate a certificate for other appointment purposes', function (?string $purpose) {
+    $appointment = clinicalAppointment(['PE']);
+    $doctor = User::factory()->create(['role' => 'doctor']);
+    $appointment->update(['doctor_id' => $doctor->id, 'examination_purpose' => $purpose]);
+    completeRequiredPhysicalExam($appointment);
+
+    $this->actingAs($doctor)->post(route('doctor.final-evaluation.store', $appointment), [
+        'medical_class' => 'A', 'final_diagnosis' => 'No significant findings.',
+    ])->assertSessionHasNoErrors()->assertRedirect(route('doctor.dashboard'));
+
+    $this->assertDatabaseCount('medical_certificates', 0);
+})->with([null, 'annual_pe', 'pre_employment']);

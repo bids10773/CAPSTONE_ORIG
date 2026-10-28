@@ -82,13 +82,9 @@ class MedicalExamination extends Model
         $appointment = $this->appointment;
         $lab = $this->laboratoryResult;
         $diagnostics = $this->diagnosticResults->keyBy('service_key');
-        $summaries = [];
-
-        if (in_array('PE', $appointment->service_types ?? [], true)) {
-            $summaries[] = $this->summary('physical_exam', 'Physical Examination',
-                $this->physicalExam?->is_completed ? 'completed' : 'pending',
-                $this->physicalExam?->remarks ?: ($this->physicalExam ? 'Examination recorded' : 'Awaiting examination'));
-        }
+        $summaries = [$this->summary('physical_exam', 'Physical Examination',
+            $this->physicalExam?->is_completed ? 'completed' : 'pending',
+            $this->physicalExam?->remarks ?: ($this->physicalExam ? 'Examination recorded' : 'Awaiting examination'))];
 
         foreach (app(LaboratoryFormDefinition::class)->sectionsFor($appointment) as $key => $definition) {
             $diagnostic = $diagnostics->get($key);

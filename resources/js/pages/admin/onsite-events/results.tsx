@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { confirmAction } from '@/lib/dialogs';
 
 type Column = { key: string; label: string };
 type Props = {
@@ -93,10 +94,10 @@ export default function BulkMedicalResults({
                     {report && !released && (
                         <Button
                             className="bg-emerald-700 hover:bg-emerald-800"
-                            onClick={() =>
-                                confirm(
+                            onClick={async () =>
+                                (await confirmAction(
                                     'Release this reviewed report to the company? It will be locked.',
-                                ) &&
+                                )) &&
                                 router.post(
                                     `/admin/onsite-events/${event.id}/medical-results/release`,
                                 )

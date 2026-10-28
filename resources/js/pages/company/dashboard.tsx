@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/app-layout';
 import { formatAppointmentDateTime } from '@/lib/appointment-date-time';
+import { promptAction } from '@/lib/dialogs';
 
 const EXAMINATION_PURPOSES = [
     ['pre_employment', 'Pre-employment'],
@@ -537,9 +538,9 @@ export default function CompanyDashboard() {
                                             {item.can_cancel && (
                                                 <button
                                                     type="button"
-                                                    onClick={() => {
+                                                    onClick={async () => {
                                                         const reason =
-                                                            window.prompt(
+                                                            await promptAction(
                                                                 'Cancellation reason',
                                                             );
                                                         if (reason)

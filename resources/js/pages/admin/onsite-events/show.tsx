@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { formatEventDateRange } from '@/lib/appointment-date-time';
+import { confirmAction } from '@/lib/dialogs';
 import { paginationLabel } from '@/lib/pagination-label';
 
 type Role = 'doctor' | 'medtech' | 'radtech' | 'receptionist';
@@ -216,9 +217,9 @@ export default function AdminOnsiteEvent({
             ),
         }));
     };
-    const remove = (deployment: Deployment) => {
+    const remove = async (deployment: Deployment) => {
         if (
-            confirm(
+            await confirmAction(
                 `Remove ${deployment.user.first_name} ${deployment.user.last_name} from this event?`,
             )
         )

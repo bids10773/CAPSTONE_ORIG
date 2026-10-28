@@ -22,6 +22,7 @@ import { MedicalCertificateStatus } from '@/components/medical-certificate-statu
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
+import { confirmAction } from '@/lib/dialogs';
 import type { BreadcrumbItem } from '@/types';
 import type {
     MedicalCertificateAudit,
@@ -275,10 +276,10 @@ export default function MedicalCertificateShow({ certificate, can }: Props) {
                                         disabled={activeAction !== null}
                                         icon={<Send />}
                                         label="Submit for approval"
-                                        onClick={() =>
-                                            window.confirm(
+                                        onClick={async () =>
+                                            (await confirmAction(
                                                 'Submit this draft to the attending physician for review?',
-                                            ) && transition('submit')
+                                            )) && transition('submit')
                                         }
                                     />
                                 )}
@@ -288,10 +289,10 @@ export default function MedicalCertificateShow({ certificate, can }: Props) {
                                         disabled={activeAction !== null}
                                         icon={<BadgeCheck />}
                                         label="Approve"
-                                        onClick={() =>
-                                            window.confirm(
+                                        onClick={async () =>
+                                            (await confirmAction(
                                                 'Approve this medical certificate after reviewing all clinical details?',
-                                            ) && transition('approve')
+                                            )) && transition('approve')
                                         }
                                     />
                                 )}
@@ -316,10 +317,10 @@ export default function MedicalCertificateShow({ certificate, can }: Props) {
                                         disabled={activeAction !== null}
                                         icon={<FileCheck2 />}
                                         label="Issue certificate"
-                                        onClick={() =>
-                                            window.confirm(
+                                        onClick={async () =>
+                                            (await confirmAction(
                                                 'Issue this approved medical certificate? The issued record will become read-only.',
-                                            ) && transition('issue')
+                                            )) && transition('issue')
                                         }
                                     />
                                 )}

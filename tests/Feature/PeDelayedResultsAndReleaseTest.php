@@ -102,6 +102,11 @@ test('combined verification status recalculates as each result is verified', fun
     ]);
     $examination = app(MedicalExaminationService::class)->forAppointment($appointment);
     $drug = $examination->diagnosticResults()->where('service_key', 'drug_test')->firstOrFail();
+    $appointment->physicalExam()->create([
+        'medical_examination_id' => $examination->id,
+        'doctor_id' => User::factory()->create(['role' => 'doctor'])->id,
+        'classification' => 'Pending', 'is_completed' => true,
+    ]);
     $drug->update(['status' => 'verifying', 'performed_at' => now()]);
     $xray = XrayReport::create([
         'appointment_id' => $appointment->id,

@@ -527,6 +527,9 @@ class AppointmentController extends Controller
             );
 
         $appointmentPayload = $appointment;
+        if (in_array($request->user()->role, ['doctor', 'admin'], true)) {
+            $appointment->load('latestVitalSign.recordedBy');
+        }
         if (in_array($request->user()->role, ['patient', 'company'], true)) {
             $appointmentPayload = $appointment->toArray();
             $appointmentPayload['medical_history'] = null;
@@ -1548,8 +1551,11 @@ class AppointmentController extends Controller
         }
 
         $appointments = $query->paginate($this->perPage($request))->withQueryString();
-        $appointments->through(function (Appointment $appointment): Appointment {
+        $appointments->through(function (Appointment $appointment) use ($request, $role): Appointment {
             $appointment->setAttribute('is_scheduled_today', $appointment->appointment_date?->isToday() ?? false);
+            if ($role === 'doctor') {
+                $appointment->setAttribute('can_start_physical_exam', $request->user()->can('updatePhysicalExam', $appointment));
+            }
 
             return $appointment;
         });

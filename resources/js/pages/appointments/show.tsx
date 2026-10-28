@@ -14,6 +14,8 @@ import {
     UserRound,
 } from 'lucide-react';
 
+import { ClinicalHistoryFindings } from '@/components/clinical-history-findings';
+import { IntakeMeasurements } from '@/components/intake-measurements';
 import AppLayout from '@/layouts/app-layout';
 import { appointmentStatusLabel } from '@/lib/appointment-status';
 
@@ -223,6 +225,26 @@ export default function AppointmentRecord({
                         </div>
                     </div>
                 </header>
+
+                {['doctor', 'admin'].includes(auth.user.role) && (
+                    <>
+                        <ClinicalHistoryFindings
+                            history={appointment.medical_history}
+                            physical={appointment.physical_exam}
+                        />
+                        <section className="rounded-2xl border border-border bg-card p-5 sm:p-7">
+                            <h2 className="mb-5 text-xl font-bold text-foreground">
+                                Physical examination — intake measurements
+                            </h2>
+                            <IntakeMeasurements
+                                measurements={
+                                    appointment.latest_vital_sign ??
+                                    appointment.physical_exam
+                                }
+                            />
+                        </section>
+                    </>
+                )}
 
                 <section>
                     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">

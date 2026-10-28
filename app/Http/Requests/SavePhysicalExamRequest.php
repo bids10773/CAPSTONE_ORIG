@@ -36,8 +36,6 @@ class SavePhysicalExamRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'visual_acuity' => ['required', 'string', 'max:100'],
-            'hearing' => ['required', 'string', 'max:100'],
             'remarks' => ['nullable', 'string', 'max:3000'],
             'vital_signs_override_reason' => ['nullable', 'string', 'max:1000'],
         ];

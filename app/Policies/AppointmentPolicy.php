@@ -127,7 +127,6 @@ class AppointmentPolicy
             && ($appointment->appointment_date?->isToday() ?? false)
             && $appointment->status !== 'completed'
             && ($patientHasCheckedIn || $examAlreadyExists)
-            && in_array('PE', $appointment->service_types ?? [], true)
             && ($appointment->bulk_appointment_id === null
                 ? $this->isAssignedDoctor($user, $appointment)
                 : ($appointment->doctor_id === null || $appointment->doctor_id === $user->id));

@@ -15,6 +15,7 @@ import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { confirmAction } from '@/lib/dialogs';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -337,9 +338,9 @@ export default function StaffIndex() {
                                                                     size="icon"
                                                                     className="h-8 w-8 text-moss-600 hover:bg-moss-100/50"
                                                                     title="Resend temporary credentials"
-                                                                    onClick={() => {
+                                                                    onClick={async () => {
                                                                         if (
-                                                                            confirm(
+                                                                            await confirmAction(
                                                                                 'Generate and email a new temporary password? The previous temporary password will stop working.',
                                                                             )
                                                                         ) {
@@ -379,14 +380,14 @@ export default function StaffIndex() {
                                                                         ? 'Deactivate account'
                                                                         : 'Activate account'
                                                                 }
-                                                                onClick={() => {
+                                                                onClick={async () => {
                                                                     const action =
                                                                         member.is_active
                                                                             ? 'deactivate'
                                                                             : 'activate';
 
                                                                     if (
-                                                                        confirm(
+                                                                        await confirmAction(
                                                                             `Are you sure you want to ${action} ${member.first_name} ${member.last_name}'s account?`,
                                                                         )
                                                                     ) {
@@ -413,9 +414,9 @@ export default function StaffIndex() {
                                                                     size="sm"
                                                                     className="h-8 gap-1.5 px-2.5 text-red-600 hover:bg-red-50 hover:text-red-700"
                                                                     title="Delete account"
-                                                                    onClick={() => {
+                                                                    onClick={async () => {
                                                                         if (
-                                                                            confirm(
+                                                                            await confirmAction(
                                                                                 `Permanently delete ${member.first_name} ${member.last_name}'s account? This cannot be undone.`,
                                                                             )
                                                                         ) {

@@ -39,8 +39,7 @@ class OnsiteStaffingRecommendationService
 
     public function requiredRoles(Appointment $event): array
     {
-        return collect(['receptionist'])
-            ->when(in_array('PE', $event->service_types ?? [], true), fn ($roles) => $roles->push('doctor'))
+        return collect(['receptionist', 'doctor'])
             ->when(app(LaboratoryFormDefinition::class)->sectionsFor($event) !== [], fn ($roles) => $roles->push('medtech'))
             ->when($event->requiresXray(), fn ($roles) => $roles->push('radtech'))
             ->unique()->values()->all();

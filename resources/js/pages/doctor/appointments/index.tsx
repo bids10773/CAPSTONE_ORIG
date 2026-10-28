@@ -25,6 +25,7 @@ interface Appointment {
     examination_purpose?: string | null;
     service_types: string;
     is_scheduled_today: boolean;
+    can_start_physical_exam: boolean;
     user: {
         first_name: string;
         last_name: string;
@@ -252,8 +253,9 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                 </Link>
 
                                                 {/* The examination starts only after reception checks the patient in. */}
-                                                {appointment.status.toLowerCase() ===
-                                                    'arrived' &&
+                                                {appointment.can_start_physical_exam &&
+                                                    appointment.status.toLowerCase() ===
+                                                        'arrived' &&
                                                     appointment.is_scheduled_today &&
                                                     !appointment.physical_exam
                                                         ?.id && (

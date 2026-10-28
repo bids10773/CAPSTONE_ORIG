@@ -10,7 +10,7 @@ function pendingResultAppointment(array $services, string $status): Appointment
     $patient = User::factory()->create(['role' => 'patient']);
     $company = Company::firstOrCreate(['company_name' => 'Pending Results Co'], ['status' => 'active']);
 
-    return Appointment::create([
+    $appointment = Appointment::create([
         'user_id' => $patient->id,
         'company_id' => $company->id,
         'appointment_date' => today(),
@@ -18,6 +18,16 @@ function pendingResultAppointment(array $services, string $status): Appointment
         'status' => $status,
         'service_types' => $services,
     ]);
+
+    // These cases begin at diagnostics, after the required physical examination.
+    $examination = app(\App\Services\MedicalExaminationService::class)->forAppointment($appointment);
+    $appointment->physicalExam()->create([
+        'medical_examination_id' => $examination->id,
+        'doctor_id' => User::factory()->create(['role' => 'doctor'])->id,
+        'classification' => 'Pending', 'is_completed' => true,
+    ]);
+
+    return $appointment;
 }
 
 function drugTestPayload(bool $finalize, string $methamphetamine = 'Negative'): array

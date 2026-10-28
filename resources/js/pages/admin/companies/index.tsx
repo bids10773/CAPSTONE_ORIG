@@ -11,6 +11,7 @@ import {
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import AppLayout from '@/layouts/app-layout';
+import { confirmAction } from '@/lib/dialogs';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -234,13 +235,19 @@ export default function AdminCompaniesIndex() {
                                                                 : 'Activate'
                                                         }
                                                         as="button"
-                                                        onClick={(event) => {
+                                                        onClick={async (
+                                                            event,
+                                                        ) => {
+                                                            event.preventDefault();
                                                             if (
-                                                                !confirm(
+                                                                !(await confirmAction(
                                                                     `${company.status === 'active' ? 'Deactivate' : 'Activate'} ${company.company_name}? ${company.status === 'active' ? 'Its linked login will no longer be able to sign in.' : 'Its linked login will regain access.'}`,
-                                                                )
+                                                                ))
                                                             )
-                                                                event.preventDefault();
+                                                                return;
+                                                            router.patch(
+                                                                `/admin/companies/${company.id}/toggle-active`,
+                                                            );
                                                         }}
                                                     >
                                                         {company.status ===
@@ -268,9 +275,9 @@ export default function AdminCompaniesIndex() {
                                                                 ? 'Delete'
                                                                 : 'Companies with appointment or referral history cannot be deleted'
                                                         }
-                                                        onClick={() => {
+                                                        onClick={async () => {
                                                             if (
-                                                                confirm(
+                                                                await confirmAction(
                                                                     `Permanently delete ${company.company_name} and its login account? This cannot be undone.`,
                                                                 )
                                                             ) {

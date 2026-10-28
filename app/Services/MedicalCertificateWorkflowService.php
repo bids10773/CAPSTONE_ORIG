@@ -17,6 +17,39 @@ use Illuminate\Validation\ValidationException;
 
 class MedicalCertificateWorkflowService
 {
+    public function generateForFinalizedAppointment(Appointment $appointment, User $actor, Request $request): ?MedicalCertificate
+    {
+        return DB::transaction(function () use ($appointment, $actor, $request): ?MedicalCertificate {
+            $appointment = Appointment::query()->lockForUpdate()->findOrFail($appointment->id);
+            $appointment->load(['medicalExamination', 'user.patientProfile']);
+
+            if ($appointment->examination_purpose !== 'medical_clearance'
+                || $appointment->status !== 'completed'
+                || ! $appointment->medicalExamination?->finalized_at) {
+                return null;
+            }
+
+            $existing = MedicalCertificate::query()->where('appointment_id', $appointment->id)->first();
+            if ($existing) {
+                return $existing;
+            }
+
+            $sex = $appointment->user->patientProfile?->sex ?: $appointment->user->sex;
+
+            return $this->createDraft($actor, [
+                'patient_id' => $appointment->user_id,
+                'appointment_id' => $appointment->id,
+                'attending_physician_id' => $actor->id,
+                'salutation' => match (strtolower((string) $sex)) {
+                    'female' => 'Ms.',
+                    'male' => 'Mr.',
+                    default => '',
+                },
+                'consultation_date' => $appointment->appointment_date->toDateString(),
+            ], $request);
+        });
+    }
+
     public function createDraft(User $actor, array $data, Request $request): MedicalCertificate
     {
         for ($attempt = 1; $attempt <= 5; $attempt++) {
@@ -357,7 +390,7 @@ class MedicalCertificateWorkflowService
             'patient_id' => $patient->id,
             'appointment_id' => $appointment?->id,
             'attending_physician_id' => $physician->id,
-            'salutation' => Str::finish(rtrim($data['salutation'], '.'), '.'),
+            'salutation' => filled($data['salutation']) ? Str::finish(rtrim($data['salutation'], '.'), '.') : '',
             'patient_name' => $patient->name,
             'patient_reference_code' => $patient->patient_reference_code,
             'patient_age' => $data['patient_age'] ?? $calculatedAge,
@@ -401,6 +434,7 @@ class MedicalCertificateWorkflowService
     private function ensureComplete(MedicalCertificate $certificate): void
     {
         $missing = collect([
+            'salutation' => $certificate->salutation,
             'patient_age' => $certificate->patient_age,
             'patient_sex' => $certificate->patient_sex,
             'patient_civil_status' => $certificate->patient_civil_status,

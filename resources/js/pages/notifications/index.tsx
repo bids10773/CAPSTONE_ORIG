@@ -4,6 +4,7 @@ import { relativeNotificationTime } from '@/components/notification-bell';
 import type { AppNotification } from '@/components/notification-bell';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { confirmAction } from '@/lib/dialogs';
 import { paginationLabel } from '@/lib/pagination-label';
 import type { BreadcrumbItem } from '@/types';
 
@@ -27,9 +28,11 @@ export default function NotificationsIndex() {
         .props as unknown as Props;
     const unread = notificationCenter.unreadCount;
 
-    const removeAllNotifications = () => {
+    const removeAllNotifications = async () => {
         if (
-            !window.confirm('Remove all notifications? This cannot be undone.')
+            !(await confirmAction(
+                'Remove all notifications? This cannot be undone.',
+            ))
         ) {
             return;
         }

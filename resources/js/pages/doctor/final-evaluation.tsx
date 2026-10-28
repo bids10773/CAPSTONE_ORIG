@@ -11,7 +11,9 @@ import {
     TriangleAlert,
 } from 'lucide-react';
 
+import { ClinicalHistoryFindings } from '@/components/clinical-history-findings';
 import InputError from '@/components/input-error';
+import { IntakeMeasurements } from '@/components/intake-measurements';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -367,87 +369,18 @@ export default function FinalEvaluation({
                         </form>
                     )}
 
+                <ClinicalHistoryFindings
+                    history={history}
+                    physical={physical}
+                />
+                <ReviewSection
+                    icon={<Stethoscope />}
+                    title="Physical examination — intake measurements"
+                    complete={!!physical}
+                >
+                    <IntakeMeasurements measurements={physical} />
+                </ReviewSection>
                 <div className="grid gap-5 lg:grid-cols-2">
-                    {has('PE') && (
-                        <ReviewSection
-                            icon={<Stethoscope />}
-                            title="Physical Examination"
-                            complete={!!physical}
-                        >
-                            {physical ? (
-                                <>
-                                    <ResultGrid
-                                        values={{
-                                            Height:
-                                                physical.height &&
-                                                `${physical.height} cm`,
-                                            Weight:
-                                                physical.weight &&
-                                                `${physical.weight} kg`,
-                                            'Blood Pressure':
-                                                physical.blood_pressure,
-                                            Pulse:
-                                                physical.pulse_rate &&
-                                                `${physical.pulse_rate} bpm`,
-                                            Temperature:
-                                                physical.temperature &&
-                                                `${physical.temperature} °C`,
-                                        }}
-                                    />
-                                    <Findings
-                                        values={Object.fromEntries(
-                                            [
-                                                'head_scalp',
-                                                'eyes',
-                                                'ears',
-                                                'nose_sinuses',
-                                                'mouth_throat',
-                                                'neck_thyroid',
-                                                'chest_breast',
-                                                'lungs',
-                                                'heart',
-                                                'abdomen',
-                                                'back',
-                                                'anus',
-                                                'genitals',
-                                                'extremities',
-                                                'skin',
-                                                'dental',
-                                            ].map((key) => [
-                                                title(key),
-                                                physical[key] || 'Normal',
-                                            ]),
-                                        )}
-                                    />
-                                    {history && (
-                                        <Findings
-                                            heading="Medical history"
-                                            values={Object.fromEntries(
-                                                Object.entries(history)
-                                                    .filter(
-                                                        ([key, value]) =>
-                                                            ![
-                                                                'id',
-                                                                'appointment_id',
-                                                                'created_at',
-                                                                'updated_at',
-                                                            ].includes(key) &&
-                                                            value,
-                                                    )
-                                                    .map(([key, value]) => [
-                                                        title(key),
-                                                        String(value),
-                                                    ]),
-                                            )}
-                                        />
-                                    )}
-                                </>
-                            ) : (
-                                <Missing />
-                            )}
-                        </ReviewSection>
-                    )}
-
                     {selectedLabs.length > 0 && (
                         <ReviewSection
                             icon={<FlaskConical />}
@@ -732,24 +665,6 @@ function Meta({ label, value }: { label: string; value: string }) {
         </div>
     );
 }
-function ResultGrid({ values }: { values: Record<string, any> }) {
-    return (
-        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {Object.entries(values)
-                .filter(([, value]) => value)
-                .map(([label, value]) => (
-                    <div key={label} className="rounded-xl bg-slate-50 p-3">
-                        <dt className="text-xs font-bold text-slate-500">
-                            {label}
-                        </dt>
-                        <dd className="mt-1 font-semibold text-slate-900">
-                            {String(value)}
-                        </dd>
-                    </div>
-                ))}
-        </dl>
-    );
-}
 function Findings({
     heading,
     values,
@@ -771,12 +686,12 @@ function Findings({
                 {entries.map(([label, value]) => (
                     <div
                         key={label}
-                        className="grid grid-cols-[140px_1fr] gap-3 py-2 text-sm"
+                        className="grid gap-2 py-4 text-base sm:grid-cols-[180px_1fr] sm:gap-5"
                     >
                         <dt className="font-semibold text-slate-600">
                             {label}
                         </dt>
-                        <dd className="break-words text-slate-900">
+                        <dd className="leading-7 break-words whitespace-pre-wrap text-slate-900">
                             {String(value)}
                         </dd>
                     </div>

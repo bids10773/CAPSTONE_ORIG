@@ -21,7 +21,8 @@ function validVitalExamPayload(): array
     return ['submission_key' => (string) Str::uuid(), 'measurement_type' => 'initial',
         'height' => '165.5', 'weight' => '55.5', 'systolic_pressure' => '120',
         'diastolic_pressure' => '80', 'heart_rate' => '72', 'respiratory_rate' => '16',
-        'temperature' => '36.5', 'oxygen_saturation' => '98'];
+        'temperature' => '36.5', 'oxygen_saturation' => '98',
+        'visual_acuity' => '20/20 OU', 'hearing' => 'Normal bilateral'];
 }
 
 test('valid boundary and decimal vital signs are stored consistently', function (array $values, string $storedBmi) {

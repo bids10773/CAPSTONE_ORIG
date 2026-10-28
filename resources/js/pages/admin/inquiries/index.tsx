@@ -3,6 +3,7 @@ import { Eye, Inbox, Pencil, Trash2 } from 'lucide-react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import AppLayout from '@/layouts/app-layout';
+import { confirmAction } from '@/lib/dialogs';
 import type { PaginatedResponse } from '@/types/pagination';
 
 type Option = { value: string; label: string };
@@ -174,9 +175,9 @@ export default function AdminInquiryIndex({
                                                         className="inline-flex rounded-lg p-2 text-red-600 hover:bg-red-50"
                                                         aria-label={`Delete inquiry ${inquiry.id}`}
                                                         title="Delete"
-                                                        onClick={() => {
+                                                        onClick={async () => {
                                                             if (
-                                                                confirm(
+                                                                await confirmAction(
                                                                     `Permanently delete inquiry INQ-${String(inquiry.id).padStart(6, '0')}? This cannot be undone.`,
                                                                 )
                                                             ) {

@@ -2,31 +2,25 @@ import { router, useForm } from '@inertiajs/react';
 import {
     Activity,
     ArrowLeft,
-    HeartPulse,
+    ChevronDown,
     History,
-    Ruler,
     Save,
-    Stethoscope,
-    Thermometer,
     UserRound,
-    Weight,
 } from 'lucide-react';
 import type React from 'react';
-import { useState } from 'react';
 import {
     ClinicalSection,
-    MedicalMetricCard,
-    PatientSummaryCard,
-    SegmentedChoice,
     StickyActionFooter,
-    WorkflowTimeline,
 } from '@/components/clinical-workflow';
+import { IntakeMeasurements } from '@/components/intake-measurements';
+import { PhysicalFindingRow } from '@/components/physical-finding-row';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useSessionDraft } from '@/hooks/use-session-draft';
 import AppLayout from '@/layouts/app-layout';
+import { bodyParts, historyFields } from '@/lib/clinical-exam-fields';
+import { promptAction } from '@/lib/dialogs';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -56,44 +50,6 @@ interface Props {
     locked: boolean;
 }
 
-type VitalField =
-    | 'height'
-    | 'weight'
-    | 'pulse_rate'
-    | 'temperature'
-    | 'systolic_pressure'
-    | 'diastolic_pressure';
-
-const decimalPattern = /^\d+(?:\.\d)?$/;
-const integerPattern = /^\d+$/;
-
-const bodyParts = [
-    { label: 'Head and scalp', field: 'head_scalp' },
-    { label: 'Eyes', field: 'eyes' },
-    { label: 'Ears', field: 'ears' },
-    { label: 'Nose and sinuses', field: 'nose_sinuses' },
-    { label: 'Mouth and throat', field: 'mouth_throat' },
-    { label: 'Neck and thyroid', field: 'neck_thyroid' },
-    { label: 'Chest and breasts', field: 'chest_breast' },
-    { label: 'Lungs', field: 'lungs' },
-    { label: 'Heart', field: 'heart' },
-    { label: 'Abdomen', field: 'abdomen' },
-    { label: 'Back and spine', field: 'back' },
-    { label: 'Anus and rectum', field: 'anus' },
-    { label: 'Genitourinary', field: 'genitals' },
-    { label: 'Extremities', field: 'extremities' },
-    { label: 'Skin', field: 'skin' },
-    { label: 'Dental', field: 'dental' },
-];
-
-const historyFields = [
-    ['Present illness', 'present_illness'],
-    ['Past medical history', 'past_medical_history'],
-    ['Operations or accidents', 'operations_accidents'],
-    ['Family history', 'family_history'],
-    ['Allergies', 'allergies'],
-] as const;
-
 function getAge(birthdate?: string) {
     if (!birthdate) return 'Not available';
     const today = new Date();
@@ -115,23 +71,10 @@ export default function PhysicalExamForm({
     vitalSignHistory,
     pendingVitalRecheck,
     submitUrl,
-    vitalLimits,
     locked,
 }: Props) {
-    const initialSystolic = latestVitalSign?.systolic_pressure ?? '';
-    const initialDiastolic = latestVitalSign?.diastolic_pressure ?? '';
     const { data, setData, post, isDirty, processing, errors } = useForm<any>({
-        height: latestVitalSign?.height || '',
-        weight: latestVitalSign?.weight || '',
-        systolic_pressure: initialSystolic,
-        diastolic_pressure: initialDiastolic,
-        pulse_rate: latestVitalSign?.heart_rate || '',
-        respiration_rate: latestVitalSign?.respiratory_rate || '',
-        temperature: latestVitalSign?.temperature || '',
-        oxygen_saturation: latestVitalSign?.oxygen_saturation || '',
         vital_signs_override_reason: '',
-        visual_acuity: physicalExam?.visual_acuity || '',
-        hearing: physicalExam?.hearing || '',
         remarks: physicalExam?.remarks || '',
         present_illness: appointment.medical_history?.present_illness || '',
         past_medical_history:
@@ -161,78 +104,6 @@ export default function PhysicalExamForm({
         (draft) => setData((current: any) => ({ ...current, ...draft })),
         !locked,
     );
-    const [vitalErrors, setVitalErrors] = useState<
-        Partial<Record<VitalField, string>>
-    >({});
-
-    const validateVital = (field: VitalField, value: unknown): string => {
-        const text = String(value ?? '').trim();
-        const label = field.replace('_rate', '').replace('_pressure', '');
-
-        if (!text) {
-            return field.includes('pressure')
-                ? 'Please enter both systolic and diastolic blood pressure.'
-                : `${label.charAt(0).toUpperCase() + label.slice(1)} is required.`;
-        }
-
-        const decimal = ['height', 'weight', 'temperature'].includes(field);
-        if (!(decimal ? decimalPattern : integerPattern).test(text)) {
-            return decimal
-                ? 'Enter a number with no more than one decimal place.'
-                : 'Enter a whole number only.';
-        }
-
-        const valueNumber = Number(text);
-        const { min, max } = vitalLimits[field];
-        if (valueNumber < min || valueNumber > max) {
-            const units: Record<VitalField, string> = {
-                height: 'cm',
-                weight: 'kg',
-                pulse_rate: 'bpm',
-                temperature: '°C',
-                systolic_pressure: 'mm Hg',
-                diastolic_pressure: 'mm Hg',
-            };
-            return `Value must be between ${min} and ${max} ${units[field]}.`;
-        }
-
-        if (
-            field === 'systolic_pressure' &&
-            integerPattern.test(String(data.diastolic_pressure).trim()) &&
-            valueNumber <= Number(data.diastolic_pressure)
-        ) {
-            return 'Systolic pressure must be greater than diastolic pressure.';
-        }
-        if (
-            field === 'diastolic_pressure' &&
-            integerPattern.test(String(data.systolic_pressure).trim()) &&
-            Number(data.systolic_pressure) <= valueNumber
-        ) {
-            return 'Systolic pressure must be greater than diastolic pressure.';
-        }
-
-        return '';
-    };
-
-    const updateVital = (field: VitalField, value: string) => {
-        setData(field, value);
-        if (vitalErrors[field]) {
-            const message = validateVital(field, value);
-            setVitalErrors((current) => ({ ...current, [field]: message }));
-        }
-    };
-
-    const blurVital = (field: VitalField) => {
-        const message = validateVital(field, data[field]);
-        setVitalErrors((current) => ({ ...current, [field]: message }));
-    };
-    const height = Number.parseFloat(data.height);
-    const weight = Number.parseFloat(data.weight);
-    const bmi =
-        height > 0 && weight > 0
-            ? Number((weight / (height / 100) ** 2).toFixed(1))
-            : null;
-
     const onSubmit = (event: React.FormEvent) => {
         event.preventDefault();
         post(submitUrl, {
@@ -246,64 +117,64 @@ export default function PhysicalExamForm({
     };
 
     const patientName = `${appointment.user.first_name} ${appointment.user.last_name}`;
+    const patientDetails = [
+        { label: 'Age', value: getAge(appointment.patient_profile?.birthdate) },
+        { label: 'Sex', value: appointment.patient_profile?.sex },
+        {
+            label: 'Civil status',
+            value: appointment.patient_profile?.civil_status,
+        },
+        { label: 'Queue', value: appointment.reference_code },
+        ...(appointment.patient_profile?.employee_number
+            ? [
+                  {
+                      label: 'Company Employee No.',
+                      value: appointment.patient_profile.employee_number,
+                  },
+              ]
+            : []),
+    ];
 
     return (
         <form
             onSubmit={onSubmit}
             className="mx-auto max-w-[1500px] space-y-5 px-4 py-6 sm:px-6 lg:px-8"
         >
-            <div className="sticky top-[88px] z-20 overflow-hidden rounded-2xl border border-border bg-white/95 shadow-[0_14px_38px_-28px_rgba(31,41,55,.3)] backdrop-blur-xl">
-                <PatientSummaryCard
-                    embedded
-                    compactIdentity
-                    hero
-                    name={patientName}
-                    stage="Physical Examination"
-                    details={[
-                        {
-                            label: 'Age',
-                            value: getAge(
-                                appointment.patient_profile?.birthdate,
-                            ),
-                        },
-                        {
-                            label: 'Sex',
-                            value: appointment.patient_profile?.sex,
-                        },
-                        {
-                            label: 'Civil status',
-                            value: appointment.patient_profile?.civil_status,
-                        },
-                        {
-                            label: 'Queue',
-                            value: appointment.reference_code,
-                        },
-                        ...(appointment.patient_profile?.employee_number
-                            ? [
-                                  {
-                                      label: 'Company Employee No.',
-                                      value: appointment.patient_profile
-                                          .employee_number,
-                                  },
-                              ]
-                            : []),
-                    ]}
-                />
+            <section
+                aria-label="Patient Details"
+                className="sticky top-[88px] z-20 rounded-2xl border border-border bg-card/95 px-4 py-3 shadow-[0_18px_48px_-24px_rgba(31,41,55,.32)] backdrop-blur-xl sm:px-5"
+            >
+                <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <UserRound
+                            className="size-5 shrink-0 text-moss-600"
+                            aria-hidden="true"
+                        />
+                        <div className="min-w-0">
+                            <p className="text-xs font-medium text-muted-foreground">
+                                Patient Details
+                            </p>
+                            <p className="text-base font-semibold break-words text-foreground">
+                                {patientName}
+                            </p>
+                        </div>
+                    </div>
+                    <dl className="grid grid-cols-2 gap-x-6 gap-y-2 sm:flex sm:flex-wrap sm:gap-x-8">
+                        {patientDetails.map(({ label, value }) => (
+                            <div key={label} className="min-w-0">
+                                <dt className="text-xs text-muted-foreground">
+                                    {label}
+                                </dt>
+                                <dd className="mt-0.5 text-sm font-semibold break-words text-foreground">
+                                    {value || 'Not available'}
+                                </dd>
+                            </div>
+                        ))}
+                    </dl>
+                </div>
+            </section>
 
-                <WorkflowTimeline
-                    embedded
-                    current={0}
-                    steps={[
-                        'Physical Exam',
-                        'Laboratory',
-                        'X-Ray',
-                        'Final Evaluation',
-                    ]}
-                />
-            </div>
-
-            {(Object.keys(errors).length > 0 ||
-                Object.values(vitalErrors).some(Boolean)) && (
+            {Object.keys(errors).length > 0 && (
                 <div
                     id="physical-exam-errors"
                     role="alert"
@@ -318,485 +189,232 @@ export default function PhysicalExamForm({
             )}
 
             <div>
-                <div className="space-y-5">
-                    <div className="grid gap-5 xl:grid-cols-2 xl:items-start">
-                        <ClinicalSection
-                            icon={History}
-                            title="I. Medical history"
-                            description="Record the history fields in the same order as the official LMIC PE form."
-                        >
-                            <div className="grid gap-4 md:grid-cols-2">
-                                {historyFields.map(([label, field]) => (
-                                    <div key={field}>
-                                        <Label htmlFor={field}>{label}</Label>
-                                        <Textarea
-                                            id={field}
-                                            className="mt-1.5 min-h-24"
-                                            value={data[field]}
-                                            onChange={(event) =>
-                                                setData(
-                                                    field,
-                                                    event.target.value,
-                                                )
-                                            }
-                                        />
-                                    </div>
-                                ))}
-                                <div>
-                                    <Label htmlFor="personal_social_history">
-                                        Personal and social history
-                                    </Label>
+                <div className="grid items-start gap-5 lg:grid-cols-2">
+                    <ClinicalSection
+                        icon={History}
+                        title="I. Medical history"
+                        description="Review and document the patient’s history before the physical examination."
+                    >
+                        <div className="grid gap-4">
+                            {historyFields.map(([label, field]) => (
+                                <div key={field}>
+                                    <Label htmlFor={field}>{label}</Label>
                                     <Textarea
-                                        id="personal_social_history"
-                                        className="mt-1.5 min-h-24"
-                                        value={data.personal_social_history}
+                                        id={field}
+                                        className="mt-2 min-h-28 text-base leading-7"
+                                        value={data[field]}
                                         onChange={(event) =>
-                                            setData(
-                                                'personal_social_history',
-                                                event.target.value,
-                                            )
+                                            setData(field, event.target.value)
                                         }
                                     />
                                 </div>
-                                <div>
-                                    <Label htmlFor="ob_menstrual_history">
-                                        OB / menstrual history
-                                    </Label>
-                                    <Textarea
-                                        id="ob_menstrual_history"
-                                        className="mt-1.5 min-h-24"
-                                        value={data.ob_menstrual_history}
-                                        onChange={(event) =>
-                                            setData(
-                                                'ob_menstrual_history',
-                                                event.target.value,
-                                            )
-                                        }
-                                    />
-                                </div>
+                            ))}
+                            <div>
+                                <Label htmlFor="personal_social_history">
+                                    Personal and social history
+                                </Label>
+                                <Textarea
+                                    id="personal_social_history"
+                                    className="mt-2 min-h-28 text-base leading-7"
+                                    value={data.personal_social_history}
+                                    onChange={(event) =>
+                                        setData(
+                                            'personal_social_history',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
                             </div>
-                        </ClinicalSection>
-
-                        <ClinicalSection
-                            icon={Activity}
-                            title="II. Physical examination — vital signs"
-                            description="Review the intake measurements recorded by reception. These values are read-only and preserve their original audit history."
-                        >
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                <MedicalMetricCard
-                                    icon={Ruler}
-                                    label="Height"
-                                    unit="cm"
-                                >
-                                    <Input
-                                        value={data.height}
-                                        readOnly
-                                        inputMode="decimal"
-                                        onChange={(event) =>
-                                            updateVital(
-                                                'height',
-                                                event.target.value,
-                                            )
-                                        }
-                                        onBlur={() => blurVital('height')}
-                                        maxLength={5}
-                                        placeholder="e.g. 170"
-                                    />
-                                    <FieldError
-                                        message={
-                                            vitalErrors.height || errors.height
-                                        }
-                                    />
-                                </MedicalMetricCard>
-                                <MedicalMetricCard
-                                    icon={Weight}
-                                    label="Weight"
-                                    unit="kg"
-                                >
-                                    <Input
-                                        value={data.weight}
-                                        readOnly
-                                        inputMode="decimal"
-                                        onChange={(event) =>
-                                            updateVital(
-                                                'weight',
-                                                event.target.value,
-                                            )
-                                        }
-                                        onBlur={() => blurVital('weight')}
-                                        maxLength={5}
-                                        placeholder="e.g. 65"
-                                    />
-                                    <FieldError
-                                        message={
-                                            vitalErrors.weight || errors.weight
-                                        }
-                                    />
-                                </MedicalMetricCard>
-                                <MedicalMetricCard
-                                    icon={HeartPulse}
-                                    label="Blood pressure"
-                                    unit="mm Hg"
-                                >
-                                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                                        <Input
-                                            aria-label="Systolic pressure"
-                                            readOnly
-                                            value={data.systolic_pressure}
-                                            inputMode="numeric"
-                                            onChange={(event) =>
-                                                updateVital(
-                                                    'systolic_pressure',
-                                                    event.target.value,
-                                                )
-                                            }
-                                            onBlur={() =>
-                                                blurVital('systolic_pressure')
-                                            }
-                                            maxLength={3}
-                                            placeholder="120"
-                                        />
-                                        <span
-                                            aria-hidden="true"
-                                            className="font-semibold text-slate-500"
-                                        >
-                                            /
-                                        </span>
-                                        <Input
-                                            aria-label="Diastolic pressure"
-                                            readOnly
-                                            value={data.diastolic_pressure}
-                                            inputMode="numeric"
-                                            onChange={(event) =>
-                                                updateVital(
-                                                    'diastolic_pressure',
-                                                    event.target.value,
-                                                )
-                                            }
-                                            onBlur={() =>
-                                                blurVital('diastolic_pressure')
-                                            }
-                                            maxLength={3}
-                                            placeholder="80"
-                                        />
-                                    </div>
-                                    <p className="text-xs text-slate-500">
-                                        Systolic / Diastolic
-                                    </p>
-                                    <FieldError
-                                        message={
-                                            vitalErrors.systolic_pressure ||
-                                            vitalErrors.diastolic_pressure ||
-                                            errors.systolic_pressure ||
-                                            errors.diastolic_pressure
-                                        }
-                                    />
-                                </MedicalMetricCard>
-                                <MedicalMetricCard
-                                    icon={Activity}
-                                    label="Pulse rate"
-                                    unit="bpm"
-                                >
-                                    <Input
-                                        value={data.pulse_rate}
-                                        readOnly
-                                        inputMode="numeric"
-                                        onChange={(event) =>
-                                            updateVital(
-                                                'pulse_rate',
-                                                event.target.value,
-                                            )
-                                        }
-                                        onBlur={() => blurVital('pulse_rate')}
-                                        maxLength={3}
-                                        placeholder="e.g. 72"
-                                    />
-                                    <FieldError
-                                        message={
-                                            vitalErrors.pulse_rate ||
-                                            errors.pulse_rate
-                                        }
-                                    />
-                                </MedicalMetricCard>
-                                <MedicalMetricCard
-                                    icon={Thermometer}
-                                    label="Temperature"
-                                    unit="°C"
-                                >
-                                    <Input
-                                        value={data.temperature}
-                                        readOnly
-                                        inputMode="decimal"
-                                        onChange={(event) =>
-                                            updateVital(
-                                                'temperature',
-                                                event.target.value,
-                                            )
-                                        }
-                                        onBlur={() => blurVital('temperature')}
-                                        maxLength={4}
-                                        placeholder="e.g. 36.5"
-                                    />
-                                    <FieldError
-                                        message={
-                                            vitalErrors.temperature ||
-                                            errors.temperature
-                                        }
-                                    />
-                                </MedicalMetricCard>
-                                <MedicalMetricCard
-                                    icon={Activity}
-                                    label="Respiration rate"
-                                    unit="breaths/min"
-                                >
-                                    <Input
-                                        value={data.respiration_rate}
-                                        readOnly
-                                        inputMode="numeric"
-                                        onChange={(event) =>
-                                            setData(
-                                                'respiration_rate',
-                                                event.target.value,
-                                            )
-                                        }
-                                        placeholder="e.g. 16"
-                                    />
-                                    <FieldError
-                                        message={errors.respiration_rate}
-                                    />
-                                </MedicalMetricCard>
-                                <MedicalMetricCard
-                                    icon={Activity}
-                                    label="Oxygen saturation"
-                                    unit="%"
-                                >
-                                    <Input
-                                        value={data.oxygen_saturation}
-                                        readOnly
-                                        placeholder="Not recorded"
-                                    />
-                                </MedicalMetricCard>
-                                <MedicalMetricCard
-                                    icon={UserRound}
-                                    label="Visual acuity"
-                                >
-                                    <Input
-                                        value={data.visual_acuity}
-                                        onChange={(event) =>
-                                            setData(
-                                                'visual_acuity',
-                                                event.target.value,
-                                            )
-                                        }
-                                        placeholder="e.g. 20/20 OU"
-                                    />
-                                    <FieldError
-                                        message={errors.visual_acuity}
-                                    />
-                                </MedicalMetricCard>
-                                <MedicalMetricCard
-                                    icon={UserRound}
-                                    label="Hearing"
-                                >
-                                    <Input
-                                        value={data.hearing}
-                                        onChange={(event) =>
-                                            setData(
-                                                'hearing',
-                                                event.target.value,
-                                            )
-                                        }
-                                        placeholder="e.g. Normal bilateral"
-                                    />
-                                    <FieldError message={errors.hearing} />
-                                </MedicalMetricCard>
-                                <div className="flex flex-col justify-center rounded-2xl border border-moss-200 bg-moss-50 p-4">
-                                    <p className="text-xs font-semibold text-moss-700">
-                                        Body mass index
-                                    </p>
-                                    <div className="mt-2 flex items-end gap-2">
-                                        <strong className="text-3xl text-moss-900">
-                                            {bmi ?? '—'}
-                                        </strong>
-                                    </div>
-                                </div>
+                            <div>
+                                <Label htmlFor="ob_menstrual_history">
+                                    OB / menstrual history
+                                </Label>
+                                <Textarea
+                                    id="ob_menstrual_history"
+                                    className="mt-2 min-h-28 text-base leading-7"
+                                    value={data.ob_menstrual_history}
+                                    onChange={(event) =>
+                                        setData(
+                                            'ob_menstrual_history',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
                             </div>
-                            {latestVitalSign ? (
-                                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                                    <strong>
-                                        Recorded by{' '}
-                                        {latestVitalSign.recorded_by?.name ??
-                                            'Reception staff'}
-                                    </strong>
-                                    <span className="ml-2">
-                                        {new Date(
-                                            latestVitalSign.measured_at,
-                                        ).toLocaleString()}
-                                    </span>
-                                    {latestVitalSign.notes && (
-                                        <p className="mt-1">
-                                            Observation: {latestVitalSign.notes}
-                                        </p>
-                                    )}
-                                    {pendingVitalRecheck && (
-                                        <p className="mt-2 font-semibold text-amber-700">
-                                            Recheck pending:{' '}
-                                            {pendingVitalRecheck.reason}
-                                        </p>
-                                    )}
-                                    <div className="mt-3 flex flex-wrap gap-3">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={() => {
-                                                const reason = window.prompt(
-                                                    'Explain why these measurements should be rechecked.',
-                                                );
-                                                if (reason)
-                                                    router.post(
-                                                        `/doctor/appointments/${appointment.id}/vital-signs/recheck`,
-                                                        { reason },
-                                                        {
-                                                            preserveScroll: true,
-                                                        },
-                                                    );
-                                            }}
-                                        >
-                                            Request recheck
-                                        </Button>
-                                        <details>
-                                            <summary className="cursor-pointer py-2 font-semibold text-moss-700">
-                                                View repeated readings (
-                                                {vitalSignHistory.length})
-                                            </summary>
-                                            <div className="mt-2 space-y-2">
-                                                {vitalSignHistory.map(
-                                                    (reading) => (
-                                                        <p
-                                                            key={reading.id}
-                                                            className="rounded-lg bg-white p-2 text-xs"
-                                                        >
-                                                            {new Date(
-                                                                reading.measured_at,
-                                                            ).toLocaleString()}{' '}
-                                                            · BP{' '}
-                                                            {
-                                                                reading.systolic_pressure
-                                                            }
-                                                            /
-                                                            {
-                                                                reading.diastolic_pressure
-                                                            }{' '}
-                                                            · Pulse{' '}
-                                                            {reading.heart_rate}{' '}
-                                                            · Temp{' '}
-                                                            {
-                                                                reading.temperature
-                                                            }
-                                                            °C · SpO₂{' '}
-                                                            {
-                                                                reading.oxygen_saturation
-                                                            }
-                                                            % · recorded by{' '}
-                                                            {reading.recorded_by
-                                                                ?.name ??
-                                                                'Staff'}
-                                                        </p>
-                                                    ),
-                                                )}
-                                            </div>
-                                        </details>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4">
-                                    <p className="font-semibold text-amber-900">
-                                        No vital signs have been recorded for
-                                        this consultation.
-                                    </p>
-                                    <p className="mt-1 text-sm text-amber-800">
-                                        Routine intake should be completed by
-                                        reception. Urgent care may proceed only
-                                        with a documented reason.
-                                    </p>
-                                    <Textarea
-                                        className="mt-3 bg-white"
-                                        value={data.vital_signs_override_reason}
-                                        onChange={(event) =>
-                                            setData(
-                                                'vital_signs_override_reason',
-                                                event.target.value,
-                                            )
-                                        }
-                                        placeholder="Urgent override reason"
-                                    />
-                                    <FieldError
-                                        message={
-                                            errors.vital_signs_override_reason
-                                        }
-                                    />
-                                </div>
-                            )}
-                        </ClinicalSection>
-                    </div>
+                        </div>
+                    </ClinicalSection>
 
                     <ClinicalSection
-                        icon={Stethoscope}
-                        title="II. Physical examination — findings"
-                        description="Mark each system as normal or document the relevant finding."
+                        icon={Activity}
+                        title="II. Physical examination"
+                        description="Document your physical examination findings. Open the floating vital signs panel whenever you need the intake readings."
                     >
-                        <div className="grid gap-3 lg:grid-cols-2">
+                        <h3 className="mb-4 text-lg font-semibold">Findings</h3>
+                        <div className="divide-y divide-border">
                             {bodyParts.map((part) => (
-                                <article
+                                <PhysicalFindingRow
                                     key={part.field}
-                                    className="rounded-2xl border border-border p-4"
-                                >
-                                    <h3 className="mb-3 text-sm font-semibold text-slate-900">
-                                        {part.label}
-                                    </h3>
-                                    <SegmentedChoice
-                                        ariaLabel={`${part.label} assessment`}
-                                        value={data[`${part.field}_status`]}
-                                        onChange={(status) =>
-                                            setData(
-                                                `${part.field}_status`,
-                                                status,
-                                            )
-                                        }
-                                        options={[
-                                            {
-                                                value: 'normal',
-                                                label: 'Normal',
-                                            },
-                                            {
-                                                value: 'with_findings',
-                                                label: 'With findings',
-                                                tone: 'warning',
-                                            },
-                                        ]}
-                                    />
-                                    <Input
-                                        className="mt-3"
-                                        value={data[part.field]}
-                                        disabled={
-                                            data[`${part.field}_status`] ===
-                                            'normal'
-                                        }
-                                        onChange={(event) =>
-                                            setData(
-                                                part.field,
-                                                event.target.value,
-                                            )
-                                        }
-                                        placeholder="Document findings, if any"
-                                    />
-                                    <FieldError message={errors[part.field]} />
-                                </article>
+                                    field={part.field}
+                                    label={part.label}
+                                    status={data[`${part.field}_status`]}
+                                    finding={data[part.field]}
+                                    onStatusChange={(status) =>
+                                        setData(`${part.field}_status`, status)
+                                    }
+                                    onFindingChange={(finding) =>
+                                        setData(part.field, finding)
+                                    }
+                                    error={
+                                        errors[part.field] ||
+                                        errors[`${part.field}_status`]
+                                    }
+                                />
                             ))}
                         </div>
                     </ClinicalSection>
                 </div>
             </div>
+
+            <aside
+                aria-label="Recorded vital signs panel"
+                className="fixed right-4 bottom-44 z-30 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2 sm:bottom-24"
+            >
+                <details
+                    open={
+                        !latestVitalSign ||
+                        Boolean(errors.vital_signs_override_reason)
+                    }
+                    aria-labelledby="recorded-vital-signs-heading"
+                    className="group max-w-full overflow-hidden rounded-2xl border border-moss-200 bg-card shadow-xl open:w-[calc(100vw-2rem)] open:max-w-md"
+                >
+                    <summary
+                        id="recorded-vital-signs-heading"
+                        className="flex cursor-pointer list-none items-center gap-3 bg-moss-50 px-4 py-3 text-sm font-semibold text-moss-900 marker:hidden focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none dark:bg-moss-950 dark:text-moss-100 [&::-webkit-details-marker]:hidden"
+                    >
+                        <Activity
+                            className="size-4 shrink-0"
+                            aria-hidden="true"
+                        />
+                        Recorded Vital Signs
+                        <ChevronDown
+                            className="ml-auto size-4 shrink-0 transition-transform group-open:rotate-180"
+                            aria-hidden="true"
+                        />
+                    </summary>
+                    <div className="max-h-[60dvh] overflow-y-auto overscroll-contain border-t border-border p-4">
+                        <IntakeMeasurements
+                            measurements={latestVitalSign}
+                            compact
+                        />
+                        {latestVitalSign ? (
+                            <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                                <strong>
+                                    Recorded by{' '}
+                                    {latestVitalSign.recorded_by?.name ??
+                                        'Reception staff'}
+                                </strong>
+                                <span className="ml-2">
+                                    {new Date(
+                                        latestVitalSign.measured_at,
+                                    ).toLocaleString()}
+                                </span>
+                                {latestVitalSign.notes && (
+                                    <p className="mt-1">
+                                        Observation: {latestVitalSign.notes}
+                                    </p>
+                                )}
+                                {pendingVitalRecheck && (
+                                    <p className="mt-2 font-semibold text-amber-700">
+                                        Recheck pending:{' '}
+                                        {pendingVitalRecheck.reason}
+                                    </p>
+                                )}
+                                <div className="mt-3 flex flex-wrap gap-3">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={async () => {
+                                            const reason = await promptAction(
+                                                'Explain why these measurements should be rechecked.',
+                                            );
+                                            if (reason)
+                                                router.post(
+                                                    `/doctor/appointments/${appointment.id}/vital-signs/recheck`,
+                                                    { reason },
+                                                    {
+                                                        preserveScroll: true,
+                                                    },
+                                                );
+                                        }}
+                                    >
+                                        Request recheck
+                                    </Button>
+                                    <details>
+                                        <summary className="cursor-pointer py-2 font-semibold text-moss-700">
+                                            View repeated readings (
+                                            {vitalSignHistory.length})
+                                        </summary>
+                                        <div className="mt-2 space-y-2">
+                                            {vitalSignHistory.map((reading) => (
+                                                <p
+                                                    key={reading.id}
+                                                    className="rounded-lg bg-white p-2 text-xs"
+                                                >
+                                                    {new Date(
+                                                        reading.measured_at,
+                                                    ).toLocaleString()}{' '}
+                                                    · BP{' '}
+                                                    {reading.systolic_pressure}/
+                                                    {reading.diastolic_pressure}{' '}
+                                                    · Pulse {reading.heart_rate}{' '}
+                                                    · Temp {reading.temperature}
+                                                    °C · SpO₂{' '}
+                                                    {reading.oxygen_saturation}%
+                                                    · Visual acuity:{' '}
+                                                    {reading.visual_acuity ??
+                                                        'Not recorded'}{' '}
+                                                    · Hearing:{' '}
+                                                    {reading.hearing ??
+                                                        'Not recorded'}{' '}
+                                                    · recorded by{' '}
+                                                    {reading.recorded_by
+                                                        ?.name ?? 'Staff'}
+                                                </p>
+                                            ))}
+                                        </div>
+                                    </details>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4">
+                                <p className="font-semibold text-amber-900">
+                                    No vital signs have been recorded for this
+                                    consultation.
+                                </p>
+                                <p className="mt-1 text-sm text-amber-800">
+                                    Routine intake should be completed by
+                                    reception. Urgent care may proceed only with
+                                    a documented reason.
+                                </p>
+                                <Textarea
+                                    className="mt-3 bg-white"
+                                    value={data.vital_signs_override_reason}
+                                    onChange={(event) =>
+                                        setData(
+                                            'vital_signs_override_reason',
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder="Urgent override reason"
+                                />
+                                <FieldError
+                                    message={errors.vital_signs_override_reason}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </details>
+            </aside>
 
             <StickyActionFooter hint="Saving completes this examination stage using the existing clinical workflow.">
                 <Button

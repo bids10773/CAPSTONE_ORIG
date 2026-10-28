@@ -264,10 +264,7 @@ class OnsiteEventWorkflowService
 
     private function requiredRoles(Appointment $employee): array
     {
-        $roles = [];
-        if ($employee->isPePackage()) {
-            $roles[] = 'doctor';
-        }
+        $roles = ['doctor'];
         if (app(LaboratoryFormDefinition::class)->sectionsFor($employee) !== []) {
             $roles[] = 'medtech';
         }

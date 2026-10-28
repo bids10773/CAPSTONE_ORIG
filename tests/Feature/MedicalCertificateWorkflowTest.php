@@ -152,6 +152,73 @@ test('guests cannot open the medical certificate module', function () {
     $this->get(route('medical-certificates.index'))->assertRedirect(route('login'));
 });
 
+test('automatic generation reuses linked certificates without overwriting their contents', function (string $status) {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $appointment = medicalCertificateConsultation($patient, $doctor, ['examination_purpose' => 'medical_clearance']);
+    $appointment->medicalExamination()->update(['finalized_at' => now(), 'finalized_by' => $doctor->id]);
+    $existing = medicalCertificateRecord($patient, $doctor, $status, 1, [
+        'appointment_id' => $appointment->id, 'recommendation' => 'Keep this reviewed recommendation.',
+    ]);
+    $service = app(\App\Services\MedicalCertificateWorkflowService::class);
+    $request = \Illuminate\Http\Request::create('/doctor/final-evaluation/'.$appointment->id, 'POST');
+
+    $first = $service->generateForFinalizedAppointment($appointment, $doctor, $request);
+    $second = $service->generateForFinalizedAppointment($appointment, $doctor, $request);
+
+    expect($first->id)->toBe($existing->id)
+        ->and($second->id)->toBe($existing->id)
+        ->and($existing->fresh()->status)->toBe($status)
+        ->and($existing->fresh()->recommendation)->toBe('Keep this reviewed recommendation.');
+    $this->assertDatabaseCount('medical_certificates', 1);
+})->with(['draft', 'approved', 'issued', 'void']);
+
+test('automatic draft generation is idempotent and leaves missing patient facts for review', function () {
+    $patient = medicalCertificatePatient(['sex' => null], ['sex' => null, 'civil_status' => null]);
+    $doctor = medicalCertificateDoctor();
+    $appointment = medicalCertificateConsultation($patient, $doctor, ['examination_purpose' => 'medical_clearance']);
+    $appointment->medicalExamination()->update(['finalized_at' => now(), 'finalized_by' => $doctor->id, 'recommendations' => null]);
+    $service = app(\App\Services\MedicalCertificateWorkflowService::class);
+    $request = \Illuminate\Http\Request::create('/doctor/final-evaluation/'.$appointment->id, 'POST');
+
+    $first = $service->generateForFinalizedAppointment($appointment, $doctor, $request);
+    $second = $service->generateForFinalizedAppointment($appointment, $doctor, $request);
+
+    expect($first->id)->toBe($second->id)
+        ->and($first->salutation)->toBe('')
+        ->and($first->patient_sex)->toBeNull()
+        ->and($first->patient_civil_status)->toBeNull()
+        ->and($first->recommendation)->toBeNull()
+        ->and($first->status)->toBe('draft')
+        ->and($first->audits()->count())->toBe(1);
+    $this->assertDatabaseCount('medical_certificates', 1);
+    $this->actingAs($doctor)->patch(route('medical-certificates.submit', $first))
+        ->assertSessionHasErrors('salutation');
+});
+
+test('final evaluator keeps queue access when an existing certificate belongs to another physician', function () {
+    $patient = medicalCertificatePatient();
+    $originalDoctor = medicalCertificateDoctor();
+    $finalDoctor = medicalCertificateDoctor();
+    $appointment = medicalCertificateConsultation($patient, $originalDoctor, [
+        'examination_purpose' => 'medical_clearance', 'status' => 'for_final_evaluation',
+    ]);
+    $existing = medicalCertificateRecord($patient, $originalDoctor, 'draft', 1, ['appointment_id' => $appointment->id]);
+    $appointment->update(['doctor_id' => $finalDoctor->id]);
+    $appointment->physicalExam()->create([
+        'medical_examination_id' => $appointment->medicalExamination->id,
+        'doctor_id' => $originalDoctor->id, 'classification' => 'Pending', 'is_completed' => true,
+    ]);
+
+    $this->actingAs($finalDoctor)->post(route('doctor.final-evaluation.store', $appointment), [
+        'medical_class' => 'A', 'final_diagnosis' => 'No significant findings.',
+    ])->assertSessionHasNoErrors()->assertRedirect(route('doctor.dashboard'));
+
+    expect($appointment->fresh()->status)->toBe('completed')
+        ->and($existing->fresh()->attending_physician_id)->toBe($originalDoctor->id);
+    $this->assertDatabaseCount('medical_certificates', 1);
+});
+
 test('receptionists and administrators cannot author or submit medical certificate drafts', function (string $role) {
     $patient = medicalCertificatePatient();
     $doctor = medicalCertificateDoctor();

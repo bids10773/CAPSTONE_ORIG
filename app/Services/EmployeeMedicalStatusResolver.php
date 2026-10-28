@@ -35,7 +35,7 @@ class EmployeeMedicalStatusResolver
     private function fallbackStatus(Appointment $appointment): string
     {
         $examination = $appointment->medicalExamination;
-        if ($appointment->isPePackage() && ! $examination?->physicalExam?->is_completed) {
+        if (! $examination?->physicalExam?->is_completed) {
             return 'arrived';
         }
         if (app(LaboratoryFormDefinition::class)->sectionsFor($appointment) !== [] && ! $examination?->laboratoryResult?->isFinalized()) {

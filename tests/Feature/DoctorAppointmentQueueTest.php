@@ -68,3 +68,32 @@ test('doctor can start a physical examination only after check-in on its schedul
         ->get(route('doctor.physical-exams.create', $upcoming))
         ->assertForbidden();
 });
+
+test('doctor queue exposes physical exam actions only when the doctor is authorized', function () {
+    $doctor = User::factory()->create(['role' => 'doctor']);
+    $patient = User::factory()->create(['role' => 'patient']);
+    $cbc = doctorQueueAppointment($patient, $doctor, [
+        'status' => 'arrived', 'arrived_at' => now(), 'service_types' => ['CBC'],
+        'start_time' => '09:00',
+    ]);
+    $physical = doctorQueueAppointment($patient, $doctor, [
+        'status' => 'arrived', 'arrived_at' => now(), 'start_time' => '10:00',
+    ]);
+    doctorQueueAppointment($patient, $doctor, ['start_time' => '11:00']);
+    doctorQueueAppointment($patient, $doctor, [
+        'appointment_date' => today()->addDay(), 'start_time' => '09:00',
+    ]);
+
+    $this->actingAs($doctor)->get(route('doctor.appointments'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('appointments.data.0.id', $cbc->id)
+            ->where('appointments.data.0.can_start_physical_exam', true)
+            ->where('appointments.data.1.id', $physical->id)
+            ->where('appointments.data.1.can_start_physical_exam', true)
+            ->where('appointments.data.2.can_start_physical_exam', false)
+            ->where('appointments.data.3.can_start_physical_exam', false));
+
+    $this->get(route('doctor.physical-exams.create', $cbc))->assertOk();
+    $this->get(route('doctor.physical-exams.create', $physical))->assertOk();
+});

@@ -206,7 +206,7 @@ class StaffPatientRecordController extends Controller
                 ? route('doctor.final-evaluation', $appointment, false)
                 : (($appointment->status === 'arrived' || $appointment->arrived_at !== null)
                     && $appointment->appointment_date?->isToday()
-                    && $appointment->isPePackage()
+                    && request()->user()->can('updatePhysicalExam', $appointment)
                     ? route('doctor.physical-exams.create', $appointment, false)
                     : null),
             'medtech' => in_array($appointment->status, ['for_diagnostics', 'verifying_drug_test'], true)

@@ -16,6 +16,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/app-layout';
+import { confirmAction } from '@/lib/dialogs';
 import type { BreadcrumbItem } from '@/types';
 import type { PaginatedResponse } from '@/types/pagination';
 
@@ -428,9 +429,9 @@ export default function AdminPatientsIndex({ patients, filters }: Props) {
                                                                     : 'Patients with appointment or medical history cannot be deleted'
                                                             }
                                                             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent dark:text-red-400 dark:hover:bg-red-950/30 dark:disabled:text-slate-600"
-                                                            onClick={() => {
+                                                            onClick={async () => {
                                                                 if (
-                                                                    confirm(
+                                                                    await confirmAction(
                                                                         `Permanently delete ${fullName(patient)}? This cannot be undone.`,
                                                                     )
                                                                 ) {

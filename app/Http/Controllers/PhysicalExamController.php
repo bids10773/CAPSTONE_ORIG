@@ -10,6 +10,7 @@ use App\Models\MedicalHistory;
 use App\Models\PhysicalExam;
 use App\Notifications\MedicalReportReleased;
 use App\Services\LaboratoryFormDefinition;
+use App\Services\MedicalCertificateWorkflowService;
 use App\Services\MedicalExaminationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,7 +55,7 @@ class PhysicalExamController extends Controller
             throw ValidationException::withMessages(['form' => 'The physical examination is finalized and locked.']);
         }
 
-        DB::transaction(function () use ($request, $appointment, $definitions, $examinations): void {
+        DB::transaction(function () use ($request, $appointment, $definitions, $examinations, $existing): void {
             $data = $request->validated();
             $medicalExamination = $examinations->forAppointment($appointment);
             if ($medicalExamination->finalized_at) {
@@ -75,7 +76,9 @@ class PhysicalExamController extends Controller
                 'height' => $vital?->height, 'weight' => $vital?->weight,
                 'pulse_rate' => $vital?->heart_rate, 'respiration_rate' => $vital?->respiratory_rate,
                 'temperature' => $vital?->temperature,
-                ...$request->safe()->only(['visual_acuity', 'hearing', 'remarks']),
+                'visual_acuity' => $vital?->visual_acuity ?? $existing?->visual_acuity,
+                'hearing' => $vital?->hearing ?? $existing?->hearing,
+                ...$request->safe()->only(['remarks']),
                 'blood_pressure' => $vital ? "{$vital->systolic_pressure}/{$vital->diastolic_pressure}" : null,
                 ...$findings,
                 'classification' => 'Pending',
@@ -138,11 +141,15 @@ class PhysicalExamController extends Controller
         ]);
     }
 
-    public function finalStore(FinalizeMedicalEvaluationRequest $request, Appointment $appointment, MedicalExaminationService $examinations): RedirectResponse
+    public function finalStore(FinalizeMedicalEvaluationRequest $request, Appointment $appointment, MedicalExaminationService $examinations, MedicalCertificateWorkflowService $certificates): RedirectResponse
     {
-        DB::transaction(function () use ($request, $appointment, $examinations): void {
+        $certificate = DB::transaction(function () use ($request, $appointment, $examinations, $certificates) {
+            $appointment = Appointment::query()->lockForUpdate()->findOrFail($appointment->id);
             $requested = collect($appointment->service_types ?? []);
             $medicalExamination = $examinations->forAppointment($appointment);
+            if ($medicalExamination->finalized_at) {
+                throw ValidationException::withMessages(['medical_class' => 'This medical examination has already been finalized.']);
+            }
             $medicalExamination->load(['appointment', 'physicalExam', 'laboratoryResult', 'diagnosticResults', 'xrayReport']);
             if (! $medicalExamination->isReadyForFinalEvaluation()) {
                 throw ValidationException::withMessages(['medical_class' => 'Complete every selected examination before final evaluation.']);
@@ -178,7 +185,14 @@ class PhysicalExamController extends Controller
             $appointment->update(['status' => 'completed']);
             app(\App\Services\OnsiteEventWorkflowService::class)->completeService($appointment, 'final_evaluation', $request->user());
             $this->audit($request, $appointment, 'final_evaluation', 'finalized', ['classification' => $classification]);
+
+            return $certificates->generateForFinalizedAppointment($appointment, $request->user(), $request);
         });
+
+        if ($certificate && $request->user()->can('view', $certificate)) {
+            return redirect()->route('medical-certificates.show', $certificate)
+                ->with('success', 'Final medical evaluation completed. The linked medical certificate is ready for review; approval and issuance remain separate steps.');
+        }
 
         $destination = $appointment->bulk_appointment_id !== null
             ? route('doctor.onsite-events.show', $appointment->bulk_appointment_id)

@@ -42,6 +42,8 @@ class StoreVitalSignRequest extends FormRequest
             'oxygen_saturation' => [$require('oxygen_saturation'), 'numeric', 'between:'.$limits['oxygen_saturation']['min'].','.$limits['oxygen_saturation']['max']],
             'height' => [$require('height'), 'numeric', 'between:'.$limits['height']['min'].','.$limits['height']['max']],
             'weight' => [$require('weight'), 'numeric', 'between:'.$limits['weight']['min'].','.$limits['weight']['max']],
+            'visual_acuity' => ['required', 'string', 'max:100'],
+            'hearing' => ['required', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
     }
@@ -49,6 +51,8 @@ class StoreVitalSignRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'visual_acuity.required' => 'Record the visual acuity screening result.',
+            'hearing.required' => 'Record the hearing screening result.',
             '*.required' => 'This clinic-required measurement is missing.',
             'systolic_pressure.gt' => 'Systolic pressure must be greater than diastolic pressure.',
             '*.between' => 'The measurement is outside the clinic-approved validation range.',

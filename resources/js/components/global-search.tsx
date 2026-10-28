@@ -181,12 +181,12 @@ export function GlobalSearch() {
                     triggerRef.current = event.currentTarget;
                     setOpen(true);
                 }}
-                className="mx-auto hidden h-10 w-full max-w-md touch-manipulation items-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-500 transition-[background-color,border-color,color,box-shadow,transform] hover:border-moss-300 hover:bg-white hover:text-slate-700 focus-visible:border-moss-500 focus-visible:ring-2 focus-visible:ring-moss-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-none active:scale-[0.99] motion-reduce:transition-none lg:flex dark:hover:bg-card dark:hover:text-foreground"
+                className="mx-auto hidden h-10 max-w-md min-w-0 flex-1 touch-manipulation items-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-500 transition-[background-color,border-color,color,box-shadow,transform] hover:border-moss-300 hover:bg-white hover:text-slate-700 focus-visible:border-moss-500 focus-visible:ring-2 focus-visible:ring-moss-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-none active:scale-[0.99] motion-reduce:transition-none lg:flex dark:hover:bg-card dark:hover:text-foreground"
                 aria-label="Open global search"
             >
-                <Search className="mr-2.5 size-4" />
+                <Search className="mr-2.5 size-4 shrink-0" />
                 <span className="truncate">{copy.button}</span>
-                <kbd className="ml-auto rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                <kbd className="ml-auto shrink-0 rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground">
                     Ctrl K
                 </kbd>
             </button>

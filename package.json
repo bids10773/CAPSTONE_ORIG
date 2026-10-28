@@ -12,7 +12,7 @@
         "lint": "eslint resources/js --fix",
         "lint:check": "eslint resources/js",
         "types:check": "tsc --noEmit",
-        "test:frontend": "node --test tests/Frontend/clinical-drafts.test.mjs"
+        "test:frontend": "node --test tests/Frontend/*.test.mjs"
     },
     "devDependencies": {
         "@eslint/js": "^9.19.0",

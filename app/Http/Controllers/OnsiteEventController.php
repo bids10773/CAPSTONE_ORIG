@@ -167,7 +167,7 @@ class OnsiteEventController extends Controller
                 ->except('drug_test')->isNotEmpty();
             $employee->setAttribute('service_progress', [
                 'physical_exam' => $summaries->firstWhere('key', 'physical_exam')['status']
-                    ?? (in_array('PE', $employee->service_types ?? [], true) ? 'pending' : 'not_required'),
+                    ?? 'pending',
                 'laboratory' => $regularLab->isEmpty()
                     ? ($requiredLab ? 'pending' : 'not_required')
                     : ($regularLab->every(fn (array $summary) => $summary['status'] === 'completed') ? 'completed' : 'pending'),
@@ -365,8 +365,7 @@ class OnsiteEventController extends Controller
         $drugVerification = $event->bulkEmployees()->whereIn('status', ['verifying_drug_test', 'verifying_drug_and_xray'])->count();
         $xrayVerification = $event->bulkEmployees()->whereIn('status', ['verifying_xray', 'verifying_drug_and_xray'])->count();
         $onsiteFinished = $event->bulkEmployees()->where('attendance_status', 'arrived')
-            ->when(in_array('PE', $event->service_types ?? [], true), fn ($query) => $query
-                ->whereHas('physicalExam', fn ($physical) => $physical->where('is_completed', true)))
+            ->whereHas('physicalExam', fn ($physical) => $physical->where('is_completed', true))
             ->when(app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($event) !== [], fn ($query) => $query
                 ->whereHas('labResult', fn ($lab) => $lab->where('is_completed', true)))
             ->when($event->requiresXray(), fn ($query) => $query

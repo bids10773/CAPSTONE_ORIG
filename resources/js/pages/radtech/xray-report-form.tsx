@@ -13,6 +13,7 @@ import InputError from '@/components/input-error';
 import { useSessionDraft } from '@/hooks/use-session-draft';
 import AppLayout from '@/layouts/app-layout';
 import { formatAppointmentDate } from '@/lib/appointment-date-time';
+import { confirmAction } from '@/lib/dialogs';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -111,9 +112,9 @@ export default function XrayReportForm({
         form.transform((values) => ({ ...values, workflow_action: action }));
         form.post(submitUrl, { preserveScroll: true, onSuccess: clearDraft });
     };
-    const confirmFinalize = () => {
+    const confirmFinalize = async () => {
         if (
-            window.confirm(
+            await confirmAction(
                 'Finalize X-Ray Result?\n\nPlease confirm that the findings and impression have been reviewed and verified. Once finalized, this service will be marked as completed and become read-only.',
             )
         ) {

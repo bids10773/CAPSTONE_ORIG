@@ -20,6 +20,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { formatEventDateRange } from '@/lib/appointment-date-time';
+import { confirmAction } from '@/lib/dialogs';
 import type { BreadcrumbItem } from '@/types';
 import type { PaginatedResponse } from '@/types/pagination';
 
@@ -161,11 +162,11 @@ export default function Attendance({
         );
     }
 
-    function mark(employee: Employee, status: 'arrived' | 'absent') {
+    async function mark(employee: Employee, status: 'arrived' | 'absent') {
         if (
-            !confirm(
+            !(await confirmAction(
                 `Verify employee: ${employeeName(employee)}\nCompany Employee No.: ${employee.user.patient_profile?.employee_number ?? 'Not provided'}\n\nMark this employee ${status.toUpperCase()}?`,
-            )
+            ))
         ) {
             return;
         }

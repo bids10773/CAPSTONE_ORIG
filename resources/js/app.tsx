@@ -5,6 +5,7 @@ import { lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from 'sonner';
 import '../css/app.css';
+import { ConfirmationDialogs } from './components/confirmation-dialogs';
 import {
     LogoutModalProvider,
     useLogoutModal,
@@ -98,6 +99,7 @@ createInertiaApp({
         root.render(
             <LogoutModalProvider>
                 <App {...props} />
+                <ConfirmationDialogs />
                 <LazyLogoutModal />
                 <ThemeAwareToaster />
             </LogoutModalProvider>,

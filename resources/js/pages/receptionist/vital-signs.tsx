@@ -1,11 +1,13 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { ArrowLeft, HeartPulse, History, Save } from 'lucide-react';
 import type { FormEvent } from 'react';
+import { BmiSummary } from '@/components/bmi-summary';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
+import { getBmiClassification } from '@/lib/bmi';
 import type { BreadcrumbItem } from '@/types';
 
 type Vital = {
@@ -19,6 +21,8 @@ type Vital = {
     height: string | null;
     weight: string | null;
     bmi: string | null;
+    visual_acuity: string | null;
+    hearing: string | null;
     notes: string | null;
     measurement_type: string;
     measured_at: string;
@@ -67,6 +71,8 @@ export default function VitalSigns({
         oxygen_saturation: '',
         height: '',
         weight: '',
+        visual_acuity: '',
+        hearing: '',
         notes: '',
     });
     const height = Number(form.data.height);
@@ -178,17 +184,68 @@ export default function VitalSigns({
                             </div>
                         ))}
                     </div>
-                    <div className="mt-5 rounded-2xl border border-moss-200 bg-moss-50 p-4">
-                        <span className="text-xs font-semibold text-moss-700">
-                            Body mass index (kg/m²)
-                        </span>
-                        <strong className="mt-1 block text-3xl text-moss-950">
-                            {bmi ?? '—'}
-                        </strong>
-                        <p className="text-xs text-moss-700">
-                            Calculated only from the entered height and weight;
-                            no diagnosis is generated.
+                    <fieldset className="mt-6">
+                        <legend className="text-sm font-semibold text-slate-900">
+                            Vision and hearing screening
+                        </legend>
+                        <p className="mt-1 text-sm text-slate-500">
+                            Record the screening results for the doctor to
+                            review.
                         </p>
+                        <div className="mt-3 grid gap-5 sm:grid-cols-2">
+                            {(
+                                [
+                                    [
+                                        'visual_acuity',
+                                        'Visual acuity',
+                                        'e.g. 20/20 OU',
+                                    ],
+                                    [
+                                        'hearing',
+                                        'Hearing',
+                                        'e.g. Normal bilateral',
+                                    ],
+                                ] as const
+                            ).map(([key, label, placeholder]) => (
+                                <div key={key}>
+                                    <Label htmlFor={key}>
+                                        {label}{' '}
+                                        <span className="text-red-600">*</span>
+                                    </Label>
+                                    <Input
+                                        id={key}
+                                        value={form.data[key]}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                key,
+                                                event.target.value,
+                                            )
+                                        }
+                                        placeholder={placeholder}
+                                        required
+                                        maxLength={100}
+                                        className="mt-2"
+                                        aria-invalid={Boolean(form.errors[key])}
+                                        aria-describedby={
+                                            form.errors[key]
+                                                ? `${key}-error`
+                                                : undefined
+                                        }
+                                    />
+                                    {form.errors[key] && (
+                                        <p
+                                            id={`${key}-error`}
+                                            className="mt-1 text-xs font-semibold text-red-600"
+                                        >
+                                            {form.errors[key]}
+                                        </p>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </fieldset>
+                    <div className="mt-5">
+                        <BmiSummary bmi={bmi} />
                     </div>
                     <div className="mt-5">
                         <Label htmlFor="notes">
@@ -270,6 +327,13 @@ export default function VitalSigns({
                                         {value(v.oxygen_saturation)}% ·{' '}
                                         {value(v.height)} cm · {value(v.weight)}{' '}
                                         kg · BMI {value(v.bmi)}
+                                        {getBmiClassification(v.bmi) &&
+                                            ` (${getBmiClassification(v.bmi)})`}
+                                    </p>
+                                    <p className="mt-1 text-slate-700">
+                                        Visual acuity:{' '}
+                                        {v.visual_acuity ?? 'Not recorded'} ·
+                                        Hearing: {v.hearing ?? 'Not recorded'}
                                     </p>
                                     <p className="mt-1 text-xs text-slate-500">
                                         Recorded by{' '}

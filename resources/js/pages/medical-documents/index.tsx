@@ -3,6 +3,12 @@ import { Download, Eye, FileCheck2, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import AppLayout from '@/layouts/app-layout';
+import {
+    confirmAction,
+    promptAction,
+    dialogs,
+    dialogSession,
+} from '@/lib/dialogs';
 import type { BreadcrumbItem, MedicalDocument } from '@/types';
 
 type Paginator = {
@@ -37,18 +43,25 @@ export default function DocumentManagement({
             { preserveState: true, replace: true },
         );
     };
-    const release = (doc: MedicalDocument) => {
-        const representative = window.confirm(
+    const release = async (doc: MedicalDocument) => {
+        if (dialogs.getSnapshot()) return;
+        const isCurrent = dialogSession();
+        const representative = await confirmAction(
             'Is the recipient an authorized representative?',
         );
+        if (!isCurrent()) return;
         const recipient_name = representative
-            ? window.prompt('Representative full name')
+            ? await promptAction('Representative full name')
             : null;
+        if (!isCurrent()) return;
         const representative_verification = representative
-            ? window.prompt('Identity/authorization verification details')
+            ? await promptAction('Identity/authorization verification details')
             : null;
+        if (!isCurrent()) return;
         if (representative && (!recipient_name || !representative_verification))
             return;
+        const remarks = await promptAction('Remarks (optional)');
+        if (!isCurrent()) return;
         router.post(`/medical-documents/${doc.id}/release`, {
             recipient_type: representative
                 ? 'authorized_representative'
@@ -56,7 +69,7 @@ export default function DocumentManagement({
             recipient_name,
             representative_verification,
             release_method: Object.keys(releaseMethods)[0],
-            remarks: window.prompt('Remarks (optional)'),
+            remarks,
         });
     };
     const review = (doc: MedicalDocument) => {
@@ -297,9 +310,9 @@ export default function DocumentManagement({
                                             )}
                                             {doc.can?.reverse && (
                                                 <button
-                                                    onClick={() => {
+                                                    onClick={async () => {
                                                         const reason =
-                                                            window.prompt(
+                                                            await promptAction(
                                                                 'Required reversal reason',
                                                             );
                                                         if (reason)

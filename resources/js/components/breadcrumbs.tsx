@@ -22,16 +22,23 @@ export function Breadcrumbs({
     return (
         <>
             {visibleBreadcrumbs.length > 0 && (
-                <Breadcrumb>
-                    <BreadcrumbList className="font-bold">
+                <Breadcrumb className="min-w-0">
+                    <BreadcrumbList className="flex-nowrap overflow-hidden text-sm font-medium whitespace-nowrap">
                         {visibleBreadcrumbs.map((item, index) => {
                             const isLast =
                                 index === visibleBreadcrumbs.length - 1;
                             return (
                                 <Fragment key={index}>
-                                    <BreadcrumbItem>
+                                    <BreadcrumbItem
+                                        className={
+                                            isLast ? 'min-w-0' : 'shrink-0'
+                                        }
+                                    >
                                         {isLast ? (
-                                            <BreadcrumbPage>
+                                            <BreadcrumbPage
+                                                className="truncate font-semibold"
+                                                title={item.title}
+                                            >
                                                 {item.title}
                                             </BreadcrumbPage>
                                         ) : (
@@ -45,7 +52,9 @@ export function Breadcrumbs({
                                             </BreadcrumbLink>
                                         )}
                                     </BreadcrumbItem>
-                                    {!isLast && <BreadcrumbSeparator />}
+                                    {!isLast && (
+                                        <BreadcrumbSeparator className="shrink-0" />
+                                    )}
                                 </Fragment>
                             );
                         })}

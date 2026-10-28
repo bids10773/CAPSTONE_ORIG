@@ -11,6 +11,7 @@ import {
 import type { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
+import { confirmAction } from '@/lib/dialogs';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -84,9 +85,9 @@ export default function DataManagement({
         );
     };
 
-    const enforceRetention = () => {
+    const enforceRetention = async () => {
         if (
-            window.confirm(
+            await confirmAction(
                 'Create a backup, then permanently remove all data currently beyond the configured retention periods?',
             )
         ) {

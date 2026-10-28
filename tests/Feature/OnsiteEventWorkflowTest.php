@@ -90,6 +90,19 @@ test('only arrived onsite employees enter independent medical queues', function 
         ->and($child->serviceQueues()->where('status', 'assigned')->count())->toBe(3);
 });
 
+test('onsite employees require a doctor queue even without PE in selected services', function () {
+    extract(onsiteFixture());
+    $event->update(['service_types' => ['CBC']]);
+    $child->update(['service_types' => ['CBC']]);
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+
+    $required = app(\App\Services\OnsiteStaffingRecommendationService::class)->requiredRoles($event);
+    expect($required)->toContain('doctor');
+
+    app(OnsiteEventWorkflowService::class)->markArrived($child, $receptionist);
+    expect($child->serviceQueues()->where('service_role', 'doctor')->exists())->toBeTrue();
+});
+
 test('absent employees leave all queues and resolve the parent event', function () {
     extract(onsiteFixture());
     $receptionist = User::factory()->create(['role' => 'receptionist']);

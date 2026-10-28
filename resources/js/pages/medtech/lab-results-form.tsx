@@ -12,6 +12,7 @@ import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { useSessionDraft } from '@/hooks/use-session-draft';
 import AppLayout from '@/layouts/app-layout';
+import { confirmAction } from '@/lib/dialogs';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -274,14 +275,14 @@ export default function LaboratoryResultsForm({
         selectedServices.length === 1
             ? `Finalize ${selectedServices[0]}`
             : 'Finalize Laboratory Report';
-    const confirmFinalize = () => {
+    const confirmFinalize = async () => {
         const services =
             selectedServices.length > 1
                 ? `\n\nSelected services: ${selectedServices.join(', ')}.`
                 : '';
         const message = `${finalizeLabel}?${services}\n\nPlease confirm that the results have been reviewed and verified. Once finalized, the report will be marked as completed and become read-only.`;
 
-        if (window.confirm(message)) {
+        if (await confirmAction(message)) {
             submit(true);
         }
     };
