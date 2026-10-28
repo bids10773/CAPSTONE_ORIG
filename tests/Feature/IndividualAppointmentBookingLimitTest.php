@@ -59,6 +59,29 @@ function existingIndividual(User $patient, string $date, string $status = 'pendi
     ]);
 }
 
+test('patient booking success survives a background notification refresh before the redirect', function () {
+    $patient = bookingPatient();
+    $doctor = bookingDoctor();
+    $message = 'Your appointment request has been submitted and is waiting for clinic confirmation.';
+
+    postIndividual($this, $patient, $doctor, '2026-08-18')
+        ->assertRedirect(route('appointments.index'))
+        ->assertSessionHas('success', $message);
+
+    // The booking notification triggers this background request through Echo.
+    $this->getJson(route('notifications.center'))->assertOk();
+
+    $this->get(route('appointments.index'))
+        ->assertOk()
+        ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->component('appointments/index')
+            ->where('flash.success', $message));
+
+    $this->get(route('appointments.index'))
+        ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->where('flash.success', null));
+});
+
 test('patient can book only one active appointment', function () {
     $patient = bookingPatient();
     $doctor = bookingDoctor();

@@ -17,6 +17,11 @@ class NotificationController extends Controller
     {
         $user = $request->user();
 
+        // Echo can refresh the bell before a form submission's redirect loads.
+        // This background response cannot display flash messages, so keep them
+        // for the next page response instead of consuming them here.
+        $request->session()->reflash();
+
         return response()->json([
             'unreadCount' => $user->unreadNotifications()->count(),
             'latest' => $user->notifications()->latest()->limit(7)->get()
