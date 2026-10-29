@@ -73,9 +73,14 @@ class MedicalDocument extends Model
     public function scopeReleaseVisible(Builder $query): Builder
     {
         return $query->where(function (Builder $visible): void {
+            $visible->where('document_type', '!=', 'physical_examination')
+                ->orWhereDoesntHave('appointment', fn (Builder $appointment) => $appointment
+                    ->where('examination_purpose', 'medical_clearance'));
+        })->where(function (Builder $visible): void {
             $visible->whereNotIn('document_type', ['laboratory_report', 'xray_report'])
                 ->orWhereDoesntHave('appointment', fn (Builder $appointment) => $appointment
-                    ->whereJsonContains('service_types', 'PE'));
+                    ->whereJsonContains('service_types', 'PE')
+                    ->whereIn('examination_purpose', ['pre_employment', 'annual_pe']));
         });
     }
 

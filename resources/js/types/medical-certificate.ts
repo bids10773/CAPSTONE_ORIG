@@ -44,6 +44,12 @@ export type MedicalCertificateConsultation = {
     recommendations?: string | null;
     attending_physician_id?: number | null;
     physician_license_no?: string | null;
+    service_progress?: {
+        key: string;
+        label: string;
+        status: string;
+        summary: string;
+    }[];
 };
 
 export type MedicalCertificatePermissions = {
@@ -57,6 +63,7 @@ export type MedicalCertificatePermissions = {
     void?: boolean;
     print?: boolean;
     download_pdf?: boolean;
+    review_services?: boolean;
 };
 
 export type MedicalCertificateRecord = {
@@ -90,6 +97,13 @@ export type MedicalCertificateRecord = {
     created_at?: string | null;
     updated_at?: string | null;
     issued_at?: string | null;
+    service_progress?: {
+        key: string;
+        label: string;
+        status: string;
+        summary: string;
+    }[];
+    release_url?: string | null;
     patient?: MedicalCertificatePatient | null;
     attending_physician?: MedicalCertificatePhysician | null;
     physician?: MedicalCertificatePhysician | null;

@@ -874,6 +874,47 @@ export default function MedicalCertificateFormPage({
                                         before saving.
                                     </p>
                                 )}
+                                {!!selectedConsultation?.service_progress
+                                    ?.length && (
+                                    <div className="mt-3 rounded-xl border p-3 text-sm">
+                                        <p className="font-semibold">
+                                            Consultation and requested services
+                                        </p>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            All requested services must be
+                                            completed before approval. Issue a
+                                            certificate only if justified by
+                                            your assessment.
+                                        </p>
+                                        <ul className="mt-2 space-y-1">
+                                            {selectedConsultation.service_progress.map(
+                                                (service) => (
+                                                    <li key={service.key}>
+                                                        {service.label}:{' '}
+                                                        {service.status ===
+                                                        'completed'
+                                                            ? 'Completed'
+                                                            : 'Pending completion'}
+                                                    </li>
+                                                ),
+                                            )}
+                                        </ul>
+                                        <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                                            <a
+                                                href={`/clinical-forms/${selectedConsultation.id}/physical-exam.pdf`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            >
+                                                Review examination and results
+                                            </a>
+                                            <a
+                                                href={`/doctor/physical-exam-form/${selectedConsultation.id}`}
+                                            >
+                                                Request additional services
+                                            </a>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="grid gap-4 sm:grid-cols-3">

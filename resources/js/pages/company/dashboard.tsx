@@ -38,7 +38,7 @@ import { promptAction } from '@/lib/dialogs';
 
 const EXAMINATION_PURPOSES = [
     ['pre_employment', 'Pre-employment'],
-    ['medical_clearance', 'Medical Certificate'],
+    ['medical_clearance', 'Medical Consultation / Certificate Request'],
 ] as const;
 const EXAMINATION_PURPOSE_ICONS = {
     pre_employment: BriefcaseMedical,

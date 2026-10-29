@@ -20,6 +20,7 @@ function delayedPeAppointment(array $services = ['PE', 'Drug Test']): Appointmen
         'appointment_date' => today(),
         'type' => 'individual',
         'status' => 'for_diagnostics',
+        'examination_purpose' => 'annual_pe',
         'service_types' => $services,
     ]);
 }
@@ -231,7 +232,7 @@ test('updated PE PDF uses the official consolidated medical examination sections
     ])->render();
 
     expect($html)
-        ->toContain('Medical Examination Report')
+        ->toContain('MEDICAL EXAMINATION REPORT')
         ->toContain('I. MEDICAL HISTORY')
         ->toContain('II. PHYSICAL EXAMINATION')
         ->toContain('III. LABORATORY')

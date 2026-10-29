@@ -233,6 +233,85 @@ export default function MedicalCertificateShow({ certificate, can }: Props) {
                     </div>
                 </header>
 
+                {!!certificate.service_progress?.length && (
+                    <section className="rounded-2xl border bg-white p-5 dark:bg-card">
+                        <h2 className="font-semibold">
+                            Consultation and requested services
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-500">
+                            Complete the examination and requested services
+                            before approval. Approve a certificate only when
+                            justified by your assessment.
+                        </p>
+                        <ul className="mt-3 space-y-2 text-sm">
+                            {certificate.service_progress.map((service) => (
+                                <li
+                                    key={service.key}
+                                    className="flex flex-wrap justify-between gap-2 rounded-lg border p-3"
+                                >
+                                    <span>
+                                        {service.label}: {service.summary}
+                                    </span>
+                                    <strong>{humanize(service.status)}</strong>
+                                </li>
+                            ))}
+                        </ul>
+                        {certificate.appointment_id &&
+                            permissions.review_services && (
+                                <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                                    <a
+                                        href={`/clinical-forms/${certificate.appointment_id}/physical-exam.pdf`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                    >
+                                        Review examination
+                                    </a>
+                                    {certificate.service_progress.some(
+                                        (service) =>
+                                            !['physical_exam', 'xray'].includes(
+                                                service.key,
+                                            ),
+                                    ) && (
+                                        <a
+                                            href={`/clinical-forms/${certificate.appointment_id}/laboratory.pdf`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                        >
+                                            Review laboratory results
+                                        </a>
+                                    )}
+                                    {certificate.service_progress.some(
+                                        (service) => service.key === 'xray',
+                                    ) && (
+                                        <a
+                                            href={`/clinical-forms/${certificate.appointment_id}/xray.pdf`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                        >
+                                            Review X-ray result
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+                    </section>
+                )}
+
+                {certificate.release_url && (
+                    <section className="rounded-2xl border bg-white p-5 dark:bg-card">
+                        <h2 className="font-semibold">Receptionist release</h2>
+                        <p className="mt-1 mb-3 text-sm text-slate-500">
+                            The physician has issued this certificate. Review it
+                            in Medical Documents, mark it ready for pickup, then
+                            record release to the patient.
+                        </p>
+                        <Button asChild>
+                            <Link href={certificate.release_url}>
+                                Open document release
+                            </Link>
+                        </Button>
+                    </section>
+                )}
+
                 {(certificate.correction_notes || certificate.void_reason) && (
                     <div
                         className={`rounded-xl border px-4 py-3 text-sm ${

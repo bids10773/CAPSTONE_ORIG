@@ -21,7 +21,7 @@ export function appointmentStatusLabel(status: string): string {
 const examinationPurposeLabels: Record<string, string> = {
     pre_employment: 'Pre-employment',
     annual_pe: 'Annual Physical Exam',
-    medical_clearance: 'Medical Certificate',
+    medical_clearance: 'Medical Consultation / Certificate Request',
 };
 
 export function examinationPurposeLabel(purpose?: string | null): string {

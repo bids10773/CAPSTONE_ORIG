@@ -24,11 +24,6 @@ class PhysicalExamController extends Controller
 {
     public function create(Appointment $appointment, MedicalExaminationService $examinations): Response|RedirectResponse
     {
-        if ($appointment->examination_purpose === 'medical_clearance') {
-            Gate::authorize('viewPhysicalExam', $appointment);
-
-            return redirect()->route('doctor.medical-certificates.prepare', $appointment);
-        }
         Gate::authorize('updatePhysicalExam', $appointment);
         app(\App\Services\OnsiteEventWorkflowService::class)->startService($appointment, 'doctor', request()->user());
         $medicalExamination = $examinations->forAppointment($appointment);
@@ -40,13 +35,18 @@ class PhysicalExamController extends Controller
         return Inertia::render('doctor/physical-exam-form', [
             'appointment' => $appointment,
             'physicalExam' => $appointment->physicalExam,
+            'availableServices' => $appointment->examination_purpose === 'medical_clearance'
+                ? collect(Appointment::getBookableServiceTypeOptions())->except('PE')->all()
+                : [],
             'latestVitalSign' => $appointment->latestVitalSign,
             'vitalSignHistory' => $appointment->vitalSigns->sortByDesc('measured_at')->values(),
             'pendingVitalRecheck' => $appointment->vitalSignRecheckRequests->first(),
             'medicalExamination' => $medicalExamination,
             'childSummaries' => $medicalExamination->childSummaries(),
             'vitalLimits' => config('physical_exam.vital_limits'),
-            'locked' => $appointment->medicalExamination?->finalized_at !== null && request()->user()->role !== 'admin',
+            'locked' => ($appointment->medicalExamination?->finalized_at !== null
+                || ($appointment->examination_purpose === 'medical_clearance' && $appointment->medicalCertificates()->whereIn('status', ['approved', 'issued'])->exists()))
+                && request()->user()->role !== 'admin',
             'submitUrl' => request()->user()->role === 'admin'
                 ? route('admin.physical-exams.update', $appointment)
                 : route('doctor.physical-exams.store', $appointment),
@@ -61,7 +61,38 @@ class PhysicalExamController extends Controller
         }
 
         DB::transaction(function () use ($request, $appointment, $definitions, $examinations, $existing): void {
+            $appointment = Appointment::query()->lockForUpdate()->findOrFail($appointment->id);
             $data = $request->validated();
+            if ($appointment->examination_purpose === 'medical_clearance') {
+                if ($appointment->medicalCertificates()->whereIn('status', ['approved', 'issued'])->exists()) {
+                    throw ValidationException::withMessages(['form' => 'The certificate is already approved. The consultation can no longer be changed.']);
+                }
+                $previousServices = $appointment->service_types ?? [];
+                $previousSections = array_keys($definitions->sectionsFor($appointment));
+                $appointment->update(['service_types' => collect(['PE'])
+                    ->merge($appointment->service_types ?? [])
+                    ->merge($data['requested_services'] ?? [])
+                    ->unique()->values()->all()]);
+                $newSections = array_diff(array_keys($definitions->sectionsFor($appointment)), $previousSections);
+                if ($newSections !== [] && $appointment->medicalExamination?->diagnosticResults()
+                    ->where('service_key', 'drug_test')
+                    ->whereIn('status', ['verifying', 'awaiting_official_result', 'official_result_received'])->exists()) {
+                    throw ValidationException::withMessages([
+                        'requested_services' => 'Complete the pending Drug Test verification before requesting additional laboratory services. Other services may still be requested.',
+                    ]);
+                }
+                if ($newSections !== [] && $appointment->labResult?->isFinalized()) {
+                    $appointment->labResult->update([
+                        'status' => 'draft', 'is_completed' => false,
+                        'finalized_at' => null, 'verified_by' => null,
+                    ]);
+                    $this->audit($request, $appointment, 'laboratory', 'reopened_for_requested_services', ['sections' => array_values($newSections)]);
+                }
+                $newServices = array_values(array_diff($appointment->service_types, $previousServices));
+                if ($newServices !== []) {
+                    $this->audit($request, $appointment, 'physical_exam', 'services_requested', ['services' => $newServices]);
+                }
+            }
             $medicalExamination = $examinations->forAppointment($appointment);
             if ($medicalExamination->finalized_at) {
                 throw ValidationException::withMessages(['medical_class' => 'This medical examination has already been finalized.']);
@@ -100,8 +131,11 @@ class PhysicalExamController extends Controller
 
             $next = $definitions->sectionsFor($appointment) !== []
                 ? 'for_diagnostics'
-                : ($appointment->requiresXray() ? 'for_xray' : 'for_final_evaluation');
+                : ($appointment->requiresXray() ? 'for_xray' : ($appointment->examination_purpose === 'medical_clearance' ? 'arrived' : 'for_final_evaluation'));
             $appointment->update(['status' => $next]);
+            if ($appointment->examination_purpose === 'medical_clearance') {
+                app(\App\Services\EmployeeMedicalStatusResolver::class)->resolve($appointment->fresh());
+            }
             app(\App\Services\OnsiteEventWorkflowService::class)->completeService($appointment, 'doctor', $request->user());
             app(\App\Services\OnsiteEventWorkflowService::class)->refreshFinalEvaluationTask($appointment->fresh());
             $this->audit($request, $appointment, 'physical_exam', $exam->wasRecentlyCreated ? 'created' : 'updated', $exam->getChanges());
@@ -111,6 +145,11 @@ class PhysicalExamController extends Controller
                 ]);
             }
         });
+
+        if ($appointment->examination_purpose === 'medical_clearance') {
+            return redirect()->route('doctor.medical-certificates.prepare', $appointment)
+                ->with('success', 'Consultation recorded. Complete any requested services before approving a certificate.');
+        }
 
         $destination = $appointment->bulk_appointment_id !== null
             ? route('doctor.onsite-events.show', $appointment->bulk_appointment_id)

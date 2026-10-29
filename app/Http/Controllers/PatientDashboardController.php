@@ -59,7 +59,7 @@ class PatientDashboardController extends Controller
             ->get()
             ->each(function (Appointment $appointment): void {
                 $examination = $appointment->medicalExamination;
-                if ($examination === null || ! $appointment->isPePackage()) {
+                if ($examination === null || ! $appointment->requiresPhysicalExamination()) {
                     return;
                 }
 

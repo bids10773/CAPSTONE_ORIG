@@ -28,6 +28,7 @@ type AppointmentRecordProps = {
     appointment: any;
     appointmentsIndexUrl: string;
     completePeReadyForPickup: boolean;
+    certificateDocumentStatus?: string | null;
     laboratorySections: Record<string, LaboratorySection>;
 };
 
@@ -35,6 +36,7 @@ export default function AppointmentRecord({
     appointment,
     appointmentsIndexUrl,
     completePeReadyForPickup,
+    certificateDocumentStatus,
     laboratorySections = {},
 }: AppointmentRecordProps) {
     const patient = appointment.user;
@@ -48,6 +50,13 @@ export default function AppointmentRecord({
         : 'Appointment';
     const services: string[] = appointment.service_types ?? [];
     const includesPe = services.includes('PE');
+    const isConsultationRequest =
+        appointment.examination_purpose === 'medical_clearance';
+    const isCompleteExamination =
+        includesPe &&
+        ['pre_employment', 'annual_pe'].includes(
+            appointment.examination_purpose,
+        );
     const laboratoryEntries = Object.entries(laboratorySections);
     const isPatientViewer = auth.user.role === 'patient';
     const isPortalRecordViewer = ['patient', 'company'].includes(
@@ -58,7 +67,7 @@ export default function AppointmentRecord({
     const peDocumentsAvailable =
         patientDocumentsAvailable &&
         (!isPortalRecordViewer ||
-            !services.includes('PE') ||
+            !isCompleteExamination ||
             Boolean(appointment.medical_examination?.released_at));
     const patientName = [
         patient.first_name,
@@ -68,14 +77,32 @@ export default function AppointmentRecord({
         .filter(Boolean)
         .join(' ');
     const documents = [
-        ...(includesPe
+        ...(isConsultationRequest
+            ? [
+                  {
+                      key: 'medical-certificate',
+                      icon: <FileHeart />,
+                      title: 'Medical Certificate',
+                      description:
+                          'Issued when justified by the doctor’s assessment, then released by reception',
+                      ready: ['ready_for_pickup', 'released'].includes(
+                          certificateDocumentStatus ?? '',
+                      ),
+                      href: '/medical-certificates',
+                  },
+              ]
+            : []),
+        ...(includesPe && !isConsultationRequest
             ? [
                   {
                       key: 'physical-exam',
                       icon: <Stethoscope />,
-                      title: 'Complete Medical Examination Report',
-                      description:
-                          'Complete examination summary and diagnostic results',
+                      title: isCompleteExamination
+                          ? 'Complete Medical Examination Report'
+                          : 'Physical Examination Report',
+                      description: isCompleteExamination
+                          ? 'Complete examination summary and diagnostic results'
+                          : 'Findings from the doctor’s physical examination',
                       ready: isPatientViewer
                           ? completePeReadyForPickup
                           : Boolean(appointment.physical_exam) &&
@@ -84,7 +111,7 @@ export default function AppointmentRecord({
                   },
               ]
             : []),
-        ...(!includesPe && laboratoryEntries.length > 0
+        ...(!isCompleteExamination && laboratoryEntries.length > 0
             ? [
                   {
                       key: 'laboratory',
@@ -102,7 +129,7 @@ export default function AppointmentRecord({
                   },
               ]
             : []),
-        ...(!includesPe && services.includes('X-Ray')
+        ...(!isCompleteExamination && services.includes('X-Ray')
             ? [
                   {
                       key: 'xray',

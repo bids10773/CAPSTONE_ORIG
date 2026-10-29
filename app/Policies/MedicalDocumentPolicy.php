@@ -46,6 +46,11 @@ class MedicalDocumentPolicy
 
     private function certificateIssued(MedicalDocument $document): bool
     {
+        if ($document->document_type === 'physical_examination'
+            && $document->appointment?->examination_purpose === 'medical_clearance') {
+            return false;
+        }
+
         return $document->document_type !== 'medical_certificate'
             || $document->medicalCertificate()->where('status', 'issued')->exists();
     }

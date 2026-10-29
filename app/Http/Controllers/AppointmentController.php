@@ -273,6 +273,10 @@ class AppointmentController extends Controller
             ? ClinicHours::partneredCompanyMinimumAppointmentDate()
             : ClinicHours::today();
 
+        if ($request->type === 'individual' && $request->examination_purpose === 'medical_clearance') {
+            $request->merge(['service_types' => ['PE']]);
+        }
+
         $rules = [
             'doctor_id' => ['nullable', Rule::requiredIf(fn () => in_array($request->type, ['individual', 'company_referral'], true)), 'exists:users,id'],
             'start_time' => ['nullable', Rule::requiredIf(fn () => in_array($request->type, ['individual', 'company_referral'], true)), 'date_format:H:i'],
@@ -317,7 +321,7 @@ class AppointmentController extends Controller
             if ($request->type === 'individual' && $request->examination_purpose === 'annual_pe') {
                 $validator->errors()->add(
                     'examination_purpose',
-                    'Individual appointments may use Pre-employment or Medical Certificate only.'
+                    'Individual appointments may use Pre-employment or Medical Consultation / Certificate Request only.'
                 );
             }
 
@@ -518,7 +522,8 @@ class AppointmentController extends Controller
         $completePeDocumentStatus = $appointment->medicalDocuments()
             ->where('document_type', 'physical_examination')
             ->value('status');
-        $completePeReadyForPickup = $appointment->isPePackage()
+        $completePeReadyForPickup = $appointment->requiresPhysicalExamination()
+            && $appointment->examination_purpose !== 'medical_clearance'
             && in_array(
                 $completePeDocumentStatus,
                 ['ready_for_pickup', 'released'],
@@ -550,6 +555,9 @@ class AppointmentController extends Controller
                 default => '/appointments',
             },
             'completePeReadyForPickup' => $completePeReadyForPickup,
+            'certificateDocumentStatus' => $appointment->examination_purpose === 'medical_clearance'
+                ? $appointment->medicalDocuments()->where('document_type', 'medical_certificate')->latest('id')->value('status')
+                : null,
             'laboratorySections' => collect($laboratorySections)
                 ->map(fn (array $section): array => [
                     'label' => $section['label'],
@@ -1519,7 +1527,11 @@ class AppointmentController extends Controller
                     ->orWhere(fn ($certificate) => $certificate
                         ->where('examination_purpose', 'medical_clearance')
                         ->whereIn('status', Appointment::OPEN_STATUSES))
-                    ->orWhere(fn ($release) => $release->where('status', 'completed')->whereHas('medicalExamination', fn ($exam) => $exam->whereNotNull('finalized_at')->whereNull('released_at')));
+                    ->orWhere(fn ($release) => $release
+                        ->where('status', 'completed')
+                        ->where(fn ($purpose) => $purpose->whereNull('examination_purpose')
+                            ->orWhere('examination_purpose', '!=', 'medical_clearance'))
+                        ->whereHas('medicalExamination', fn ($exam) => $exam->whereNotNull('finalized_at')->whereNull('released_at')));
             });
 
         } elseif ($role === 'medtech') {
@@ -1566,7 +1578,7 @@ class AppointmentController extends Controller
         $appointments->through(function (Appointment $appointment) use ($request, $role): Appointment {
             $appointment->setAttribute('is_scheduled_today', $appointment->appointment_date?->isToday() ?? false);
             if ($role === 'doctor') {
-                $appointment->setAttribute('can_start_physical_exam', $appointment->examination_purpose !== 'medical_clearance' && $request->user()->can('updatePhysicalExam', $appointment));
+                $appointment->setAttribute('can_start_physical_exam', $request->user()->can('updatePhysicalExam', $appointment));
                 $appointment->setAttribute('requires_final_evaluation', $appointment->requiresFinalEvaluation());
                 $appointment->setAttribute('certificate_url', $appointment->examination_purpose === 'medical_clearance'
                     && in_array($appointment->status, Appointment::OPEN_STATUSES, true)

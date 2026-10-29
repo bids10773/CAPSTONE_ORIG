@@ -46,6 +46,20 @@ function postIndividual($test, User $patient, User $doctor, string $date, string
     ]);
 }
 
+test('certificate request booking starts with consultation and leaves additional services to the doctor', function () {
+    $patient = bookingPatient();
+    $doctor = bookingDoctor();
+    $this->actingAs($patient)->post(route('appointments.store'), [
+        'type' => 'individual', 'examination_purpose' => 'medical_clearance',
+        'doctor_id' => $doctor->id, 'appointment_date' => '2026-08-18',
+        'start_time' => '08:00', 'service_types' => ['CBC', 'X-Ray'],
+    ])->assertSessionHasNoErrors();
+    $appointment = Appointment::where('user_id', $patient->id)->firstOrFail();
+    expect($appointment->service_types)->toBe(['PE'])
+        ->and($appointment->doctor_id)->toBe($doctor->id)
+        ->and($appointment->examination_purpose)->toBe('medical_clearance');
+});
+
 function existingIndividual(User $patient, string $date, string $status = 'pending'): Appointment
 {
     return Appointment::create([
@@ -142,7 +156,7 @@ test('individual appointments cannot use the annual examination purpose', functi
         'examination_purpose' => 'annual_pe',
         'service_types' => ['CBC'],
     ])->assertSessionHasErrors([
-        'examination_purpose' => 'Individual appointments may use Pre-employment or Medical Certificate only.',
+        'examination_purpose' => 'Individual appointments may use Pre-employment or Medical Consultation / Certificate Request only.',
     ]);
 
     expect(Appointment::query()->where('user_id', $patient->id)->doesntExist())

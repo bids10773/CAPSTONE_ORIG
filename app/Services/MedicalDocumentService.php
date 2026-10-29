@@ -43,6 +43,10 @@ class MedicalDocumentService
 
             return;
         }
+        if ($appointment->requiresPhysicalExamination() && $appointment->examination_purpose !== 'medical_clearance') {
+            $this->upsert($appointment, 'physical_examination', 'Physical Examination Report', 'Physical Examination',
+                $appointment->medicalExamination?->finalized_at ? 'approved' : ($appointment->physicalExam ? 'for_review' : 'pending'));
+        }
         $laboratorySections = app(LaboratoryFormDefinition::class)->sectionsFor($appointment);
         if ($laboratorySections !== []) {
             $laboratoryServices = collect($appointment->service_types ?? [])

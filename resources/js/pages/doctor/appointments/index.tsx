@@ -268,10 +268,19 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                             appointment.certificate_url
                                                         }
                                                         className="inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-moss-700 transition-colors hover:bg-moss-50"
-                                                        title="Prepare Medical Certificate"
+                                                        title={
+                                                            appointment
+                                                                .physical_exam
+                                                                ?.id
+                                                                ? 'Prepare Medical Certificate'
+                                                                : 'Start Consultation'
+                                                        }
                                                     >
                                                         <FileHeart className="h-4 w-4" />
-                                                        Certificate
+                                                        {appointment
+                                                            .physical_exam?.id
+                                                            ? 'Certificate'
+                                                            : 'Consultation'}
                                                     </Link>
                                                 )}
                                                 {appointment.can_start_physical_exam &&

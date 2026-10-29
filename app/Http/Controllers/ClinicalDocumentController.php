@@ -17,7 +17,7 @@ class ClinicalDocumentController extends Controller
         $this->loadPeAppointment($request, $appointment);
         $workflow->auditDocumentAccess($appointment, $request->user(), 'physical_exam', $request);
 
-        $pdf = Pdf::loadView('pdf.physical-examination-report', [
+        $pdf = Pdf::loadView($appointment->isPePackage() ? 'pdf.physical-examination-report' : 'pdf.physical-examination', [
             'appointment' => $appointment,
             'examination' => $appointment->medicalExamination,
             'physical' => $appointment->physicalExam,
@@ -36,7 +36,7 @@ class ClinicalDocumentController extends Controller
     {
         Gate::authorize('viewPhysicalExam', $appointment);
         $this->ensurePatientResultIsReleased($request, $appointment, 'physical_exam');
-        abort_unless($appointment->isPePackage(), 404, 'This appointment has no PE form.');
+        abort_unless($appointment->requiresPhysicalExamination(), 404, 'This appointment has no PE form.');
         $appointment->load([
             'user.patientProfile', 'company', 'medicalExamination.examiningDoctor',
             'medicalExamination.finalizedBy', 'medicalExamination.diagnosticResults',

@@ -32,6 +32,8 @@ interface Props {
     appointment: {
         id: number;
         reference_code: string;
+        examination_purpose?: string;
+        service_types?: string[];
         user: { first_name: string; last_name: string };
         patient_profile?: {
             sex?: string;
@@ -48,6 +50,7 @@ interface Props {
     submitUrl: string;
     vitalLimits: Record<string, { min: number; max: number }>;
     locked: boolean;
+    availableServices?: Record<string, string>;
 }
 
 function getAge(birthdate?: string) {
@@ -72,9 +75,13 @@ export default function PhysicalExamForm({
     pendingVitalRecheck,
     submitUrl,
     locked,
+    availableServices = {},
 }: Props) {
     const { data, setData, post, isDirty, processing, errors } = useForm<any>({
         vital_signs_override_reason: '',
+        requested_services: (appointment.service_types ?? []).filter(
+            (service) => service !== 'PE',
+        ),
         remarks: physicalExam?.remarks || '',
         present_illness: appointment.medical_history?.present_illness || '',
         past_medical_history:
@@ -106,6 +113,7 @@ export default function PhysicalExamForm({
     );
     const onSubmit = (event: React.FormEvent) => {
         event.preventDefault();
+        if (locked) return;
         post(submitUrl, {
             preserveScroll: true,
             onSuccess: clearDraft,
@@ -416,7 +424,66 @@ export default function PhysicalExamForm({
                 </details>
             </aside>
 
-            <StickyActionFooter hint="Saving completes this examination stage using the existing clinical workflow.">
+            {appointment.examination_purpose === 'medical_clearance' && (
+                <section className="rounded-2xl border bg-white p-5 dark:bg-card">
+                    <h2 className="font-semibold">
+                        Additional services, only if needed
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                        Request services based on this consultation. Leave all
+                        unchecked if no additional services are needed. Existing
+                        requests are retained.
+                    </p>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        {Object.entries(availableServices).map(
+                            ([service, label]) => (
+                                <label
+                                    key={service}
+                                    className="flex items-center gap-3 rounded-xl border p-3 text-sm"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={data.requested_services.includes(
+                                            service,
+                                        )}
+                                        disabled={
+                                            locked ||
+                                            appointment.service_types?.includes(
+                                                service,
+                                            )
+                                        }
+                                        onChange={(event) =>
+                                            setData(
+                                                'requested_services',
+                                                event.target.checked
+                                                    ? [
+                                                          ...data.requested_services,
+                                                          service,
+                                                      ]
+                                                    : data.requested_services.filter(
+                                                          (value: string) =>
+                                                              value !== service,
+                                                      ),
+                                            )
+                                        }
+                                    />
+                                    {label}
+                                </label>
+                            ),
+                        )}
+                    </div>
+                    <FieldError
+                        message={
+                            errors.requested_services ||
+                            Object.entries(errors).find(([key]) =>
+                                key.startsWith('requested_services.'),
+                            )?.[1]
+                        }
+                    />
+                </section>
+            )}
+
+            <StickyActionFooter hint="Saving records the examination and forwards any requested services for completion.">
                 <Button
                     type="button"
                     variant="outline"
@@ -425,7 +492,7 @@ export default function PhysicalExamForm({
                     <ArrowLeft className="size-4" />
                     Back to queue
                 </Button>
-                <Button type="submit" disabled={processing}>
+                <Button type="submit" disabled={processing || locked}>
                     <Save className="size-4" />
                     {processing ? 'Saving examination…' : 'Save examination'}
                 </Button>

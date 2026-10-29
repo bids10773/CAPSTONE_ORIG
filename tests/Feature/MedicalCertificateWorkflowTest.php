@@ -219,7 +219,7 @@ test('certificate appointments cannot be finalized through the examination workf
     $this->assertDatabaseCount('medical_certificates', 1);
 });
 
-test('certificate appointments open the editor without an examination', function () {
+test('certificate requests start with a consultation examination before the certificate editor', function () {
     $doctor = medicalCertificateDoctor();
     $patient = medicalCertificatePatient();
     $appointment = medicalCertificateConsultation($patient, $doctor, [
@@ -227,9 +227,12 @@ test('certificate appointments open the editor without an examination', function
         'appointment_date' => '2026-10-11',
     ]);
     $this->actingAs($doctor)->get(route('doctor.medical-certificates.prepare', $appointment))
-        ->assertRedirect(route('medical-certificates.create', ['patient_id' => $patient->id, 'appointment_id' => $appointment->id]));
+        ->assertRedirect(route('doctor.physical-exams.create', $appointment));
     $this->get(route('doctor.physical-exams.create', $appointment))
-        ->assertRedirect(route('doctor.medical-certificates.prepare', $appointment));
+        ->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->component('doctor/physical-exam-form')
+        ->has('availableServices.CBC')
+        ->missing('availableServices.ECG'));
     $this->get(route('doctor.final-evaluation', $appointment))
         ->assertRedirect(route('doctor.medical-certificates.prepare', $appointment));
     $this->get(route('medical-certificates.create', ['patient_id' => $patient->id, 'appointment_id' => $appointment->id]))
@@ -239,6 +242,46 @@ test('certificate appointments open the editor without an examination', function
         ->where('selectedConsultationId', $appointment->id));
     expect($appointment->physicalExam)->toBeNull();
 });
+
+test('doctor requests only needed system services during a certificate consultation', function (array $services, string $status) {
+    $doctor = medicalCertificateDoctor();
+    $patient = medicalCertificatePatient();
+    $appointment = medicalCertificateConsultation($patient, $doctor, [
+        'examination_purpose' => 'medical_clearance', 'status' => 'arrived',
+        'appointment_date' => today(),
+    ]);
+    $data = ['requested_services' => $services, 'present_illness' => 'Fever', 'vital_signs_override_reason' => 'Urgent assessment'];
+    foreach ((new \App\Http\Requests\SavePhysicalExamRequest)->bodyParts() as $part) {
+        $data[$part.'_status'] = 'normal';
+    }
+    $this->actingAs($doctor)->post(route('doctor.physical-exams.store', $appointment), $data)
+        ->assertSessionHasNoErrors()->assertRedirect();
+    expect($appointment->fresh()->service_types)->toBe(['PE', ...$services])
+        ->and($appointment->fresh()->status)->toBe($status)
+        ->and($appointment->fresh()->physicalExam->is_completed)->toBeTrue();
+})->with([
+    'no additional services' => [[], 'arrived'],
+    'laboratory requested' => [['CBC'], 'for_diagnostics'],
+    'xray requested' => [['X-Ray'], 'for_xray'],
+]);
+
+test('certificate approval requires examination and completed requested services', function (bool $exam, array $services) {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $appointment = medicalCertificateConsultation($patient, $doctor, [
+        'examination_purpose' => 'medical_clearance', 'status' => 'arrived', 'service_types' => $services,
+    ]);
+    if ($exam) {
+        $appointment->physicalExam()->create([
+            'medical_examination_id' => $appointment->medicalExamination->id,
+            'doctor_id' => $doctor->id, 'classification' => 'Pending', 'is_completed' => true,
+        ]);
+    }
+    $certificate = medicalCertificateRecord($patient, $doctor, 'draft', 1, ['appointment_id' => $appointment->id]);
+    $this->actingAs($doctor)->patch(route('medical-certificates.approve', $certificate))
+        ->assertSessionHasErrors('appointment_id');
+    expect($certificate->fresh()->status)->toBe('draft');
+})->with([[false, ['PE']], [true, ['PE', 'CBC']], [true, ['PE', 'X-Ray']]]);
 
 test('certificate appointment entry reuses existing drafts and rejects other doctors', function () {
     $doctor = medicalCertificateDoctor();
@@ -271,6 +314,28 @@ test('doctor queue provides certificate entry even when an old examination exist
             ->where('appointments.data.0.certificate_url', route('doctor.medical-certificates.prepare', $appointment)));
 });
 
+test('completed certificate appointments with old finalized examinations leave the doctor queue', function () {
+    $doctor = medicalCertificateDoctor();
+    $patient = medicalCertificatePatient();
+    $appointment = medicalCertificateConsultation($patient, $doctor, [
+        'examination_purpose' => 'medical_clearance',
+        'status' => 'completed',
+        'service_types' => ['CBC'],
+        'appointment_date' => today(),
+    ]);
+    app(\App\Services\MedicalExaminationService::class)->forAppointment($appointment)->update([
+        'finalized_by' => $doctor->id,
+        'finalized_at' => now(),
+        'released_at' => null,
+    ]);
+
+    $this->actingAs($doctor)->get(route('doctor.appointments'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('doctor/appointments/index')
+            ->has('appointments.data', 0));
+});
+
 test('draft preparation leaves the certificate appointment open', function () {
     $doctor = medicalCertificateDoctor();
     $patient = medicalCertificatePatient();
@@ -300,10 +365,142 @@ test('issuing a certificate completes its appointment without final evaluation',
     $doctor = medicalCertificateDoctor();
     $patient = medicalCertificatePatient();
     $appointment = medicalCertificateConsultation($patient, $doctor, ['examination_purpose' => 'medical_clearance', 'status' => 'arrived']);
+    $appointment->physicalExam()->create([
+        'medical_examination_id' => $appointment->medicalExamination->id,
+        'doctor_id' => $doctor->id, 'classification' => 'Pending', 'is_completed' => true,
+    ]);
     $certificate = medicalCertificateRecord($patient, $doctor, 'approved', 1, ['appointment_id' => $appointment->id]);
     app(\App\Services\MedicalCertificateWorkflowService::class)->issue($certificate, $doctor, null, \Illuminate\Http\Request::create('/issue', 'PATCH'));
     expect($appointment->fresh()->status)->toBe('completed')
         ->and($appointment->medicalExamination->finalized_at)->toBeNull();
+});
+
+test('certificate requests proceed from examination through physician issuance to receptionist release', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $appointment = medicalCertificateConsultation($patient, $doctor, [
+        'examination_purpose' => 'medical_clearance', 'status' => 'arrived', 'appointment_date' => today(),
+    ]);
+    $data = ['requested_services' => [], 'present_illness' => 'Fever', 'vital_signs_override_reason' => 'Urgent assessment'];
+    foreach ((new \App\Http\Requests\SavePhysicalExamRequest)->bodyParts() as $part) {
+        $data[$part.'_status'] = 'normal';
+    }
+    $this->actingAs($doctor)->post(route('doctor.physical-exams.store', $appointment), $data)
+        ->assertSessionHasNoErrors()->assertRedirect(route('doctor.medical-certificates.prepare', $appointment));
+    $this->get(route('doctor.medical-certificates.prepare', $appointment))
+        ->assertRedirect(route('medical-certificates.create', ['patient_id' => $patient->id, 'appointment_id' => $appointment->id]));
+    $this->post(route('medical-certificates.store'), medicalCertificatePayload($patient, $doctor, $appointment, ['save_action' => 'approve']))
+        ->assertSessionHasNoErrors();
+    $certificate = MedicalCertificate::firstOrFail();
+    expect($certificate->status)->toBe('approved');
+    $document = $certificate->medicalDocuments()->firstOrFail();
+    $this->actingAs($receptionist)->patch(route('medical-documents.ready', $document))->assertForbidden();
+    $this->patch(route('medical-certificates.issue', $certificate))->assertForbidden();
+    $this->actingAs($doctor)->patch(route('medical-certificates.issue', $certificate))->assertSessionHasNoErrors();
+    $this->actingAs($receptionist)->get(route('medical-certificates.show', $certificate))
+        ->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('certificate.release_url', route('medical-documents.index', ['type' => 'medical_certificate'])));
+    $this->patch(route('medical-documents.review', $document))->assertSessionHasNoErrors();
+    $this->patch(route('medical-documents.ready', $document))->assertSessionHasNoErrors();
+    $this->post(route('medical-documents.release', $document), [
+        'recipient_type' => 'patient', 'release_method' => 'physical_pickup',
+    ])->assertSessionHasNoErrors();
+    expect($document->fresh()->status)->toBe('released')
+        ->and($document->fresh()->released_by)->toBe($receptionist->id)
+        ->and($certificate->fresh()->status)->toBe('issued');
+});
+
+test('certificate consultation rejects unavailable services and unassigned doctors', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $appointment = medicalCertificateConsultation($patient, $doctor, [
+        'examination_purpose' => 'medical_clearance', 'status' => 'arrived', 'appointment_date' => today(),
+    ]);
+    $data = ['requested_services' => ['ECG'], 'vital_signs_override_reason' => 'Urgent assessment'];
+    foreach ((new \App\Http\Requests\SavePhysicalExamRequest)->bodyParts() as $part) {
+        $data[$part.'_status'] = 'normal';
+    }
+    $this->actingAs($doctor)->post(route('doctor.physical-exams.store', $appointment), $data)
+        ->assertSessionHasErrors('requested_services.0');
+    $this->actingAs(medicalCertificateDoctor())->post(route('doctor.physical-exams.store', $appointment), $data)->assertForbidden();
+    expect($appointment->fresh()->service_types)->toBe(['PE'])
+        ->and($appointment->fresh()->physicalExam)->toBeNull();
+});
+
+test('completed laboratory services forward a certificate request to its next required service', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $appointment = medicalCertificateConsultation($patient, $doctor, [
+        'examination_purpose' => 'medical_clearance', 'status' => 'for_diagnostics', 'service_types' => ['PE', 'CBC', 'X-Ray'],
+    ]);
+    $appointment->physicalExam()->create([
+        'medical_examination_id' => $appointment->medicalExamination->id,
+        'doctor_id' => $doctor->id, 'classification' => 'Pending', 'is_completed' => true,
+    ]);
+    $appointment->labResult()->create([
+        'medical_examination_id' => $appointment->medicalExamination->id,
+        'encoded_by' => $doctor->id, 'status' => 'finalized', 'finalized_at' => now(), 'cbc_results' => ['hemoglobin' => '14'],
+    ]);
+    app(\App\Services\EmployeeMedicalStatusResolver::class)->resolve($appointment->fresh());
+    expect($appointment->fresh()->status)->toBe('for_xray');
+});
+
+test('a doctor can request another laboratory service after reviewing a completed result', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $appointment = medicalCertificateConsultation($patient, $doctor, [
+        'examination_purpose' => 'medical_clearance', 'status' => 'arrived', 'appointment_date' => today(),
+        'service_types' => ['PE', 'CBC'],
+    ]);
+    $lab = $appointment->labResult()->create([
+        'medical_examination_id' => $appointment->medicalExamination->id, 'encoded_by' => $doctor->id,
+        'status' => 'finalized', 'is_completed' => true, 'finalized_at' => now(), 'cbc_results' => ['hemoglobin' => '14'],
+    ]);
+    $data = ['requested_services' => ['Urinalysis'], 'vital_signs_override_reason' => 'Urgent assessment'];
+    foreach ((new \App\Http\Requests\SavePhysicalExamRequest)->bodyParts() as $part) {
+        $data[$part.'_status'] = 'normal';
+    }
+    $this->actingAs($doctor)->post(route('doctor.physical-exams.store', $appointment), $data)->assertSessionHasNoErrors();
+    expect($appointment->fresh()->service_types)->toBe(['PE', 'CBC', 'Urinalysis'])
+        ->and($lab->fresh()->isFinalized())->toBeFalse()
+        ->and($lab->fresh()->cbc_results)->toBe(['hemoglobin' => '14']);
+});
+
+test('an attending doctor can return an older approved certificate for consultation correction', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $appointment = medicalCertificateConsultation($patient, $doctor, [
+        'examination_purpose' => 'medical_clearance', 'status' => 'arrived', 'appointment_date' => today()->subDay(),
+    ]);
+    $certificate = medicalCertificateRecord($patient, $doctor, 'approved', 1, ['appointment_id' => $appointment->id]);
+    $this->actingAs($doctor)->patch(route('medical-certificates.request-changes', $certificate), ['reason' => 'Record the consultation examination before issuance.'])
+        ->assertSessionHasNoErrors()->assertRedirect();
+    expect($certificate->fresh()->status)->toBe('changes_requested')
+        ->and($certificate->fresh()->approved_at)->toBeNull();
+    $this->get(route('doctor.physical-exams.create', $appointment))->assertOk();
+});
+
+test('additional laboratory requests wait for pending drug verification without blocking other services', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $appointment = medicalCertificateConsultation($patient, $doctor, [
+        'examination_purpose' => 'medical_clearance', 'status' => 'verifying_drug_test', 'appointment_date' => today(), 'arrived_at' => now(),
+        'service_types' => ['PE', 'Drug Test'],
+    ]);
+    $appointment->medicalExamination->diagnosticResults()->updateOrCreate(['service_key' => 'drug_test'], [
+        'appointment_id' => $appointment->id, 'patient_id' => $patient->id, 'service_key' => 'drug_test', 'status' => 'verifying',
+    ]);
+    $data = ['requested_services' => ['CBC'], 'vital_signs_override_reason' => 'Urgent assessment'];
+    foreach ((new \App\Http\Requests\SavePhysicalExamRequest)->bodyParts() as $part) {
+        $data[$part.'_status'] = 'normal';
+    }
+    $this->actingAs($doctor)->post(route('doctor.physical-exams.store', $appointment), $data)
+        ->assertSessionHasErrors('requested_services');
+    expect($appointment->fresh()->service_types)->toBe(['PE', 'Drug Test']);
+    $this->post(route('doctor.physical-exams.store', $appointment), [...$data, 'requested_services' => ['X-Ray']])
+        ->assertSessionHasNoErrors();
+    expect($appointment->fresh()->service_types)->toBe(['PE', 'Drug Test', 'X-Ray']);
 });
 
 test('pre employment and annual purposes allow final evaluation but certificates do not', function (string $purpose, bool $allowed) {

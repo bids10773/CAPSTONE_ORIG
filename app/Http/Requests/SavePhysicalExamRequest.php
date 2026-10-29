@@ -39,6 +39,12 @@ class SavePhysicalExamRequest extends FormRequest
             'remarks' => ['nullable', 'string', 'max:3000'],
             'vital_signs_override_reason' => ['nullable', 'string', 'max:1000'],
         ];
+        if ($this->route('appointment')->examination_purpose === 'medical_clearance') {
+            $rules['requested_services'] = ['sometimes', 'array'];
+            $rules['requested_services.*'] = ['string', 'distinct', \Illuminate\Validation\Rule::in(
+                array_keys(\App\Models\Appointment::getBookableServiceTypeOptions())
+            )];
+        }
 
         foreach ($this->bodyParts() as $field) {
             $rules["{$field}_status"] = ['required', 'in:normal,with_findings'];

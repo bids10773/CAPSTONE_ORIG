@@ -1,23 +1,20 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
     ArrowLeft,
     ArrowRight,
     BriefcaseMedical,
     Building2,
-    CakeSlice,
     CalendarDays,
     Check,
     CheckCircle2,
     CircleAlert,
     ClipboardCheck,
-    Clock3,
     FileHeart,
     HeartPulse,
     Info,
     LoaderCircle,
     Mail,
-    MapPin,
     Phone,
     ShieldCheck,
     Stethoscope,
@@ -122,7 +119,6 @@ type OptionEntry = [string, string];
 const STEPS = [
     { title: 'Visit', short: 'Visit' },
     { title: 'Schedule', short: 'Time' },
-    { title: 'Details', short: 'Details' },
     { title: 'Review', short: 'Review' },
     { title: 'Confirmation', short: 'Done' },
 ];
@@ -146,41 +142,10 @@ const TYPE_DETAILS: Record<
 };
 
 const SERVICE_ICONS = [HeartPulse, FileHeart, Stethoscope, ClipboardCheck];
-const BASIC_FIVE_DETAILS = [
-    {
-        service: 'CBC',
-        label: 'Complete Blood Count (CBC)',
-        description:
-            'Checks blood cells for infection, anemia, and general health concerns.',
-    },
-    {
-        service: 'Urinalysis',
-        label: 'Routine Urinalysis',
-        description: 'Screens for urinary, kidney, and metabolic conditions.',
-    },
-    {
-        service: 'Fecalysis',
-        label: 'Fecalysis (Stool Test)',
-        description:
-            'Checks for parasites, blood, and gastrointestinal concerns.',
-    },
-    {
-        service: 'X-Ray',
-        label: 'Chest X-ray (PA view)',
-        description:
-            'Evaluates the lungs and chest, including tuberculosis screening.',
-    },
-    {
-        service: 'PE',
-        label: 'Physical Examination',
-        description:
-            'Includes a physician assessment and Fit-to-Work evaluation.',
-    },
-] as const;
 const EXAMINATION_PURPOSES = [
     ['pre_employment', 'Pre-employment'],
     ['annual_pe', 'Annual Examination'],
-    ['medical_clearance', 'Medical Certificate'],
+    ['medical_clearance', 'Medical Consultation / Certificate Request'],
 ] as const;
 const EXAMINATION_PURPOSE_ICONS: Record<string, LucideIcon> = {
     pre_employment: BriefcaseMedical,
@@ -422,6 +387,10 @@ export default function CreateAppointment() {
                       draft.examination_purpose === 'annual_pe'
                           ? ''
                           : draft.examination_purpose,
+                  service_types:
+                      draft.examination_purpose === 'medical_clearance'
+                          ? ['PE']
+                          : draft.service_types,
               };
     });
     const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -468,7 +437,6 @@ export default function CreateAppointment() {
     const selectedCompany = companies.find(
         (company) => String(company.id) === formData.company_id,
     );
-    const patientProfile = auth.user.patient_profile;
 
     const filteredCompanies = useMemo(
         () =>
@@ -649,7 +617,10 @@ export default function CreateAppointment() {
             if (!formData.examination_purpose)
                 nextErrors.examination_purpose =
                     'Choose the purpose of this examination.';
-            if (!formData.service_types.length)
+            if (
+                formData.examination_purpose !== 'medical_clearance' &&
+                !formData.service_types.length
+            )
                 nextErrors.service_types =
                     'Choose at least one medical service.';
             if (!isCompanyAccount && needsCompany && !formData.company_id)
@@ -687,7 +658,7 @@ export default function CreateAppointment() {
             )
                 nextErrors.start_time = 'Choose an available time.';
         }
-        if (currentStep === 3 && isCompanyAccount) {
+        if (currentStep === 2 && isCompanyAccount) {
             if (!formData.service_location)
                 nextErrors.service_location = 'Choose a service setup.';
             if (!formData.expected_employee_count)
@@ -711,7 +682,7 @@ export default function CreateAppointment() {
 
     const continueForward = () => {
         if (!validateStep()) return;
-        setCurrentStep((step) => Math.min(step + 1, 4));
+        setCurrentStep((step) => Math.min(step + 1, 3));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -730,6 +701,11 @@ export default function CreateAppointment() {
         setErrors({});
         const bookingPayload = {
             ...formData,
+            service_types:
+                formData.type === 'individual' &&
+                formData.examination_purpose === 'medical_clearance'
+                    ? ['PE']
+                    : formData.service_types,
             service_location: isCompanyAccount
                 ? formData.service_location
                 : undefined,
@@ -787,11 +763,10 @@ export default function CreateAppointment() {
                             'event_contact_name',
                             'event_contact_number',
                             'expected_employee_count',
-                            'notes',
                         ].includes(key),
                     )
                 ) {
-                    setCurrentStep(3);
+                    setCurrentStep(2);
                 }
             },
             onFinish: () => setSubmitting(false),
@@ -842,7 +817,7 @@ export default function CreateAppointment() {
                                 <div className="grid min-w-0 gap-6 border-b border-slate-100 px-5 py-5 sm:px-8 lg:grid-cols-[minmax(230px,0.7fr)_minmax(0,1.3fr)] lg:items-center">
                                     <div>
                                         <p className="text-xs font-semibold text-moss-600">
-                                            Step {currentStep} of 4
+                                            Step {currentStep} of 3
                                         </p>
                                         <h2 className="mt-1 text-xl font-semibold tracking-[-.025em]">
                                             {currentStep === 1 &&
@@ -852,8 +827,6 @@ export default function CreateAppointment() {
                                                     ? 'Choose a preferred start date'
                                                     : 'Choose a date and time')}
                                             {currentStep === 3 &&
-                                                'Confirm your information'}
-                                            {currentStep === 4 &&
                                                 'Review your appointment'}
                                         </h2>
                                         <p className="mt-1 text-sm text-slate-500">
@@ -864,8 +837,6 @@ export default function CreateAppointment() {
                                                     ? 'The clinic will set the final one-day or two-day duration after reviewing your request.'
                                                     : 'Only currently available schedules are shown.')}
                                             {currentStep === 3 &&
-                                                'We use the verified information saved in your profile.'}
-                                            {currentStep === 4 &&
                                                 'Check the details below before submitting your request.'}
                                         </p>
                                     </div>
@@ -957,6 +928,14 @@ export default function CreateAppointment() {
                                                                     ]),
                                                                 ),
                                                             );
+                                                        } else if (
+                                                            purpose ===
+                                                            'medical_clearance'
+                                                        ) {
+                                                            update(
+                                                                'service_types',
+                                                                ['PE'],
+                                                            );
                                                         } else {
                                                             update(
                                                                 'service_types',
@@ -992,6 +971,12 @@ export default function CreateAppointment() {
                                             )}
                                             {currentStep === 2 && (
                                                 <ScheduleStep
+                                                    chooseDoctorFirst={
+                                                        formData.type ===
+                                                            'individual' &&
+                                                        formData.examination_purpose ===
+                                                            'medical_clearance'
+                                                    }
                                                     minDate={
                                                         appointmentMinimumDate
                                                     }
@@ -1067,28 +1052,24 @@ export default function CreateAppointment() {
                                                     }
                                                 />
                                             )}
+                                            {currentStep === 2 &&
+                                                isCompanyAccount && (
+                                                    <CompanyBookingFields
+                                                        user={auth.user}
+                                                        companyAddress={
+                                                            onsiteAddress
+                                                        }
+                                                        event={formData}
+                                                        errors={errors}
+                                                        onEvent={(
+                                                            field,
+                                                            value,
+                                                        ) =>
+                                                            update(field, value)
+                                                        }
+                                                    />
+                                                )}
                                             {currentStep === 3 && (
-                                                <DetailsStep
-                                                    user={auth.user}
-                                                    profile={patientProfile}
-                                                    isCompanyAccount={
-                                                        isCompanyAccount
-                                                    }
-                                                    companyAddress={
-                                                        onsiteAddress
-                                                    }
-                                                    notes={formData.notes}
-                                                    event={formData}
-                                                    errors={errors}
-                                                    onEvent={(field, value) =>
-                                                        update(field, value)
-                                                    }
-                                                    onNotes={(notes) =>
-                                                        update('notes', notes)
-                                                    }
-                                                />
-                                            )}
-                                            {currentStep === 4 && (
                                                 <ReviewStep
                                                     formData={formData}
                                                     doctor={selectedDoctor}
@@ -1098,7 +1079,6 @@ export default function CreateAppointment() {
                                                     }
                                                     serviceTypes={serviceTypes}
                                                     user={auth.user}
-                                                    profile={patientProfile}
                                                     onEdit={setCurrentStep}
                                                 />
                                             )}
@@ -1121,7 +1101,7 @@ export default function CreateAppointment() {
                                     >
                                         <ArrowLeft className="size-4" /> Back
                                     </button>
-                                    {currentStep < 4 ? (
+                                    {currentStep < 3 ? (
                                         <button
                                             type="button"
                                             onClick={continueForward}
@@ -1172,11 +1152,7 @@ export default function CreateAppointment() {
                                         </button>
                                     </div>
                                 )}
-                                <BookingSummary
-                                    formData={formData}
-                                    doctor={selectedDoctor}
-                                    appointmentTypes={appointmentTypes}
-                                />
+                                <ArrivalGuidance type={formData.type} />
                             </div>
                         </div>
                     </div>
@@ -1211,7 +1187,7 @@ function BookingIntro({ className = '' }: { className?: string }) {
 function Progress({ currentStep }: { currentStep: number }) {
     return (
         <nav aria-label="Booking progress" className="mb-7 w-full pb-1">
-            <ol className="grid w-full grid-cols-5 items-start">
+            <ol className="grid w-full grid-cols-4 items-start">
                 {STEPS.map((item, index) => {
                     const step = index + 1;
                     const complete = step < currentStep;
@@ -1402,7 +1378,24 @@ function VisitStep({
                                     >
                                         <Icon className="size-4" />
                                     </span>
-                                    {label}
+                                    <span>
+                                        {label}
+                                        {value === 'pre_employment' && (
+                                            <span className="mt-1 block text-xs font-normal text-slate-500">
+                                                For individuals who need or are
+                                                required by their employer to
+                                                undergo a medical examination
+                                                before starting a new job.
+                                            </span>
+                                        )}
+                                        {value === 'medical_clearance' && (
+                                            <span className="mt-1 block text-xs font-normal text-slate-500">
+                                                For patients who need a medical
+                                                checkup, sick leave assessment,
+                                                or medical certificate.
+                                            </span>
+                                        )}
+                                    </span>
                                 </button>
                             );
                         })}
@@ -1460,104 +1453,86 @@ function VisitStep({
                 </FieldGroup>
             )}
 
-            <FieldGroup
-                title="Medical services"
-                description={
-                    isCompanyAccount ||
-                    formData.examination_purpose === 'pre_employment'
-                        ? 'The Basic 5 is included automatically. Select only the additional services requested by the employer.'
-                        : 'Select services based on your needed service during this visit.'
-                }
-            >
-                {(isCompanyAccount ||
-                    formData.examination_purpose === 'pre_employment') && (
-                    <div className="mb-4 rounded-2xl border border-moss-200 bg-moss-50/70 p-4">
-                        <p className="text-sm font-semibold text-moss-900">
-                            Basic 5 — included
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-moss-700">
-                            The standard PEME or APE package required by many
-                            employers in the Philippines.
-                        </p>
-                        <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                            {BASIC_FIVE_DETAILS.map((item) => (
-                                <li
-                                    key={item.service}
-                                    className="rounded-xl bg-white/80 px-3 py-2"
+            {formData.type === 'individual' &&
+            formData.examination_purpose === 'medical_clearance' ? (
+                <div className="rounded-xl border border-moss-200 bg-moss-50 p-4 text-sm text-moss-900">
+                    Consultation and examination are included. Your doctor will
+                    request additional services available in the clinic only if
+                    needed. A medical certificate is subject to the doctor's
+                    assessment and approval. Reception releases the issued
+                    certificate.
+                </div>
+            ) : (
+                <FieldGroup
+                    title="Medical services"
+                    description={
+                        isCompanyAccount ||
+                        formData.examination_purpose === 'pre_employment'
+                            ? 'The Basic 5 is included automatically. Select only the additional services requested by the employer.'
+                            : 'Select services based on your needed service during this visit.'
+                    }
+                >
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {serviceTypes.map(([value, label], index) => {
+                            const selected =
+                                formData.service_types.includes(value);
+                            const includedInBasicFive =
+                                (isCompanyAccount ||
+                                    formData.examination_purpose ===
+                                        'pre_employment') &&
+                                preEmploymentServices.includes(value);
+                            const Icon =
+                                SERVICE_ICONS[index % SERVICE_ICONS.length];
+                            return (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => onService(value)}
+                                    disabled={!!referral || includedInBasicFive}
+                                    aria-pressed={selected}
+                                    className={`flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
                                 >
-                                    <span className="block text-xs font-semibold text-slate-800">
-                                        {item.label}
+                                    <span
+                                        className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-500'}`}
+                                    >
+                                        <Icon className="size-4" />
                                     </span>
-                                    <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">
-                                        {item.description}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                        <p className="mt-3 text-[11px] leading-5 text-slate-600">
-                            <strong>Common add-ons:</strong> Drug Test,
-                            Hepatitis B Screening, and Pregnancy Test for
-                            eligible female patients. ECG is unavailable while
-                            its clinical result integration is pending.
-                        </p>
-                    </div>
-                )}
-                <div className="grid gap-3 sm:grid-cols-2">
-                    {serviceTypes.map(([value, label], index) => {
-                        const selected = formData.service_types.includes(value);
-                        const includedInBasicFive =
-                            (isCompanyAccount ||
-                                formData.examination_purpose ===
-                                    'pre_employment') &&
-                            preEmploymentServices.includes(value);
-                        const Icon =
-                            SERVICE_ICONS[index % SERVICE_ICONS.length];
-                        return (
-                            <button
-                                key={value}
-                                type="button"
-                                onClick={() => onService(value)}
-                                disabled={!!referral || includedInBasicFive}
-                                aria-pressed={selected}
-                                className={`flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition hover:border-moss-300 focus-visible:ring-4 focus-visible:ring-moss-500/15 focus-visible:outline-none ${selected ? 'border-moss-500 bg-moss-50' : 'border-slate-200'}`}
-                            >
-                                <span
-                                    className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${selected ? 'bg-moss-600 text-white' : 'bg-slate-100 text-slate-500'}`}
-                                >
-                                    <Icon className="size-4" />
-                                </span>
-                                <span className="flex-1 text-sm font-medium text-slate-800">
-                                    {label}
-                                    {formData.type === 'company_bulk' &&
-                                        optionalBulkServices.includes(
-                                            value,
-                                        ) && (
-                                            <small className="mt-0.5 block text-xs font-semibold text-amber-700">
-                                                Optional add-on
+                                    <span className="flex-1 text-sm font-medium text-slate-800">
+                                        {label}
+                                        {formData.type === 'company_bulk' &&
+                                            optionalBulkServices.includes(
+                                                value,
+                                            ) && (
+                                                <small className="mt-0.5 block text-xs font-semibold text-amber-700">
+                                                    Optional add-on
+                                                </small>
+                                            )}
+                                        {includedInBasicFive && (
+                                            <small className="mt-0.5 block text-xs font-semibold text-moss-700">
+                                                Included in Basic 5
                                             </small>
                                         )}
-                                    {includedInBasicFive && (
-                                        <small className="mt-0.5 block text-xs font-semibold text-moss-700">
-                                            Included in Basic 5
-                                        </small>
-                                    )}
-                                </span>
-                                <span
-                                    className={`flex size-5 items-center justify-center rounded-md border ${selected ? 'border-moss-600 bg-moss-600 text-white' : 'border-slate-300'}`}
-                                >
-                                    {selected && <Check className="size-3" />}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-                <InlineError message={errors.service_types} />
-            </FieldGroup>
+                                    </span>
+                                    <span
+                                        className={`flex size-5 items-center justify-center rounded-md border ${selected ? 'border-moss-600 bg-moss-600 text-white' : 'border-slate-300'}`}
+                                    >
+                                        {selected && (
+                                            <Check className="size-3" />
+                                        )}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <InlineError message={errors.service_types} />
+                </FieldGroup>
+            )}
         </div>
     );
 }
 
 interface ScheduleStepProps {
+    chooseDoctorFirst: boolean;
     minDate: string;
     doctors: Doctor[];
     doctor?: Doctor;
@@ -1577,6 +1552,7 @@ interface ScheduleStepProps {
 }
 
 function ScheduleStep({
+    chooseDoctorFirst,
     minDate,
     doctors,
     doctor,
@@ -1633,29 +1609,36 @@ function ScheduleStep({
         <div className="space-y-8">
             <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
                 <div className="order-2">
-                    <FieldGroup
-                        title="Appointment date"
-                        description={
-                            doctor
-                                ? `Showing availability for Dr. ${doctor.first_name} ${doctor.last_name}.`
-                                : 'Choose a date to see its combined availability across all doctors.'
-                        }
-                    >
-                        <AppointmentDateInput
-                            min={today}
-                            max={latestDate}
-                            value={selectedDate}
-                            error={errors.appointment_date}
-                            onChange={onDate}
-                            slotCounts={slotCounts}
-                            slotCountContext={
+                    {chooseDoctorFirst && !doctor ? (
+                        <p className="rounded-xl border p-4 text-sm text-slate-500">
+                            Select a doctor first to view their available dates
+                            and times.
+                        </p>
+                    ) : (
+                        <FieldGroup
+                            title="Appointment date"
+                            description={
                                 doctor
-                                    ? `with Dr. ${doctor.first_name} ${doctor.last_name}`
-                                    : 'across all doctors'
+                                    ? `Showing availability for Dr. ${doctor.first_name} ${doctor.last_name}.`
+                                    : 'Choose a date to see its combined availability across all doctors.'
                             }
-                            loadingSlotCounts={loadingDoctors}
-                        />
-                    </FieldGroup>
+                        >
+                            <AppointmentDateInput
+                                min={today}
+                                max={latestDate}
+                                value={selectedDate}
+                                error={errors.appointment_date}
+                                onChange={onDate}
+                                slotCounts={slotCounts}
+                                slotCountContext={
+                                    doctor
+                                        ? `with Dr. ${doctor.first_name} ${doctor.last_name}`
+                                        : 'across all doctors'
+                                }
+                                loadingSlotCounts={loadingDoctors}
+                            />
+                        </FieldGroup>
+                    )}
                 </div>
 
                 <div className="order-1">
@@ -1785,289 +1768,141 @@ function ScheduleStep({
     );
 }
 
-interface DetailsStepProps {
+interface CompanyBookingFieldsProps {
     user: AppointmentUser;
-    profile?: PatientProfile | null;
-    isCompanyAccount: boolean;
     companyAddress: string;
-    notes: string;
-    onNotes: (notes: string) => void;
     event: BookingData;
     errors: BookingErrors;
     onEvent: (field: keyof BookingData, value: string) => void;
 }
 
-function DetailsStep({
+function CompanyBookingFields({
     user,
-    profile,
-    isCompanyAccount,
     companyAddress,
-    notes,
-    onNotes,
     event,
     errors,
     onEvent,
-}: DetailsStepProps) {
-    const age = calculateAge(profile?.birthdate);
-    const details = [
-        { label: 'Full name', value: user.name, icon: UserRound },
-        { label: 'Email address', value: user.email, icon: Mail },
-        {
-            label: 'Contact number',
-            value: user.contact || 'Not provided',
-            icon: Phone,
-        },
-        {
-            label: 'Birthdate',
-            value: profile?.birthdate
-                ? new Date(String(profile.birthdate)).toLocaleDateString()
-                : 'Not provided',
-            icon: CalendarDays,
-        },
-        {
-            label: 'Age',
-            value: age === null ? 'Not available' : `${age} years old`,
-            icon: CakeSlice,
-        },
-        {
-            label: 'Civil status',
-            value: profile?.civil_status
-                ? profile.civil_status
-                      .replace(/_/g, ' ')
-                      .replace(/\b\w/g, (letter) => letter.toUpperCase())
-                : 'Not provided',
-            icon: UserRound,
-        },
-    ];
+}: CompanyBookingFieldsProps) {
     return (
-        <div className="space-y-7">
-            {isCompanyAccount ? (
-                <div className="space-y-4">
-                    <div className="rounded-xl border border-moss-100 bg-moss-50 p-4 text-sm text-moss-800">
-                        Only the company representative's contact information is
-                        needed for this bulk request.
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-4">
+            <div className="rounded-xl border border-moss-100 bg-moss-50 p-4 text-sm text-moss-800">
+                Only the company representative's contact information is needed
+                for this bulk request.
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm font-semibold text-slate-800">
+                    Service setup
+                    <select
+                        value={event.service_location}
+                        onChange={(e) => {
+                            const location = e.target.value;
+                            onEvent('service_location', location);
+                            if (location === 'clinic') {
+                                onEvent('event_address', '');
+                            } else if (!event.event_address.trim()) {
+                                onEvent('event_address', companyAddress);
+                            }
+                        }}
+                        className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
+                    >
+                        <option value="onsite">Onsite at company</option>
+                        <option value="clinic">At LMIC clinic</option>
+                    </select>
+                </label>
+                <label className="text-sm font-semibold text-slate-800">
+                    Expected employees
+                    <input
+                        type="number"
+                        min="1"
+                        max="5000"
+                        required
+                        value={event.expected_employee_count}
+                        onChange={(e) =>
+                            onEvent('expected_employee_count', e.target.value)
+                        }
+                        className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
+                    />
+                </label>
+                <InlineError message={errors.expected_employee_count} />
+                {event.service_location === 'onsite' && (
+                    <div className="sm:col-span-2">
                         <label className="text-sm font-semibold text-slate-800">
-                            Service setup
-                            <select
-                                value={event.service_location}
-                                onChange={(e) => {
-                                    const location = e.target.value;
-                                    onEvent('service_location', location);
-                                    if (location === 'clinic') {
-                                        onEvent('event_address', '');
-                                    } else if (!event.event_address.trim()) {
-                                        onEvent(
-                                            'event_address',
-                                            companyAddress,
-                                        );
-                                    }
-                                }}
-                                className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
-                            >
-                                <option value="onsite">
-                                    Onsite at company
-                                </option>
-                                <option value="clinic">At LMIC clinic</option>
-                            </select>
-                        </label>
-                        <label className="text-sm font-semibold text-slate-800">
-                            Expected employees
+                            Event address
                             <input
-                                type="number"
-                                min="1"
-                                max="5000"
                                 required
-                                value={event.expected_employee_count}
+                                maxLength={500}
+                                value={event.event_address}
                                 onChange={(e) =>
-                                    onEvent(
-                                        'expected_employee_count',
-                                        e.target.value,
-                                    )
+                                    onEvent('event_address', e.target.value)
                                 }
                                 className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
                             />
                         </label>
-                        <InlineError message={errors.expected_employee_count} />
-                        {event.service_location === 'onsite' && (
-                            <div className="sm:col-span-2">
-                                <label className="text-sm font-semibold text-slate-800">
-                                    Event address
-                                    <input
-                                        required
-                                        maxLength={500}
-                                        value={event.event_address}
-                                        onChange={(e) =>
-                                            onEvent(
-                                                'event_address',
-                                                e.target.value,
-                                            )
-                                        }
-                                        className="mt-2 h-11 w-full rounded-xl border border-slate-200 px-3 font-normal"
-                                    />
-                                </label>
-                                <InlineError message={errors.event_address} />
-                            </div>
-                        )}
-                        <label className="text-sm font-semibold text-slate-800">
-                            {event.service_location === 'clinic'
-                                ? 'Clinic coordination contact'
-                                : 'Event contact person'}
-                            <input
-                                required
-                                readOnly
-                                maxLength={255}
-                                value={event.event_contact_name}
-                                className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-3 font-normal text-slate-600"
-                            />
-                        </label>
-                        <label className="text-sm font-semibold text-slate-800">
-                            Contact number
-                            <input
-                                required
-                                readOnly
-                                maxLength={30}
-                                value={event.event_contact_number}
-                                className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-3 font-normal text-slate-600"
-                            />
-                        </label>
-                        <p className="text-xs text-slate-500 sm:col-span-2">
-                            These details come from the company representative's
-                            profile and cannot be changed during booking.
-                        </p>
-                        <InlineError
-                            message={
-                                errors.event_contact_name ??
-                                errors.event_contact_number
-                            }
-                        />
+                        <InlineError message={errors.event_address} />
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="flex min-h-18 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
-                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm">
-                                <Mail className="size-4" />
-                            </span>
-                            <div className="min-w-0">
-                                <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
-                                    Email address
-                                </p>
-                                <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">
-                                    {user.email}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex min-h-18 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
-                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm">
-                                <Phone className="size-4" />
-                            </span>
-                            <div className="min-w-0">
-                                <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
-                                    Contact number
-                                </p>
-                                <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">
-                                    {user.contact || 'Not provided'}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            ) : (
-                <>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        {details.map(({ label, value, icon: Icon }) => (
-                            <div
-                                key={label}
-                                className="flex min-h-18 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
-                            >
-                                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm">
-                                    <Icon className="size-4" />
-                                </span>
-                                <div className="min-w-0">
-                                    <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
-                                        {label}
-                                    </p>
-                                    <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">
-                                        {value}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="flex items-start gap-3 rounded-xl border border-moss-100 bg-moss-50 p-4 text-xs leading-5 text-moss-700">
-                        <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-                        <p>
-                            Your verified profile information will be attached
-                            to this appointment. To correct it, visit{' '}
-                            <Link
-                                href="/settings/profile"
-                                className="font-semibold underline underline-offset-2"
-                            >
-                                Profile Settings
-                            </Link>{' '}
-                            before booking.
-                        </p>
-                    </div>
-                </>
-            )}
-            <div>
-                <label
-                    htmlFor="booking-notes"
-                    className="mb-2 block text-sm font-semibold text-slate-800"
-                >
-                    Additional notes{' '}
-                    <span className="font-normal text-slate-400">
-                        (optional)
-                    </span>
-                </label>
-                <div className="relative">
-                    <FileHeart className="pointer-events-none absolute top-3.5 left-3.5 size-4 text-slate-400" />
-                    <textarea
-                        id="booking-notes"
-                        value={notes}
-                        onChange={(event) => onNotes(event.target.value)}
-                        rows={4}
-                        maxLength={500}
-                        placeholder="Share symptoms, accessibility needs, or anything the clinic should know."
-                        className="w-full resize-none rounded-xl border border-slate-200 py-3 pr-4 pl-10 text-sm transition outline-none placeholder:text-slate-400 focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
+                )}
+                <label className="text-sm font-semibold text-slate-800">
+                    {event.service_location === 'clinic'
+                        ? 'Clinic coordination contact'
+                        : 'Event contact person'}
+                    <input
+                        required
+                        readOnly
+                        maxLength={255}
+                        value={event.event_contact_name}
+                        className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-3 font-normal text-slate-600"
                     />
-                </div>
-                <p className="mt-1.5 text-right text-[10px] text-slate-400">
-                    {notes.length}/500
+                </label>
+                <label className="text-sm font-semibold text-slate-800">
+                    Contact number
+                    <input
+                        required
+                        readOnly
+                        maxLength={30}
+                        value={event.event_contact_number}
+                        className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-3 font-normal text-slate-600"
+                    />
+                </label>
+                <p className="text-xs text-slate-500 sm:col-span-2">
+                    These details come from the company representative's profile
+                    and cannot be changed during booking.
                 </p>
+                <InlineError
+                    message={
+                        errors.event_contact_name ?? errors.event_contact_number
+                    }
+                />
             </div>
-            <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                <Info className="mt-0.5 size-4 shrink-0 text-amber-600" />
-                <div>
-                    <p className="text-xs font-semibold text-amber-900">
-                        Before your visit
-                    </p>
-                    <p className="mt-1 text-xs leading-5 text-amber-700">
-                        Please bring one 1×1 ID photo and a stool sample.
-                        Magdala ng 1×1 na litrato at sample ng dumi.
-                    </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+                <div className="flex min-h-18 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm">
+                        <Mail className="size-4" />
+                    </span>
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
+                            Email address
+                        </p>
+                        <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">
+                            {user.email}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex min-h-18 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 shadow-sm">
+                        <Phone className="size-4" />
+                    </span>
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">
+                            Contact number
+                        </p>
+                        <p className="mt-0.5 truncate text-sm font-semibold text-slate-800">
+                            {user.contact || 'Not provided'}
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
     );
-}
-
-function calculateAge(birthdate?: string | null): number | null {
-    if (!birthdate) return null;
-
-    const dateOfBirth = new Date(birthdate);
-    if (Number.isNaN(dateOfBirth.getTime())) return null;
-
-    const today = new Date();
-    let age = today.getFullYear() - dateOfBirth.getFullYear();
-    const birthdayHasPassed =
-        today.getMonth() > dateOfBirth.getMonth() ||
-        (today.getMonth() === dateOfBirth.getMonth() &&
-            today.getDate() >= dateOfBirth.getDate());
-
-    if (!birthdayHasPassed) age -= 1;
-
-    return age >= 0 ? age : null;
 }
 
 interface ReviewStepProps {
@@ -2077,13 +1912,12 @@ interface ReviewStepProps {
     appointmentTypes: Record<string, string>;
     serviceTypes: Record<string, string>;
     user: AppointmentUser;
-    profile?: PatientProfile | null;
     onEdit: (step: number) => void;
 }
 
 interface ReviewSection {
     title: string;
-    step: number;
+    step: number | null;
     icon: LucideIcon;
     rows: [string, string][];
 }
@@ -2095,10 +1929,8 @@ function ReviewStep({
     appointmentTypes,
     serviceTypes,
     user,
-    profile,
     onEdit,
 }: ReviewStepProps) {
-    const age = calculateAge(profile?.birthdate);
     const sections: ReviewSection[] = [
         {
             title: 'Visit and care team',
@@ -2160,66 +1992,37 @@ function ReviewStep({
                       ]),
             ],
         },
-        {
-            title:
-                formData.type === 'company_bulk'
-                    ? 'Company contact details'
-                    : 'Patient details',
-            step: 3,
-            icon: UserRound,
-            rows:
-                formData.type === 'company_bulk'
-                    ? [
-                          ['Email', user.email],
-                          [
-                              'Service setup',
-                              formData.service_location === 'clinic'
-                                  ? 'At LMIC clinic'
-                                  : 'Onsite at company',
-                          ],
-                          ...(formData.event_address
-                              ? [
-                                    [
-                                        'Event address',
-                                        formData.event_address,
-                                    ] as [string, string],
-                                ]
-                              : []),
-                          ['Coordination contact', formData.event_contact_name],
-                          ['Contact number', formData.event_contact_number],
-                          [
-                              'Expected employees',
-                              formData.expected_employee_count,
-                          ],
-                          ...(formData.notes
-                              ? [['Notes', formData.notes] as [string, string]]
-                              : []),
-                      ]
-                    : [
-                          ['Patient', user.name],
-                          [
-                              'Age',
-                              age === null
-                                  ? 'Not available'
-                                  : `${age} years old`,
-                          ],
-                          [
-                              'Civil status',
-                              profile?.civil_status
-                                  ? profile.civil_status
-                                        .replace(/_/g, ' ')
-                                        .replace(/\b\w/g, (letter) =>
-                                            letter.toUpperCase(),
-                                        )
-                                  : 'Not provided',
-                          ],
-                          ['Contact', user.contact || user.email],
-                          ...(formData.notes
-                              ? [['Notes', formData.notes] as [string, string]]
-                              : []),
-                      ],
-        },
     ];
+    if (formData.type === 'company_bulk') {
+        sections.push({
+            title: 'Company contact details',
+            step: 2,
+            icon: Building2,
+            rows: [
+                ['Email', user.email],
+                [
+                    'Service setup',
+                    formData.service_location === 'clinic'
+                        ? 'At LMIC clinic'
+                        : 'Onsite at company',
+                ],
+                ...(formData.event_address
+                    ? [
+                          ['Event address', formData.event_address] as [
+                              string,
+                              string,
+                          ],
+                      ]
+                    : []),
+                ['Coordination contact', formData.event_contact_name],
+                ['Contact number', formData.event_contact_number],
+                ['Expected employees', formData.expected_employee_count],
+                ...(formData.notes
+                    ? [['Notes', formData.notes] as [string, string]]
+                    : []),
+            ],
+        });
+    }
     return (
         <div className="space-y-4">
             <div className="flex items-start gap-3 rounded-xl border border-moss-100 bg-moss-50 p-4 text-xs leading-5 text-moss-800">
@@ -2237,13 +2040,15 @@ function ReviewStep({
                             <Icon className="size-4 text-moss-600" />
                             {title}
                         </h3>
-                        <button
-                            type="button"
-                            onClick={() => onEdit(step)}
-                            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-moss-600 hover:bg-moss-50"
-                        >
-                            Edit
-                        </button>
+                        {step !== null && (
+                            <button
+                                type="button"
+                                onClick={() => onEdit(step)}
+                                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-moss-600 hover:bg-moss-50"
+                            >
+                                Edit
+                            </button>
+                        )}
                     </div>
                     <dl className="divide-y divide-slate-100 px-4">
                         {rows.map(([label, value]) => (
@@ -2270,112 +2075,18 @@ function ReviewStep({
     );
 }
 
-interface BookingSummaryProps {
-    formData: BookingData;
-    doctor?: Doctor;
-    appointmentTypes: Record<string, string>;
-}
-
-function BookingSummary({
-    formData,
-    doctor,
-    appointmentTypes,
-}: BookingSummaryProps) {
+function ArrivalGuidance({ type }: { type: string }) {
     return (
         <aside className="rounded-2xl border border-slate-200 bg-white/95 p-5 text-slate-900 shadow-[0_22px_55px_-28px_rgba(15,43,75,.38)] ring-1 ring-slate-900/5 backdrop-blur dark:border-border dark:bg-card/95 dark:text-slate-100 dark:ring-white/10">
-            <p className="text-xs font-bold tracking-[.14em] text-slate-400 uppercase dark:text-slate-400">
-                Your appointment
-            </p>
-            <div className="mt-4 flex items-center gap-3">
-                <span className="flex size-11 items-center justify-center rounded-xl bg-moss-50 text-moss-600 dark:bg-moss-900/60 dark:text-moss-200">
-                    <CalendarDays className="size-5" />
-                </span>
-                <div>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        {appointmentTypes[formData.type] ||
-                            'Clinic appointment'}
-                    </p>
-                    <p className="mt-0.5 text-xs text-slate-400">
-                        {formData.service_types.length} service
-                        {formData.service_types.length === 1 ? '' : 's'}{' '}
-                        selected
-                    </p>
-                </div>
-            </div>
-            <div className="mt-5 space-y-3 border-t border-slate-100 pt-4 dark:border-border">
-                <SummaryLine
-                    icon={Stethoscope}
-                    label={
-                        doctor
-                            ? `Dr. ${doctor.first_name} ${doctor.last_name}`
-                            : formData.type === 'individual'
-                              ? 'Choose a doctor'
-                              : 'Clinic team to be assigned'
-                    }
-                    active={!!doctor || formData.type !== 'individual'}
-                />
-                <SummaryLine
-                    icon={CalendarDays}
-                    label={
-                        formData.appointment_date
-                            ? formatDate(formData.appointment_date, {
-                                  month: 'long',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                              })
-                            : 'Choose a date'
-                    }
-                    active={!!formData.appointment_date}
-                />
-                <SummaryLine
-                    icon={Clock3}
-                    label={
-                        formData.start_time
-                            ? formatTime(formData.start_time)
-                            : formData.type === 'company_bulk'
-                              ? 'Clinic to set duration'
-                              : formData.type === 'individual'
-                                ? 'Choose a time'
-                                : 'Time to be coordinated'
-                    }
-                    active={
-                        !!formData.start_time || formData.type !== 'individual'
-                    }
-                />
-                <SummaryLine
-                    icon={MapPin}
-                    label="Living Myth Industrial Clinic"
-                    active
-                />
-            </div>
-            <div className="mt-5 rounded-xl bg-slate-50 p-3.5 text-[11px] leading-5 text-slate-500 dark:bg-muted/70 dark:text-slate-300">
-                <strong className="text-slate-700 dark:text-slate-100">
-                    Arrival guidance:
-                </strong>{' '}
-                {formData.type === 'company_bulk'
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-100">
+                Arrival Guidance
+            </h2>
+            <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-300">
+                {type === 'company_bulk'
                     ? 'The clinic administrator will assign doctors and staff after reviewing the request and employee masterlist.'
                     : 'Please arrive 15 minutes before your scheduled time for check-in. Your online slot is reserved until 10 minutes after the scheduled time. If you have not checked in by then, it may be cancelled and assigned to a waiting walk-in patient.'}
-            </div>
+            </p>
         </aside>
-    );
-}
-
-function SummaryLine({
-    icon: Icon,
-    label,
-    active,
-}: {
-    icon: LucideIcon;
-    label: string;
-    active: boolean;
-}) {
-    return (
-        <div
-            className={`flex items-center gap-2.5 text-xs ${active ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500'}`}
-        >
-            <Icon className="size-4 shrink-0" />
-            <span>{label}</span>
-        </div>
     );
 }
 

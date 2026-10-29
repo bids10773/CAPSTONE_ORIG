@@ -44,7 +44,7 @@ class MedicalCertificatePolicy
 
     public function requestChanges(User $user, MedicalCertificate $medicalCertificate): bool
     {
-        return $medicalCertificate->status === 'pending_approval'
+        return in_array($medicalCertificate->status, ['pending_approval', 'approved'], true)
             && $this->isAttendingPhysician($user, $medicalCertificate);
     }
 

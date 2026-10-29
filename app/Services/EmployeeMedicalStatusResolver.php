@@ -8,13 +8,6 @@ class EmployeeMedicalStatusResolver
 {
     public function resolve(Appointment $appointment): string
     {
-        if ($appointment->examination_purpose === 'medical_clearance') {
-            if ($appointment->status === 'for_final_evaluation') {
-                $appointment->update(['status' => 'arrived']);
-            }
-
-            return $appointment->status;
-        }
         $appointment->loadMissing('medicalExamination.diagnosticResults', 'medicalExamination.physicalExam', 'medicalExamination.laboratoryResult', 'medicalExamination.xrayReport');
         $examination = $appointment->medicalExamination;
         $drug = $examination?->diagnosticResults->firstWhere('service_key', 'drug_test');
@@ -25,14 +18,14 @@ class EmployeeMedicalStatusResolver
             $drugVerifying && $xrayVerifying => 'verifying_drug_and_xray',
             $drugVerifying => 'verifying_drug_test',
             $xrayVerifying => 'verifying_xray',
-            $examination?->isReadyForFinalEvaluation() => 'for_final_evaluation',
+            $examination?->isReadyForFinalEvaluation() => $appointment->examination_purpose === 'medical_clearance' ? 'arrived' : 'for_final_evaluation',
             default => $this->fallbackStatus($appointment),
         };
 
         if ($appointment->status !== 'completed' && $appointment->status !== 'absent' && $appointment->status !== $status) {
             $appointment->update(['status' => $status]);
         }
-        if ($status === 'for_final_evaluation') {
+        if ($status === 'for_final_evaluation' && $appointment->requiresFinalEvaluation()) {
             app(OnsiteEventWorkflowService::class)->refreshFinalEvaluationTask($appointment->fresh());
         }
 

@@ -89,6 +89,7 @@ test('pe package registers one complete report instead of separate laboratory an
         'appointment_date' => today(),
         'type' => 'individual',
         'status' => 'accepted',
+        'examination_purpose' => 'pre_employment',
         'service_types' => ['PE', 'CBC', 'Urinalysis', 'X-Ray'],
     ]);
 
@@ -131,6 +132,7 @@ test('receptionist can review a finalized complete medical examination report', 
         'appointment_date' => today(),
         'type' => 'individual',
         'status' => 'completed',
+        'examination_purpose' => 'pre_employment',
         'service_types' => ['PE'],
     ]);
     $examination = $appointment->medicalExamination;
@@ -162,6 +164,7 @@ test('complete pe report is available only after every required document is read
         'appointment_date' => today(),
         'type' => 'individual',
         'status' => 'completed',
+        'examination_purpose' => 'pre_employment',
         'service_types' => ['PE', 'CBC', 'X-Ray'],
     ]);
     app(MedicalDocumentService::class)->synchronizeAppointment($appointment);
@@ -188,6 +191,7 @@ test('receptionist marks and releases a complete pe package with one action', fu
         'appointment_date' => today(),
         'type' => 'individual',
         'status' => 'completed',
+        'examination_purpose' => 'pre_employment',
         'service_types' => ['PE', 'CBC', 'X-Ray'],
     ]);
     app(MedicalDocumentService::class)->synchronizeAppointment($appointment);

@@ -33,7 +33,7 @@ class AppointmentPolicy
         if ($user->role === 'receptionist') {
             $appointment->loadMissing('medicalExamination');
 
-            return $appointment->isPePackage()
+            return $appointment->requiresPhysicalExamination()
                 && $appointment->medicalExamination?->finalized_at !== null;
         }
 
@@ -121,10 +121,13 @@ class AppointmentPolicy
             ? $this->walkInHasStarted($appointment)
             : ($appointment->status === 'arrived' || $appointment->arrived_at !== null);
         $examAlreadyExists = $appointment->physicalExam()->exists();
+        $consultationCanContinue = $appointment->examination_purpose === 'medical_clearance'
+            && ($appointment->appointment_date?->startOfDay()->lte(today()) ?? false)
+            && $patientHasCheckedIn;
 
         return $user->role === 'doctor'
             && $this->eligibleOnsiteStaff($user, $appointment, 'doctor')
-            && ($appointment->appointment_date?->isToday() ?? false)
+            && (($appointment->appointment_date?->isToday() ?? false) || $consultationCanContinue)
             && $appointment->status !== 'completed'
             && ($patientHasCheckedIn || $examAlreadyExists)
             && ($appointment->bulk_appointment_id === null

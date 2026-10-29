@@ -77,6 +77,7 @@ test('PE alone creates the physical exam without silently adding other services'
 
 test('explicit pre employment basics include physical exam cbc urinalysis fecalysis and xray', function () {
     $appointment = clinicalAppointment(config('medical.pe_package.basic_five_services'));
+    $appointment->update(['examination_purpose' => 'pre_employment']);
 
     expect(array_keys(app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment)))
         ->toBe(['cbc', 'urinalysis', 'fecalysis'])
@@ -491,15 +492,13 @@ test('unselected diagnostics do not block final evaluation while selected xray d
     $this->assertDatabaseMissing('physical_exams', ['appointment_id' => $appointment->id]);
 });
 
-test('medical certificate purpose opens certificate preparation before diagnostics are complete', function () {
+test('medical certificate requests require examination before certificate preparation', function () {
     $appointment = clinicalAppointment(['CBC']);
     $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'license_no' => 'PRC-7654321']);
     $appointment->update(['doctor_id' => $doctor->id, 'examination_purpose' => 'medical_clearance']);
 
     $this->actingAs($doctor)->get(route('doctor.medical-certificates.prepare', $appointment))
-        ->assertRedirect(route('medical-certificates.create', [
-            'patient_id' => $appointment->user_id, 'appointment_id' => $appointment->id,
-        ]));
+        ->assertRedirect(route('doctor.physical-exams.create', $appointment));
     $this->post(route('doctor.final-evaluation.store', $appointment), [
         'medical_class' => 'B', 'final_diagnosis' => 'Reviewed findings.',
     ])->assertForbidden();

@@ -103,6 +103,10 @@ class MedicalCertificateController extends Controller
         }
         abort_if($certificate !== null, 403);
 
+        if (! $appointment->physicalExam?->is_completed) {
+            return redirect()->route('doctor.physical-exams.create', $appointment);
+        }
+
         return redirect()->route('medical-certificates.create', [
             'patient_id' => $appointment->user_id,
             'appointment_id' => $appointment->id,
@@ -468,6 +472,9 @@ class MedicalCertificateController extends Controller
                     'reference_code' => $appointment->reference_code,
                     'consultation_date' => $appointment->appointment_date?->toDateString(),
                     'status' => $appointment->status,
+                    'service_progress' => $appointment->examination_purpose === 'medical_clearance'
+                        ? $appointment->medicalExamination?->childSummaries() ?? []
+                        : [],
                     'reason_for_consultation' => $appointment->medicalHistory?->present_illness
                         ?: $appointment->notes,
                     'clinical_impression' => $appointment->medicalExamination?->final_diagnosis,
@@ -528,6 +535,12 @@ class MedicalCertificateController extends Controller
             'voided_at' => $certificate->voided_at?->toIso8601String(),
             'created_at' => $certificate->created_at?->toIso8601String(),
             'updated_at' => $certificate->updated_at?->toIso8601String(),
+            'service_progress' => $certificate->appointment?->examination_purpose === 'medical_clearance'
+                ? $certificate->appointment->medicalExamination?->childSummaries() ?? []
+                : [],
+            'release_url' => in_array($actor->role, ['admin', 'receptionist'], true) && $certificate->status === 'issued'
+                ? route('medical-documents.index', ['type' => 'medical_certificate'])
+                : null,
             'patient' => $certificate->relationLoaded('patient') && $certificate->patient ? [
                 'id' => $certificate->patient->id,
                 'name' => $certificate->patient->name,
@@ -556,6 +569,7 @@ class MedicalCertificateController extends Controller
                 'void' => $actor->can('void', $certificate),
                 'print' => $actor->can('print', $certificate),
                 'download_pdf' => $actor->can('downloadPdf', $certificate),
+                'review_services' => in_array($actor->role, ['doctor', 'admin'], true),
             ],
         ];
 

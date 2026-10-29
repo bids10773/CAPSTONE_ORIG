@@ -113,7 +113,7 @@ const arrivalLabels = {
 const examinationPurposeLabels: Record<string, string> = {
     pre_employment: 'Pre-employment',
     annual_pe: 'Annual Physical Exam',
-    medical_clearance: 'Medical Certificate',
+    medical_clearance: 'Medical Consultation / Certificate Request',
 };
 
 function examinationPurposeLabel(value?: string | null): string {
@@ -630,7 +630,7 @@ export default function WalkIns({
                                     ['pre_employment', 'Pre-employment'],
                                     [
                                         'medical_clearance',
-                                        'Medical Certificate',
+                                        'Medical Consultation / Certificate Request',
                                     ],
                                 ].map(([value, label]) => {
                                     const selected =

@@ -24,7 +24,7 @@ class Appointment extends Model
     protected static function booted(): void
     {
         static::created(function (Appointment $appointment): void {
-            if ($appointment->isPePackage() && $appointment->user?->role === 'patient') {
+            if ($appointment->requiresPhysicalExamination() && $appointment->user?->role === 'patient') {
                 app(\App\Services\MedicalExaminationService::class)->forAppointment($appointment);
             }
         });
@@ -384,6 +384,12 @@ class Appointment extends Model
     }
 
     public function isPePackage(): bool
+    {
+        return $this->requiresPhysicalExamination()
+            && in_array($this->examination_purpose, ['pre_employment', 'annual_pe'], true);
+    }
+
+    public function requiresPhysicalExamination(): bool
     {
         return in_array('PE', $this->service_types ?? [], true);
     }

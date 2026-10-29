@@ -158,6 +158,8 @@ class MedicalCertificateWorkflowService
             $certificate->physician_license_no = $actor->license_no;
             $this->ensureComplete($certificate);
 
+            $this->ensureConsultationComplete($certificate);
+
             $attributes = [
                 'status' => 'approved',
                 'approval_notes' => filled($notes) ? trim($notes) : null,
@@ -188,16 +190,19 @@ class MedicalCertificateWorkflowService
         return DB::transaction(function () use ($medicalCertificate, $actor, $reason, $request): MedicalCertificate {
             $certificate = MedicalCertificate::query()->lockForUpdate()->findOrFail($medicalCertificate->id);
             $this->ensureAssignedPhysician($certificate, $actor);
-            $this->ensureStatus($certificate, ['pending_approval'], 'Only a certificate pending approval may be returned for correction.');
+            $this->ensureStatus($certificate, ['pending_approval', 'approved'], 'Only an unissued certificate pending approval or already approved may be returned for correction.');
+            $oldStatus = $certificate->status;
 
             $certificate->update([
                 'status' => 'changes_requested',
                 'change_request_reason' => trim($reason),
                 'approval_notes' => null,
+                'approved_by' => null,
+                'approved_at' => null,
                 'updated_by' => $actor->id,
             ]);
 
-            $this->audit($certificate, $actor, 'changes_requested', 'pending_approval', 'changes_requested', [
+            $this->audit($certificate, $actor, 'changes_requested', $oldStatus, 'changes_requested', [
                 'reason' => $certificate->change_request_reason,
             ], $request);
 
@@ -217,6 +222,7 @@ class MedicalCertificateWorkflowService
             $this->ensureAssignedPhysician($certificate, $actor);
             $this->ensureVerifiedPhysician($actor);
             $this->ensureComplete($certificate);
+            $this->ensureConsultationComplete($certificate);
 
             $clinicToday = ClinicHours::now()->startOfDay();
             $issueDate = $dateIssued
@@ -441,6 +447,26 @@ class MedicalCertificateWorkflowService
         $value = array_key_exists($key, $data) ? $data[$key] : $recordValue;
 
         return filled($value) ? trim((string) $value) : null;
+    }
+
+    private function ensureConsultationComplete(MedicalCertificate $certificate): void
+    {
+        if (! $certificate->appointment_id) {
+            return;
+        }
+        $appointment = Appointment::query()->lockForUpdate()->findOrFail($certificate->appointment_id);
+        if ($appointment->examination_purpose !== 'medical_clearance') {
+            return;
+        }
+        $examination = $appointment->medicalExamination;
+        if (! $examination?->isReadyForFinalEvaluation()) {
+            throw ValidationException::withMessages([
+                'appointment_id' => 'Complete the consultation examination and all doctor-requested services before approving or issuing a certificate.',
+            ]);
+        }
+        if (in_array($appointment->status, ['pending', 'accepted', 'cancelled', 'rejected', 'absent'], true)) {
+            throw ValidationException::withMessages(['appointment_id' => 'The patient must attend the consultation before a certificate can be approved or issued.']);
+        }
     }
 
     private function ensureComplete(MedicalCertificate $certificate, bool $requireLicense = true): void

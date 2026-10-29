@@ -20,6 +20,7 @@ type Appointment = {
     start_time?: string | null;
     status: string;
     type?: string;
+    examination_purpose?: string | null;
     service_types?: string[] | null;
     company?: { company_name?: string } | null;
     physical_exam?: unknown;
@@ -118,6 +119,9 @@ function nextAction(appointment?: Appointment) {
         return 'Book an appointment whenever you need clinic services.';
     if (
         appointment.service_types?.includes('PE') &&
+        ['pre_employment', 'annual_pe'].includes(
+            appointment.examination_purpose ?? '',
+        ) &&
         appointment.status === 'completed' &&
         !appointment.medical_workflow?.report_available
     ) {
@@ -154,14 +158,23 @@ function careSteps(appointment: Appointment) {
         ...(services.includes('PE')
             ? [{ label: 'Physical exam', icon: Stethoscope }]
             : []),
-        ...(services.includes('PE') ||
-        services.some((service) => laboratoryServices.includes(service))
+        ...(services.some((service) => laboratoryServices.includes(service))
             ? [{ label: 'Laboratory', icon: FlaskConical }]
             : []),
-        ...(services.includes('PE') || services.includes('X-Ray')
+        ...(services.includes('X-Ray')
             ? [{ label: 'X-ray', icon: ScanLine }]
             : []),
-        { label: 'Final clearance', icon: FileHeart },
+        {
+            label:
+                appointment.examination_purpose === 'medical_clearance'
+                    ? 'Certificate review'
+                    : ['pre_employment', 'annual_pe'].includes(
+                            appointment.examination_purpose ?? '',
+                        )
+                      ? 'Final clearance'
+                      : 'Doctor review',
+            icon: FileHeart,
+        },
     ];
     const completedThrough =
         {
