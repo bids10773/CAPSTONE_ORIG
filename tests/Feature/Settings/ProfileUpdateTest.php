@@ -2,7 +2,43 @@
 
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
+
+test('patient age follows birthdays in the clinic timezone', function (string $now, string $birthdate, int $age) {
+    Date::setTestNow(\Carbon\CarbonImmutable::parse($now, 'UTC'));
+    try {
+        $patient = User::factory()->create(['role' => 'patient']);
+        $patient->patientProfile()->create(['birthdate' => $birthdate]);
+        $this->actingAs($patient)->get(route('profile.edit'))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('patientAge', $age));
+    } finally {
+        Date::setTestNow();
+    }
+})->with([
+    ['2026-10-28 15:30:00', '2000-10-29', 25],
+    ['2026-10-28 16:30:00', '2000-10-29', 26],
+    ['2026-10-28 16:30:00', '2026-10-29', 0],
+]);
+
+test('patient age is unavailable without a saved birthdate', function () {
+    $patient = User::factory()->create(['role' => 'patient']);
+    $this->actingAs($patient)->get(route('profile.edit'))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('patientAge', null));
+});
+
+test('clinical staff can update sex without changing their license verification', function (string $role) {
+    $staff = User::factory()->licensed()->create(['role' => $role, 'sex' => 'Male']);
+    $this->actingAs($staff)->patch(route('profile.update'), [
+        'first_name' => $staff->first_name, 'last_name' => $staff->last_name,
+        'email' => $staff->email, 'sex' => 'Female',
+    ])->assertSessionHasNoErrors()->assertRedirect(route('profile.edit'));
+
+    expect($staff->fresh()->sex)->toBe('Female')
+        ->and($staff->fresh()->license_verification_status)->toBe('verified');
+    $this->assertDatabaseMissing('patient_profiles', ['user_id' => $staff->id]);
+})->with(['doctor', 'medtech', 'radtech']);
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();

@@ -202,11 +202,9 @@ export default function MedicalCertificateFormPage({
         certificate?.attending_physician_id ||
         certificate?.attending_physician?.id ||
         certificate?.physician?.id ||
+        (physicians.length === 1 ? physicians[0].id : null) ||
         initialConsultation?.attending_physician_id ||
         null;
-    const initialPhysician = physicians.find(
-        (physician) => physician.id === initialPhysicianId,
-    );
 
     const form = useForm<MedicalCertificateFormValues>({
         patient_id: String(certificate?.patient_id || initialPatient?.id || ''),
@@ -228,11 +226,6 @@ export default function MedicalCertificateFormPage({
             certificate?.appointment_id || selectedConsultationId || '',
         ),
         attending_physician_id: String(initialPhysicianId || ''),
-        physician_license_no:
-            certificate?.physician_license_no ||
-            initialConsultation?.physician_license_no ||
-            initialPhysician?.license_no ||
-            '',
         salutation: certificate?.salutation || '',
         consultation_date: initialConsultationDate,
         reason_for_consultation:
@@ -384,6 +377,9 @@ export default function MedicalCertificateFormPage({
         (physician) =>
             String(physician.id) === form.data.attending_physician_id,
     );
+    const physicianLicenseNumber = locked
+        ? certificate?.physician_license_no || ''
+        : selectedPhysician?.license_no || '';
     const previewPhysicianName =
         selectedPhysician?.name ||
         certificate?.attending_physician?.name ||
@@ -415,7 +411,7 @@ export default function MedicalCertificateFormPage({
         restEndDate: form.data.rest_end_date,
         dateIssued: form.data.date_issued,
         physicianName: previewPhysicianName,
-        physicianLicenseNumber: form.data.physician_license_no,
+        physicianLicenseNumber,
     };
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -517,19 +513,23 @@ export default function MedicalCertificateFormPage({
                 consultation.recommendation ||
                 consultation.recommendations ||
                 current.recommendation,
-            attending_physician_id: consultation.attending_physician_id
-                ? String(consultation.attending_physician_id)
+            attending_physician_id: consultationPhysician
+                ? String(consultationPhysician.id)
                 : current.attending_physician_id,
-            physician_license_no:
-                consultation.physician_license_no ||
-                consultationPhysician?.license_no ||
-                current.physician_license_no,
         }));
     }
 
     function submit(event: FormEvent) {
         event.preventDefault();
         if (locked) return;
+        const submitter = (event.nativeEvent as SubmitEvent).submitter;
+        const approve =
+            submitter instanceof HTMLButtonElement &&
+            submitter.value === 'approve';
+        form.transform((data) => ({
+            ...data,
+            save_action: approve ? 'approve' : 'draft',
+        }));
 
         if (editing && certificate) {
             form.patch(`/medical-certificates/${certificate.id}`, {
@@ -624,6 +624,23 @@ export default function MedicalCertificateFormPage({
 
                 <div className="grid gap-6 xl:grid-cols-[minmax(360px,.84fr)_minmax(0,1.16fr)] xl:items-start">
                     <form onSubmit={submit} className="space-y-5">
+                        {form.hasErrors && (
+                            <div
+                                role="alert"
+                                className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200"
+                            >
+                                <p className="font-semibold">
+                                    The certificate could not be saved.
+                                </p>
+                                <ul className="mt-2 list-disc space-y-1 pl-5">
+                                    {[
+                                        ...new Set(Object.values(form.errors)),
+                                    ].map((message) => (
+                                        <li key={message}>{message}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                         <FormSection
                             icon={<UserRound />}
                             title="Patient information"
@@ -1180,18 +1197,10 @@ export default function MedicalCertificateFormPage({
                                         form.errors.attending_physician_id,
                                     )}
                                     onChange={(event) => {
-                                        const physician = physicians.find(
-                                            (candidate) =>
-                                                String(candidate.id) ===
-                                                event.target.value,
+                                        form.setData(
+                                            'attending_physician_id',
+                                            event.target.value,
                                         );
-                                        form.setData((current) => ({
-                                            ...current,
-                                            attending_physician_id:
-                                                event.target.value,
-                                            physician_license_no:
-                                                physician?.license_no || '',
-                                        }));
                                     }}
                                     className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm dark:border-input dark:bg-card"
                                 >
@@ -1234,32 +1243,23 @@ export default function MedicalCertificateFormPage({
                                 </FieldLabel>
                                 <Input
                                     id="physician_license_no"
-                                    value={form.data.physician_license_no}
-                                    maxLength={100}
+                                    value={physicianLicenseNumber}
                                     disabled={locked}
-                                    readOnly={Boolean(
-                                        selectedPhysician?.license_no,
-                                    )}
-                                    aria-invalid={Boolean(
-                                        form.errors.physician_license_no,
-                                    )}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'physician_license_no',
-                                            event.target.value,
-                                        )
-                                    }
-                                    placeholder="Enter the verified license number"
+                                    readOnly
+                                    placeholder="No license number on the physician account"
                                 />
-                                <InputError
-                                    message={form.errors.physician_license_no}
-                                />
+                                <p className="mt-1.5 text-xs text-slate-500">
+                                    Filled automatically from the physician's
+                                    account. License verification is handled by
+                                    the administrator.
+                                </p>
                                 {!selectedPhysician?.license_no && (
                                     <p className="text-xs leading-5 text-amber-700 dark:text-amber-300">
                                         The physician account has no license
                                         number. You may complete the draft, but
-                                        the physician must update and verify
-                                        their account before approval.
+                                        the physician must add their license to
+                                        their account and have it verified by an
+                                        administrator before approval.
                                     </p>
                                 )}
                             </Field>
@@ -1289,23 +1289,40 @@ export default function MedicalCertificateFormPage({
                         {!locked && (
                             <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between dark:border-border dark:bg-card/95">
                                 <p className="text-xs text-slate-500">
-                                    Saving creates or updates a draft. It does
-                                    not issue the certificate.
+                                    Save unfinished work as a draft, or save and
+                                    approve the completed certificate. Issuance
+                                    is a separate physician action.
                                 </p>
-                                <Button
-                                    type="submit"
-                                    disabled={form.processing}
-                                    className="shrink-0"
-                                >
-                                    {form.processing ? (
-                                        <LoaderCircle className="animate-spin" />
-                                    ) : (
-                                        <Save />
-                                    )}
-                                    {editing
-                                        ? 'Save changes'
-                                        : 'Save certificate'}
-                                </Button>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        type="submit"
+                                        name="save_action"
+                                        value="draft"
+                                        variant="outline"
+                                        disabled={form.processing}
+                                        className="shrink-0"
+                                    >
+                                        {form.processing ? (
+                                            <LoaderCircle className="animate-spin" />
+                                        ) : (
+                                            <Save />
+                                        )}
+                                        Save draft
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        name="save_action"
+                                        value="approve"
+                                        disabled={form.processing}
+                                    >
+                                        {form.processing ? (
+                                            <LoaderCircle className="animate-spin" />
+                                        ) : (
+                                            <Check />
+                                        )}
+                                        Save and approve
+                                    </Button>
+                                </div>
                             </div>
                         )}
                     </form>

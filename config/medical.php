@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'certificate_verification_url' => env('MEDICAL_CERTIFICATE_VERIFICATION_URL', 'https://lmichealth.company'),
     'booking_security' => [
         'max_active_future_appointments' => 1,
         'booking_attempts_per_minute' => 5,

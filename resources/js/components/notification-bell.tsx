@@ -9,7 +9,7 @@ import {
     Trash2,
     XCircle,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -23,6 +23,7 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { createNotificationRefresh } from '@/lib/notification-refresh';
 
 configureEcho({
     broadcaster: 'reverb',
@@ -39,6 +40,7 @@ export interface AppNotification {
 }
 
 type NotificationCenter = { unreadCount: number; latest: AppNotification[] };
+const emptyCenter: NotificationCenter = { unreadCount: 0, latest: [] };
 
 export function relativeNotificationTime(value: string): string {
     const then = new Date(value);
@@ -66,90 +68,93 @@ function NotificationIcon({ type }: { type: string }) {
 
 export function NotificationBell() {
     const { auth, notificationCenter } = usePage().props as unknown as {
-        auth: { user: { id: number } };
+        auth: {
+            user: { id: number; role: string; company_id?: number | null };
+        };
         notificationCenter: NotificationCenter;
     };
-    const center = notificationCenter ?? { unreadCount: 0, latest: [] };
-    const [liveCenter, setLiveCenter] = useState<NotificationCenter | null>(
-        null,
-    );
+    const center = notificationCenter ?? emptyCenter;
+    const audience = `${auth.user.id}:${auth.user.role}:${auth.user.company_id ?? ''}`;
+    const [liveCenter, setLiveCenter] = useState<{
+        base: NotificationCenter;
+        audience: string;
+        data: NotificationCenter;
+    } | null>(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isRemoveAllOpen, setIsRemoveAllOpen] = useState(false);
     const [isRemovingAll, setIsRemovingAll] = useState(false);
-    const refreshInFlight = useRef<Promise<void> | null>(null);
 
-    const displayedCenter = liveCenter ?? center;
+    const displayedCenter =
+        liveCenter?.base === center && liveCenter.audience === audience
+            ? liveCenter.data
+            : center;
     const unreadCount = displayedCenter.unreadCount;
 
-    const refreshCenter = useCallback((): Promise<void> => {
-        if (refreshInFlight.current) return refreshInFlight.current;
-
-        const request = fetch('/notifications/center', {
-            credentials: 'same-origin',
-            headers: {
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-        })
-            .then(async (response) => {
-                if (!response.ok) {
-                    throw new Error('Unable to refresh notifications.');
-                }
-
-                setLiveCenter((await response.json()) as NotificationCenter);
-            })
-            .finally(() => {
-                if (refreshInFlight.current === request) {
-                    refreshInFlight.current = null;
-                }
-            });
-
-        refreshInFlight.current = request;
-
-        return request;
-    }, []);
+    const refresher = useMemo(
+        () =>
+            createNotificationRefresh<NotificationCenter>(
+                async (signal) => {
+                    const response = await fetch('/notifications/center', {
+                        signal,
+                        credentials: 'same-origin',
+                        cache: 'no-store',
+                        headers: {
+                            Accept: 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+                    if (!response.ok)
+                        throw new Error('Unable to refresh notifications.');
+                    return response.json();
+                },
+                (data) => {
+                    setLiveCenter({ base: center, audience, data });
+                    window.dispatchEvent(
+                        new Event('notification-center-refreshed'),
+                    );
+                },
+            ),
+        [center, audience],
+    );
+    const refreshCenter = refresher.run;
 
     useEffect(() => {
+        refresher.activate();
         const sync = () => {
             void refreshCenter().catch(() => undefined);
         };
         const syncWhenVisible = () => {
             if (document.visibilityState === 'visible') sync();
         };
-        const interval = window.setInterval(syncWhenVisible, 60_000);
+        const interval = window.setInterval(syncWhenVisible, 15_000);
 
         window.addEventListener('focus', sync);
+        window.addEventListener('online', sync);
         document.addEventListener('visibilitychange', syncWhenVisible);
 
         return () => {
             window.clearInterval(interval);
             window.removeEventListener('focus', sync);
+            window.removeEventListener('online', sync);
+            refresher.dispose();
             document.removeEventListener('visibilitychange', syncWhenVisible);
         };
-    }, [refreshCenter]);
+    }, [refreshCenter, refresher]);
 
     useEcho<{ unreadCount: number }>(
         `App.Models.User.${auth.user.id}`,
         '.notification.center.updated',
-        ({ unreadCount }) => {
-            setLiveCenter((current) => ({
-                unreadCount,
-                latest: current?.latest ?? center.latest,
-            }));
-
-            void refreshCenter().catch(() => {
-                // The Reverb payload already updated the badge. The focus and
-                // interval synchronization will retry if this request fails.
-            });
+        () => {
+            void refreshCenter();
         },
-        [auth.user.id],
+        [auth.user.id, refreshCenter],
     );
 
     const visit = (notification: AppNotification) => {
         router.post(
             `/notifications/${notification.id}/visit`,
             {},
-            { preserveScroll: true },
+            { preserveScroll: true, onSuccess: () => void refreshCenter() },
         );
     };
 
@@ -190,7 +195,13 @@ export function NotificationBell() {
 
     return (
         <>
-            <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+            <DropdownMenu
+                open={isMenuOpen}
+                onOpenChange={(open) => {
+                    setIsMenuOpen(open);
+                    if (open) void refreshCenter();
+                }}
+            >
                 <DropdownMenuTrigger asChild>
                     <button
                         type="button"

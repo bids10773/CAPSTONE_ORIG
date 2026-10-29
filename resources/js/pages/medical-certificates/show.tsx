@@ -10,7 +10,6 @@ import {
     MessageSquareWarning,
     PenLine,
     Printer,
-    Send,
     ShieldCheck,
     UserRoundCheck,
     X,
@@ -252,8 +251,7 @@ export default function MedicalCertificateShow({ certificate, can }: Props) {
                     </div>
                 )}
 
-                {(permissions.submit ||
-                    permissions.approve ||
+                {(permissions.approve ||
                     permissions.request_changes ||
                     permissions.issue ||
                     permissions.void) && (
@@ -270,19 +268,6 @@ export default function MedicalCertificateShow({ certificate, can }: Props) {
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                {permissions.submit && (
-                                    <WorkflowButton
-                                        loading={activeAction === 'submit'}
-                                        disabled={activeAction !== null}
-                                        icon={<Send />}
-                                        label="Submit for approval"
-                                        onClick={async () =>
-                                            (await confirmAction(
-                                                'Submit this draft to the attending physician for review?',
-                                            )) && transition('submit')
-                                        }
-                                    />
-                                )}
                                 {permissions.approve && (
                                     <WorkflowButton
                                         loading={activeAction === 'approve'}

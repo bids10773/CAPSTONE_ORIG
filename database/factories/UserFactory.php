@@ -50,6 +50,15 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function licensed(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'license_no' => '1234567',
+            'license_verification_status' => 'verified',
+            'license_verified_at' => now(),
+        ]);
+    }
+
     /**
      * Indicate that the model has two-factor authentication configured.
      */

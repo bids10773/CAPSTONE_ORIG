@@ -1372,29 +1372,30 @@
 }
 
 .medical-certificate-logo {
-    width: 29mm;
+    width: 17mm;
     height: 19mm;
     object-fit: contain;
+    justify-self: center;
 }
 
 .medical-certificate-clinic-copy {
-    color: #5f9c68 !important;
+    color: #2e9a72 !important;
     text-align: center;
 }
 
 .medical-certificate-clinic-copy h1 {
-    color: #5f9c68 !important;
-    font-size: 22.5pt;
+    color: #2e9a72 !important;
+    font-size: 20.5pt;
     font-weight: 800;
-    letter-spacing: -0.035em;
+    letter-spacing: 0.025em;
     line-height: 1;
     white-space: nowrap;
 }
 
 .medical-certificate-clinic-copy p {
     margin-top: 1.4mm;
-    color: #5f9c68 !important;
-    font-family: Georgia, 'Times New Roman', serif;
+    color: #00b55d !important;
+    font-family: Arial, sans-serif;
     font-size: 9pt;
     line-height: 1.15;
 }
@@ -1402,7 +1403,7 @@
 .medical-certificate-header-rule {
     height: 0.45mm;
     margin-top: 2.5mm;
-    background: #222222 !important;
+    background: #00b55d !important;
 }
 
 .medical-certificate-title-row {

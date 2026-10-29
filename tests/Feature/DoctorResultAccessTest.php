@@ -5,7 +5,7 @@ use App\Models\User;
 
 test('doctor record view includes intake measurements without exposing them in the patient payload', function () {
     $patient = User::factory()->create(['role' => 'patient']);
-    $doctor = User::factory()->create(['role' => 'doctor']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
     $appointment = Appointment::create([
         'user_id' => $patient->id, 'doctor_id' => $doctor->id,
         'appointment_date' => today(), 'type' => 'individual', 'status' => 'arrived',
@@ -31,8 +31,8 @@ test('doctor record view includes intake measurements without exposing them in t
 
 test('regular appointment results and evaluation require the assigned doctor', function () {
     $patient = User::factory()->create(['role' => 'patient']);
-    $doctor = User::factory()->create(['role' => 'doctor']);
-    $otherDoctor = User::factory()->create(['role' => 'doctor']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
+    $otherDoctor = User::factory()->licensed()->create(['role' => 'doctor']);
     $appointment = Appointment::create([
         'user_id' => $patient->id,
         'appointment_date' => today(),

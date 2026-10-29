@@ -1,8 +1,7 @@
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Clock,
-    Pencil,
+    Eye,
     Plus,
     RefreshCw,
     Trash2,
@@ -314,24 +313,6 @@ export default function StaffIndex() {
                                                     </td>
                                                     <td className="px-6 py-4 pr-6 text-right">
                                                         <div className="flex items-center justify-end gap-1">
-                                                            {member.role ===
-                                                                'doctor' &&
-                                                                auth.user
-                                                                    .role ===
-                                                                    'admin' && (
-                                                                    <Link
-                                                                        href={`/admin/doctor-availability?doctor_id=${member.id}`}
-                                                                    >
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-8 w-8 text-moss-500 hover:bg-moss-100/50"
-                                                                            title="Schedule"
-                                                                        >
-                                                                            <Clock className="h-3.5 w-3.5" />
-                                                                        </Button>
-                                                                    </Link>
-                                                                )}
                                                             {member.must_change_password && (
                                                                 <Button
                                                                     variant="ghost"
@@ -360,10 +341,11 @@ export default function StaffIndex() {
                                                                 className="h-8 gap-1.5 px-2.5 text-moss-700 hover:bg-moss-100/50"
                                                             >
                                                                 <Link
-                                                                    href={`/admin/staff/${member.id}/edit`}
+                                                                    href={`/admin/staff/${member.id}`}
+                                                                    aria-label={`View ${member.first_name} ${member.last_name}`}
                                                                 >
-                                                                    <Pencil className="h-3.5 w-3.5" />
-                                                                    Edit
+                                                                    <Eye className="h-3.5 w-3.5" />{' '}
+                                                                    View
                                                                 </Link>
                                                             </Button>
                                                             <Button

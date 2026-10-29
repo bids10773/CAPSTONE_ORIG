@@ -223,6 +223,31 @@ class StaffController extends Controller
         return back()->with('success', 'New temporary credentials were sent successfully. The previous temporary password is no longer valid.');
     }
 
+    public function show(User $staff): Response
+    {
+        abort_unless(in_array($staff->role, array_keys(User::getStaffRoles()), true), 404);
+
+        return Inertia::render('admin/staff/show', [
+            'doctorAvailability' => $staff->role === 'doctor'
+                ? collect($staff->availability ?? [])->whereIn('day', ['mon', 'tue', 'wed', 'thu', 'fri'])->values()->all()
+                : null,
+            'staff' => [
+                ...$staff->only([
+                    'id', 'first_name', 'middle_name', 'last_name', 'email', 'contact', 'sex',
+                    'role', 'license_no', 'specialization', 'is_active', 'created_at',
+                    'license_verification_status', 'license_verified_at', 'license_rejection_reason',
+                ]),
+                'has_license_document_front' => filled($staff->license_document_path)
+                    && Storage::disk('local')->exists($staff->license_document_path),
+                'has_license_document_back' => filled($staff->license_document_back_path)
+                    && Storage::disk('local')->exists($staff->license_document_back_path),
+                'signature_url' => filled($staff->signature_path) && Storage::disk('public')->exists($staff->signature_path)
+                    ? Storage::disk('public')->url($staff->signature_path) : null,
+            ],
+            'roles' => User::getStaffRoles(),
+        ]);
+    }
+
     /**
      * Show the form for editing the specified staff member.
      */
@@ -386,9 +411,15 @@ class StaffController extends Controller
             return back()->with('error', 'You cannot deactivate your own account.');
         }
 
-        $staff->update([
-            'is_active' => ! $staff->is_active,
-        ]);
+        DB::transaction(function () use ($staff): void {
+            $staff->update(['is_active' => ! $staff->is_active]);
+            SecurityAudit::create([
+                'actor_id' => auth()->id(),
+                'target_user_id' => $staff->id,
+                'action' => $staff->is_active ? 'staff_account_activated' : 'staff_account_deactivated',
+                'status' => 'success',
+            ]);
+        });
 
         $status = $staff->is_active ? 'activated' : 'deactivated';
 
@@ -412,6 +443,13 @@ class StaffController extends Controller
 
         $staff->update([
             'signature_path' => $path,
+        ]);
+
+        SecurityAudit::create([
+            'actor_id' => $request->user()->id,
+            'target_user_id' => $staff->id,
+            'action' => 'staff_signature_updated',
+            'status' => 'success',
         ]);
 
         return back()->with('success', 'Signature uploaded successfully.');
@@ -463,6 +501,10 @@ class StaffController extends Controller
         $verified = $validated['status'] === 'verified';
 
         DB::transaction(function () use ($request, $staff, $validated, $verified): void {
+            if ($staff->license_verification_status === $validated['status']
+                && ($verified || $staff->license_rejection_reason === $validated['rejection_reason'])) {
+                return;
+            }
             $staff->update([
                 'license_verification_status' => $validated['status'],
                 'license_verified_at' => $verified ? now() : null,

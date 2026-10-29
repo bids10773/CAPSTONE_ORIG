@@ -16,7 +16,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -86,6 +88,27 @@ class MedicalCertificateController extends Controller
         ]);
     }
 
+    public function prepare(Request $request, Appointment $appointment): RedirectResponse
+    {
+        Gate::authorize('create', MedicalCertificate::class);
+        Gate::authorize('viewPhysicalExam', $appointment);
+        abort_unless($appointment->examination_purpose === 'medical_clearance', 404);
+
+        $certificate = $appointment->medicalCertificates()->latest('id')->first();
+        if ($certificate && $request->user()->can('view', $certificate)) {
+            return redirect()->route(
+                $request->user()->can('update', $certificate) ? 'medical-certificates.edit' : 'medical-certificates.show',
+                $certificate,
+            );
+        }
+        abort_if($certificate !== null, 403);
+
+        return redirect()->route('medical-certificates.create', [
+            'patient_id' => $appointment->user_id,
+            'appointment_id' => $appointment->id,
+        ]);
+    }
+
     public function create(Request $request): InertiaResponse
     {
         Gate::authorize('create', MedicalCertificate::class);
@@ -102,11 +125,19 @@ class MedicalCertificateController extends Controller
 
     public function store(SaveMedicalCertificateRequest $request): RedirectResponse
     {
-        $certificate = $this->workflow->createDraft($request->user(), $request->validated(), $request);
-        $this->documents->synchronizeCertificate($certificate, true);
+        $certificate = DB::transaction(function () use ($request): MedicalCertificate {
+            $certificate = $this->workflow->createDraft($request->user(), $request->validated(), $request);
+            if ($request->input('save_action') === 'approve') {
+                $this->documents->synchronizeCertificate($certificate);
+                $certificate = $this->workflow->approve($certificate, $request->user(), null, $request);
+            }
+            $this->documents->synchronizeCertificate($certificate, true);
+
+            return $certificate;
+        });
 
         return redirect()->route('medical-certificates.show', $certificate)
-            ->with('success', "Medical certificate {$certificate->certificate_number} saved as a draft.");
+            ->with('success', $certificate->status === 'approved' ? 'Medical certificate saved and approved. Ready for physician issuance.' : "Medical certificate {$certificate->certificate_number} saved as a draft.");
     }
 
     public function show(Request $request, MedicalCertificate $medicalCertificate): InertiaResponse
@@ -142,16 +173,18 @@ class MedicalCertificateController extends Controller
         SaveMedicalCertificateRequest $request,
         MedicalCertificate $medicalCertificate,
     ): RedirectResponse {
-        $certificate = $this->workflow->updateDraft(
-            $medicalCertificate,
-            $request->user(),
-            $request->validated(),
-            $request,
-        );
-        $this->documents->synchronizeCertificate($certificate, true);
+        $certificate = DB::transaction(function () use ($request, $medicalCertificate): MedicalCertificate {
+            $certificate = $this->workflow->updateDraft($medicalCertificate, $request->user(), $request->validated(), $request);
+            if ($request->input('save_action') === 'approve') {
+                $certificate = $this->workflow->approve($certificate, $request->user(), null, $request);
+            }
+            $this->documents->synchronizeCertificate($certificate, true);
+
+            return $certificate;
+        });
 
         return redirect()->route('medical-certificates.show', $certificate)
-            ->with('success', 'Medical certificate draft updated.');
+            ->with('success', $certificate->status === 'approved' ? 'Medical certificate saved and approved. Ready for physician issuance.' : 'Medical certificate draft updated.');
     }
 
     public function patientSearch(Request $request): JsonResponse
@@ -292,7 +325,11 @@ class MedicalCertificateController extends Controller
         $this->workflow->auditDocumentAccess($medicalCertificate, $request->user(), 'printed', $request);
 
         return response()
-            ->view('medical-certificates.print', ['certificate' => $medicalCertificate])
+            ->view('medical-certificates.print', [
+                'certificate' => $medicalCertificate,
+                'signatureDataUri' => $this->signatureDataUri($medicalCertificate),
+                ...app(\App\Services\CertificateVerificationService::class)->documentData($medicalCertificate),
+            ])
             ->withHeaders($this->privateDocumentHeaders());
     }
 
@@ -304,6 +341,8 @@ class MedicalCertificateController extends Controller
 
         $response = Pdf::loadView('pdf.medical-certificate', [
             'certificate' => $medicalCertificate,
+            'signatureDataUri' => $this->signatureDataUri($medicalCertificate),
+            ...app(\App\Services\CertificateVerificationService::class)->documentData($medicalCertificate),
         ])->setPaper('a4', 'portrait')
             ->download("{$medicalCertificate->certificate_number}.pdf");
 
@@ -312,6 +351,21 @@ class MedicalCertificateController extends Controller
         }
 
         return $response;
+    }
+
+    private function signatureDataUri(MedicalCertificate $certificate): ?string
+    {
+        $path = $certificate->attendingPhysician?->signature_path;
+        if ($certificate->status !== 'issued' || blank($path) || ! Storage::disk('public')->exists($path)) {
+            return null;
+        }
+        $contents = Storage::disk('public')->get($path);
+        $image = is_string($contents) ? @getimagesizefromstring($contents) : false;
+        if (! $image || ! in_array($image['mime'], ['image/png', 'image/jpeg'], true)) {
+            return null;
+        }
+
+        return 'data:'.$image['mime'].';base64,'.base64_encode($contents);
     }
 
     private function selectedPatient(Request $request): ?User

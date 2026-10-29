@@ -16,8 +16,8 @@ function staffRecordAppointment(User $patient, array $overrides = []): Appointme
 }
 
 test('doctor patient records contain only appointments assigned to that doctor', function () {
-    $doctor = User::factory()->create(['role' => 'doctor']);
-    $otherDoctor = User::factory()->create(['role' => 'doctor']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
+    $otherDoctor = User::factory()->licensed()->create(['role' => 'doctor']);
     $patient = User::factory()->create(['role' => 'patient']);
 
     $assigned = staffRecordAppointment($patient, [
@@ -39,8 +39,8 @@ test('doctor patient records contain only appointments assigned to that doctor',
 });
 
 test('staff can open a patient details page containing only their authorized records', function () {
-    $doctor = User::factory()->create(['role' => 'doctor']);
-    $otherDoctor = User::factory()->create(['role' => 'doctor']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
+    $otherDoctor = User::factory()->licensed()->create(['role' => 'doctor']);
     $patient = User::factory()->create(['role' => 'patient']);
     $unrelatedPatient = User::factory()->create(['role' => 'patient']);
 
@@ -75,7 +75,7 @@ test('staff can open a patient details page containing only their authorized rec
 });
 
 test('medtech patient records show the laboratory queue but not unrelated completed visits', function () {
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $patient = User::factory()->create(['role' => 'patient']);
 
     $queued = staffRecordAppointment($patient, [
@@ -99,7 +99,7 @@ test('medtech patient records show the laboratory queue but not unrelated comple
 });
 
 test('radtech patient records show the radiology queue but not unrelated completed visits', function () {
-    $radtech = User::factory()->create(['role' => 'radtech']);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech']);
     $patient = User::factory()->create(['role' => 'patient']);
 
     $queued = staffRecordAppointment($patient, [
@@ -123,9 +123,9 @@ test('radtech patient records show the radiology queue but not unrelated complet
 });
 
 test('staff patient records expose only documents allowed for each clinical role', function () {
-    $doctor = User::factory()->create(['role' => 'doctor']);
-    $medtech = User::factory()->create(['role' => 'medtech']);
-    $radtech = User::factory()->create(['role' => 'radtech']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech']);
     $patient = User::factory()->create(['role' => 'patient']);
     $appointment = staffRecordAppointment($patient, [
         'doctor_id' => $doctor->id,
@@ -170,9 +170,9 @@ test('staff patient records expose only documents allowed for each clinical role
 });
 
 test('clinical PDF endpoints enforce document-specific staff access', function () {
-    $doctor = User::factory()->create(['role' => 'doctor']);
-    $medtech = User::factory()->create(['role' => 'medtech']);
-    $radtech = User::factory()->create(['role' => 'radtech']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech']);
     $patient = User::factory()->create(['role' => 'patient']);
     $appointment = staffRecordAppointment($patient, [
         'doctor_id' => $doctor->id,
@@ -195,8 +195,8 @@ test('clinical PDF endpoints enforce document-specific staff access', function (
 
 test('receptionists can review administrative patient records without clinical documents', function () {
     $receptionist = User::factory()->create(['role' => 'receptionist']);
-    $doctor = User::factory()->create(['role' => 'doctor']);
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $patient = User::factory()->create([
         'role' => 'patient',
         'contact' => '09171234567',

@@ -23,13 +23,16 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'clinicHours' => ClinicHours::publicSettings(),
             'auth' => [
+                'requiresLicenseVerification' => $request->user()
+                    && in_array($request->user()->role, ['doctor', 'medtech', 'radtech'], true)
+                    && ! $request->user()->hasVerifiedProfessionalLicense(),
                 'user' => $request->user()
                     ? $request->user()->load(['patientProfile', 'company:id,company_name,email,contact_number,status'])
                     : null,
             ],
             'notificationCenter' => fn () => $request->user() ? [
-                'unreadCount' => $request->user()->unreadNotifications()->count(),
-                'latest' => $request->user()->notifications()->latest()->limit(7)->get()->map(fn ($notification) => [
+                'unreadCount' => $request->user()->visibleNotifications()->whereNull('read_at')->count(),
+                'latest' => $request->user()->visibleNotifications()->latest()->limit(7)->get()->map(fn ($notification) => [
                     'id' => $notification->id,
                     ...$notification->data,
                     'read_at' => $notification->read_at?->toIso8601String(),

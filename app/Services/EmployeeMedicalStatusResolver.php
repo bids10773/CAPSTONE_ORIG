@@ -8,6 +8,13 @@ class EmployeeMedicalStatusResolver
 {
     public function resolve(Appointment $appointment): string
     {
+        if ($appointment->examination_purpose === 'medical_clearance') {
+            if ($appointment->status === 'for_final_evaluation') {
+                $appointment->update(['status' => 'arrived']);
+            }
+
+            return $appointment->status;
+        }
         $appointment->loadMissing('medicalExamination.diagnosticResults', 'medicalExamination.physicalExam', 'medicalExamination.laboratoryResult', 'medicalExamination.xrayReport');
         $examination = $appointment->medicalExamination;
         $drug = $examination?->diagnosticResults->firstWhere('service_key', 'drug_test');

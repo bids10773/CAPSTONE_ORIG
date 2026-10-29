@@ -131,6 +131,7 @@ class DoctorAvailabilityChangeService
 
     public function reject(DoctorAvailabilityChangeRequest $changeRequest, User $admin): void
     {
+        $affected = $this->affectedAppointments($changeRequest->doctor, collect($changeRequest->requested_availability));
         DB::transaction(function () use ($changeRequest, $admin): void {
             $lockedRequest = DoctorAvailabilityChangeRequest::query()->lockForUpdate()->findOrFail($changeRequest->id);
             $this->assertPending($lockedRequest);
@@ -140,6 +141,9 @@ class DoctorAvailabilityChangeService
                 'reviewed_at' => now(),
             ]);
         }, 3);
+        foreach ($affected as $appointment) {
+            app(WorkflowNotificationService::class)->users(User::whereKey($appointment->user_id)->where('role', 'patient')->get(), 'doctor_schedule_change_declined', 'Appointment schedule unchanged', 'The proposed doctor schedule change was declined. Your existing appointment schedule remains active.', route('appointments.index', absolute: false));
+        }
     }
 
     private function isWithinAvailability(Appointment $appointment, Collection $periods): bool

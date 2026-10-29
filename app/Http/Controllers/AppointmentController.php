@@ -10,7 +10,6 @@ use App\Models\CompanyReferral;
 use App\Models\MedicalHistory;
 use App\Models\User;
 use App\Notifications\AppointmentCancelled;
-use App\Notifications\OnsiteStaffAssigned;
 use App\Rules\Weekday;
 use App\Services\AppointmentApprovalService;
 use App\Services\AppointmentSchedulingService;
@@ -600,9 +599,6 @@ class AppointmentController extends Controller
                     $request->user(),
                 );
 
-                foreach ($deployments as $deployment) {
-                    $deployment->user->notify(new OnsiteStaffAssigned($appointment, $deployment->service_role));
-                }
             } else {
                 app(\App\Services\BulkAppointmentEnrollmentService::class)
                     ->synchronizeParentStatus($appointment, $request->status);
@@ -1247,6 +1243,19 @@ class AppointmentController extends Controller
             'notes' => $data['notes'] ?? null,
         ]);
 
+        if ($appointment->type === 'individual') {
+            $notifications = app(\App\Services\WorkflowNotificationService::class);
+            $notifications->admins('appointment_created', 'Appointment created', "{$appointment->reference_code} was registered by an administrator.", route('admin.appointments.show', $appointment, false));
+            $notifications->users(User::query()->where('role', 'receptionist')->get(),
+                'appointment_review_requested', 'Appointment awaiting review',
+                'An administrator registered an individual appointment awaiting clinic coordination.',
+                route('receptionist.appointment-requests.index', ['status' => 'pending'], false));
+            $notifications->users(User::query()->whereKey($appointment->user_id)->where('role', 'patient')->get(),
+                'appointment_registered', 'Appointment registered',
+                'The clinic registered an appointment for you on '.$appointment->appointment_date->format('M j, Y').'. It is awaiting clinic approval.',
+                route('appointments.index', absolute: false));
+        }
+
         return redirect()->route('admin.appointments.index')
             ->with('success', 'Appointment created successfully!');
     }
@@ -1507,6 +1516,9 @@ class AppointmentController extends Controller
                     ->whereIn('status', ['accepted', 'arrived'])
                     ->whereDoesntHave('physicalExam'))
                     ->orWhere('status', 'for_final_evaluation')
+                    ->orWhere(fn ($certificate) => $certificate
+                        ->where('examination_purpose', 'medical_clearance')
+                        ->whereIn('status', Appointment::OPEN_STATUSES))
                     ->orWhere(fn ($release) => $release->where('status', 'completed')->whereHas('medicalExamination', fn ($exam) => $exam->whereNotNull('finalized_at')->whereNull('released_at')));
             });
 
@@ -1554,7 +1566,14 @@ class AppointmentController extends Controller
         $appointments->through(function (Appointment $appointment) use ($request, $role): Appointment {
             $appointment->setAttribute('is_scheduled_today', $appointment->appointment_date?->isToday() ?? false);
             if ($role === 'doctor') {
-                $appointment->setAttribute('can_start_physical_exam', $request->user()->can('updatePhysicalExam', $appointment));
+                $appointment->setAttribute('can_start_physical_exam', $appointment->examination_purpose !== 'medical_clearance' && $request->user()->can('updatePhysicalExam', $appointment));
+                $appointment->setAttribute('requires_final_evaluation', $appointment->requiresFinalEvaluation());
+                $appointment->setAttribute('certificate_url', $appointment->examination_purpose === 'medical_clearance'
+                    && in_array($appointment->status, Appointment::OPEN_STATUSES, true)
+                    && ! in_array($appointment->status, ['pending', 'accepted'], true)
+                    && $request->user()->can('viewPhysicalExam', $appointment)
+                        ? route('doctor.medical-certificates.prepare', $appointment)
+                        : null);
             }
 
             return $appointment;

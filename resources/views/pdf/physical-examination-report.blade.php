@@ -1,9 +1,7 @@
 @php
-    $green = '#455e4a';
-    $mossDark = '#303f34';
-    $mossSoft = '#e3ede1';
-    $logoFile = public_path('images/full_logo2-optimized.png');
-    $logoData = is_file($logoFile) ? 'data:image/png;base64,'.base64_encode(file_get_contents($logoFile)) : null;
+    $green = '#00a651';
+    $mossDark = '#009b4d';
+    $mossSoft = '#fff';
     $profile = $appointment->user->patientProfile;
     $diagnostics = $examination?->diagnosticResults?->keyBy('service_key') ?? collect();
     $diagnostic = fn (string $key) => $diagnostics->get($key);
@@ -54,13 +52,9 @@
         .center { text-align: center; }
         .right { text-align: right; }
         .section { height: 15px; padding: 1px 3px; border: .8px solid {{ $green }}; background: {{ $mossSoft }}; color: {{ $mossDark }}; font-size: 9.8px; font-weight: 800; }
-        .header { height: 76px; border-bottom: .8px solid {{ $green }}; position: relative; text-align: center; }
-        .logo-box { position: absolute; top: 5px; left: 20px; width: 58px; height: 51px; padding: 2px; border: 1px solid {{ $green }}; background: {{ $mossSoft }}; overflow: hidden; }
-        .logo-box img { width: 54px; height: 47px; }
-        .clinic { padding-top: 10px; color: {{ $mossDark }}; font-size: 21px; font-weight: 900; letter-spacing: .3px; }
-        .clinic-address { margin-top: 4px; font-size: 8px; }
-        .report-title { font-size: 11px; font-weight: 900; }
-        .patient-box { height: 69px; }
+
+
+        .patient-box { height: 60px; }
         .photo { width: 83px; text-align: center; }
         .photo-frame { width: 68px; height: 48px; margin: 4px auto; border: .8px solid {{ $green }}; padding-top: 15px; font-size: 8px; }
         .patient-label { width: 105px; font-size: 9px; font-weight: 800; }
@@ -71,11 +65,11 @@
         .entry-label { width: 47%; font-size: 8.4px; }
         .entry-value { color: #111; border-bottom: .55px solid {{ $green }}; text-align: center; }
         .systems-table th { height: 14px; font-size: 8.5px; }
-        .systems-table td { height: 13px; font-size: 8px; }
+        .systems-table td { height: 11px; font-size: 8px; }
         .systems-table .part { width: 29%; }
         .systems-table .normal { width: 22%; text-align: center; color: #111; }
         .systems-table .finding { color: #111; }
-        .diagnostic td { height: 13px; font-size: 8.1px; }
+        .diagnostic td { height: 11px; font-size: 8.1px; }
         .diagnostic .test { width: 34%; }
         .diagnostic .choice { width: 18%; }
         .diagnostic .notes { color: #111; border-bottom: .55px solid {{ $green }}; }
@@ -89,29 +83,31 @@
         .bmi-value { height: 17px; border-bottom: .55px solid {{ $green }}; color: #111; font-size: 8.5px; }
         .cert-text { padding: 4px 16px; font-size: 7.4px; line-height: 1.35; }
         .signatures { table-layout: fixed; }
-        .signatures td { height: 55px; padding: 1px 3px; text-align: center; vertical-align: bottom; }
+        .signatures td { height: 45px; padding: 1px 3px; text-align: center; vertical-align: bottom; }
         .signature-name { border-bottom: .55px solid {{ $green }}; color: #111; font-size: 7.5px; }
         .signature-role { font-size: 6.8px; }
         .conclusion { padding-top: 7px; color: #244080; text-align: center; font-size: 8px; }
-        .attachment-page { page-break-before: always; padding: 12px; color: #26382b; font-size: 10px; line-height: 1.35; }
-        .attachment-page h1 { margin: 0; font-size: 19px; text-align: center; }
-        .attachment-page h2 { margin: 24px 0 12px; font-size: 16px; text-align: center; }
-        .attachment-page .attachment-address { margin: 4px 0 18px; border-bottom: 2px solid #455e4a; padding-bottom: 10px; text-align: center; }
+        .attachment-page { page-break-before: always; color: #111827; font-size: 10px; line-height: 1.35; }
+        .attachment-page h2 { margin: 7px 0; color: #009b4d; font-size: 16px; text-align: center; }
+
         .attachment-page .attachment-meta { margin-bottom: 18px; }
-        .attachment-page .attachment-meta td { border: 1px solid #b8cbb8; padding: 7px; }
-        .attachment-page .attachment-results th, .attachment-page .attachment-results td { border: 1px solid #b8cbb8; padding: 7px; text-align: left; }
-        .attachment-page .attachment-results th { background: #e3ede1; }
+        .attachment-page .attachment-meta td { border: 1px solid #00a651; padding: 3px 5px; }
+        .attachment-page .attachment-results th, .attachment-page .attachment-results td { border: 1px solid #00a651; padding: 3px 5px; text-align: left; }
+        .attachment-page .attachment-results th { background: #fff; color: #009b4d; }
         .attachment-page .attachment-signature { margin-top: 35px; text-align: right; }
+        @include('pdf.partials.clinic-styles')
+        body { font-size: 7.4px; line-height: 1.12; }
+        .examination-letterhead { position: relative; }
+        .examination-letterhead--verified .header { padding-right: 25mm; min-height: 25mm; }
+        .examination-letterhead--verified .header h1 { font-size: 24px; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo-box">@if($logoData)<img src="{{ $logoData }}" alt="LMIC Logo">@else LMIC @endif</div>
-        <div class="clinic">Living Myth Medical Clinic</div>
-        <div class="clinic-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
-        <div class="clinic-address">Mobile No. 0920-631-1130</div>
-        <div class="report-title">Medical Examination Report</div>
+    <div class="examination-letterhead {{ filled($verificationQrDataUri ?? null) ? 'examination-letterhead--verified' : '' }}">
+        @include('pdf.partials.clinic-header')
+        @include('pdf.partials.report-verification', ['compact' => true])
     </div>
+    <div class="title">MEDICAL EXAMINATION REPORT</div>
 
     <table class="ruled patient-box">
         <tr>
@@ -215,10 +211,10 @@
     </table>
     <div class="conclusion">{{ strtoupper($examination?->final_diagnosis ?: '') }}</div>
 
+    @if($appointment->examination_purpose !== 'pre_employment')
     @if($history)
         <div class="attachment-page">
-            <h1>Living Myth Medical Clinic</h1>
-            <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
+            @include('pdf.partials.clinic-header')
             <h2>Medical History</h2>
             <table class="attachment-meta"><tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>{{ $appointment->reference_code }}</td></tr></table>
             <table class="attachment-results">
@@ -238,8 +234,7 @@
     @endif
 
     <div class="attachment-page">
-        <h1>Living Myth Medical Clinic</h1>
-        <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
+        @include('pdf.partials.clinic-header')
         <h2>Physical Examination</h2>
         <table class="attachment-meta"><tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>{{ $appointment->reference_code }}</td></tr></table>
         <table class="attachment-results">
@@ -263,6 +258,7 @@
         @if($physical->remarks)<p><b>Remarks:</b> {{ $physical->remarks }}</p>@endif
         <div class="attachment-signature">@include('pdf.partials.electronic-signature', ['staff' => $physical->doctor, 'role' => 'Examining Physician', 'verifiedAt' => $physical->finalized_at, 'verificationLabel' => 'Examined'])</div>
     </div>
+    @endif
 
     @foreach(($laboratorySections ?? []) as $sectionKey => $section)
         @if($laboratory?->isFinalized() && filled($laboratory->{$section['column']}))
@@ -273,8 +269,7 @@
                 $stored = is_array($stored) ? $stored : [];
             @endphp
             <div class="attachment-page">
-                <h1>Living Myth Medical Clinic</h1>
-                <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
+                @include('pdf.partials.clinic-header')
                 <h2>{{ $section['label'] }} Result</h2>
                 <table class="attachment-meta">
                     <tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>{{ $appointment->reference_code }}</td></tr>
@@ -304,8 +299,7 @@
 
     @if($xray?->isVerified())
         <div class="attachment-page">
-            <h1>Living Myth Medical Clinic</h1>
-            <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
+            @include('pdf.partials.clinic-header')
             <h2>Chest X-Ray Report</h2>
             <table class="attachment-meta">
                 <tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>{{ $appointment->reference_code }}</td></tr>
@@ -321,8 +315,7 @@
 
     {{-- Final evaluation is already represented in the main medical examination form.
         <div class="attachment-page">
-            <h1>Living Myth Medical Clinic</h1>
-            <div class="attachment-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
+            @include('pdf.partials.clinic-header')
             <h2>Final Medical Evaluation</h2>
             <table class="attachment-meta"><tr><td><b>Patient</b></td><td>{{ $appointment->user->name }}</td><td><b>Appointment</b></td><td>{{ $appointment->reference_code }}</td></tr></table>
             <table class="attachment-results">

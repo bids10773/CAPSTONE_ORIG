@@ -216,7 +216,7 @@ export default function FinalEvaluation({
                                         `/doctor/final-evaluation/${appointment.id}/release`,
                                     )
                                 }
-                                className="rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                                className="cursor-pointer rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 enabled:hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 Release final report
                             </button>
@@ -362,7 +362,7 @@ export default function FinalEvaluation({
                             <InputError message={drugForm.errors.result} />
                             <button
                                 disabled={drugForm.processing}
-                                className="mt-4 rounded-xl bg-moss-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                                className="mt-4 cursor-pointer rounded-xl bg-moss-700 px-5 py-2.5 text-sm font-bold text-white transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss-700 enabled:hover:bg-moss-800 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 Verify Drug Test result
                             </button>
@@ -605,7 +605,7 @@ export default function FinalEvaluation({
                                     !readyForFinalEvaluation ||
                                     selectedServices.length === 0
                                 }
-                                className="inline-flex items-center gap-2 rounded-xl bg-moss-600 px-5 py-2.5 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-moss-600 px-5 py-2.5 font-bold text-white transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss-600 enabled:hover:bg-moss-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {form.processing ? (
                                     <LoaderCircle className="h-4 w-4 animate-spin" />

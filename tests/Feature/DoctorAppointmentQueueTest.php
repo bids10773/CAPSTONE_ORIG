@@ -17,8 +17,8 @@ function doctorQueueAppointment(User $patient, User $doctor, array $overrides = 
 }
 
 test('doctor queue shows assigned appointments from today onward and marks their editability', function () {
-    $doctor = User::factory()->create(['role' => 'doctor']);
-    $otherDoctor = User::factory()->create(['role' => 'doctor']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
+    $otherDoctor = User::factory()->licensed()->create(['role' => 'doctor']);
     $patient = User::factory()->create(['role' => 'patient']);
 
     $today = doctorQueueAppointment($patient, $doctor);
@@ -39,7 +39,7 @@ test('doctor queue shows assigned appointments from today onward and marks their
 });
 
 test('doctor can start a physical examination only after check-in on its scheduled date', function () {
-    $doctor = User::factory()->create(['role' => 'doctor']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
     $patient = User::factory()->create(['role' => 'patient']);
     $acceptedToday = doctorQueueAppointment($patient, $doctor);
     $arrivedToday = doctorQueueAppointment($patient, $doctor, [
@@ -70,7 +70,7 @@ test('doctor can start a physical examination only after check-in on its schedul
 });
 
 test('doctor queue exposes physical exam actions only when the doctor is authorized', function () {
-    $doctor = User::factory()->create(['role' => 'doctor']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
     $patient = User::factory()->create(['role' => 'patient']);
     $cbc = doctorQueueAppointment($patient, $doctor, [
         'status' => 'arrived', 'arrived_at' => now(), 'service_types' => ['CBC'],

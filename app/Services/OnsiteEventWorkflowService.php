@@ -124,6 +124,17 @@ class OnsiteEventWorkflowService
         $deployment = OnsiteEventStaff::query()->updateOrCreate(['bulk_appointment_id' => $event->id, 'user_id' => $staff->id, 'service_role' => $role], ['queue_capacity' => $capacity, 'is_active' => true, 'assigned_by' => $actor?->id, 'assigned_at' => now()]);
         SecurityAudit::create(['actor_id' => $actor?->id, 'target_user_id' => $staff->id, 'action' => 'onsite_staff_assigned', 'status' => 'success', 'metadata' => ['bulk_appointment_id' => $event->id, 'service_role' => $role, 'queue_capacity' => $capacity]]);
 
+        if ($deployment->wasRecentlyCreated || $deployment->wasChanged('is_active')) {
+            DB::afterCommit(function () use ($staff, $event, $role): void {
+                try {
+                    User::whereKey($staff->id)->where('role', $role)->where('is_active', true)->first()
+                        ?->notify(new \App\Notifications\OnsiteStaffAssigned($event, $role));
+                } catch (\Throwable $exception) {
+                    report($exception);
+                }
+            });
+        }
+
         return $deployment;
     }
 
@@ -198,15 +209,18 @@ class OnsiteEventWorkflowService
                 ]);
             }
 
-            $updated = OnsiteServiceQueue::query()
+            $queue = OnsiteServiceQueue::query()
                 ->where('appointment_id', $employee->id)
                 ->where('service_role', $role)
                 ->where('assigned_staff_id', $actor->id)
                 ->whereIn('status', ['assigned', 'in_progress'])
-                ->update(['status' => 'in_progress', 'started_at' => now()]);
+                ->lockForUpdate()->first();
 
-            if ($updated === 0) {
+            if ($queue === null) {
                 throw ValidationException::withMessages(['queue' => 'This employee is not assigned to your onsite queue.']);
+            }
+            if ($queue->status !== 'in_progress') {
+                $queue->update(['status' => 'in_progress', 'started_at' => now()]);
             }
         }, 3);
     }
@@ -245,6 +259,9 @@ class OnsiteEventWorkflowService
 
     public function refreshFinalEvaluationTask(Appointment $employee): void
     {
+        if (! $employee->requiresFinalEvaluation()) {
+            return;
+        }
         $examination = $employee->medicalExamination;
         if (! $examination) {
             return;

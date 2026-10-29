@@ -25,6 +25,7 @@ class ClinicalDocumentController extends Controller
             'laboratory' => $appointment->labResult,
             'xray' => $appointment->xrayReport,
             'laboratorySections' => $definitions->sectionsFor($appointment),
+            ...app(\App\Services\ReportVerificationService::class)->documentData($appointment->medicalExamination),
         ])->setPaper('letter', 'portrait');
         $filename = "medicalexam-pdf-{$appointment->reference_code}.pdf";
 
@@ -65,7 +66,10 @@ class ClinicalDocumentController extends Controller
 
     private function render(Request $request, Appointment $appointment, string $title, array $fields, string $slug): Response
     {
-        $pdf = Pdf::loadView('pdf.clinical-report', compact('appointment', 'title', 'fields'))->setPaper('letter');
+        $pdf = Pdf::loadView('pdf.clinical-report', [
+            ...compact('appointment', 'title', 'fields'),
+            ...app(\App\Services\ReportVerificationService::class)->documentData($appointment->xrayReport),
+        ])->setPaper('letter');
         $filename = "LMIC-{$slug}-{$appointment->id}.pdf";
 
         return $this->secure($request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename));

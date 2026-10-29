@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -16,6 +17,43 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
+
+    public function visibleNotifications(): MorphMany
+    {
+        $legacyRoles = [
+            'appointment_request' => ['admin', 'receptionist'],
+            'appointment_submitted' => ['patient', 'company'],
+            'appointment_confirmed' => ['patient', 'company'],
+            'appointment_rejected' => ['patient', 'company'],
+            'appointment_cancelled' => ['patient', 'company'],
+            'appointment_reminder' => ['patient', 'company'],
+            'appointment_assigned' => ['doctor'],
+            'medical_service_update' => ['patient'],
+            'medical_document_status' => ['patient'],
+            'doctor_availability_change_requested' => ['admin'],
+            'doctor_schedule_changed' => ['receptionist'],
+            'doctor_schedule_change_pending' => ['patient', 'company'],
+            'inquiry' => ['admin'],
+            'onsite_staff_assigned' => ['doctor', 'medtech', 'radtech', 'receptionist'],
+        ];
+        $allowed = array_keys(array_filter($legacyRoles, fn (array $roles) => in_array($this->role, $roles, true)));
+
+        return $this->notifications()->where(function ($query) use ($legacyRoles, $allowed) {
+            $query->where('data->recipient_role', $this->role)
+                ->orWhere(function ($legacy) use ($legacyRoles, $allowed) {
+                    $legacy->whereNull('data->recipient_role')->where(function ($types) use ($legacyRoles, $allowed) {
+                        $types->whereNull('data->type')
+                            ->orWhereNotIn('data->type', array_keys($legacyRoles))
+                            ->orWhereIn('data->type', $allowed);
+                    });
+                });
+        })->when($this->role === 'company', function ($query) {
+            $query->where(function ($company) {
+                $company->whereNull('data->recipient_company_id')
+                    ->orWhere('data->recipient_company_id', $this->company_id);
+            });
+        });
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -100,6 +138,13 @@ class User extends Authenticatable implements MustVerifyEmail
             'failed_login_attempts' => 'integer',
             'license_verified_at' => 'datetime',
         ];
+    }
+
+    public function hasVerifiedProfessionalLicense(): bool
+    {
+        return in_array($this->role, ['doctor', 'medtech', 'radtech'], true)
+            && filled($this->license_no)
+            && $this->license_verification_status === 'verified';
     }
 
     public function isLoginLocked(): bool

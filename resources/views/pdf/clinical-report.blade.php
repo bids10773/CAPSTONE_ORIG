@@ -3,19 +3,16 @@
 <head>
     <meta charset="utf-8">
     <style>
-        @page { margin: 30px; }
-        body { font-family: DejaVu Sans, sans-serif; color: #172019; font-size: 11px; }
-        .head { border-bottom: 2px solid #16834b; padding-bottom: 8px; text-align: center; }
-        .head h1 { margin: 0; color: #348f5c; font-size: 27px; }
-        .title { margin: 18px; text-align: center; font-size: 18px; font-weight: bold; }
+
         .meta, .fields { width: 100%; border-collapse: collapse; }
-        .meta td { border-bottom: 1px solid #35a66c; padding: 5px; }
-        .label { width: 18%; color: #16834b; font-weight: bold; }
-        .fields { margin-top: 18px; }
-        .fields th, .fields td { border: 1px solid #35a66c; padding: 7px; vertical-align: top; }
-        .fields th { width: 30%; color: #16834b; text-align: left; }
+        .meta td { border-bottom: 1px solid #00a651; padding: 3px 5px; }
+        .label { width: 18%; color: #009b4d; font-weight: bold; }
+        .fields { margin-top: 8px; }
+        .fields th, .fields td { border: 1px solid #00a651; padding: 3px 5px; vertical-align: top; }
+        .fields th { width: 30%; color: #009b4d; text-align: left; }
         .signature { margin: 45px 0 0 55%; }
         .foot { position: fixed; bottom: -10px; width: 100%; color: #777; font-size: 8px; text-align: center; }
+        @include('pdf.partials.clinic-styles')
     </style>
 </head>
 <body>
@@ -26,10 +23,7 @@
         $verifiedAt = $appointment->xrayReport?->verified_at
             ?? $appointment->physicalExam?->finalized_at;
     @endphp
-    <div class="head">
-        <h1>Living Myth Industrial Clinic</h1>
-        <div>2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</div>
-    </div>
+    @include('pdf.partials.clinic-header')
     <div class="title">{{ strtoupper($title) }}</div>
     <table class="meta">
         <tr>
@@ -64,5 +58,6 @@
         ])
     </div>
     <div class="foot">Electronically generated and verified LMIC clinical document · {{ $appointment->reference_code }}</div>
+@include('pdf.partials.report-verification')
 </body>
 </html>

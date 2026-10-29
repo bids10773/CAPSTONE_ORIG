@@ -13,7 +13,7 @@ function vitalSignsAppointment(): Appointment
     $patient = User::factory()->create(['role' => 'patient', 'email_verified_at' => now()]);
     PatientProfile::create(['user_id' => $patient->id, 'birthdate' => '1995-01-01', 'sex' => 'Male',
         'civil_status' => 'Single', 'address' => 'Test address']);
-    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
 
     return Appointment::create(['user_id' => $patient->id, 'doctor_id' => $doctor->id,
         'appointment_date' => today(), 'start_time' => '09:00', 'end_time' => '09:30',

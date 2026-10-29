@@ -105,8 +105,10 @@ class BulkAppointmentEnrollmentService
                     'status' => 'completed',
                     'onsite_event_status' => 'results_completed',
                 ]);
+                $this->notifyQuietTransition($parent);
             } elseif ($started && $parent->status === 'accepted') {
                 $parent->updateQuietly(['status' => 'arrived']);
+                $this->notifyQuietTransition($parent);
             }
         });
     }
@@ -119,6 +121,12 @@ class BulkAppointmentEnrollmentService
         if ($employee->role !== 'patient' || $employee->company_id !== $parent->company_id) {
             throw ValidationException::withMessages(['employee' => 'The employee must belong to the bulk appointment company.']);
         }
+    }
+
+    private function notifyQuietTransition(Appointment $parent): void
+    {
+        app(WorkflowNotificationService::class)->admins('appointment_updated', 'Company event updated', "{$parent->reference_code} is {$parent->status}.", route('admin.onsite-events.show', $parent, false));
+        app(\App\Observers\AppointmentWorkflowObserver::class)->bulkUpdated($parent);
     }
 
     private function employeeStatus(string $parentStatus): string

@@ -17,7 +17,7 @@ class SecurityHeaders
 
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'DENY');
-        $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $response->headers->set('Referrer-Policy', $request->routeIs('certificates.verify', 'reports.verify') ? 'no-referrer' : 'strict-origin-when-cross-origin');
         $response->headers->set(
             'Permissions-Policy',
             'camera=(), geolocation=(), microphone=()',

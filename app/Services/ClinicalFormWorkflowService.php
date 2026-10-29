@@ -133,7 +133,7 @@ class ClinicalFormWorkflowService
                 'appointment_id' => $appointment->id,
                 'actor_id' => $actor->id,
                 'form_type' => 'laboratory',
-                'action' => $existing ? ($finalize ? 'finalized' : 'updated') : 'created',
+                'action' => $verificationUpdate ? 'verification_updated' : ($existing ? ($finalize ? 'finalized' : 'updated') : 'created'),
                 'changes' => $result->getChanges(),
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),

@@ -47,6 +47,11 @@ Route::view('/privacy-policy', 'privacy-policy')->name('privacy-policy');
 Route::view('/terms', 'terms')->name('terms');
 Route::view('/data-deletion', 'data-deletion')->name('data-deletion');
 
+Route::get('/verify/certificate/{token}', \App\Http\Controllers\CertificateVerificationController::class)
+    ->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:30,1')->name('certificates.verify');
+Route::get('/verify/report/{token}', \App\Http\Controllers\ReportVerificationController::class)
+    ->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:30,1')->name('reports.verify');
+
 Route::middleware('guest')->group(function () {
     Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
         ->middleware('throttle:password-reset-link')
@@ -218,6 +223,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/onsite-events/{event}/queue', [OnsiteEventController::class, 'myQueue'])->name('onsite-events.queue');
         Route::get('/dashboard', DoctorDashboardController::class)->name('dashboard');
         Route::get('/appointments', [AppointmentController::class, 'staffIndex'])->defaults('role', 'doctor')->name('appointments');
+        Route::get('/appointments/{appointment}/certificate', [MedicalCertificateController::class, 'prepare'])->name('medical-certificates.prepare');
         Route::get('/patient-records', [StaffPatientRecordController::class, 'index'])->name('patient-records.index');
         Route::get('/patient-records/{patient}', [StaffPatientRecordController::class, 'show'])->name('patient-records.show');
         Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
@@ -289,7 +295,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/doctor-availability-requests/{availabilityChangeRequest}/approve', [DoctorAvailabilityController::class, 'approve'])->name('doctor-availability-requests.approve');
         Route::patch('/doctor-availability-requests/{availabilityChangeRequest}/reject', [DoctorAvailabilityController::class, 'reject'])->name('doctor-availability-requests.reject');
 
-        Route::resource('staff', StaffController::class)->except('show');
+        Route::resource('staff', StaffController::class);
         Route::get('/patients', [AdminPatientController::class, 'index'])->name('patients.index');
         Route::get('/patients/{patient}/edit', [AdminPatientController::class, 'edit'])->name('patients.edit');
         Route::patch('/patients/{patient}', [AdminPatientController::class, 'update'])->name('patients.update');

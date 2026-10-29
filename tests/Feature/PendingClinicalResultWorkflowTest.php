@@ -23,7 +23,7 @@ function pendingResultAppointment(array $services, string $status): Appointment
     $examination = app(\App\Services\MedicalExaminationService::class)->forAppointment($appointment);
     $appointment->physicalExam()->create([
         'medical_examination_id' => $examination->id,
-        'doctor_id' => User::factory()->create(['role' => 'doctor'])->id,
+        'doctor_id' => User::factory()->licensed()->create(['role' => 'doctor'])->id,
         'classification' => 'Pending', 'is_completed' => true,
     ]);
 
@@ -44,8 +44,8 @@ function drugTestPayload(bool $finalize, string $methamphetamine = 'Negative'): 
 
 test('medtech can reopen one pending drug test and explicitly finalize it', function () {
     $appointment = pendingResultAppointment(['Drug Test'], 'for_diagnostics');
-    $originalMedtech = User::factory()->create(['role' => 'medtech']);
-    $continuingMedtech = User::factory()->create(['role' => 'medtech']);
+    $originalMedtech = User::factory()->licensed()->create(['role' => 'medtech']);
+    $continuingMedtech = User::factory()->licensed()->create(['role' => 'medtech']);
 
     $this->actingAs($originalMedtech)
         ->post(route('medtech.lab-results.store', $appointment), drugTestPayload(false, 'Pending'))
@@ -84,8 +84,8 @@ test('medtech can reopen one pending drug test and explicitly finalize it', func
 
 test('assigned medtech can edit a drug test after it is sent for verification', function () {
     $appointment = pendingResultAppointment(['Drug Test'], 'for_diagnostics');
-    $assignedMedtech = User::factory()->create(['role' => 'medtech']);
-    $otherMedtech = User::factory()->create(['role' => 'medtech']);
+    $assignedMedtech = User::factory()->licensed()->create(['role' => 'medtech']);
+    $otherMedtech = User::factory()->licensed()->create(['role' => 'medtech']);
 
     $verificationPayload = drugTestPayload(true, 'Positive');
     $verificationPayload['drug_workflow_action'] = 'send_verification';
@@ -140,7 +140,7 @@ test('assigned medtech can edit a drug test after it is sent for verification', 
 
 test('finalized regular laboratory values are not left pending by stale child status', function () {
     $appointment = pendingResultAppointment(['CBC'], 'for_diagnostics');
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $examination = app(\App\Services\MedicalExaminationService::class)->forAppointment($appointment);
     $appointment->labResult()->create([
         'medical_examination_id' => $examination->id,
@@ -159,8 +159,8 @@ test('finalized regular laboratory values are not left pending by stale child st
 
 test('radtech can repeatedly save one pending xray then finalize it once', function () {
     $appointment = pendingResultAppointment(['X-Ray'], 'for_xray');
-    $originalRadtech = User::factory()->create(['role' => 'radtech']);
-    $continuingRadtech = User::factory()->create(['role' => 'radtech']);
+    $originalRadtech = User::factory()->licensed()->create(['role' => 'radtech']);
+    $continuingRadtech = User::factory()->licensed()->create(['role' => 'radtech']);
 
     $this->actingAs($originalRadtech)->post(route('radtech.xrays.store', $appointment), [
         'workflow_action' => 'performed',
@@ -203,8 +203,8 @@ test('radtech can repeatedly save one pending xray then finalize it once', funct
 test('clinical result endpoints enforce medtech and radtech role separation', function () {
     $drugAppointment = pendingResultAppointment(['Drug Test'], 'for_diagnostics');
     $xrayAppointment = pendingResultAppointment(['X-Ray'], 'for_xray');
-    $medtech = User::factory()->create(['role' => 'medtech']);
-    $radtech = User::factory()->create(['role' => 'radtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech']);
     $companyUser = User::factory()->create(['role' => 'company']);
 
     $this->actingAs($medtech)->post(route('radtech.xrays.store', $xrayAppointment), ['workflow_action' => 'performed'])->assertForbidden();

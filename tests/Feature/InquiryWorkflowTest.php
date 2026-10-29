@@ -30,6 +30,32 @@ function inquiryPayload(array $overrides = []): array
     ], $overrides);
 }
 
+test('inquiry status changes notify admins and only the signed in inquiry owner once', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $owner = User::factory()->create(['role' => 'patient']);
+    $other = User::factory()->create(['role' => 'patient']);
+    $inquiry = Inquiry::create([...inquiryPayload(), 'user_id' => $owner->id, 'status' => InquiryStatus::Pending]);
+    $service = app(\App\Services\InquiryService::class);
+    $service->updateStatus($inquiry, InquiryStatus::InProgress);
+    $service->updateStatus($inquiry, InquiryStatus::InProgress);
+    expect($admin->notifications()->where('data->type', 'inquiry_status_changed')->count())->toBe(1)
+        ->and($owner->notifications()->where('data->type', 'inquiry_status_changed')->count())->toBe(1)
+        ->and($other->notifications()->count())->toBe(0);
+});
+
+test('inquiry replies send an in app owner alert without copying private response content', function () {
+    Mail::fake();
+    $admin = User::factory()->create(['role' => 'admin']);
+    $owner = User::factory()->create(['role' => 'company']);
+    $inquiry = Inquiry::create([...inquiryPayload(), 'user_id' => $owner->id, 'status' => InquiryStatus::Pending]);
+    app(\App\Services\InquiryService::class)->reply($inquiry, 'Private reply content for the owner only.', $admin);
+    $notification = $owner->notifications()->where('data->type', 'inquiry_replied')->first();
+    expect($notification)->not->toBeNull()
+        ->and($notification->data['url'])->toBe(route('inquiries.index', absolute: false))
+        ->and(json_encode($notification->data))->not->toContain('Private reply content');
+    expect($admin->notifications()->where('data->type', 'inquiry_replied')->count())->toBe(1);
+});
+
 test('external company submits an inquiry without creating an account or credentials', function () {
     Mail::fake();
     Notification::fake();

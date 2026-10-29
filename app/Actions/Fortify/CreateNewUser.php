@@ -114,6 +114,11 @@ class CreateNewUser implements CreatesNewUsers
                 'address' => $input['address'],
             ]);
 
+            app(\App\Services\WorkflowNotificationService::class)->admins(
+                'patient_registered', 'Patient registered', 'A patient successfully registered an account.',
+                route('admin.patients.show', $user, false),
+            );
+
             return $user;
         });
     }

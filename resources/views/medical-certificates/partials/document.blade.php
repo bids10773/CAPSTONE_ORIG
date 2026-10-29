@@ -26,16 +26,16 @@
 @endphp
 
 <style>
+    @include('pdf.partials.clinic-styles')
     @page {
         size: A4 portrait;
-        margin: 12mm 17mm;
+        margin: 24px 28px;
     }
 
     * {
         box-sizing: border-box;
     }
 
-    html,
     body {
         margin: 0;
         padding: 0;
@@ -44,8 +44,8 @@
     body {
         color: #111;
         font-family: DejaVu Sans, Arial, sans-serif;
-        font-size: 11.5pt;
-        line-height: 1.35;
+        font-size: 10.5pt;
+        line-height: 1.25;
     }
 
     .medical-certificate-sheet {
@@ -55,64 +55,12 @@
         background: #fff;
     }
 
-    .medical-certificate-header {
-        width: 100%;
-        border-collapse: collapse;
-        border-bottom: 1.2px solid #1f1f1f;
-    }
-
-    .medical-certificate-header td {
-        padding: 0 0 3.2mm;
-        vertical-align: middle;
-    }
-
-    .medical-certificate-logo-cell {
-        width: 22mm;
-        padding-right: 2.5mm !important;
-        text-align: center;
-    }
-
-    .medical-certificate-logo {
-        display: block;
-        width: 19mm;
-        max-height: 16mm;
-        margin: 0 auto;
-        object-fit: contain;
-    }
-
-    .medical-certificate-logo-fallback {
-        display: inline-block;
-        border: 1px solid #4e9a68;
-        padding: 3mm 2mm;
-        color: #4e9a68;
-        font-size: 10pt;
-        font-weight: 700;
-    }
-
-    .medical-certificate-clinic {
-        color: #59a66d;
-        font-family: Arial, sans-serif;
-        font-size: 24pt;
-        font-weight: 700;
-        line-height: 1.05;
-        white-space: nowrap;
-    }
-
-    .medical-certificate-address,
-    .medical-certificate-mobile {
-        color: #4e9a68;
-        font-size: 8.5pt;
-        line-height: 1.35;
-        text-align: center;
-    }
-
     .medical-certificate-title {
         margin-top: 4.5mm;
-        font-size: 13.5pt;
+        font-size: 16px;
         font-weight: 700;
         text-align: center;
-        text-decoration: underline;
-        text-underline-offset: 1.2mm;
+        color: #009b4d;
     }
 
     .medical-certificate-date-row {
@@ -145,12 +93,12 @@
     }
 
     .medical-certificate-greeting {
-        margin: 18mm 0 10mm;
+        margin: 10mm 0 6mm;
     }
 
     .medical-certificate-certification {
         margin: 0;
-        line-height: 1.8;
+        line-height: 1.5;
     }
 
     .medical-certificate-name-line {
@@ -171,56 +119,34 @@
     }
 
     .medical-certificate-section-label {
-        margin-top: 5.5mm;
+        margin-top: 4mm;
         font-weight: 400;
+        color: #009b4d;
         text-transform: uppercase;
     }
 
     .medical-certificate-ruled-block {
-        position: relative;
-        width: 100%;
+        border-bottom: 1px solid #00a651;
+        padding: 1mm 1mm 2mm;
     }
 
     .medical-certificate-ruled-block--three {
-        min-height: 24mm;
+        min-height: 18mm;
     }
 
     .medical-certificate-ruled-block--two {
-        min-height: 16mm;
-    }
-
-    .medical-certificate-rule {
-        position: absolute;
-        right: 0;
-        left: 0;
-        height: 0;
-        border-bottom: 1px solid #111;
-    }
-
-    .medical-certificate-rule--one {
-        top: 7.5mm;
-    }
-
-    .medical-certificate-rule--two {
-        top: 15.5mm;
-    }
-
-    .medical-certificate-rule--three {
-        top: 23.5mm;
+        min-height: 12mm;
     }
 
     .medical-certificate-ruled-value {
-        position: relative;
-        z-index: 1;
-        padding: .2mm 1mm 0;
-        line-height: 8mm;
+        line-height: 1.35;
         overflow-wrap: break-word;
         white-space: pre-line;
         word-wrap: break-word;
     }
 
     .medical-certificate-rest {
-        margin-top: 7mm;
+        margin-top: 4mm;
     }
 
     .medical-certificate-rest-line {
@@ -229,7 +155,7 @@
 
     .medical-certificate-issued-copy {
         max-width: 150mm;
-        margin-top: 7mm;
+        margin-top: 4mm;
         line-height: 1.5;
     }
 
@@ -242,41 +168,66 @@
     }
 
     .medical-certificate-signature {
-        position: absolute;
-        right: 0;
-        bottom: 27mm;
         width: 76mm;
+        margin: 5mm 0 0 auto;
+        page-break-inside: avoid;
         text-align: left;
+    }
+
+    .medical-certificate-verification {
+        margin-top: 3mm;
+        font-size: 8pt;
+        line-height: 1.2;
+        page-break-inside: avoid;
+    }
+
+    .medical-certificate-verification img {
+        width: 28mm;
+        height: 28mm;
+        display: block;
+    }
+
+    .medical-certificate-verification a {
+        display: block;
+        margin-top: 1mm;
+        color: #285c3b;
     }
 
     .medical-certificate-signature-mark {
         position: relative;
-        height: 19mm;
-        border-bottom: 1.1px solid #111;
+        height: 14mm;
     }
 
     .medical-certificate-signature-name {
         overflow: hidden;
         margin-top: 1mm;
-        font-size: 9.5pt;
+        font-size: 8.5pt;
         font-weight: 700;
         text-align: center;
         text-overflow: ellipsis;
         white-space: nowrap;
+        padding-bottom: 1mm;
+        border-bottom: 1.1px solid #111;
     }
 
-    .medical-certificate-signature-md {
+    .medical-certificate-signature-image-container {
         position: absolute;
+        left: 0;
         right: 0;
-        bottom: .5mm;
-        font-size: 12pt;
+        bottom: 1mm;
+        text-align: center;
+    }
+
+    .medical-certificate-signature-image {
+        max-width: 55mm;
+        max-height: 12mm;
     }
 
     .medical-certificate-signature-role,
     .medical-certificate-license {
-        font-size: 11pt;
-        font-weight: 700;
-        line-height: 1.25;
+        font-size: 8pt;
+        font-weight: 600;
+        line-height: 1.35;
         text-align: center;
     }
 
@@ -289,9 +240,7 @@
     }
 
     .medical-certificate-note {
-        position: absolute;
-        bottom: 2mm;
-        left: 0;
+        margin-top: 5mm;
         font-size: 10.5pt;
         font-style: italic;
         font-weight: 700;
@@ -322,7 +271,7 @@
                 width: 210mm;
                 min-height: 297mm;
                 margin: 8mm auto;
-                padding: 12mm 17mm;
+                padding: 24px 28px;
                 box-shadow: 0 5px 24px rgba(15, 23, 42, .16);
             }
         }
@@ -350,30 +299,15 @@
         </div>
     @endif
 
-    <table class="medical-certificate-header" role="presentation">
-        <tr>
-            <td class="medical-certificate-logo-cell" rowspan="3">
-                @if($logoData)
-                    <img class="medical-certificate-logo" src="{{ $logoData }}" alt="Living Myth Medical Clinic logo">
-                @else
-                    <span class="medical-certificate-logo-fallback">LMIC</span>
-                @endif
-            </td>
-            <td class="medical-certificate-clinic">Living Myth Medical Clinic</td>
-        </tr>
-        <tr>
-            <td class="medical-certificate-address">2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</td>
-        </tr>
-        <tr>
-            <td class="medical-certificate-mobile">Mobile No. 0920-631-11-30</td>
-        </tr>
-    </table>
+    @include('pdf.partials.clinic-header')
 
     <div class="medical-certificate-title">MEDICAL CERTIFICATE</div>
     <div class="medical-certificate-reference-row">
         <span><b>Certificate No.:</b> {{ $display($certificate->certificate_number, 'Pending') }}</span>
         <span><b>Patient Ref.:</b> {{ $display($certificate->patient_reference_code, 'N/A') }}</span>
-        <span><b>Consultation:</b> {{ $consultationDate?->format('F j, Y') ?? 'N/A' }}</span>
+        @if($documentMode !== 'pdf')
+            <span><b>Consultation:</b> {{ $consultationDate?->format('F j, Y') ?? 'N/A' }}</span>
+        @endif
     </div>
     <div class="medical-certificate-date-row">
         Date:
@@ -394,23 +328,16 @@
     </p>
 
     <div class="medical-certificate-ruled-block medical-certificate-ruled-block--three">
-        <span class="medical-certificate-rule medical-certificate-rule--one"></span>
-        <span class="medical-certificate-rule medical-certificate-rule--two"></span>
-        <span class="medical-certificate-rule medical-certificate-rule--three"></span>
         <div class="medical-certificate-ruled-value">{{ $display($certificate->reason_for_consultation) }}</div>
     </div>
 
     <div class="medical-certificate-section-label">IMPRESSION:</div>
     <div class="medical-certificate-ruled-block medical-certificate-ruled-block--two">
-        <span class="medical-certificate-rule medical-certificate-rule--one"></span>
-        <span class="medical-certificate-rule medical-certificate-rule--two"></span>
         <div class="medical-certificate-ruled-value">{{ $display($certificate->clinical_impression) }}</div>
     </div>
 
     <div class="medical-certificate-section-label">RECOMMENDATION:</div>
     <div class="medical-certificate-ruled-block medical-certificate-ruled-block--two">
-        <span class="medical-certificate-rule medical-certificate-rule--one"></span>
-        <span class="medical-certificate-rule medical-certificate-rule--two"></span>
         <div class="medical-certificate-ruled-value">{{ $display($certificate->recommendation) }}</div>
     </div>
 
@@ -431,9 +358,13 @@
 
     <section class="medical-certificate-signature" aria-label="Attending physician">
         <div class="medical-certificate-signature-mark">
-            <span class="medical-certificate-signature-md">MD</span>
+            @if($issued && filled($signatureDataUri ?? null))
+                <div class="medical-certificate-signature-image-container">
+                <img class="medical-certificate-signature-image" src="{{ $signatureDataUri }}" alt="Attending physician electronic signature">
+                </div>
+            @endif
         </div>
-        <div class="medical-certificate-signature-name">{{ strtoupper($display($certificate->physician_name)) }}</div>
+        <div class="medical-certificate-signature-name">{{ strtoupper($display($certificate->physician_name)) }}, MD</div>
         <div class="medical-certificate-signature-role">ATTENDING PHYSICIAN</div>
         <div class="medical-certificate-license">
             LICENSE NO.
@@ -442,4 +373,10 @@
     </section>
 
     <footer class="medical-certificate-note">NOTE: This certificate is not for medico-legal purposes.</footer>
+    @if($issued && filled($verificationQrDataUri ?? null))
+        <div class="medical-certificate-verification">
+            <img src="{{ $verificationQrDataUri }}" alt="Scan to verify this certificate">
+            <a href="{{ $verificationUrl }}">Scan to verify / Verify online</a>
+        </div>
+    @endif
 </article>

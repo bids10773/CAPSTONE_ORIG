@@ -7,7 +7,6 @@ use App\Models\OnsiteEventStaff;
 use App\Models\OnsiteServiceQueue;
 use App\Models\SecurityAudit;
 use App\Models\User;
-use App\Notifications\OnsiteStaffAssigned;
 use App\Services\OnsiteEventWorkflowService;
 use App\Services\OnsiteStaffingRecommendationService;
 use App\Support\ClinicHours;
@@ -222,7 +221,6 @@ class OnsiteEventController extends Controller
         $capacity = $recommendation['capacity_per_staff'] ?? 1;
         $staff = User::findOrFail($data['user_id']);
         $workflow->assignStaff($event, $staff, $data['service_role'], $capacity, $request->user());
-        $staff->notify(new OnsiteStaffAssigned($event, $data['service_role']));
 
         return back()->with('success', 'Staff member assigned to the onsite event.');
     }

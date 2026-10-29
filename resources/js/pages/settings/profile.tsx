@@ -14,7 +14,8 @@ import {
     UserRound,
     X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import BirthdateInput from '@/components/birthdate-input';
 import InputError from '@/components/input-error';
 import {
@@ -39,6 +40,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Profile Settings', href: '/settings/profile' },
 ];
 const civilStatuses = ['Single', 'Married', 'Divorced', 'Widowed'] as const;
+const subscribeToClient = () => () => {};
 type SettingsSection =
     | 'personal-information'
     | 'change-password'
@@ -57,11 +59,11 @@ function friendlyDate(value?: string): string {
 
 function Detail({ label, value }: { label: string; value?: string | null }) {
     return (
-        <div className="rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3 dark:border-border dark:bg-muted/30">
+        <div className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/70 px-4 py-3 dark:border-border dark:bg-muted/30">
             <dt className="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
                 {label}
             </dt>
-            <dd className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
+            <dd className="mt-1 text-sm font-medium wrap-anywhere text-slate-900 dark:text-slate-100">
                 {value || 'Not provided'}
             </dd>
         </div>
@@ -92,6 +94,7 @@ const licenseStatus = {
 
 export default function Profile({
     mustVerifyEmail,
+    patientAge = null,
     twoFactorAvailable = false,
     twoFactorEnabled = false,
     requiresTwoFactorConfirmation = false,
@@ -99,6 +102,7 @@ export default function Profile({
     medicalRecords = [],
 }: {
     mustVerifyEmail: boolean;
+    patientAge?: number | null;
     status?: string;
     twoFactorAvailable?: boolean;
     twoFactorEnabled?: boolean;
@@ -107,6 +111,12 @@ export default function Profile({
     medicalRecords?: PatientMedicalRecord[];
 }) {
     const { auth } = usePage<SharedData>().props;
+    // Portals mount after hydration, when the browser document is available.
+    const canUseDocument = useSyncExternalStore(
+        subscribeToClient,
+        () => true,
+        () => false,
+    );
     const user = auth.user;
     const profile = user.patient_profile;
     const isPatient = user.role === 'patient';
@@ -133,7 +143,7 @@ export default function Profile({
         contact: user.contact ?? '',
         license_no: user.license_no ?? '',
         birthdate: profile?.birthdate?.slice(0, 10) ?? '',
-        sex: profile?.sex ?? '',
+        sex: isPatient ? (profile?.sex ?? user.sex ?? '') : (user.sex ?? ''),
         civil_status: profile?.civil_status ?? '',
         address: profile?.address ?? '',
     });
@@ -153,6 +163,19 @@ export default function Profile({
     const initials =
         `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}`.toUpperCase() ||
         'PT';
+
+    useEffect(() => {
+        if (!editing) return;
+        const firstName = document.getElementById('profile-first-name');
+        firstName?.focus({ preventScroll: true });
+        firstName?.scrollIntoView({
+            block: 'center',
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+                .matches
+                ? 'auto'
+                : 'smooth',
+        });
+    }, [editing]);
 
     function cancelEditing() {
         form.setData(initial());
@@ -189,7 +212,7 @@ export default function Profile({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Profile Settings" />
-            <div className="mx-auto grid w-full max-w-[1500px] gap-6 p-4 sm:p-6 lg:p-8 xl:grid-cols-12 xl:items-start">
+            <div className="mx-auto grid w-full max-w-[1500px] gap-6 p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-24 xl:grid-cols-12 xl:items-start">
                 <header className="relative overflow-hidden rounded-[2rem] bg-moss-800 px-6 py-8 text-white shadow-xl sm:px-9 sm:py-10 xl:col-span-12">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(190,215,185,.25),transparent_25rem)]" />
                     <div className="relative flex items-start justify-between gap-4 sm:items-center sm:gap-6">
@@ -318,21 +341,25 @@ export default function Profile({
                                 id="personal-information"
                                 className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-border dark:bg-card"
                             >
-                                {!editing && (
-                                    <div className="flex justify-end border-b border-slate-100 bg-gradient-to-r from-moss-50/80 to-white p-4 dark:border-border dark:from-moss-950/40 dark:to-card">
+                                {!editing &&
+                                    canUseDocument &&
+                                    createPortal(
                                         <Button
                                             type="button"
+                                            aria-controls="personal-information"
                                             onClick={() => setEditing(true)}
-                                            className="gap-2"
+                                            className="fixed right-4 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-40 h-12 cursor-pointer gap-2 rounded-full px-6 shadow-lg sm:right-6"
                                         >
                                             <Pencil className="size-4" /> Edit
                                             Profile
-                                        </Button>
-                                    </div>
-                                )}
+                                        </Button>,
+                                        document.body,
+                                    )}
 
                                 {!editing ? (
-                                    <dl className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
+                                    <dl
+                                        className={`grid gap-3 p-4 sm:grid-cols-2 ${isClinicalStaff ? 'xl:grid-cols-3' : 'xl:grid-cols-4'}`}
+                                    >
                                         <Detail
                                             label="Full Name"
                                             value={user.name}
@@ -361,10 +388,16 @@ export default function Profile({
                                             value={user.contact}
                                         />
                                         {isClinicalStaff && (
-                                            <Detail
-                                                label="Professional License Number"
-                                                value={user.license_no}
-                                            />
+                                            <>
+                                                <Detail
+                                                    label="Professional License Number"
+                                                    value={user.license_no}
+                                                />
+                                                <Detail
+                                                    label="Sex"
+                                                    value={user.sex}
+                                                />
+                                            </>
                                         )}
                                         {isPatient && (
                                             <>
@@ -381,6 +414,14 @@ export default function Profile({
                                                 <Detail
                                                     label="Sex"
                                                     value={profile?.sex}
+                                                />
+                                                <Detail
+                                                    label="Age"
+                                                    value={
+                                                        patientAge === null
+                                                            ? null
+                                                            : `${patientAge} ${patientAge === 1 ? 'year' : 'years'} old`
+                                                    }
                                                 />
                                                 <Detail
                                                     label="Civil Status"
@@ -406,6 +447,7 @@ export default function Profile({
                                                 error={form.errors.first_name}
                                             >
                                                 <Input
+                                                    id="profile-first-name"
                                                     value={form.data.first_name}
                                                     onChange={(event) =>
                                                         form.setData(
@@ -482,6 +524,36 @@ export default function Profile({
                                                     disabled={isCompany}
                                                 />
                                             </Field>
+                                            {isClinicalStaff && (
+                                                <Field
+                                                    label="Sex"
+                                                    error={form.errors.sex}
+                                                    optional
+                                                >
+                                                    <select
+                                                        aria-label="Sex"
+                                                        value={form.data.sex}
+                                                        onChange={(event) =>
+                                                            form.setData(
+                                                                'sex',
+                                                                event.target
+                                                                    .value,
+                                                            )
+                                                        }
+                                                        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-input dark:bg-background"
+                                                    >
+                                                        <option value="">
+                                                            Select sex
+                                                        </option>
+                                                        <option value="Male">
+                                                            Male
+                                                        </option>
+                                                        <option value="Female">
+                                                            Female
+                                                        </option>
+                                                    </select>
+                                                </Field>
+                                            )}
                                             {isClinicalStaff && (
                                                 <Field
                                                     label="Professional License Number"

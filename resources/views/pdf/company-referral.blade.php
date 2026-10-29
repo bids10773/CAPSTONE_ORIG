@@ -3,27 +3,23 @@
 <head>
     <meta charset="utf-8">
     <style>
-        @page { margin: 34px; }
-        body { font-family: DejaVu Sans, sans-serif; color: #1f2937; font-size: 12px; }
-        .header { border-bottom: 2px solid #39734d; padding-bottom: 14px; text-align: center; }
-        h1 { margin: 0; color: #39734d; font-size: 22px; }
-        .subtitle { margin-top: 5px; color: #64748b; }
-        .code { margin: 26px 0; border: 2px dashed #39734d; padding: 18px; text-align: center; }
+
+        .code { margin: 26px 0; border: 2px dashed #009b4d; padding: 18px; text-align: center; }
         .code small { display: block; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
         .code strong { display: block; margin-top: 7px; font-size: 24px; letter-spacing: 2px; }
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 9px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-        td:first-child { width: 34%; color: #64748b; font-weight: bold; }
+        td { padding: 3px 5px; border-bottom: 1px solid #00a651; vertical-align: top; }
+        td:first-child { width: 34%; color: #009b4d; font-weight: bold; }
         .services { margin-top: 20px; }
         .services li { margin-bottom: 6px; }
         .footer { margin-top: 28px; color: #64748b; font-size: 10px; text-align: center; }
+        @include('pdf.partials.clinic-styles')
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Living Myth Industrial Clinic</h1>
-        <div class="subtitle">Company Medical Referral</div>
-    </div>
+    @include('pdf.partials.clinic-header')
+
+    <div class="title">COMPANY MEDICAL REFERRAL</div>
 
     <div class="code">
         <small>Referral Code</small>

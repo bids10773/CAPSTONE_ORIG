@@ -5,9 +5,21 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class MedicalCertificate extends Model
 {
+    protected $hidden = ['verification_token'];
+
+    protected static function booted(): void
+    {
+        static::saving(function (MedicalCertificate $certificate): void {
+            if (in_array($certificate->status, ['issued', 'void'], true) && blank($certificate->verification_token)) {
+                $certificate->verification_token = Str::random(64);
+            }
+        });
+    }
+
     public const STATUSES = [
         'draft',
         'pending_approval',

@@ -73,6 +73,15 @@ class CompanyBulkMedicalReportController extends Controller
         abort_unless($report && Storage::disk('local')->exists($report->file_path), 404);
         $company = str($event->company?->company_name ?? 'company')->slug();
 
+        if ($report->released_at) {
+            return response(app(\App\Services\VerifiedWorkbookService::class)->contents($report), 200, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="'.$company.'-medical-results.xlsx"',
+                'Cache-Control' => 'private, no-store, no-cache, must-revalidate, max-age=0',
+                'X-Robots-Tag' => 'noindex, nofollow, noarchive, nosnippet',
+            ]);
+        }
+
         return Storage::disk('local')->download($report->file_path, "{$company}-medical-results.xlsx");
     }
 

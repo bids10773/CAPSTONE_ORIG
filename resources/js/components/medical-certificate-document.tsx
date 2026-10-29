@@ -109,16 +109,16 @@ export function MedicalCertificateDocument({
             <header className="medical-certificate-letterhead">
                 <img
                     src="/images/full_logo2-optimized.png"
-                    alt="Living Myth Medical Clinic logo"
+                    alt="Living Myth Industrial Clinic logo"
                     className="medical-certificate-logo"
                 />
                 <div className="medical-certificate-clinic-copy">
-                    <h1>Living Myth Medical Clinic</h1>
+                    <h1>Living Myth Industrial Clinic</h1>
                     <p>
                         2nd Floor, Serafin Business Center, National Highway
                         Banlic, Cabuyao, Laguna
                     </p>
-                    <p>Mobile No. 0920-631-11-30</p>
+                    <p>Telephone No. (049) 576-0715</p>
                 </div>
             </header>
             <div className="medical-certificate-header-rule" />

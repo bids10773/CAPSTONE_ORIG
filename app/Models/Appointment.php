@@ -388,6 +388,12 @@ class Appointment extends Model
         return in_array('PE', $this->service_types ?? [], true);
     }
 
+    public function requiresFinalEvaluation(): bool
+    {
+        // Older bookings did not record a purpose and keep their existing workflow.
+        return in_array($this->examination_purpose, [null, 'pre_employment', 'annual_pe'], true);
+    }
+
     public function requiresXray(): bool
     {
         return in_array('X-Ray', $this->service_types ?? [], true);

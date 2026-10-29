@@ -1,4 +1,4 @@
-import { usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import ClinicDashboardLayout from '@/layouts/custom-layout';
@@ -80,6 +80,21 @@ export default function AppLayout({
 
     return (
         <ClinicDashboardLayout breadcrumbs={breadcrumbs}>
+            {auth?.requiresLicenseVerification && (
+                <div
+                    role="status"
+                    className="mx-4 mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 sm:mx-6 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200"
+                >
+                    An administrator must verify your professional license
+                    before you can conduct medical examinations.{' '}
+                    <Link
+                        href="/settings/profile"
+                        className="font-semibold underline underline-offset-4"
+                    >
+                        Review your license details
+                    </Link>
+                </div>
+            )}
             {children}
         </ClinicDashboardLayout>
     );

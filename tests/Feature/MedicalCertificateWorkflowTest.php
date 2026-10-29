@@ -196,7 +196,7 @@ test('automatic draft generation is idempotent and leaves missing patient facts 
         ->assertSessionHasErrors('salutation');
 });
 
-test('final evaluator keeps queue access when an existing certificate belongs to another physician', function () {
+test('certificate appointments cannot be finalized through the examination workflow', function () {
     $patient = medicalCertificatePatient();
     $originalDoctor = medicalCertificateDoctor();
     $finalDoctor = medicalCertificateDoctor();
@@ -212,12 +212,106 @@ test('final evaluator keeps queue access when an existing certificate belongs to
 
     $this->actingAs($finalDoctor)->post(route('doctor.final-evaluation.store', $appointment), [
         'medical_class' => 'A', 'final_diagnosis' => 'No significant findings.',
-    ])->assertSessionHasNoErrors()->assertRedirect(route('doctor.dashboard'));
+    ])->assertForbidden();
 
-    expect($appointment->fresh()->status)->toBe('completed')
+    expect($appointment->fresh()->status)->toBe('for_final_evaluation')
         ->and($existing->fresh()->attending_physician_id)->toBe($originalDoctor->id);
     $this->assertDatabaseCount('medical_certificates', 1);
 });
+
+test('certificate appointments open the editor without an examination', function () {
+    $doctor = medicalCertificateDoctor();
+    $patient = medicalCertificatePatient();
+    $appointment = medicalCertificateConsultation($patient, $doctor, [
+        'examination_purpose' => 'medical_clearance', 'status' => 'arrived',
+        'appointment_date' => '2026-10-11',
+    ]);
+    $this->actingAs($doctor)->get(route('doctor.medical-certificates.prepare', $appointment))
+        ->assertRedirect(route('medical-certificates.create', ['patient_id' => $patient->id, 'appointment_id' => $appointment->id]));
+    $this->get(route('doctor.physical-exams.create', $appointment))
+        ->assertRedirect(route('doctor.medical-certificates.prepare', $appointment));
+    $this->get(route('doctor.final-evaluation', $appointment))
+        ->assertRedirect(route('doctor.medical-certificates.prepare', $appointment));
+    $this->get(route('medical-certificates.create', ['patient_id' => $patient->id, 'appointment_id' => $appointment->id]))
+        ->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->component('medical-certificates/create')
+        ->where('selectedPatient.id', $patient->id)
+        ->where('selectedConsultationId', $appointment->id));
+    expect($appointment->physicalExam)->toBeNull();
+});
+
+test('certificate appointment entry reuses existing drafts and rejects other doctors', function () {
+    $doctor = medicalCertificateDoctor();
+    $patient = medicalCertificatePatient();
+    $appointment = medicalCertificateConsultation($patient, $doctor, ['examination_purpose' => 'medical_clearance', 'status' => 'arrived']);
+    $certificate = medicalCertificateRecord($patient, $doctor, 'draft', 1, ['appointment_id' => $appointment->id]);
+    $this->actingAs($doctor)->get(route('doctor.medical-certificates.prepare', $appointment))
+        ->assertRedirect(route('medical-certificates.edit', $certificate));
+    $this->actingAs(medicalCertificateDoctor())->get(route('doctor.medical-certificates.prepare', $appointment))
+        ->assertForbidden();
+    $this->assertDatabaseCount('medical_certificates', 1);
+});
+
+test('doctor queue provides certificate entry even when an old examination exists', function () {
+    $doctor = medicalCertificateDoctor();
+    $patient = medicalCertificatePatient();
+    $appointment = medicalCertificateConsultation($patient, $doctor, [
+        'examination_purpose' => 'medical_clearance', 'status' => 'for_diagnostics',
+        'appointment_date' => '2026-10-10',
+    ]);
+    $appointment->physicalExam()->create([
+        'medical_examination_id' => $appointment->medicalExamination->id,
+        'doctor_id' => $doctor->id, 'classification' => 'Pending', 'is_completed' => true,
+    ]);
+    $this->actingAs($doctor)->get(route('doctor.appointments'))->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('doctor/appointments/index')
+            ->where('appointments.data.0.id', $appointment->id)
+            ->where('appointments.data.0.can_start_physical_exam', false)
+            ->where('appointments.data.0.requires_final_evaluation', false)
+            ->where('appointments.data.0.certificate_url', route('doctor.medical-certificates.prepare', $appointment)));
+});
+
+test('draft preparation leaves the certificate appointment open', function () {
+    $doctor = medicalCertificateDoctor();
+    $patient = medicalCertificatePatient();
+    $appointment = medicalCertificateConsultation($patient, $doctor, ['examination_purpose' => 'medical_clearance', 'status' => 'arrived']);
+    $this->actingAs($doctor)->post(route('medical-certificates.store'), medicalCertificatePayload($patient, $doctor, $appointment))
+        ->assertSessionHasNoErrors()->assertRedirect();
+    expect($appointment->fresh()->status)->toBe('arrived')
+        ->and($appointment->medicalExamination->finalized_at)->toBeNull();
+});
+
+test('annual examination still requires final evaluation before report release', function () {
+    $doctor = medicalCertificateDoctor();
+    $patient = medicalCertificatePatient();
+    $appointment = medicalCertificateConsultation($patient, $doctor, ['examination_purpose' => 'annual_pe', 'status' => 'arrived']);
+    $appointment->physicalExam()->create([
+        'medical_examination_id' => $appointment->medicalExamination->id,
+        'doctor_id' => $doctor->id, 'classification' => 'Pending', 'is_completed' => true,
+    ]);
+    app(\App\Services\EmployeeMedicalStatusResolver::class)->resolve($appointment->fresh());
+    app(\App\Services\OnsiteEventWorkflowService::class)->refreshFinalEvaluationTask($appointment->fresh());
+    expect($appointment->fresh()->status)->toBe('for_final_evaluation')
+        ->and($doctor->can('finalizeMedicalEvaluation', $appointment->fresh()))->toBeTrue()
+        ->and($doctor->can('releaseMedicalReport', $appointment->fresh()))->toBeFalse();
+});
+
+test('issuing a certificate completes its appointment without final evaluation', function () {
+    $doctor = medicalCertificateDoctor();
+    $patient = medicalCertificatePatient();
+    $appointment = medicalCertificateConsultation($patient, $doctor, ['examination_purpose' => 'medical_clearance', 'status' => 'arrived']);
+    $certificate = medicalCertificateRecord($patient, $doctor, 'approved', 1, ['appointment_id' => $appointment->id]);
+    app(\App\Services\MedicalCertificateWorkflowService::class)->issue($certificate, $doctor, null, \Illuminate\Http\Request::create('/issue', 'PATCH'));
+    expect($appointment->fresh()->status)->toBe('completed')
+        ->and($appointment->medicalExamination->finalized_at)->toBeNull();
+});
+
+test('pre employment and annual purposes allow final evaluation but certificates do not', function (string $purpose, bool $allowed) {
+    $doctor = medicalCertificateDoctor();
+    $patient = medicalCertificatePatient();
+    $appointment = medicalCertificateConsultation($patient, $doctor, ['examination_purpose' => $purpose]);
+    expect($doctor->can('finalizeMedicalEvaluation', $appointment))->toBe($allowed);
+})->with([['pre_employment', true], ['medical_clearance', false], ['annual_pe', true]]);
 
 test('receptionists and administrators cannot author or submit medical certificate drafts', function (string $role) {
     $patient = medicalCertificatePatient();
@@ -304,7 +398,7 @@ test('draft creation snapshots trusted patient physician and consultation data',
         ->reason_for_consultation->toBe('Persistent fever and headache.');
 });
 
-test('attending physician can complete missing demographic and license details on a draft', function () {
+test('drafts allow missing demographics but ignore manually supplied physician licenses', function () {
     $patient = medicalCertificatePatient(
         ['sex' => null],
         ['birthdate' => null, 'sex' => null, 'civil_status' => null],
@@ -328,8 +422,21 @@ test('attending physician can complete missing demographic and license details o
         ->patient_age->toBe(40)
         ->patient_sex->toBe('Female')
         ->patient_civil_status->toBe('Single')
-        ->physician_license_no->toBe('PRC-MANUAL-DRAFT')
+        ->physician_license_no->toBeNull()
         ->status->toBe('draft');
+});
+
+test('editing a draft takes the current physician account license instead of submitted values', function () {
+    $doctor = medicalCertificateDoctor(['license_no' => 'PRC-ACCOUNT']);
+    $patient = medicalCertificatePatient();
+    medicalCertificateConsultation($patient, $doctor);
+    $certificate = medicalCertificateRecord($patient, $doctor, 'draft', 1, ['physician_license_no' => 'PRC-OLD']);
+
+    $this->actingAs($doctor)->patch(route('medical-certificates.update', $certificate), medicalCertificatePayload($patient, $doctor, null, [
+        'physician_license_no' => 'PRC-MANUAL',
+    ]))->assertSessionHasNoErrors();
+
+    expect($certificate->fresh()->physician_license_no)->toBe('PRC-ACCOUNT');
 });
 
 test('certificate validation rejects another patients consultation and invalid rest dates', function () {
@@ -429,6 +536,110 @@ test('an assigned physician needs a verified license before approval', function 
         ->approved_at->toBeNull();
 });
 
+test('certificate can be submitted while the physician license awaits administrator verification', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor(['license_no' => null, 'license_verification_status' => 'not_submitted']);
+    $certificate = medicalCertificateRecord($patient, $doctor);
+
+    $this->actingAs($doctor)->patch(route('medical-certificates.submit', $certificate))
+        ->assertSessionHasNoErrors()->assertSessionHas('success');
+
+    expect($certificate->fresh()->status)->toBe('pending_approval')
+        ->and($certificate->audits()->where('action', 'submitted')->count())->toBe(1);
+    $this->patch(route('medical-certificates.approve', $certificate))->assertForbidden();
+    $this->patch(route('medical-certificates.issue', $certificate))->assertForbidden();
+});
+
+test('approval fills the certificate license after administrator verification', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $certificate = medicalCertificateRecord($patient, $doctor, 'pending_approval', 1, ['physician_license_no' => null]);
+
+    $this->actingAs($doctor)->patch(route('medical-certificates.approve', $certificate))
+        ->assertSessionHasNoErrors()->assertSessionHas('success');
+
+    expect($certificate->fresh()->status)->toBe('approved')
+        ->and($certificate->fresh()->physician_license_no)->toBe($doctor->license_no);
+});
+
+test('submitting without a license still requires the certificate clinical information', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor(['license_no' => null]);
+    $certificate = medicalCertificateRecord($patient, $doctor, 'draft', 1, ['clinical_impression' => null]);
+    $this->actingAs($doctor)->patch(route('medical-certificates.submit', $certificate))
+        ->assertSessionHasErrors('clinical_impression');
+    expect($certificate->fresh()->status)->toBe('draft');
+});
+
+test('a doctor can save and approve a complete certificate without submitting it', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    medicalCertificateConsultation($patient, $doctor);
+    $this->actingAs($doctor)->post(route('medical-certificates.store'), medicalCertificatePayload($patient, $doctor, null, ['save_action' => 'approve']))
+        ->assertSessionHasNoErrors()->assertSessionHas('success');
+    $certificate = MedicalCertificate::firstOrFail();
+    expect($certificate->status)->toBe('approved')
+        ->and($certificate->approved_by)->toBe($doctor->id)
+        ->and($certificate->issued_at)->toBeNull()
+        ->and($patient->notifications()->where('data->type', 'medical_document_status')->count())->toBe(1)
+        ->and($certificate->audits()->where('action', 'submitted')->count())->toBe(0)
+        ->and($certificate->audits()->where('action', 'approved')->count())->toBe(1);
+});
+
+test('save and approve validates completeness and license atomically', function (bool $verified) {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor(['license_verification_status' => $verified ? 'verified' : 'pending']);
+    medicalCertificateConsultation($patient, $doctor);
+    $this->actingAs($doctor)->post(route('medical-certificates.store'), medicalCertificatePayload($patient, $doctor, null, [
+        'save_action' => 'approve', 'clinical_impression' => $verified ? '' : 'Clinical impression',
+    ]))->assertSessionHasErrors();
+    expect(MedicalCertificate::count())->toBe(0);
+})->with([true, false]);
+
+test('save and approve persists draft changes and supports approving an existing draft directly', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    medicalCertificateConsultation($patient, $doctor);
+    $certificate = medicalCertificateRecord($patient, $doctor, 'draft');
+    $this->actingAs($doctor)->patch(route('medical-certificates.update', $certificate), medicalCertificatePayload($patient, $doctor, null, [
+        'save_action' => 'approve', 'recommendation' => 'Updated recommendation',
+    ]))->assertSessionHasNoErrors();
+    expect($certificate->fresh()->status)->toBe('approved')
+        ->and($certificate->fresh()->recommendation)->toBe('Updated recommendation');
+    $draft = medicalCertificateRecord($patient, $doctor, 'draft', 2);
+    $this->patch(route('medical-certificates.approve', $draft))->assertSessionHasNoErrors();
+    expect($draft->fresh()->status)->toBe('approved');
+});
+
+test('unverified doctors and receptionists cannot issue certificates', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor(['license_verification_status' => 'pending']);
+    $certificate = medicalCertificateRecord($patient, $doctor, 'approved');
+    $this->actingAs($doctor)->patch(route('medical-certificates.issue', $certificate))->assertForbidden();
+    expect($certificate->fresh()->status)->toBe('approved');
+
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $this->actingAs($receptionist)->patch(route('medical-certificates.issue', $certificate))
+        ->assertForbidden();
+    expect($certificate->fresh()->status)->toBe('approved');
+});
+
+test('certificate pickup requires physician issuance before staff can mark ready or release', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $receptionist = User::factory()->create(['role' => 'receptionist']);
+    $certificate = medicalCertificateRecord($patient, $doctor, 'approved');
+    $document = app(\App\Services\MedicalDocumentService::class)->synchronizeCertificate($certificate);
+    $document->audits()->create(['actor_id' => $receptionist->id, 'action' => 'reviewed', 'old_status' => 'approved', 'new_status' => 'approved']);
+    expect($receptionist->can('markReady', $document))->toBeFalse();
+    $document->update(['status' => 'ready_for_pickup']);
+    expect($receptionist->can('release', $document->fresh()))->toBeFalse();
+    $certificate->update(['status' => 'issued', 'issued_at' => now(), 'issued_by' => $doctor->id]);
+    expect($receptionist->can('release', $document->fresh()))->toBeTrue();
+    $document->update(['status' => 'approved']);
+    expect($receptionist->can('markReady', $document->fresh()))->toBeTrue();
+});
+
 test('the attending physician can return a draft for corrections with an audit reason', function () {
     $patient = medicalCertificatePatient();
     $doctor = medicalCertificateDoctor();
@@ -452,7 +663,7 @@ test('the attending physician can return a draft for corrections with an audit r
     ]);
 });
 
-test('authorized staff can issue only an approved certificate and issuance locks edits', function () {
+test('the attending doctor can issue only an approved certificate and issuance locks edits', function () {
     $patient = medicalCertificatePatient();
     $doctor = medicalCertificateDoctor();
     $receptionist = User::factory()->create(['role' => 'receptionist']);
@@ -463,19 +674,19 @@ test('authorized staff can issue only an approved certificate and issuance locks
         ->patch(route('medical-certificates.issue', $draft), ['date_issued' => '2026-10-11'])
         ->assertForbidden();
 
-    $this->actingAs($receptionist)
+    $this->actingAs($doctor)
         ->patch(route('medical-certificates.issue', $certificate), ['date_issued' => '2026-10-11'])
         ->assertSessionHas('success');
 
     expect($certificate->fresh())
         ->status->toBe('issued')
         ->date_issued->toDateString()->toBe('2026-10-11')
-        ->issued_by->toBe($receptionist->id)
+        ->issued_by->toBe($doctor->id)
         ->issued_at->not->toBeNull();
 
     $this->assertDatabaseHas('medical_certificate_audits', [
         'medical_certificate_id' => $certificate->id,
-        'actor_id' => $receptionist->id,
+        'actor_id' => $doctor->id,
         'action' => 'issued',
         'old_status' => 'approved',
         'new_status' => 'issued',
@@ -540,7 +751,7 @@ test('issued print and PDF responses are private authorized and audited', functi
         ->get(route('medical-certificates.print', $certificate))
         ->assertOk()
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet')
-        ->assertSee('Living Myth Medical Clinic')
+        ->assertSee('Living Myth Industrial Clinic')
         ->assertSee('MEDICAL CERTIFICATE')
         ->assertSee('NOTE: This certificate is not for medico-legal purposes.')
         ->assertSee('window.print()', false)
@@ -605,27 +816,24 @@ test('the certificate template matches the paper wording and renders a typical A
     $patient = medicalCertificatePatient();
     $doctor = medicalCertificateDoctor();
     $certificate = medicalCertificateRecord($patient, $doctor, 'issued');
-    $signatureSentinel = 'data:image/png;base64,SENSITIVE-SIGNATURE-SHOULD-NOT-RENDER';
 
     $html = view('pdf.medical-certificate', [
         'certificate' => $certificate,
-        'signatureDataUri' => $signatureSentinel,
     ])->render();
     $printHtml = view('medical-certificates.print', [
         'certificate' => $certificate,
-        'signatureDataUri' => $signatureSentinel,
     ])->render();
 
     expect($html)
         ->toContain('size: A4 portrait')
-        ->toContain('Living Myth Medical Clinic')
+        ->toContain('Living Myth Industrial Clinic')
         ->toContain('2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna')
-        ->toContain('Mobile No. 0920-631-11-30')
+        ->toContain('Telephone No. (049) 576-0715')
         ->toContain('Certificate No.:')
         ->toContain($certificate->certificate_number)
         ->toContain('Patient Ref.:')
         ->toContain($certificate->patient_reference_code)
-        ->toContain('Consultation:')
+        ->not->toContain('Consultation:')
         ->toContain('October 11, 2026')
         ->toContain('To whom it may concern:')
         ->toContain('This is to certify that Ms.')
@@ -637,13 +845,106 @@ test('the certificate template matches the paper wording and renders a typical A
         ->toContain('LICENSE NO.')
         ->toContain('NOTE: This certificate is not for medico-legal purposes.')
         ->not->toContain('medical cert.jpg')
-        ->not->toContain('SENSITIVE-SIGNATURE-SHOULD-NOT-RENDER')
-        ->and($printHtml)->toContain('window.print()')
-        ->not->toContain('SENSITIVE-SIGNATURE-SHOULD-NOT-RENDER');
+        ->and($printHtml)->toContain('window.print()');
 
-    $pdf = Pdf::loadView('pdf.medical-certificate', ['certificate' => $certificate])
+    $pdf = Pdf::loadView('pdf.medical-certificate', [
+        'certificate' => $certificate,
+        ...app(\App\Services\CertificateVerificationService::class)->documentData($certificate),
+    ])
         ->setPaper('a4', 'portrait');
     $pdf->render();
 
     expect($pdf->getDomPDF()->getCanvas()->get_page_count())->toBe(1);
+});
+
+test('issued certificate print embeds the attending physicians saved signature and handles missing files', function () {
+    Storage::fake('public');
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $path = \Illuminate\Http\UploadedFile::fake()->image('physician.png', 320, 100)->store('signatures', 'public');
+    $doctor->update(['signature_path' => $path]);
+    $certificate = medicalCertificateRecord($patient, $doctor, 'issued');
+    $signature = 'data:image/png;base64,'.base64_encode(Storage::disk('public')->get($path));
+    $this->actingAs(User::factory()->create(['role' => 'receptionist']))
+        ->get(route('medical-certificates.print', $certificate))->assertOk()
+        ->assertSee($signature, false)->assertSee('medical-certificate-signature-image', false);
+    $this->get(route('medical-certificates.pdf', $certificate))->assertOk()->assertHeader('content-type', 'application/pdf');
+    Storage::disk('public')->delete($path);
+    $this->get(route('medical-certificates.print', $certificate))->assertOk()->assertDontSee($signature, false);
+});
+
+test('draft and void certificate templates do not embed an electronic signature', function (string $status) {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $certificate = medicalCertificateRecord($patient, $doctor, $status);
+    $html = view('pdf.medical-certificate', ['certificate' => $certificate, 'signatureDataUri' => 'data:image/png;base64,PRIVATE_SIGNATURE'])->render();
+    expect($html)->not->toContain('data:image/png;base64,PRIVATE_SIGNATURE');
+})->with(['draft', 'void']);
+
+test('rendered certificate content keeps A4 margins and places section borders below the text', function () {
+    $patient = medicalCertificatePatient();
+    $doctor = medicalCertificateDoctor();
+    $certificate = medicalCertificateRecord($patient, $doctor, 'issued', 1, [
+        'reason_for_consultation' => str_repeat('The patient reports fever, fatigue, and headache. ', 3),
+        'recommendation' => str_repeat('Rest, hydrate, and return if symptoms persist. ', 3),
+    ]);
+    $pdf = Pdf::loadView('pdf.medical-certificate', [
+        'certificate' => $certificate,
+        ...app(\App\Services\CertificateVerificationService::class)->documentData($certificate),
+    ])->setPaper('a4');
+    $boxes = [];
+    $pdf->getDomPDF()->setCallbacks([['event' => 'end_frame', 'f' => function ($frame) use (&$boxes): void {
+        $node = $frame->get_node();
+        if ($node instanceof \DOMElement && $node->hasAttribute('class')) {
+            $boxes[$node->getAttribute('class')][] = $frame->get_border_box();
+        }
+    }]]);
+    $pdf->render();
+    $sheet = $boxes['medical-certificate-sheet'][0];
+    expect($sheet['x'])->toBe(21.0)
+        ->and($sheet['y'])->toBe(18.0)
+        ->and($sheet['x'] + $sheet['w'])->toBeLessThan(575);
+    $header = $boxes['header'][0];
+    expect($header['x'] + $header['w'])->toBeLessThanOrEqual($sheet['x'] + $sheet['w'] + 1);
+    $blocks = array_merge($boxes['medical-certificate-ruled-block medical-certificate-ruled-block--three'], $boxes['medical-certificate-ruled-block medical-certificate-ruled-block--two']);
+    foreach ($boxes['medical-certificate-ruled-value'] as $index => $value) {
+        $block = $blocks[$index];
+        expect($block['y'] + $block['h'])->toBeGreaterThan($value['y'] + $value['h']);
+    }
+    $issuedCopy = $boxes['medical-certificate-issued-copy'][0];
+    $signature = $boxes['medical-certificate-signature'][0];
+    $note = $boxes['medical-certificate-note'][0];
+    expect($signature['y'])->toBeGreaterThan($issuedCopy['y'] + $issuedCopy['h'])
+        ->and($note['y'])->toBeGreaterThan($signature['y'] + $signature['h'])
+        ->and($note['y'] + $note['h'])->toBeLessThan(810);
+    expect($pdf->getDomPDF()->getCanvas()->get_page_count())->toBe(1);
+});
+
+test('the medical certificate PDF uses the exact laboratory report header', function () {
+    $certificate = medicalCertificateRecord(medicalCertificatePatient(), medicalCertificateDoctor(), 'issued');
+    $expected = view('pdf.partials.clinic-header')->render();
+    $html = view('pdf.medical-certificate', compact('certificate'))->render();
+    preg_match('/<div class="header">.*?<\/div>/s', $html, $actual);
+    expect(trim(preg_replace('/\s+/', ' ', $actual[0] ?? '')))->toBe(trim(preg_replace('/\s+/', ' ', $expected)));
+});
+
+test('laboratory and certificate letterheads render with identical margins typography and spacing', function () {
+    $laboratoryHtml = '<html><head><style>'.view('pdf.partials.clinic-styles')->render().'</style></head><body>'.view('pdf.partials.clinic-header')->render().'</body></html>';
+    $certificate = medicalCertificateRecord(medicalCertificatePatient(), medicalCertificateDoctor(), 'issued');
+    $snapshot = function (string $html): array {
+        $pdf = Pdf::loadHTML($html)->setPaper('a4');
+        $frames = [];
+        $pdf->getDomPDF()->setCallbacks([['event' => 'end_frame', 'f' => function ($frame) use (&$frames): void {
+            $node = $frame->get_node();
+            if ($node instanceof DOMElement && ($node->getAttribute('class') === 'header'
+                || ($node->parentNode instanceof DOMElement && $node->parentNode->getAttribute('class') === 'header'))) {
+                $box = $frame->get_border_box();
+                $frames[] = [$node->nodeName, round($box['x'], 3), round($box['y'], 3), round($box['w'], 3), round($box['h'], 3), $frame->get_style()->font_size];
+            }
+        }]]);
+        $pdf->render();
+
+        return $frames;
+    };
+    expect($snapshot(view('pdf.medical-certificate', compact('certificate'))->render()))->toBe($snapshot($laboratoryHtml));
 });

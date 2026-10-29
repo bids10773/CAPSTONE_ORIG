@@ -246,3 +246,106 @@ test('admin cancellation notifies the patient exactly once', function () {
 
     expect($patient->notifications()->where('data->type', 'appointment_cancelled')->count())->toBe(1);
 });
+
+test('notification visits reject external and malformed stored destinations', function (string $url) {
+    $patient = notificationPatient();
+    $notification = $patient->notifications()->create([
+        'id' => (string) \Illuminate\Support\Str::uuid(),
+        'type' => 'legacy',
+        'data' => ['type' => 'legacy', 'url' => $url],
+    ]);
+
+    $this->actingAs($patient)->post(route('notifications.visit', $notification->id))
+        ->assertRedirect(route('notifications.index', absolute: false));
+    expect($notification->fresh()->read_at)->not->toBeNull();
+})->with(['//example.com/phishing', '/\\example.com/phishing', 'https://example.com', '/admin/inquiries/1']);
+
+test('notification visits fall back when appointment ownership or assignment has changed', function (string $role) {
+    $patient = notificationPatient();
+    $doctor = notificationDoctor();
+    $appointment = notificationAppointment($patient, $doctor);
+    $recipient = $role === 'doctor' ? notificationDoctor() : notificationPatient();
+    $notification = $recipient->notifications()->create([
+        'id' => (string) \Illuminate\Support\Str::uuid(),
+        'type' => 'legacy',
+        'data' => ['type' => $role === 'doctor' ? 'appointment_assigned' : 'appointment_confirmed', 'appointment_id' => $appointment->id],
+    ]);
+
+    $this->actingAs($recipient)->post(route('notifications.visit', $notification->id))
+        ->assertRedirect(route('notifications.index', absolute: false));
+})->with(['patient', 'doctor']);
+
+test('notification center refresh contains only the signed in users records', function () {
+    $patient = notificationPatient();
+    $other = notificationPatient();
+    $other->notify(new AppointmentSubmitted(notificationAppointment($other, notificationDoctor())));
+
+    $this->actingAs($patient)->getJson(route('notifications.center'))
+        ->assertOk()->assertJsonPath('unreadCount', 0)->assertJsonCount(0, 'latest');
+    $this->post(route('notifications.visit', $other->notifications()->first()->id))->assertNotFound();
+});
+
+test('old role notifications are hidden from shared props and every notification action', function () {
+    $patient = notificationPatient();
+    foreach ([['recipient_role' => 'admin', 'type' => 'system_update'], ['type' => 'appointment_request']] as $data) {
+        $notification = $patient->notifications()->create([
+            'id' => (string) \Illuminate\Support\Str::uuid(), 'type' => 'legacy', 'data' => $data,
+        ]);
+        $this->actingAs($patient)->post(route('notifications.visit', $notification->id))->assertNotFound();
+        $this->patch(route('notifications.read', $notification->id))->assertNotFound();
+        $this->delete(route('notifications.destroy', $notification->id))->assertNotFound();
+    }
+    $this->getJson(route('notifications.center'))->assertJsonCount(0, 'latest')->assertJsonPath('unreadCount', 0);
+    $this->get(route('notifications.index'))->assertInertia(fn (Assert $page) => $page
+        ->has('notifications.data', 0)->has('notificationCenter.latest', 0)->where('notificationCenter.unreadCount', 0));
+    $this->patch(route('notifications.read-all'))->assertRedirect();
+    expect($patient->unreadNotifications()->count())->toBe(2);
+    $this->delete(route('notifications.destroy-all'))->assertRedirect();
+    expect($patient->notifications()->count())->toBe(2);
+});
+
+test('notification broadcast transport errors do not interrupt database delivery', function () {
+    $patient = notificationPatient();
+    \Illuminate\Support\Facades\Event::partialMock()->shouldReceive('dispatch')
+        ->with(\Mockery::type(NotificationCenterUpdated::class))->andThrow(new \RuntimeException('Reverb unavailable'));
+    $listener = new \App\Listeners\BroadcastNotificationCenterUpdate;
+    $listener->handle(new \Illuminate\Notifications\Events\NotificationSent(
+        $patient, new AppointmentSubmitted(notificationAppointment($patient, notificationDoctor())), 'database', null,
+    ));
+    expect(true)->toBeTrue();
+});
+
+test('after commit notification broadcasts tolerate an unavailable transport', function () {
+    $manager = app(BroadcastManager::class);
+    $manager->extend('unavailable', fn () => new class extends \Illuminate\Broadcasting\Broadcasters\NullBroadcaster
+    {
+        public function broadcast(array $channels, $event, array $payload = [])
+        {
+            throw new \RuntimeException('Transport unavailable after commit');
+        }
+    });
+    config()->set('broadcasting.default', 'unavailable');
+    config()->set('broadcasting.connections.unavailable', ['driver' => 'unavailable']);
+
+    $manager->queue(new NotificationCenterUpdated(1, 0));
+    expect(true)->toBeTrue();
+});
+
+test('company notification visibility follows the recipients current company affiliation', function () {
+    $companies = collect(['Former company', 'Current company'])->map(fn ($name) => \App\Models\Company::create([
+        'company_name' => $name, 'status' => 'active',
+    ]));
+    $user = User::factory()->create(['role' => 'company', 'company_id' => $companies[1]->id]);
+    foreach ($companies as $company) {
+        $user->notifications()->create([
+            'id' => (string) \Illuminate\Support\Str::uuid(), 'type' => 'workflow',
+            'data' => ['type' => 'system_update', 'recipient_role' => 'company', 'recipient_company_id' => $company->id],
+        ]);
+    }
+    $this->actingAs($user)->getJson(route('notifications.center'))
+        ->assertJsonCount(1, 'latest')->assertJsonPath('latest.0.recipient_company_id', $companies[1]->id);
+    $this->patch(route('notifications.read-all'))->assertRedirect();
+    expect($user->unreadNotifications()->count())->toBe(1);
+    $this->delete(route('notifications.destroy-all'))->assertRedirect();
+    expect($user->notifications()->count())->toBe(1);
+});

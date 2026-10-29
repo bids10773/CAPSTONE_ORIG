@@ -1,5 +1,6 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Bell, CheckCheck, Trash2 } from 'lucide-react';
+import { useEffect } from 'react';
 import { relativeNotificationTime } from '@/components/notification-bell';
 import type { AppNotification } from '@/components/notification-bell';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,40 @@ export default function NotificationsIndex() {
     const { notifications, filter, notificationCenter } = usePage()
         .props as unknown as Props;
     const unread = notificationCenter.unreadCount;
+
+    useEffect(() => {
+        let active = true;
+        let refreshing = false;
+        let dirty = false;
+        const refresh = () => {
+            if (!active) return;
+            if (refreshing) {
+                dirty = true;
+                return;
+            }
+            refreshing = true;
+            router.reload({
+                async: true,
+                only: ['notifications', 'notificationCenter'],
+                onFinish: () => {
+                    refreshing = false;
+                    if (dirty) {
+                        dirty = false;
+                        refresh();
+                    }
+                },
+            });
+        };
+        window.addEventListener('notification-center-refreshed', refresh);
+        return () => {
+            active = false;
+            dirty = false;
+            window.removeEventListener(
+                'notification-center-refreshed',
+                refresh,
+            );
+        };
+    }, []);
 
     const removeAllNotifications = async () => {
         if (

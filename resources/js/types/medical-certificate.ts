@@ -122,7 +122,6 @@ export type MedicalCertificateFormValues = {
     patient_civil_status: string;
     appointment_id: string;
     attending_physician_id: string;
-    physician_license_no: string;
     salutation: string;
     consultation_date: string;
     reason_for_consultation: string;

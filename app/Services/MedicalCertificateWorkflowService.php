@@ -124,7 +124,7 @@ class MedicalCertificateWorkflowService
         return DB::transaction(function () use ($medicalCertificate, $actor, $request): MedicalCertificate {
             $certificate = MedicalCertificate::query()->lockForUpdate()->findOrFail($medicalCertificate->id);
             $this->ensureStatus($certificate, ['draft', 'changes_requested'], 'This certificate cannot be submitted in its current status.');
-            $this->ensureComplete($certificate);
+            $this->ensureComplete($certificate, requireLicense: false);
             $oldStatus = $certificate->status;
 
             $certificate->update([
@@ -152,8 +152,10 @@ class MedicalCertificateWorkflowService
         return DB::transaction(function () use ($medicalCertificate, $actor, $notes, $request): MedicalCertificate {
             $certificate = MedicalCertificate::query()->lockForUpdate()->findOrFail($medicalCertificate->id);
             $this->ensureAssignedPhysician($certificate, $actor);
-            $this->ensureStatus($certificate, ['pending_approval'], 'Only a certificate pending approval may be approved.');
+            $this->ensureStatus($certificate, ['draft', 'changes_requested', 'pending_approval'], 'This certificate cannot be approved in its current status.');
+            $oldStatus = $certificate->status;
             $this->ensureVerifiedPhysician($actor);
+            $certificate->physician_license_no = $actor->license_no;
             $this->ensureComplete($certificate);
 
             $attributes = [
@@ -169,7 +171,7 @@ class MedicalCertificateWorkflowService
             }
             $certificate->update($attributes);
 
-            $this->audit($certificate, $actor, 'approved', 'pending_approval', 'approved', [
+            $this->audit($certificate, $actor, 'approved', $oldStatus, 'approved', [
                 'approval_notes' => $certificate->approval_notes,
             ], $request);
 
@@ -212,6 +214,8 @@ class MedicalCertificateWorkflowService
         return DB::transaction(function () use ($medicalCertificate, $actor, $dateIssued, $request): MedicalCertificate {
             $certificate = MedicalCertificate::query()->lockForUpdate()->findOrFail($medicalCertificate->id);
             $this->ensureStatus($certificate, ['approved'], 'Only an approved certificate may be issued.');
+            $this->ensureAssignedPhysician($certificate, $actor);
+            $this->ensureVerifiedPhysician($actor);
             $this->ensureComplete($certificate);
 
             $clinicToday = ClinicHours::now()->startOfDay();
@@ -238,6 +242,14 @@ class MedicalCertificateWorkflowService
             $this->audit($certificate, $actor, 'issued', 'approved', 'issued', [
                 'date_issued' => $certificate->date_issued?->toDateString(),
             ], $request);
+
+            if ($certificate->appointment_id) {
+                $appointment = Appointment::query()->lockForUpdate()->find($certificate->appointment_id);
+                if ($appointment?->examination_purpose === 'medical_clearance'
+                    && in_array($appointment->status, Appointment::OPEN_STATUSES, true)) {
+                    $appointment->update(['status' => 'completed']);
+                }
+            }
 
             return $certificate->fresh($this->defaultRelations());
         });
@@ -420,7 +432,7 @@ class MedicalCertificateWorkflowService
             'rest_end_date' => $data['rest_end_date'] ?? null,
             'date_issued' => $data['date_issued'] ?? null,
             'physician_name' => $physician->name,
-            'physician_license_no' => $physician->license_no ?: ($data['physician_license_no'] ?? null),
+            'physician_license_no' => $physician->license_no ?: null,
         ];
     }
 
@@ -431,7 +443,7 @@ class MedicalCertificateWorkflowService
         return filled($value) ? trim((string) $value) : null;
     }
 
-    private function ensureComplete(MedicalCertificate $certificate): void
+    private function ensureComplete(MedicalCertificate $certificate, bool $requireLicense = true): void
     {
         $missing = collect([
             'salutation' => $certificate->salutation,
@@ -442,7 +454,8 @@ class MedicalCertificateWorkflowService
             'clinical_impression' => $certificate->clinical_impression,
             'recommendation' => $certificate->recommendation,
             'physician_license_no' => $certificate->physician_license_no,
-        ])->filter(fn (mixed $value, string $field): bool => $field === 'patient_age'
+        ])->reject(fn (mixed $value, string $field): bool => $field === 'physician_license_no' && ! $requireLicense)
+            ->filter(fn (mixed $value, string $field): bool => $field === 'patient_age'
             ? $value === null
             : blank($value));
 

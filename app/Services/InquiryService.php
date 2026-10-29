@@ -45,7 +45,11 @@ class InquiryService
 
     public function updateStatus(Inquiry $inquiry, InquiryStatus $status): void
     {
+        if ($inquiry->status === $status) {
+            return;
+        }
         $inquiry->update(['status' => $status]);
+        $this->notifyWorkflowUpdate($inquiry, 'inquiry_status_changed', 'Inquiry status updated');
     }
 
     public function reply(Inquiry $inquiry, string $response, User $admin): bool
@@ -57,6 +61,9 @@ class InquiryService
                 'responded_at' => now(),
                 'status' => InquiryStatus::Replied,
             ]);
+            if ($inquiry->wasChanged(['response', 'status'])) {
+                $this->notifyWorkflowUpdate($inquiry, 'inquiry_replied', 'Inquiry response available');
+            }
         });
 
         try {
@@ -67,6 +74,17 @@ class InquiryService
             report($exception);
 
             return false;
+        }
+    }
+
+    private function notifyWorkflowUpdate(Inquiry $inquiry, string $type, string $title): void
+    {
+        $notifications = app(WorkflowNotificationService::class);
+        $notifications->admins($type, $title, 'An inquiry was updated. Status: '.$inquiry->status->label().'.',
+            route('admin.inquiries.show', $inquiry, false));
+        if ($inquiry->user_id) {
+            $notifications->users([$inquiry->user_id], $type, $title,
+                'Your inquiry was updated. Status: '.$inquiry->status->label().'.', route('inquiries.index', absolute: false));
         }
     }
 

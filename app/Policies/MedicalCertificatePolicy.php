@@ -36,7 +36,7 @@ class MedicalCertificatePolicy
 
     public function approve(User $user, MedicalCertificate $medicalCertificate): bool
     {
-        return $medicalCertificate->status === 'pending_approval'
+        return in_array($medicalCertificate->status, ['draft', 'changes_requested', 'pending_approval'], true)
             && $this->isAttendingPhysician($user, $medicalCertificate)
             && $user->license_verification_status === 'verified'
             && filled($user->license_no);
@@ -51,8 +51,8 @@ class MedicalCertificatePolicy
     public function issue(User $user, MedicalCertificate $medicalCertificate): bool
     {
         return $medicalCertificate->status === 'approved'
-            && ($user->role === 'receptionist'
-                || $this->isAttendingPhysician($user, $medicalCertificate));
+            && $this->isAttendingPhysician($user, $medicalCertificate)
+            && $user->hasVerifiedProfessionalLicense();
     }
 
     public function void(User $user, MedicalCertificate $medicalCertificate): bool

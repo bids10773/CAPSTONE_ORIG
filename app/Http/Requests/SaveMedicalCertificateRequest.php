@@ -25,7 +25,6 @@ class SaveMedicalCertificateRequest extends FormRequest
             'recommendation',
             'patient_sex',
             'patient_civil_status',
-            'physician_license_no',
         ] as $field) {
             if (is_string($this->input($field))) {
                 $trimmed[$field] = trim($this->input($field));
@@ -55,6 +54,7 @@ class SaveMedicalCertificateRequest extends FormRequest
         $patientId = (int) $this->input('patient_id');
 
         return [
+            'save_action' => ['sometimes', Rule::in(['draft', 'approve'])],
             'patient_id' => [
                 'bail',
                 'required',
@@ -89,7 +89,6 @@ class SaveMedicalCertificateRequest extends FormRequest
             'patient_age' => ['nullable', 'integer', 'between:0,150'],
             'patient_sex' => ['nullable', 'string', 'max:30'],
             'patient_civil_status' => ['nullable', 'string', 'max:50'],
-            'physician_license_no' => ['nullable', 'string', 'max:100'],
         ];
     }
 

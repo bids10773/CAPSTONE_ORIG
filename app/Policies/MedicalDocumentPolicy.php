@@ -25,6 +25,7 @@ class MedicalDocumentPolicy
     {
         return in_array($user->role, ['admin', 'receptionist'], true)
             && $document->status === 'approved'
+            && $this->certificateIssued($document)
             && $document->audits()
                 ->where('action', 'reviewed')
                 ->where('actor_id', $user->id)
@@ -34,11 +35,18 @@ class MedicalDocumentPolicy
     public function release(User $user, MedicalDocument $document): bool
     {
         return in_array($user->role, ['admin', 'receptionist'], true)
-            && $document->status === 'ready_for_pickup';
+            && $document->status === 'ready_for_pickup'
+            && $this->certificateIssued($document);
     }
 
     public function reverseRelease(User $user, MedicalDocument $document): bool
     {
         return $user->role === 'admin' && $document->status === 'released';
+    }
+
+    private function certificateIssued(MedicalDocument $document): bool
+    {
+        return $document->document_type !== 'medical_certificate'
+            || $document->medicalCertificate()->where('status', 'issued')->exists();
     }
 }

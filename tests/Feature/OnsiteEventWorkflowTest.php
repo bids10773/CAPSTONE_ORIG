@@ -26,7 +26,7 @@ function onsiteFixture(): array
 test('a doctor with a normal appointment cannot be assigned to an overlapping company event', function () {
     extract(onsiteFixture());
     $event->update(['appointment_date' => today()->next('Monday')]);
-    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
     $patient = User::factory()->create(['role' => 'patient']);
     Appointment::create([
         'user_id' => $patient->id,
@@ -54,7 +54,7 @@ test('two-day company events check doctor conflicts on the second clinic day', f
         'appointment_date' => $eventStart,
         'event_end_date' => $eventStart->copy()->addDay(),
     ]);
-    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
     $patient = User::factory()->create(['role' => 'patient']);
     Appointment::create([
         'user_id' => $patient->id,
@@ -75,9 +75,9 @@ test('two-day company events check doctor conflicts on the second clinic day', f
 test('only arrived onsite employees enter independent medical queues', function () {
     extract(onsiteFixture());
     $receptionist = User::factory()->create(['role' => 'receptionist']);
-    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
-    $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
-    $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech', 'is_active' => true]);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech', 'is_active' => true]);
     $workflow = app(OnsiteEventWorkflowService::class);
     $workflow->assignStaff($event, $doctor, 'doctor', 10);
     $workflow->assignStaff($event, $medtech, 'medtech', 10);
@@ -116,8 +116,8 @@ test('absent employees leave all queues and resolve the parent event', function 
 
 test('queue balancing assigns to the least loaded deployed staff without exceeding capacity', function () {
     extract(onsiteFixture());
-    $doctorA = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
-    $doctorB = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $doctorA = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
+    $doctorB = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
     $workflow = app(OnsiteEventWorkflowService::class);
     $workflow->assignStaff($event, $doctorA, 'doctor', 1);
     $workflow->assignStaff($event, $doctorB, 'doctor', 1);
@@ -150,7 +150,7 @@ test('future onsite events show their exact schedule but keep staff workspaces l
     $event->update(['appointment_date' => today()->addWeek()]);
     $admin = User::factory()->create(['role' => 'admin']);
     $receptionist = User::factory()->create(['role' => 'receptionist', 'is_active' => true]);
-    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
     $workflow = app(OnsiteEventWorkflowService::class);
     $workflow->assignStaff($event, $receptionist, 'receptionist', 10, $admin);
     $workflow->assignStaff($event, $doctor, 'doctor', 10, $admin);
@@ -186,9 +186,9 @@ test('past onsite events are removed from receptionist and clinical workspaces',
     $event->update(['appointment_date' => today()->subDays(2), 'event_end_date' => today()->subDay()]);
     $admin = User::factory()->create(['role' => 'admin']);
     $receptionist = User::factory()->create(['role' => 'receptionist', 'is_active' => true]);
-    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
-    $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
-    $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech', 'is_active' => true]);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech', 'is_active' => true]);
     $workflow = app(OnsiteEventWorkflowService::class);
     $workflow->assignStaff($event, $receptionist, 'receptionist', 10, $admin);
     foreach ([[$doctor, 'doctor'], [$medtech, 'medtech'], [$radtech, 'radtech']] as [$staff, $role]) {
@@ -281,7 +281,7 @@ test('admin staff assignment derives clinical queue capacity from the uploaded m
         );
     }
     $admin = User::factory()->create(['role' => 'admin']);
-    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
 
     $this->actingAs($admin)->post(route('admin.onsite-events.staff.assign', $event), [
         'user_id' => $doctor->id,
@@ -298,7 +298,7 @@ test('admin staff assignment derives clinical queue capacity from the uploaded m
 
 test('opening assigned onsite work marks the queue in progress and protects the deployment', function () {
     extract(onsiteFixture());
-    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
     $receptionist = User::factory()->create(['role' => 'receptionist']);
     $workflow = app(OnsiteEventWorkflowService::class);
     $deployment = $workflow->assignStaff($event, $doctor, 'doctor', 10);
@@ -314,9 +314,9 @@ test('opening assigned onsite work marks the queue in progress and protects the 
 
 test('only one department can process an onsite employee at a time', function () {
     extract(onsiteFixture());
-    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
-    $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
-    $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech', 'is_active' => true]);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech', 'is_active' => true]);
     $receptionist = User::factory()->create(['role' => 'receptionist']);
     $workflow = app(OnsiteEventWorkflowService::class);
     $workflow->assignStaff($event, $doctor, 'doctor', 10);
@@ -340,8 +340,8 @@ test('only one department can process an onsite employee at a time', function ()
 
 test('doctor follow-up tasks use doctor deployments and are independently authorized', function () {
     extract(onsiteFixture());
-    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
-    $otherDoctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
+    $otherDoctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
     $receptionist = User::factory()->create(['role' => 'receptionist']);
     $workflow = app(OnsiteEventWorkflowService::class);
     $workflow->assignStaff($event, $doctor, 'doctor', 10);
@@ -358,8 +358,8 @@ test('doctor follow-up tasks use doctor deployments and are independently author
 
 test('bulk employees stay out of regular dashboards and remain available in onsite events', function () {
     extract(onsiteFixture());
-    $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
-    $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech', 'is_active' => true]);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech', 'is_active' => true]);
     $receptionist = User::factory()->create(['role' => 'receptionist']);
     $workflow = app(OnsiteEventWorkflowService::class);
     $workflow->assignStaff($event, $medtech, 'medtech', 10);
@@ -389,10 +389,10 @@ test('clinical staff have dedicated onsite event pages scoped to their own assig
         'sex' => 'male',
         'civil_status' => 'Single',
     ]);
-    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
-    $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
-    $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
-    $otherDoctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech', 'is_active' => true]);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech', 'is_active' => true]);
+    $otherDoctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
     $receptionist = User::factory()->create(['role' => 'receptionist']);
     $workflow = app(OnsiteEventWorkflowService::class);
     foreach ([[$doctor, 'doctor'], [$medtech, 'medtech'], [$radtech, 'radtech']] as [$staff, $role]) {
@@ -430,7 +430,7 @@ test('admin can complete onsite activities without medically completing pending 
 test('onsite xray is verified and finalized by the assigned radtech', function () {
     extract(onsiteFixture());
     $receptionist = User::factory()->create(['role' => 'receptionist']);
-    $radtech = User::factory()->create(['role' => 'radtech', 'is_active' => true]);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech', 'is_active' => true]);
     $workflow = app(OnsiteEventWorkflowService::class);
     $workflow->assignStaff($event, $radtech, 'radtech', 10);
     $workflow->markArrived($child, $receptionist);
@@ -454,7 +454,7 @@ test('onsite xray is verified and finalized by the assigned radtech', function (
 test('onsite laboratory work returns the medtech to the company onsite event', function () {
     extract(onsiteFixture());
     $receptionist = User::factory()->create(['role' => 'receptionist']);
-    $medtech = User::factory()->create(['role' => 'medtech', 'is_active' => true]);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech', 'is_active' => true]);
     $workflow = app(OnsiteEventWorkflowService::class);
     $workflow->assignStaff($event, $medtech, 'medtech', 10);
     $workflow->markArrived($child, $receptionist);
@@ -469,7 +469,7 @@ test('onsite laboratory work returns the medtech to the company onsite event', f
 test('onsite physical examination returns the doctor to the company onsite event', function () {
     extract(onsiteFixture());
     $receptionist = User::factory()->create(['role' => 'receptionist']);
-    $doctor = User::factory()->create(['role' => 'doctor', 'is_active' => true]);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'is_active' => true]);
     $workflow = app(OnsiteEventWorkflowService::class);
     $workflow->assignStaff($event, $doctor, 'doctor', 10);
     $workflow->markArrived($child, $receptionist);

@@ -12,6 +12,7 @@ export interface User {
     full_name?: string;
     avatar?: string;
     role?: string;
+    sex?: string | null;
     license_no?: string | null;
     license_verification_status?:
         | 'not_submitted'

@@ -59,6 +59,8 @@ class PatientProfileCompletionController extends Controller
         ]);
 
         DB::transaction(function () use ($user, $validated): void {
+            $user = \App\Models\User::query()->lockForUpdate()->findOrFail($user->id);
+            $wasComplete = $user->hasCompletePatientProfile();
             $user->update([
                 'first_name' => $validated['first_name'],
                 'middle_name' => $validated['middle_name'] ?? null,
@@ -71,6 +73,14 @@ class PatientProfileCompletionController extends Controller
                 'civil_status' => $validated['civil_status'],
                 'address' => $validated['address'],
             ]);
+
+            $user->unsetRelation('patientProfile');
+            if (! $wasComplete && $user->hasCompletePatientProfile()) {
+                app(\App\Services\WorkflowNotificationService::class)->admins(
+                    'patient_profile_completed', 'Patient profile completed', 'A patient completed their account profile.',
+                    route('admin.patients.show', $user, false),
+                );
+            }
         });
 
         return to_route('dashboard')->with('status', 'Patient profile completed.');

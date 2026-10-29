@@ -159,6 +159,11 @@ test('admin acceptance atomically applies availability and moves only affected a
     expect($affectedA->fresh()->end_time->format('H:i'))->toBe('13:30')
         ->and($affectedB->fresh()->end_time->format('H:i'))->toBe('14:00');
     Notification::assertSentTo($receptionist, DoctorScheduleChanged::class);
+    Notification::assertSentTo($affectedA->user, \App\Notifications\WorkflowActivity::class, fn ($notification) => $notification->toDatabase($affectedA->user)['type'] === 'appointment_schedule_changed'
+        && str_contains($notification->toDatabase($affectedA->user)['message'], '1:00 PM'));
+    Notification::assertSentTo($affectedB->user, \App\Notifications\WorkflowActivity::class, fn ($notification) => $notification->toDatabase($affectedB->user)['type'] === 'appointment_schedule_changed');
+    Notification::assertNotSentTo($unaffected->user, \App\Notifications\WorkflowActivity::class);
+    Notification::assertSentTo($doctor, \App\Notifications\WorkflowActivity::class, fn ($notification) => $notification->toDatabase($doctor)['type'] === 'doctor_availability_decision');
 });
 
 test('admin rejection preserves the active availability and every appointment', function () {

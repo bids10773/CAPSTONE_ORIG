@@ -12,7 +12,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 function delayedPeAppointment(array $services = ['PE', 'Drug Test']): Appointment
 {
     $patient = User::factory()->create(['role' => 'patient']);
-    $doctor = User::factory()->create(['role' => 'doctor']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
 
     return Appointment::create([
         'user_id' => $patient->id,
@@ -81,7 +81,7 @@ test('xray procedure alone is not a verified final result', function () {
     XrayReport::create([
         'appointment_id' => $appointment->id,
         'medical_examination_id' => $examination->id,
-        'radiologist_id' => User::factory()->create(['role' => 'radtech'])->id,
+        'radiologist_id' => User::factory()->licensed()->create(['role' => 'radtech'])->id,
         'status' => 'awaiting_result',
         'performed_at' => now(),
         'is_completed' => false,
@@ -104,14 +104,14 @@ test('combined verification status recalculates as each result is verified', fun
     $drug = $examination->diagnosticResults()->where('service_key', 'drug_test')->firstOrFail();
     $appointment->physicalExam()->create([
         'medical_examination_id' => $examination->id,
-        'doctor_id' => User::factory()->create(['role' => 'doctor'])->id,
+        'doctor_id' => User::factory()->licensed()->create(['role' => 'doctor'])->id,
         'classification' => 'Pending', 'is_completed' => true,
     ]);
     $drug->update(['status' => 'verifying', 'performed_at' => now()]);
     $xray = XrayReport::create([
         'appointment_id' => $appointment->id,
         'medical_examination_id' => $examination->id,
-        'radiologist_id' => User::factory()->create(['role' => 'radtech'])->id,
+        'radiologist_id' => User::factory()->licensed()->create(['role' => 'radtech'])->id,
         'status' => 'verifying',
         'performed_at' => now(),
         'is_completed' => false,
@@ -123,7 +123,7 @@ test('combined verification status recalculates as each result is verified', fun
     $xray->update(['status' => 'completed', 'is_completed' => true, 'verified_by' => $xray->radiologist_id, 'verified_at' => now()]);
     expect($resolver->resolve($appointment->fresh()))->toBe('verifying_drug_test');
 
-    $drug->update(['status' => 'verified', 'verified_by' => User::factory()->create(['role' => 'doctor'])->id, 'verified_at' => now()]);
+    $drug->update(['status' => 'verified', 'verified_by' => User::factory()->licensed()->create(['role' => 'doctor'])->id, 'verified_at' => now()]);
     expect($resolver->resolve($appointment->fresh()))->toBe('for_final_evaluation')
         ->and($appointment->fresh()->status)->toBe('for_final_evaluation');
 });
@@ -254,7 +254,7 @@ test('PE PDF shows individual patient company fallback and each saved drug test 
     ]);
     $appointment->labResult()->create([
         'medical_examination_id' => $examination->id,
-        'encoded_by' => User::factory()->create(['role' => 'medtech'])->id,
+        'encoded_by' => User::factory()->licensed()->create(['role' => 'medtech'])->id,
         'drug_test_results' => [
             'methamphetamine' => 'Negative',
             'tetrahydrocannabinol' => 'Positive',
@@ -309,7 +309,7 @@ test('released PE provides the consolidated medical examination PDF', function (
     ]);
     $appointment->labResult()->create([
         'medical_examination_id' => $examination->id,
-        'encoded_by' => User::factory()->create(['role' => 'medtech'])->id,
+        'encoded_by' => User::factory()->licensed()->create(['role' => 'medtech'])->id,
         'cbc_results' => ['hemoglobin' => '14.2'],
         'status' => 'finalized',
         'is_completed' => true,
@@ -323,7 +323,7 @@ test('released PE provides the consolidated medical examination PDF', function (
     ]);
     $appointment->xrayReport()->create([
         'medical_examination_id' => $examination->id,
-        'radiologist_id' => User::factory()->create(['role' => 'radtech'])->id,
+        'radiologist_id' => User::factory()->licensed()->create(['role' => 'radtech'])->id,
         'findings' => 'Clear lung fields',
         'impression' => 'Normal chest X-ray',
         'status' => 'completed',
@@ -388,7 +388,7 @@ test('PE report does not classify an abnormal xray impression as normal', functi
     $xray = XrayReport::create([
         'appointment_id' => $appointment->id,
         'medical_examination_id' => $examination->id,
-        'radiologist_id' => User::factory()->create(['role' => 'radtech'])->id,
+        'radiologist_id' => User::factory()->licensed()->create(['role' => 'radtech'])->id,
         'findings' => 'Opacity in the right lower lobe.',
         'impression' => 'Abnormal finding requiring follow-up.',
         'status' => 'completed',

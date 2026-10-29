@@ -3,9 +3,11 @@
 namespace App\Providers;
 
 use App\Models\Appointment;
+use App\Models\MedicalCertificate;
 use App\Models\User;
 use App\Security\LoginRateLimiter;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\Response as AccessResponse;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -35,6 +37,32 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureReceptionistPermissions();
+
+        Appointment::observe(\App\Observers\AppointmentWorkflowObserver::class);
+        \App\Models\Company::observe(\App\Observers\CompanyAccountNotificationObserver::class);
+        \App\Models\CompanyReferral::observe(\App\Observers\CompanyReferralWorkflowObserver::class);
+        \App\Models\DoctorAvailabilityChangeRequest::observe(\App\Observers\DoctorAvailabilityWorkflowObserver::class);
+        \App\Models\OnsiteServiceQueue::observe(\App\Observers\OnsiteQueueWorkflowObserver::class);
+        \App\Models\OnsiteEventStaff::observe(\App\Observers\OnsiteStaffWorkflowObserver::class);
+        \App\Models\SecurityAudit::observe(\App\Observers\StaffSecurityNotificationObserver::class);
+        \App\Models\SecurityAudit::observe(\App\Observers\BulkReportNotificationObserver::class);
+        MedicalCertificate::observe(\App\Observers\MedicalCertificateNotificationObserver::class);
+        \App\Models\ClinicalFormAudit::observe(\App\Observers\ClinicalActivityNotificationObserver::class);
+        \App\Models\MedicalDocumentAudit::observe(\App\Observers\MedicalDocumentActivityNotificationObserver::class);
+
+        Gate::before(function (User $user, string $ability, array $arguments): ?AccessResponse {
+            $clinicalAction = in_array($ability, [
+                'updatePhysicalExam', 'updateLaboratory', 'updateXray',
+                'verifyDiagnosticResults', 'finalizeMedicalEvaluation', 'releaseMedicalReport',
+            ], true) || ($ability === 'issue' && ($arguments[0] ?? null) instanceof MedicalCertificate);
+
+            if ($clinicalAction && in_array($user->role, ['doctor', 'medtech', 'radtech'], true)
+                && ! $user->hasVerifiedProfessionalLicense()) {
+                return AccessResponse::deny('An administrator must verify your professional license before you can conduct medical examinations or release clinical documents.');
+            }
+
+            return null;
+        });
 
         Event::listen(Login::class, function (Login $event): void {
             // Serialize final authentication (including remember cookies) against

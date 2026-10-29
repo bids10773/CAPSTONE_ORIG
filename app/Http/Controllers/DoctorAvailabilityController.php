@@ -98,6 +98,13 @@ class DoctorAvailabilityController extends Controller
         $this->validateFutureAppointments($doctor, $periods);
         $doctor->update(['availability' => $periods->all()]);
 
+        if ($doctor->wasChanged('availability')) {
+            $notifications = app(\App\Services\WorkflowNotificationService::class);
+            $notifications->admins('doctor_availability_updated', 'Doctor availability updated', 'A doctor schedule was updated by an administrator.', route('admin.doctor-availability.index', absolute: false));
+            $notifications->users([$doctor], 'doctor_availability_updated', 'Availability updated', 'An administrator updated your availability.', route('doctor.doctor-availability.index', absolute: false));
+            $notifications->users(User::where('role', 'receptionist')->get(), 'doctor_availability_updated', 'Doctor availability updated', 'A doctor schedule was updated. Review clinic availability for coordination.', route('receptionist.dashboard', absolute: false));
+        }
+
         return back()->with('success', $request->input('action') === 'clear' ? 'Doctor availability cleared successfully.' : "Dr. {$doctor->first_name} {$doctor->last_name}'s availability was updated successfully.");
     }
 

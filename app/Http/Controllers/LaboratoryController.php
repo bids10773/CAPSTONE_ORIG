@@ -75,6 +75,7 @@ class LaboratoryController extends Controller
             'result' => $appointment->labResult,
             'sections' => $definitions->sectionsFor($appointment),
             'patient' => $this->patientSummary($appointment),
+            ...app(\App\Services\ReportVerificationService::class)->documentData($appointment->labResult),
         ])->setPaper('letter');
 
         return $this->secure($request->boolean('preview')
@@ -107,6 +108,7 @@ class LaboratoryController extends Controller
             'result' => $appointment->labResult,
             'sections' => [$section => $availableSections[$section]],
             'patient' => $this->patientSummary($appointment),
+            ...app(\App\Services\ReportVerificationService::class)->documentData($appointment->labResult),
         ])->setPaper('letter');
         $filename = 'LMIC-'.str($section)->replace('_', '-')->title()."-{$appointment->id}.pdf";
 

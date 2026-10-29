@@ -144,6 +144,7 @@ class AppointmentPolicy
     public function finalizeMedicalEvaluation(User $user, Appointment $appointment): bool
     {
         return $user->role === 'doctor'
+            && $appointment->requiresFinalEvaluation()
             && $this->eligibleOnsiteStaff($user, $appointment, 'final_evaluation')
             && ($appointment->bulk_appointment_id !== null || $this->isAssignedDoctor($user, $appointment));
     }

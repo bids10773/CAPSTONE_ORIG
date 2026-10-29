@@ -38,7 +38,7 @@ function completeRequiredPhysicalExam(Appointment $appointment): void
     $examination = app(\App\Services\MedicalExaminationService::class)->forAppointment($appointment);
     $appointment->physicalExam()->create([
         'medical_examination_id' => $examination->id,
-        'doctor_id' => $appointment->doctor_id ?? User::factory()->create(['role' => 'doctor'])->id,
+        'doctor_id' => $appointment->doctor_id ?? User::factory()->licensed()->create(['role' => 'doctor'])->id,
         'classification' => 'Pending', 'is_completed' => true,
     ]);
 }
@@ -106,7 +106,7 @@ test('pregnancy testing is available only for female patients', function () {
     $appointment->unsetRelation('user');
     expect(app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment))->toBe([]);
 
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), [
         'finalize' => false,
         'results' => ['pregnancy' => ['pregnancy_test' => 'Positive']],
@@ -118,7 +118,7 @@ test('pregnancy testing is available only for female patients', function () {
 test('medtech saves structured laboratory results and finalization advances workflow', function () {
     $appointment = clinicalAppointment();
     completeRequiredPhysicalExam($appointment);
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
 
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload())
         ->assertRedirect(route('medtech.appointments'))->assertSessionHas('success');
@@ -141,7 +141,7 @@ test('medtech saves structured laboratory results and finalization advances work
 
 test('laboratory finalization requires an explicit section interpretation and findings text when abnormal', function () {
     $appointment = clinicalAppointment();
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $payload = cbcPayload();
     unset($payload['interpretations']);
 
@@ -171,14 +171,14 @@ test('laboratory finalization requires an explicit section interpretation and fi
 test('requested xray controls the next workflow stage', function () {
     $appointment = clinicalAppointment(['CBC', 'X-Ray']);
     completeRequiredPhysicalExam($appointment);
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
     expect($appointment->fresh()->status)->toBe('for_xray');
 });
 
 test('finalized laboratory reports cannot be overwritten by medical staff', function () {
     $appointment = clinicalAppointment();
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
 
     $changed = cbcPayload(false);
@@ -190,7 +190,7 @@ test('finalized laboratory reports cannot be overwritten by medical staff', func
 
 test('patient can download completed laboratory PDF but receptionist cannot access clinical forms', function () {
     $appointment = clinicalAppointment();
-    $medtech = User::factory()->create(['role' => 'medtech', 'license_no' => '12345']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech', 'license_no' => '12345']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
 
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.pdf', $appointment))
@@ -211,7 +211,7 @@ test('patient can download completed laboratory PDF but receptionist cannot acce
 
 test('patient cannot download a laboratory form that was not selected for the appointment', function () {
     $appointment = clinicalAppointment(['CBC']);
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
     $appointment->update(['status' => 'completed']);
 
@@ -232,7 +232,7 @@ test('patient can download every selected laboratory service form', function () 
         'blood_type' => ['Blood Typing', 'blood_type'],
     ];
     $appointment = clinicalAppointment(array_column($sections, 0));
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $results = collect($sections)->mapWithKeys(
         fn (array $definition): array => [$definition[1] => ['result' => 'Normal']],
     )->all();
@@ -258,7 +258,7 @@ test('patient can download every selected laboratory service form', function () 
 
 test('patient cannot download an unverified official drug test result', function () {
     $appointment = clinicalAppointment(['Drug Test']);
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
 
     $payload = [
         'finalize' => true,
@@ -288,7 +288,7 @@ test('patient cannot download an unverified official drug test result', function
 
 test('positive drug test cannot be accidentally completed without verification', function () {
     $appointment = clinicalAppointment(['Drug Test']);
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
 
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), [
         'finalize' => true,
@@ -304,7 +304,7 @@ test('positive drug test cannot be accidentally completed without verification',
 
 test('patient cannot download an xray report before radtech verification', function () {
     $appointment = clinicalAppointment(['X-Ray']);
-    $radtech = User::factory()->create(['role' => 'radtech']);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech']);
     $appointment->xrayReport()->create([
         'radiologist_id' => $radtech->id,
         'findings' => 'Preliminary findings.',
@@ -357,7 +357,7 @@ test('patient cannot access another patients appointment or clinical document by
 
 test('PE laboratory package cannot be finalized with only one required child result', function () {
     $appointment = clinicalAppointment(config('medical.pe_package.basic_five_services'));
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), [
         'finalize' => true, 'results' => ['cbc' => cbcPayload()['results']['cbc']],
     ])->assertSessionHasErrors();
@@ -366,7 +366,7 @@ test('PE laboratory package cannot be finalized with only one required child res
 
 test('doctor records structured physical findings and final approval locks the encounter', function () {
     $appointment = clinicalAppointment(config('medical.pe_package.basic_five_services'));
-    $doctor = User::factory()->create(['role' => 'doctor']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
     $appointment->update(['doctor_id' => $doctor->id]);
     $appointment->vitalSigns()->create([
         'patient_id' => $appointment->user_id, 'recorded_by' => User::factory()->create(['role' => 'receptionist'])->id,
@@ -393,12 +393,12 @@ test('doctor records structured physical findings and final approval locks the e
         ->and($appointment->physicalExam->head_scalp)->toBeNull()
         ->and($appointment->physicalExam->blood_pressure)->toBe('120/80');
 
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), peLaboratoryPayload())
         ->assertSessionHas('success');
     expect($appointment->fresh()->status)->toBe('for_xray');
 
-    $radtech = User::factory()->create(['role' => 'radtech']);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech']);
     $this->actingAs($radtech)->post(route('radtech.xrays.store', $appointment), [
         'workflow_action' => 'complete', 'chest_status' => 'normal',
         'chest_findings' => 'Both lungs are clear.', 'impression' => 'Normal chest X-ray.',
@@ -418,7 +418,7 @@ test('radtech completion stores one xray report and advances to final evaluation
     $appointment = clinicalAppointment(['X-Ray']);
     completeRequiredPhysicalExam($appointment);
     $appointment->update(['status' => 'for_xray']);
-    $radtech = User::factory()->create(['role' => 'radtech']);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech']);
 
     $this->actingAs($radtech)->post(route('radtech.xrays.store', $appointment), [
         'chest_status' => 'normal',
@@ -433,7 +433,7 @@ test('radtech completion stores one xray report and advances to final evaluation
 test('performed xray remains in the radtech queue until its official result is verified', function () {
     $appointment = clinicalAppointment(['X-Ray']);
     $appointment->update(['status' => 'for_xray']);
-    $radtech = User::factory()->create(['role' => 'radtech']);
+    $radtech = User::factory()->licensed()->create(['role' => 'radtech']);
 
     $this->actingAs($radtech)->post(route('radtech.xrays.store', $appointment), [
         'workflow_action' => 'performed',
@@ -450,8 +450,8 @@ test('performed xray remains in the radtech queue until its official result is v
 
 test('final evaluation requires physical examination even when only CBC was selected', function () {
     $appointment = clinicalAppointment(['CBC']);
-    $medtech = User::factory()->create(['role' => 'medtech']);
-    $doctor = User::factory()->create(['role' => 'doctor']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
     $appointment->update(['doctor_id' => $doctor->id]);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
 
@@ -480,7 +480,7 @@ test('final evaluation requires physical examination even when only CBC was sele
 
 test('unselected diagnostics do not block final evaluation while selected xray does', function () {
     $appointment = clinicalAppointment(['X-Ray']);
-    $doctor = User::factory()->create(['role' => 'doctor']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
     $appointment->update(['doctor_id' => $doctor->id]);
 
     $this->actingAs($doctor)->post(route('doctor.final-evaluation.store', $appointment), [
@@ -491,53 +491,25 @@ test('unselected diagnostics do not block final evaluation while selected xray d
     $this->assertDatabaseMissing('physical_exams', ['appointment_id' => $appointment->id]);
 });
 
-test('medical certificate purpose generates a trusted draft only after CBC and physical examination are completed', function () {
+test('medical certificate purpose opens certificate preparation before diagnostics are complete', function () {
     $appointment = clinicalAppointment(['CBC']);
-    $doctor = User::factory()->create(['role' => 'doctor', 'license_no' => 'PRC-7654321']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor', 'license_no' => 'PRC-7654321']);
     $appointment->update(['doctor_id' => $doctor->id, 'examination_purpose' => 'medical_clearance']);
-    $appointment->medicalHistory()->create(['present_illness' => 'Medical certificate requested following examination.']);
-    $evaluation = [
-        'medical_class' => 'B', 'final_diagnosis' => 'Findings reviewed by the attending physician.',
-        'final_remarks' => 'Follow-up advised.', 'recommendations' => 'Return for follow-up in one week.',
-    ];
 
-    completeRequiredPhysicalExam($appointment);
-    $this->actingAs($doctor)->post(route('doctor.final-evaluation.store', $appointment), $evaluation)
-        ->assertSessionHasErrors('medical_class');
+    $this->actingAs($doctor)->get(route('doctor.medical-certificates.prepare', $appointment))
+        ->assertRedirect(route('medical-certificates.create', [
+            'patient_id' => $appointment->user_id, 'appointment_id' => $appointment->id,
+        ]));
+    $this->post(route('doctor.final-evaluation.store', $appointment), [
+        'medical_class' => 'B', 'final_diagnosis' => 'Reviewed findings.',
+    ])->assertForbidden();
     $this->assertDatabaseCount('medical_certificates', 0);
-
-    $medtech = User::factory()->create(['role' => 'medtech']);
-    $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload())
-        ->assertSessionHasNoErrors();
-    $response = $this->actingAs($doctor)->post(route('doctor.final-evaluation.store', $appointment), $evaluation)
-        ->assertSessionHasNoErrors();
-
-    $certificate = \App\Models\MedicalCertificate::query()->where('appointment_id', $appointment->id)->sole();
-    $response->assertRedirect(route('medical-certificates.show', $certificate));
-    expect($certificate->status)->toBe('draft')
-        ->and($certificate->patient_id)->toBe($appointment->user_id)
-        ->and($certificate->patient_name)->toBe($appointment->user->name)
-        ->and($certificate->patient_sex)->toBe('Female')
-        ->and($certificate->salutation)->toBe('Ms.')
-        ->and($certificate->attending_physician_id)->toBe($doctor->id)
-        ->and($certificate->physician_license_no)->toBe('PRC-7654321')
-        ->and($certificate->consultation_date->toDateString())->toBe($appointment->appointment_date->toDateString())
-        ->and($certificate->reason_for_consultation)->toBe('Medical certificate requested following examination.')
-        ->and($certificate->clinical_impression)->toBe($evaluation['final_diagnosis'])
-        ->and($certificate->recommendation)->toBe($evaluation['recommendations'])
-        ->and($certificate->approved_at)->toBeNull()
-        ->and($certificate->issued_at)->toBeNull()
-        ->and($certificate->audits()->where('action', 'created')->count())->toBe(1)
-        ->and($appointment->fresh()->status)->toBe('completed');
-
-    $this->get(route('medical-certificates.show', $certificate))->assertOk();
-    $this->post(route('doctor.final-evaluation.store', $appointment), $evaluation);
-    $this->assertDatabaseCount('medical_certificates', 1);
+    expect($appointment->fresh()->medicalExamination?->finalized_at)->toBeNull();
 });
 
 test('final evaluation does not generate a certificate for other appointment purposes', function (?string $purpose) {
     $appointment = clinicalAppointment(['PE']);
-    $doctor = User::factory()->create(['role' => 'doctor']);
+    $doctor = User::factory()->licensed()->create(['role' => 'doctor']);
     $appointment->update(['doctor_id' => $doctor->id, 'examination_purpose' => $purpose]);
     completeRequiredPhysicalExam($appointment);
 

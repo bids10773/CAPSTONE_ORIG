@@ -7,7 +7,7 @@ use App\Services\LaboratoryFormDefinition;
 function laboratoryValidationFixture(array $services = ['CBC']): array
 {
     $patient = User::factory()->create(['role' => 'patient', 'sex' => 'female']);
-    $medtech = User::factory()->create(['role' => 'medtech']);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $appointment = Appointment::create([
         'user_id' => $patient->id,
         'appointment_date' => today(),

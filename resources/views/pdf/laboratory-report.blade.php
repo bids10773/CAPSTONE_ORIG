@@ -3,15 +3,9 @@
 <head>
 <meta charset="utf-8">
 <style>
-    @page { margin: 24px 28px; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: DejaVu Sans, sans-serif; color: #111827; font-size: 10px; }
+
     .green { color: #009b4d; } .border { border: 1px solid #00a651; }
-    .header { text-align: center; border-bottom: 1.5px solid #00a651; padding-bottom: 6px; }
-    .header img { float:left; width:52px; height:52px; object-fit:contain; }
-    .header h1 { margin: 0; color:#339966; font-size:27px; letter-spacing:1px; }
-    .header p { margin:2px 0 0; color:#009b4d; font-size:10px; }
-    .title { text-align:center; color:#009b4d; font-size:16px; font-weight:bold; margin:7px 0; }
+
     .patient { width:100%; border-collapse:collapse; margin-bottom:8px; }
     .patient td { padding:3px 5px; border-bottom:1px solid #00a651; }
     .patient .label { width:13%; color:#009b4d; font-weight:bold; border-bottom:0; }
@@ -27,15 +21,11 @@
     .role { color:#009b4d; font-weight:bold; font-size:11px; }
     .remarks { border:1px solid #00a651; padding:5px; min-height:30px; }
     .footer { position:fixed; bottom:-12px; width:100%; text-align:center; color:#6b7280; font-size:8px; }
+    @include('pdf.partials.clinic-styles')
 </style>
 </head>
 <body>
-<div class="header">
-    @if(file_exists(public_path('images/full_logo2-optimized.png')))<img src="{{ public_path('images/full_logo2-optimized.png') }}" alt="LMIC">@endif
-    <h1>Living Myth Industrial Clinic</h1>
-    <p>2nd Floor, Serafin Business Center, National Highway Banlic, Cabuyao, Laguna</p>
-    <p>Telephone No. (049) 576-0715</p>
-</div>
+@include('pdf.partials.clinic-header')
 <div class="title">LABORATORY RESULT</div>
 <table class="patient">
     <tr><td class="label">Name</td><td>{{ $patient['name'] }}</td><td class="label">Company/Agency</td><td>{{ $patient['company'] ?? 'N/A' }}</td></tr>
@@ -78,5 +68,6 @@
     <td>@include('pdf.partials.electronic-signature', ['staff' => $medicalTechnologist, 'role' => 'Medical Technologist', 'verifiedAt' => $result->finalized_at])</td>
 </tr></table>
 <div class="footer">Electronically generated LMIC clinical document · {{ $appointment->reference_code }} · {{ now()->format('Y-m-d H:i') }}</div>
+@include('pdf.partials.report-verification')
 </body>
 </html>

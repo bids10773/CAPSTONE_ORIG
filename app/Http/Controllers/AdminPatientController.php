@@ -217,13 +217,21 @@ class AdminPatientController extends Controller
                 'email' => $data['email'],
                 'contact' => $data['contact'] ?? null,
             ]);
-            $patient->patientProfile()->updateOrCreate([], [
+            $profile = $patient->patientProfile()->updateOrCreate([], [
                 'birthdate' => $data['birthdate'] ?? null,
                 'sex' => $data['sex'] ?? null,
                 'civil_status' => $data['civil_status'] ?? null,
                 'address' => $data['address'] ?? null,
                 'employee_number' => $data['employee_number'] ?? null,
             ]);
+            if ($patient->wasChanged(['first_name', 'middle_name', 'last_name', 'email', 'contact'])
+                || $profile->wasRecentlyCreated
+                || $profile->wasChanged(['birthdate', 'sex', 'civil_status', 'address', 'employee_number'])) {
+                app(\App\Services\WorkflowNotificationService::class)->admins('patient_account_updated',
+                    'Patient account update', 'A patient account was updated.', '/admin/patients/'.$patient->id);
+                app(\App\Services\WorkflowNotificationService::class)->users([$patient->id], 'patient_account_updated',
+                    'Account update', 'Your account was updated by the clinic. Review your profile for details.', '/settings/profile');
+            }
         });
 
         return redirect()->route('admin.patients.index')->with('success', 'Patient updated successfully.');
@@ -248,6 +256,8 @@ class AdminPatientController extends Controller
                 $patient->socialAccounts()->delete();
                 $patient->patientProfile()->delete();
                 $patient->delete();
+                app(\App\Services\WorkflowNotificationService::class)->admins('patient_account_deleted',
+                    'Patient account update', 'A patient account was deleted.', '/admin/patients');
             });
         } catch (QueryException) {
             return back()->with('error', 'This patient cannot be deleted because other records are linked to the account.');

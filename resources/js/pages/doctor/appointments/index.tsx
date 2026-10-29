@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Calendar, Eye, LockKeyhole, Stethoscope, Play } from 'lucide-react';
+import {
+    Calendar,
+    Eye,
+    FileHeart,
+    LockKeyhole,
+    Stethoscope,
+    Play,
+} from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
@@ -26,6 +33,8 @@ interface Appointment {
     service_types: string;
     is_scheduled_today: boolean;
     can_start_physical_exam: boolean;
+    requires_final_evaluation: boolean;
+    certificate_url?: string | null;
     user: {
         first_name: string;
         last_name: string;
@@ -253,6 +262,18 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                 </Link>
 
                                                 {/* The examination starts only after reception checks the patient in. */}
+                                                {appointment.certificate_url && (
+                                                    <Link
+                                                        href={
+                                                            appointment.certificate_url
+                                                        }
+                                                        className="inline-flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-moss-700 transition-colors hover:bg-moss-50"
+                                                        title="Prepare Medical Certificate"
+                                                    >
+                                                        <FileHeart className="h-4 w-4" />
+                                                        Certificate
+                                                    </Link>
+                                                )}
                                                 {appointment.can_start_physical_exam &&
                                                     appointment.status.toLowerCase() ===
                                                         'arrived' &&
@@ -312,20 +333,21 @@ export default function DoctorAppointmentsIndex(props: Props) {
                                                     )}
 
                                                 {/* ✅ FINAL EVALUATION */}
-                                                {appointment.status.toLowerCase() ===
-                                                    'for_final_evaluation' && (
-                                                    <button
-                                                        onClick={() =>
-                                                            router.visit(
-                                                                `/doctor/final-evaluation/${appointment.id}`,
-                                                            )
-                                                        }
-                                                        className="inline-flex items-center rounded-2xl p-2 text-moss-600 hover:bg-moss-50 hover:text-moss-700"
-                                                        title="Final Evaluation"
-                                                    >
-                                                        <Stethoscope className="h-4 w-4" />
-                                                    </button>
-                                                )}
+                                                {appointment.requires_final_evaluation &&
+                                                    appointment.status.toLowerCase() ===
+                                                        'for_final_evaluation' && (
+                                                        <button
+                                                            onClick={() =>
+                                                                router.visit(
+                                                                    `/doctor/final-evaluation/${appointment.id}`,
+                                                                )
+                                                            }
+                                                            className="inline-flex items-center rounded-2xl p-2 text-moss-600 hover:bg-moss-50 hover:text-moss-700"
+                                                            title="Final Evaluation"
+                                                        >
+                                                            <Stethoscope className="h-4 w-4" />
+                                                        </button>
+                                                    )}
                                                 {appointment.service_queues?.some(
                                                     (queue) =>
                                                         queue.service_role ===

@@ -364,7 +364,7 @@ export default function XrayReportForm({
                             {xrayReport && (
                                 <Link
                                     href={`/clinical-forms/${appointment.id}/xray.pdf?preview=1`}
-                                    className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 font-semibold text-slate-700"
+                                    className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 font-semibold text-slate-700 transition-colors duration-200 hover:border-slate-400 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
                                 >
                                     <Download className="h-4 w-4" />
                                     Preview PDF
@@ -376,7 +376,7 @@ export default function XrayReportForm({
                                         type="button"
                                         disabled={form.processing}
                                         onClick={() => submit('performed')}
-                                        className="inline-flex items-center gap-2 rounded-xl border border-moss-300 px-4 py-2.5 font-semibold text-moss-800 disabled:opacity-50"
+                                        className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-moss-300 px-4 py-2.5 font-semibold text-moss-800 transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss-600 enabled:hover:border-moss-500 enabled:hover:bg-moss-50 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         <Save className="h-4 w-4" />
                                         Save draft
@@ -385,7 +385,7 @@ export default function XrayReportForm({
                                         type="button"
                                         disabled={form.processing}
                                         onClick={confirmFinalize}
-                                        className="inline-flex items-center gap-2 rounded-xl bg-moss-600 px-4 py-2.5 font-semibold text-white disabled:opacity-50"
+                                        className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-moss-600 px-4 py-2.5 font-semibold text-white transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss-600 enabled:hover:bg-moss-700 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         {form.processing ? (
                                             <LoaderCircle className="h-4 w-4 animate-spin" />

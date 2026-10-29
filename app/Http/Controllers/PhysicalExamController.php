@@ -22,8 +22,13 @@ use Inertia\Response;
 
 class PhysicalExamController extends Controller
 {
-    public function create(Appointment $appointment, MedicalExaminationService $examinations): Response
+    public function create(Appointment $appointment, MedicalExaminationService $examinations): Response|RedirectResponse
     {
+        if ($appointment->examination_purpose === 'medical_clearance') {
+            Gate::authorize('viewPhysicalExam', $appointment);
+
+            return redirect()->route('doctor.medical-certificates.prepare', $appointment);
+        }
         Gate::authorize('updatePhysicalExam', $appointment);
         app(\App\Services\OnsiteEventWorkflowService::class)->startService($appointment, 'doctor', request()->user());
         $medicalExamination = $examinations->forAppointment($appointment);
@@ -114,8 +119,13 @@ class PhysicalExamController extends Controller
         return redirect()->to($destination)->with('success', 'Physical examination saved and forwarded to the next required stage.');
     }
 
-    public function final(Appointment $appointment, MedicalExaminationService $examinations): Response
+    public function final(Appointment $appointment, MedicalExaminationService $examinations): Response|RedirectResponse
     {
+        if ($appointment->examination_purpose === 'medical_clearance') {
+            Gate::authorize('viewPhysicalExam', $appointment);
+
+            return redirect()->route('doctor.medical-certificates.prepare', $appointment);
+        }
         $canFinalize = Gate::allows('finalizeMedicalEvaluation', $appointment);
         $canVerify = Gate::allows('verifyDiagnosticResults', $appointment);
         abort_unless($canFinalize || $canVerify, 403);

@@ -7,11 +7,13 @@ use App\Http\Requests\Settings\ProfileDeleteRequest;
 use App\Http\Requests\Settings\ProfileUpdateRequest;
 use App\Models\SecurityAudit;
 use App\Services\PatientMedicalProfileService;
+use App\Support\ClinicHours;
 use App\Support\PhilippineContactNumber;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -26,8 +28,14 @@ class ProfileController extends Controller
     public function edit(Request $request, PatientMedicalProfileService $medicalProfile): Response
     {
         $user = $request->user();
+        $birthdate = $user->role === 'patient' ? $user->patientProfile?->birthdate : null;
+        $birthdate = $birthdate ? Date::parse($birthdate->toDateString(), ClinicHours::timezone()) : null;
+        $today = ClinicHours::now()->startOfDay();
 
         return Inertia::render('settings/profile', [
+            'patientAge' => $birthdate && $birthdate->lessThanOrEqualTo($today)
+                ? (int) $birthdate->diffInYears($today)
+                : null,
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => $request->session()->get('status'),
             'twoFactorAvailable' => Features::enabled(Features::twoFactorAuthentication()),
@@ -137,9 +145,13 @@ class ProfileController extends Controller
     {
         $validated = $request->validated();
         $user = $request->user();
+        $wasComplete = $user->hasCompletePatientProfile();
         $profileFields = ['birthdate', 'sex', 'civil_status', 'address'];
         $profileData = collect($validated)->only($profileFields)->all();
         $userData = collect($validated)->except($profileFields)->all();
+        if (in_array($user->role, ['doctor', 'medtech', 'radtech'], true) && array_key_exists('sex', $profileData)) {
+            $userData['sex'] = $profileData['sex'];
+        }
         if ($user->role === 'company') {
             unset($userData['email'], $userData['contact']);
         }
@@ -169,17 +181,36 @@ class ProfileController extends Controller
             ];
         }
 
-        DB::transaction(function () use ($user, $userData, $profileData) {
+        DB::transaction(function () use ($user, $userData, $profileData, $wasComplete) {
             $user->fill($userData);
 
             if ($user->isDirty('email')) {
                 $user->email_verified_at = null;
             }
 
+            $profileChanged = $user->isDirty(['first_name', 'middle_name', 'last_name', 'email', 'contact', 'position', 'sex']);
             $user->save();
 
             if ($user->role === 'patient' && ($user->patientProfile || ! empty($profileData['birthdate']))) {
-                $user->patientProfile()->updateOrCreate(['user_id' => $user->id], $profileData);
+                $profile = $user->patientProfile()->updateOrCreate(['user_id' => $user->id], $profileData);
+                $profileChanged = $profileChanged || $profile->wasRecentlyCreated
+                    || $profile->wasChanged(['birthdate', 'sex', 'civil_status', 'address']);
+                $user->unsetRelation('patientProfile');
+            }
+
+            if ($profileChanged && in_array($user->role, ['patient', 'doctor', 'medtech', 'radtech', 'receptionist', 'company'], true)) {
+                $completed = $user->role === 'patient' && ! $wasComplete && $user->hasCompletePatientProfile();
+                $url = match ($user->role) {
+                    'patient' => route('admin.patients.show', $user, false),
+                    'company' => $user->company_id ? route('admin.companies.show', $user->company_id, false) : route('admin.companies.index', absolute: false),
+                    default => route('admin.staff.edit', $user, false),
+                };
+                app(\App\Services\WorkflowNotificationService::class)->admins(
+                    $completed ? 'patient_profile_completed' : 'profile_updated',
+                    $completed ? 'Patient profile completed' : 'Profile updated',
+                    $completed ? 'A patient completed their account profile.' : 'An account holder updated their profile.',
+                    $url,
+                );
             }
         });
 
