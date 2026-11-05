@@ -19,6 +19,7 @@ import {
     XCircle,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { CancelAppointmentDialog } from '@/components/cancel-appointment-dialog';
 import { Pagination } from '@/components/pagination';
 import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { Button } from '@/components/ui/button';
@@ -93,6 +94,7 @@ interface Appointment {
     created_at: string;
     rejection_reason?: string | null;
     rejection_details?: string | null;
+    cancellation_reason?: string | null;
     batch_id?: string | null;
     expected_employee_count?: number | null;
     bulk_employees_count?: number;
@@ -406,6 +408,8 @@ export default function AdminAppointmentsIndex() {
     const [rejectionReason, setRejectionReason] = useState('');
     const [rejectionDetails, setRejectionDetails] = useState('');
     const [rejectionError, setRejectionError] = useState('');
+    const [cancellingAppointment, setCancellingAppointment] =
+        useState<Appointment | null>(null);
 
     const queryFor = (candidate: Filters) => {
         const common = {
@@ -510,6 +514,11 @@ export default function AdminAppointmentsIndex() {
     };
 
     const updateStatus = (appointment: Appointment, status: string) => {
+        if (status === 'cancelled') {
+            setSelectedAppointment(null);
+            setCancellingAppointment(appointment);
+            return;
+        }
         setUpdatingId(appointment.id);
         router.patch(
             `/admin/appointments/${appointment.id}/status`,
@@ -765,6 +774,13 @@ export default function AdminAppointmentsIndex() {
     return (
         <>
             <Head title={bulkOnly ? 'Company Bulk Requests' : 'Appointments'} />
+            {cancellingAppointment && (
+                <CancelAppointmentDialog
+                    appointment={cancellingAppointment}
+                    onClose={() => setCancellingAppointment(null)}
+                    onCancelled={() => setCancellingAppointment(null)}
+                />
+            )}
             <div className="space-y-4 p-3 sm:p-4 lg:p-5">
                 {!bulkOnly && pendingRequestsCount > 0 && (
                     <button
@@ -1561,6 +1577,19 @@ export default function AdminAppointmentsIndex() {
                                 </div>
                             )}
 
+                        {selectedAppointment.status === 'cancelled' &&
+                            selectedAppointment.cancellation_reason && (
+                                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                                    <p className="font-semibold">
+                                        Cancellation reason
+                                    </p>
+                                    <p className="mt-1 wrap-anywhere whitespace-pre-wrap">
+                                        {
+                                            selectedAppointment.cancellation_reason
+                                        }
+                                    </p>
+                                </div>
+                            )}
                         <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end dark:border-border">
                             {selectedAppointment.type !== 'company_bulk' && (
                                 <Button

@@ -253,6 +253,17 @@ export default function AppointmentRecord({
                     </div>
                 </header>
 
+                {appointment.status === 'cancelled' &&
+                    appointment.cancellation_reason && (
+                        <section className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                            <h2 className="font-semibold">
+                                Cancellation reason
+                            </h2>
+                            <p className="mt-2 wrap-anywhere whitespace-pre-wrap">
+                                {appointment.cancellation_reason}
+                            </p>
+                        </section>
+                    )}
                 {['doctor', 'admin'].includes(auth.user.role) && (
                     <>
                         <ClinicalHistoryFindings

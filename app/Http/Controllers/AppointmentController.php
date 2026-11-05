@@ -574,6 +574,7 @@ class AppointmentController extends Controller
         $wasCancelled = $appointment->status === 'cancelled';
         $validator = Validator::make($request->all(), [
             'status' => ['required', 'string', 'in:pending,accepted,arrived,for_diagnostics,for_xray,awaiting_xray_result,for_final_evaluation,completed,cancelled'],
+            'cancellation_reason' => ['exclude_unless:status,cancelled', 'required', 'string', 'max:500'],
             'event_duration_days' => [
                 Rule::requiredIf(fn () => $appointment->isBulkParent() && $request->status === 'accepted'),
                 'nullable',
@@ -609,11 +610,12 @@ class AppointmentController extends Controller
 
             } else {
                 app(\App\Services\BulkAppointmentEnrollmentService::class)
-                    ->synchronizeParentStatus($appointment, $request->status);
+                    ->synchronizeParentStatus($appointment, $request->status, cancellationReason: $request->input('cancellation_reason'));
             }
         } else {
             $appointment->update([
                 'status' => $request->status,
+                ...($request->status === 'cancelled' ? ['cancellation_reason' => trim($request->input('cancellation_reason'))] : []),
             ]);
 
             if ($request->status === 'cancelled' && ! $wasCancelled) {

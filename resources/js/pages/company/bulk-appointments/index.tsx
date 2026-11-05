@@ -31,6 +31,7 @@ type BulkAppointment = {
     start_time: string | null;
     end_time: string | null;
     status: string;
+    cancellation_reason?: string | null;
     onsite_event_status: string | null;
     service_types: string[];
     service_location: string | null;
@@ -295,6 +296,17 @@ export default function CompanyBulkAppointments({
                                                     >
                                                         {status.label}
                                                     </span>
+                                                    {appointment.status ===
+                                                        'cancelled' &&
+                                                        appointment.cancellation_reason && (
+                                                            <p className="mt-2 max-w-xs text-xs wrap-anywhere whitespace-pre-wrap text-muted-foreground">
+                                                                Cancellation
+                                                                reason:{' '}
+                                                                {
+                                                                    appointment.cancellation_reason
+                                                                }
+                                                            </p>
+                                                        )}
                                                 </td>
                                                 <td className="px-5 py-4 text-right">
                                                     {appointment.report_download_url ? (

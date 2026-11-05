@@ -11,6 +11,7 @@ import {
     XCircle,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { CancelAppointmentDialog } from '@/components/cancel-appointment-dialog';
 import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import {
@@ -121,6 +122,8 @@ export default function TodayAppointments({
     const [selectedAppointment, setSelectedAppointment] =
         useState<Appointment | null>(null);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
+    const [cancellingAppointment, setCancellingAppointment] =
+        useState<Appointment | null>(null);
     const firstRender = useRef(true);
 
     useEffect(() => {
@@ -164,6 +167,11 @@ export default function TodayAppointments({
     }, []);
 
     function updateStatus(appointment: Appointment, status: string) {
+        if (status === 'cancelled') {
+            setSelectedAppointment(null);
+            setCancellingAppointment(appointment);
+            return;
+        }
         setUpdatingId(appointment.id);
         router.patch(
             `/admin/appointments/${appointment.id}/status`,
@@ -191,6 +199,13 @@ export default function TodayAppointments({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
+            {cancellingAppointment && (
+                <CancelAppointmentDialog
+                    appointment={cancellingAppointment}
+                    onClose={() => setCancellingAppointment(null)}
+                    onCancelled={() => setCancellingAppointment(null)}
+                />
+            )}
             <Head title="Today's Clinic Overview" />
             <div className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
                 <header className="relative overflow-hidden rounded-[2rem] bg-moss-800 p-6 text-white shadow-[0_18px_45px_-30px_rgba(23,50,34,.8)] sm:p-8">

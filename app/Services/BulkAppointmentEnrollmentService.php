@@ -43,9 +43,9 @@ class BulkAppointmentEnrollmentService
         });
     }
 
-    public function synchronizeParentStatus(Appointment $bulkAppointment, string $status, ?int $durationDays = null): void
+    public function synchronizeParentStatus(Appointment $bulkAppointment, string $status, ?int $durationDays = null, ?string $cancellationReason = null): void
     {
-        DB::transaction(function () use ($bulkAppointment, $status, $durationDays): void {
+        DB::transaction(function () use ($bulkAppointment, $status, $durationDays, $cancellationReason): void {
             $parent = Appointment::query()->lockForUpdate()->findOrFail($bulkAppointment->id);
 
             if ($status === 'accepted') {
@@ -69,7 +69,10 @@ class BulkAppointmentEnrollmentService
                     'event_end_date' => $eventEndDate,
                 ]);
             } elseif ($status === 'cancelled') {
-                $parent->update(['status' => $status]);
+                $parent->update([
+                    'status' => $status,
+                    ...(filled($cancellationReason) ? ['cancellation_reason' => trim($cancellationReason)] : []),
+                ]);
                 $parent->bulkEmployees()
                     ->whereNotIn('status', ['completed', 'absent'])
                     ->update(['status' => 'absent', 'attendance_status' => 'absent', 'attendance_marked_at' => now(), 'absence_reason' => 'event_cancelled']);

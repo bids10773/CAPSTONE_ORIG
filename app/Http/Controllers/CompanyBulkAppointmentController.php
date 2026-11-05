@@ -49,6 +49,7 @@ class CompanyBulkAppointmentController extends Controller
                 'start_time' => $appointment->start_time?->format('H:i'),
                 'end_time' => $appointment->end_time?->format('H:i'),
                 'status' => $appointment->status,
+                'cancellation_reason' => $appointment->cancellation_reason,
                 'onsite_event_status' => $appointment->onsite_event_status,
                 'service_types' => $appointment->service_types ?? [],
                 'service_location' => $appointment->service_location,

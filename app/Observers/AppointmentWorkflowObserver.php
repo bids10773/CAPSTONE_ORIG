@@ -57,8 +57,10 @@ class AppointmentWorkflowObserver
 
     public function bulkUpdated(Appointment $appointment): void
     {
+        $cancellationDetails = $appointment->status === 'cancelled' && filled($appointment->cancellation_reason)
+            ? ' Reason: '.$appointment->cancellation_reason : '';
         if ($appointment->company_id !== null) {
-            $this->notifications->users(User::where('role', 'company')->where('company_id', $appointment->company_id)->get(), 'company_event_updated', 'Company event updated', "{$appointment->reference_code} has been updated. Status: {$appointment->status}.", route('company.bulk-appointments.index', absolute: false));
+            $this->notifications->users(User::where('role', 'company')->where('company_id', $appointment->company_id)->get(), 'company_event_updated', 'Company event updated', "{$appointment->reference_code} has been updated. Status: {$appointment->status}.".$cancellationDetails, route('company.bulk-appointments.index', absolute: false));
         }
         if ($appointment->status === 'cancelled') {
             foreach ($appointment->onsiteStaff()->where('is_active', true)->with('user')->get() as $deployment) {
