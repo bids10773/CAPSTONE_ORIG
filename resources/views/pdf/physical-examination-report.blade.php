@@ -149,6 +149,7 @@
                 <tr><td class="entry-label">G. Hearing</td><td class="entry-value">{{ strtoupper($physical->hearing ?: '—') }}</td></tr>
                 <tr><td class="entry-label">H. Visual Acuity</td><td class="entry-value">{{ strtoupper($physical->visual_acuity ?: '—') }}</td></tr>
             </table>
+            @include('pdf.partials.unassessed-vital-signs')
         </td>
         <td class="systems">
             <table class="ruled systems-table" style="border:0">

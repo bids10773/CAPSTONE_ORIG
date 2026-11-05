@@ -29,7 +29,7 @@ function cbcPayload(bool $finalize = true): array
             'hemoglobin' => '14.2', 'hematocrit' => '0.42', 'rbc_count' => '4.8', 'wbc_count' => '7.1',
             'segmenters' => '0.60', 'lymphocytes' => '0.32', 'monocytes' => '0.04',
             'eosinophils' => '0.03', 'basophils' => '0.01', 'stab' => '0.02', 'meta' => '0.00',
-            'differential_others' => 'None', 'platelet_count' => '250', 'verification_note' => 'Repeated and verified',
+            'platelet_count' => '250', 'verification_note' => 'Repeated and verified',
         ]]];
 }
 
@@ -140,6 +140,41 @@ test('medtech saves structured laboratory results and finalization advances work
     ]);
 });
 
+test('urinalysis finalizes without entering headings or optional cast findings', function () {
+    $appointment = clinicalAppointment(['Urinalysis']);
+    completeRequiredPhysicalExam($appointment);
+    $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
+    $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), [
+        'finalize' => true,
+        'interpretations' => ['urinalysis' => ['interpretation' => 'normal']],
+        'results' => ['urinalysis' => [
+            'color' => 'Yellow', 'transparency' => 'Clear', 'ph' => '6.0', 'specific_gravity' => '1.020',
+            'glucose' => 'Negative', 'albumin' => 'Negative', 'wbc' => '0-2', 'rbc' => '0-2',
+            'bacteria' => 'None', 'epithelial_cells' => 'Few', 'mucus_threads' => 'Few', 'amorphous_urates' => 'None',
+            'yeast_cells' => 'None', 'calcium_oxalate' => 'None', 'trichomonas' => 'None', 'crystals' => 'None',
+        ]],
+    ])->assertSessionHasNoErrors()->assertRedirect(route('medtech.appointments'));
+    $result = $appointment->labResult()->firstOrFail();
+    expect($result->isFinalized())->toBeTrue();
+    $html = view('pdf.laboratory-report', [
+        'appointment' => $appointment,
+        'result' => $result,
+        'sections' => app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment),
+        'patient' => ['name' => 'Test Patient', 'date' => today()->toDateString(), 'employee_number' => null],
+    ])->render();
+    expect($html)->toContain('>Routine</th>', '>Microscopic</th>', '>Casts</th>', 'Cast findings')
+        ->not->toContain('Pregnancy Test', 'Hepatitis B Screening', '>Others</td>');
+
+    $appointment->service_types = ['Urinalysis', 'Hepatitis', 'Pregnancy Test'];
+    $html = view('pdf.laboratory-report', [
+        'appointment' => $appointment, 'result' => $result,
+        'sections' => app(\App\Services\LaboratoryFormDefinition::class)->sectionsFor($appointment),
+        'patient' => ['name' => 'Test Patient', 'date' => today()->toDateString(), 'employee_number' => null],
+    ])->render();
+    expect($html)->toContain('>OTHERS</h3>', 'PREGNANCY TEST', 'HEPATITIS B SCREENING');
+    expect(substr_count($html, '>OTHERS</h3>'))->toBe(1);
+});
+
 test('laboratory finalization requires an explicit section interpretation and findings text when abnormal', function () {
     $appointment = clinicalAppointment();
     $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
@@ -189,7 +224,7 @@ test('finalized laboratory reports cannot be overwritten by medical staff', func
     expect($appointment->labResult->fresh()->cbc_results['hemoglobin'])->toBe('14.2');
 });
 
-test('patient can download completed laboratory PDF but receptionist cannot access clinical forms', function () {
+test('patients cannot download completed laboratory PDFs but medical staff can export them', function () {
     $appointment = clinicalAppointment();
     $medtech = User::factory()->licensed()->create(['role' => 'medtech', 'license_no' => '12345']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
@@ -202,26 +237,29 @@ test('patient can download completed laboratory PDF but receptionist cannot acce
     $appointment->update(['status' => 'completed']);
 
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.pdf', $appointment))
-        ->assertOk();
+        ->assertForbidden();
     $this->actingAs($appointment->user)->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'cbc']))
-        ->assertOk();
+        ->assertForbidden();
+
+    $this->actingAs($medtech)->get(route('clinical-forms.laboratory.pdf', $appointment))->assertOk();
+    $this->actingAs($medtech)->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'cbc']))->assertOk();
 
     $receptionist = User::factory()->create(['role' => 'receptionist']);
     $this->actingAs($receptionist)->get(route('clinical-forms.laboratory.pdf', $appointment))->assertForbidden();
 });
 
-test('patient cannot download a laboratory form that was not selected for the appointment', function () {
+test('medical staff cannot export a laboratory form that was not selected for the appointment', function () {
     $appointment = clinicalAppointment(['CBC']);
     $medtech = User::factory()->licensed()->create(['role' => 'medtech']);
     $this->actingAs($medtech)->post(route('medtech.lab-results.store', $appointment), cbcPayload());
     $appointment->update(['status' => 'completed']);
 
-    $this->actingAs($appointment->user)
+    $this->actingAs($medtech)
         ->get(route('clinical-forms.laboratory.section.pdf', [$appointment, 'urinalysis']))
         ->assertNotFound();
 });
 
-test('patient can download every selected laboratory service form', function () {
+test('medical staff can export every selected laboratory service form', function () {
     $sections = [
         'cbc' => ['CBC', 'cbc_results'],
         'urinalysis' => ['Urinalysis', 'urinalysis_results'],
@@ -251,7 +289,7 @@ test('patient can download every selected laboratory service form', function () 
     $appointment->update(['status' => 'completed']);
 
     foreach (array_keys($sections) as $section) {
-        $this->actingAs($appointment->user)
+        $this->actingAs($medtech)
             ->get(route('clinical-forms.laboratory.section.pdf', [$appointment, $section]))
             ->assertOk();
     }
@@ -303,7 +341,7 @@ test('positive drug test cannot be accidentally completed without verification',
     expect($appointment->fresh()->labResult)->toBeNull();
 });
 
-test('patient cannot download an xray report before radtech verification', function () {
+test('patients cannot download xray reports even after verification and completion', function () {
     $appointment = clinicalAppointment(['X-Ray']);
     $radtech = User::factory()->licensed()->create(['role' => 'radtech']);
     $appointment->xrayReport()->create([
@@ -333,7 +371,8 @@ test('patient cannot download an xray report before radtech verification', funct
     $appointment->update(['status' => 'completed']);
     $this->actingAs($appointment->user)
         ->get(route('clinical-forms.xray.pdf', $appointment))
-        ->assertOk();
+        ->assertForbidden();
+    $this->actingAs($radtech)->get(route('clinical-forms.xray.pdf', $appointment))->assertOk();
 });
 
 test('patient cannot access another patients appointment or clinical document by changing the id', function () {

@@ -3,10 +3,11 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class MedicalReportReleased extends Notification
+class MedicalReportReleased extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -20,17 +21,18 @@ class MedicalReportReleased extends Notification
         return [
             'type' => 'medical_service_update',
             'title' => 'Medical Service Update',
-            'message' => 'An update is available for your medical record.',
-            'url' => route('appointments.index', ['status' => 'completed'], false),
+            'message' => 'Your medical report is finalized. Check its clinic collection status for printed results.',
+            'url' => route('medical-documents.patient', absolute: false),
         ];
     }
 
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Your final medical report is available')
+            ->subject('Medical report finalized for clinic collection')
             ->greeting('Hello '.$notifiable->first_name.',')
-            ->line('Your medical examination has been finalized and released.')
-            ->line('Your final medical report is now available in your patient portal.');
+            ->line('Your Medical Examination Report has been finalized.')
+            ->line('Please check your document collection status and visit the clinic when your printed report is ready for pickup.')
+            ->action('Track clinic collection', route('medical-documents.patient'));
     }
 }

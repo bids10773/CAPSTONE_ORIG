@@ -408,7 +408,7 @@ class MedicalCertificateWorkflowService
             'patient_id' => $patient->id,
             'appointment_id' => $appointment?->id,
             'attending_physician_id' => $physician->id,
-            'salutation' => filled($data['salutation']) ? Str::finish(rtrim($data['salutation'], '.'), '.') : '',
+            'salutation' => filled($data['salutation'] ?? null) ? Str::finish(rtrim($data['salutation'], '.'), '.') : '',
             'patient_name' => $patient->name,
             'patient_reference_code' => $patient->patient_reference_code,
             'patient_age' => $data['patient_age'] ?? $calculatedAge,

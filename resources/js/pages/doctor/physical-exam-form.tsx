@@ -21,6 +21,7 @@ import { useSessionDraft } from '@/hooks/use-session-draft';
 import AppLayout from '@/layouts/app-layout';
 import { bodyParts, historyFields } from '@/lib/clinical-exam-fields';
 import { promptAction } from '@/lib/dialogs';
+import { physicalAssessment } from '@/lib/physical-assessment';
 import type { BreadcrumbItem } from '@/types';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -51,6 +52,7 @@ interface Props {
     vitalLimits: Record<string, { min: number; max: number }>;
     locked: boolean;
     availableServices?: Record<string, string>;
+    savedDraft?: Record<string, unknown> | null;
 }
 
 function getAge(birthdate?: string) {
@@ -76,34 +78,51 @@ export default function PhysicalExamForm({
     submitUrl,
     locked,
     availableServices = {},
+    savedDraft,
 }: Props) {
-    const { data, setData, post, isDirty, processing, errors } = useForm<any>({
-        vital_signs_override_reason: '',
-        requested_services: (appointment.service_types ?? []).filter(
-            (service) => service !== 'PE',
-        ),
-        remarks: physicalExam?.remarks || '',
-        present_illness: appointment.medical_history?.present_illness || '',
-        past_medical_history:
-            appointment.medical_history?.past_medical_history || '',
-        operations_accidents:
-            appointment.medical_history?.operations_accidents || '',
-        family_history: appointment.medical_history?.family_history || '',
-        allergies: appointment.medical_history?.allergies || '',
-        personal_social_history:
-            appointment.medical_history?.personal_social_history || '',
-        ob_menstrual_history:
-            appointment.medical_history?.ob_menstrual_history || '',
-        ...Object.fromEntries(
-            bodyParts.flatMap(({ field }) => [
-                [field, physicalExam?.[field] || ''],
-                [
-                    `${field}_status`,
-                    physicalExam?.[field] ? 'with_findings' : 'normal',
-                ],
-            ]),
-        ),
-    });
+    const { data, setData, post, transform, isDirty, processing, errors } =
+        useForm<any>({
+            vital_signs_override_reason: '',
+            requested_services: (appointment.service_types ?? []).filter(
+                (service) => service !== 'PE',
+            ),
+            remarks: physicalExam?.remarks || '',
+            present_illness: appointment.medical_history?.present_illness || '',
+            past_medical_history:
+                appointment.medical_history?.past_medical_history || '',
+            operations_accidents:
+                appointment.medical_history?.operations_accidents || '',
+            family_history: appointment.medical_history?.family_history || '',
+            allergies: appointment.medical_history?.allergies || '',
+            personal_social_history:
+                appointment.medical_history?.personal_social_history || '',
+            ob_menstrual_history:
+                appointment.medical_history?.ob_menstrual_history || '',
+            ...Object.fromEntries(
+                bodyParts.flatMap(({ field }) => [
+                    [
+                        field,
+                        physicalAssessment(
+                            physicalExam?.[field],
+                            !!physicalExam?.is_completed,
+                        ).finding,
+                    ],
+                    [
+                        `${field}_status`,
+                        physicalAssessment(
+                            physicalExam?.[field],
+                            !!physicalExam?.is_completed,
+                        ).status,
+                    ],
+                ]),
+            ),
+            ...Object.fromEntries(
+                Object.entries(savedDraft ?? {}).map(([key, value]) => [
+                    key,
+                    value ?? '',
+                ]),
+            ),
+        });
     const { clearDraft } = useSessionDraft(
         `physical-exam-${appointment.id}`,
         data,
@@ -113,10 +132,14 @@ export default function PhysicalExamForm({
     );
     const onSubmit = (event: React.FormEvent) => {
         event.preventDefault();
+        submit('complete');
+    };
+    const submit = (action: 'draft' | 'complete') => {
         if (locked) return;
+        transform((values: any) => ({ ...values, save_action: action }));
         post(submitUrl, {
             preserveScroll: true,
-            onSuccess: clearDraft,
+            onSuccess: action === 'complete' ? clearDraft : undefined,
             onError: () =>
                 document
                     .getElementById('physical-exam-errors')
@@ -483,7 +506,7 @@ export default function PhysicalExamForm({
                 </section>
             )}
 
-            <StickyActionFooter hint="Saving records the examination and forwards any requested services for completion.">
+            <StickyActionFooter hint="Save incomplete work as a draft. Complete the examination only after reviewing every assessment.">
                 <Button
                     type="button"
                     variant="outline"
@@ -492,9 +515,20 @@ export default function PhysicalExamForm({
                     <ArrowLeft className="size-4" />
                     Back to queue
                 </Button>
+                <Button
+                    type="button"
+                    variant="outline"
+                    disabled={processing || locked}
+                    onClick={() => submit('draft')}
+                >
+                    <Save className="size-4" />
+                    Save draft
+                </Button>
                 <Button type="submit" disabled={processing || locked}>
                     <Save className="size-4" />
-                    {processing ? 'Saving examination…' : 'Save examination'}
+                    {processing
+                        ? 'Saving examination…'
+                        : 'Complete examination'}
                 </Button>
             </StickyActionFooter>
         </form>

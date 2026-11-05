@@ -1339,6 +1339,7 @@ export default function MedicalCertificateFormPage({
                                         type="submit"
                                         name="save_action"
                                         value="draft"
+                                        formNoValidate
                                         variant="outline"
                                         disabled={form.processing}
                                         className="shrink-0"

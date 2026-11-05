@@ -11,7 +11,10 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Request;
 use Illuminate\Session\Middleware\AuthenticateSession;
+use Inertia\Inertia;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -46,5 +49,15 @@ return Application::configure(basePath: dirname(__DIR__))
 
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (HttpExceptionInterface $exception, Request $request) {
+            if ($exception->getStatusCode() !== 403
+                || ! $request->user()
+                || ($request->expectsJson() && ! $request->header('X-Inertia'))) {
+                return null;
+            }
+
+            return Inertia::render('errors/forbidden', [
+                'message' => $exception->getMessage() ?: 'You do not have permission to access this page or perform this action. Contact an administrator if you need access.',
+            ])->toResponse($request)->setStatusCode(403);
+        });
     })->create();

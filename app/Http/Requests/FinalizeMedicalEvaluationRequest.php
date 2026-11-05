@@ -13,9 +13,12 @@ class FinalizeMedicalEvaluationRequest extends FormRequest
 
     public function rules(): array
     {
+        $presence = $this->input('save_action') === 'draft' ? 'nullable' : 'required';
+
         return [
-            'medical_class' => ['required', 'in:A,B,C,pending,unfit'],
-            'final_diagnosis' => ['required', 'string', 'max:3000'],
+            'save_action' => ['sometimes', 'in:draft,complete'],
+            'medical_class' => [$presence, 'in:A,B,C,pending,unfit'],
+            'final_diagnosis' => [$presence, 'string', 'max:3000'],
             'final_remarks' => ['nullable', 'string', 'max:3000'],
             'recommendations' => ['nullable', 'string', 'max:3000'],
         ];

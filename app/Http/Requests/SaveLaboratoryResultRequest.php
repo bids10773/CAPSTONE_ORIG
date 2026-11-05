@@ -47,7 +47,7 @@ class SaveLaboratoryResultRequest extends FormRequest
 
             foreach ($section['fields'] as $field) {
                 $key = "results.{$sectionKey}.{$field['key']}";
-                $presence = $this->boolean('finalize') ? 'required' : 'nullable';
+                $presence = $this->boolean('finalize') && ($field['required'] ?? true) ? 'required' : 'nullable';
 
                 if ($field['type'] === 'number') {
                     $validation = $field['validation'];

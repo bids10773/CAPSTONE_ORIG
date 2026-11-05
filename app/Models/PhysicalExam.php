@@ -29,6 +29,7 @@ class PhysicalExam extends Model
         'temperature',
         'visual_acuity',
         'hearing',
+        'vital_signs_not_assessed',
         'remarks',
 
         // ✅ PHYSICAL FINDINGS (ADD THESE)
@@ -66,6 +67,7 @@ class PhysicalExam extends Model
     {
         return [
             'is_completed' => 'boolean',
+            'vital_signs_not_assessed' => 'array',
             'height' => 'decimal:2',
             'weight' => 'decimal:2',
             'temperature' => 'decimal:2',

@@ -11,13 +11,13 @@ class VitalSign extends Model
         'patient_id', 'appointment_id', 'medical_examination_id', 'recorded_by', 'supersedes_id', 'submission_key',
         'measurement_type', 'systolic_pressure', 'diastolic_pressure', 'heart_rate', 'respiratory_rate',
         'temperature', 'oxygen_saturation', 'height', 'weight', 'bmi', 'notes', 'measured_at',
-        'visual_acuity', 'hearing',
+        'visual_acuity', 'hearing', 'not_assessed',
     ];
 
     protected function casts(): array
     {
         return ['temperature' => 'decimal:1', 'oxygen_saturation' => 'decimal:2', 'height' => 'decimal:1',
-            'weight' => 'decimal:1', 'bmi' => 'decimal:1', 'measured_at' => 'datetime'];
+            'weight' => 'decimal:1', 'bmi' => 'decimal:1', 'measured_at' => 'datetime', 'not_assessed' => 'array'];
     }
 
     public function appointment(): BelongsTo

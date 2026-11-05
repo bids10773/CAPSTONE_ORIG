@@ -78,7 +78,7 @@ class SaveMedicalCertificateRequest extends FormRequest
                         ->where('is_active', true)
                 ),
             ],
-            'salutation' => ['required', 'string', Rule::in(['Mr.', 'Ms.', 'Mr', 'Ms'])],
+            'salutation' => [$this->input('save_action') === 'draft' ? 'nullable' : 'required', 'string', Rule::in(['Mr.', 'Ms.', 'Mr', 'Ms'])],
             'consultation_date' => ['required', 'date', 'before_or_equal:'.ClinicHours::today()],
             'reason_for_consultation' => ['nullable', 'string', 'max:1500'],
             'clinical_impression' => ['nullable', 'string', 'max:1500'],

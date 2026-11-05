@@ -129,7 +129,7 @@ test('combined verification status recalculates as each result is verified', fun
         ->and($appointment->fresh()->status)->toBe('for_final_evaluation');
 });
 
-test('patient cannot download PE records until finalized report is explicitly released', function () {
+test('patients cannot download PE records even after clinic collection is recorded', function () {
     Notification::fake();
     $appointment = delayedPeAppointment(['PE']);
     $examination = app(MedicalExaminationService::class)->forAppointment($appointment);
@@ -168,6 +168,10 @@ test('patient cannot download PE records until finalized report is explicitly re
     $appointment->update(['status' => 'completed']);
 
     $this->actingAs($appointment->user)
+        ->get(route('clinical-forms.physical-exam.pdf', $appointment))
+        ->assertForbidden();
+
+    $this->actingAs($appointment->doctor)
         ->get(route('clinical-forms.physical-exam.pdf', $appointment))
         ->assertOk();
 });
@@ -367,6 +371,10 @@ test('released PE provides the consolidated medical examination PDF', function (
         ->not->toContain('Final Medical Evaluation');
 
     $this->actingAs($appointment->user)
+        ->get(route('clinical-forms.physical-exam.pdf', $appointment))
+        ->assertForbidden();
+
+    $this->actingAs($appointment->doctor)
         ->get(route('clinical-forms.physical-exam.pdf', $appointment))
         ->assertOk();
 

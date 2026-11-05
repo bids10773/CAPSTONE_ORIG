@@ -66,11 +66,9 @@ function getAge(birthdate?: string) {
 
 function Summary({ label, value }: { label: string; value: string }) {
     return (
-        <div>
-            <p className="text-xs font-semibold text-moss-100 uppercase">
-                {label}
-            </p>
-            <p className="mt-1 font-semibold text-white">{value}</p>
+        <div className="flex items-baseline gap-1 whitespace-nowrap">
+            <span className="text-xs text-moss-100">{label}:</span>
+            <span className="font-semibold text-white">{value}</span>
         </div>
     );
 }
@@ -81,17 +79,16 @@ export default function XrayReportForm({
     locked,
     submitUrl,
 }: Props) {
-    const isNormal =
-        !xrayReport?.findings || xrayReport.findings === normalFindings;
+    const isNormal = xrayReport?.findings === normalFindings;
     const form = useForm({
         workflow_action: 'complete',
-        chest_status: isNormal ? 'normal' : 'findings',
-        chest_findings: isNormal
-            ? normalFindings
-            : (xrayReport?.findings ?? ''),
-        impression: isNormal
-            ? xrayReport?.impression || normalImpression
-            : (xrayReport?.impression ?? ''),
+        chest_status: isNormal
+            ? 'normal'
+            : xrayReport?.findings
+              ? 'findings'
+              : '',
+        chest_findings: xrayReport?.findings ?? '',
+        impression: xrayReport?.impression ?? '',
         recommendation: xrayReport?.recommendation ?? '',
         remarks: xrayReport?.remarks ?? '',
     });
@@ -128,15 +125,12 @@ export default function XrayReportForm({
             <Head title="X-Ray Report" />
             <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
                 <header className="overflow-hidden rounded-2xl bg-moss-700 text-white shadow-sm">
-                    <div className="grid gap-5 p-6 lg:grid-cols-[1fr_auto]">
-                        <div>
-                            <p className="text-xs font-bold tracking-[.16em] text-moss-100 uppercase">
-                                Living Myth Industrial Clinic
-                            </p>
-                            <h1 className="mt-1 text-2xl font-bold">
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <h1 className="text-lg font-bold whitespace-nowrap">
                                 X-Ray result entry
                             </h1>
-                            <p className="mt-2 text-sm text-moss-100">
+                            <p className="text-sm whitespace-nowrap text-moss-100">
                                 {appointment.reference_code} ·{' '}
                                 {appointment.appointment_date
                                     ? formatAppointmentDate(
@@ -145,7 +139,7 @@ export default function XrayReportForm({
                                     : 'Date unavailable'}
                             </p>
                         </div>
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm lg:ml-auto">
                             <Summary label="Patient" value={patientName} />
                             <Summary
                                 label="Age / Sex"
@@ -160,12 +154,6 @@ export default function XrayReportForm({
                                                   .birthdate,
                                           )
                                         : '—'
-                                }
-                            />
-                            <Summary
-                                label="Examination"
-                                value={
-                                    appointment.service_types || 'Chest X-ray'
                                 }
                             />
                             {appointment.patient_profile?.employee_number && (
@@ -230,6 +218,9 @@ export default function XrayReportForm({
                                         });
                                     }}
                                 >
+                                    <option value="">
+                                        Select classification
+                                    </option>
                                     <option value="normal">Normal study</option>
                                     <option value="findings">
                                         With findings

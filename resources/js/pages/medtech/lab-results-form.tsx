@@ -1,15 +1,21 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import {
-    Download,
     FlaskConical,
     LoaderCircle,
     LockKeyhole,
     Save,
     ShieldCheck,
 } from 'lucide-react';
-import { useState } from 'react';
+import {
+    Fragment,
+    useEffect,
+    useRef,
+    useState,
+    useSyncExternalStore,
+} from 'react';
 
 import InputError from '@/components/input-error';
+import { useSidebar } from '@/components/ui/sidebar';
 import { useSessionDraft } from '@/hooks/use-session-draft';
 import AppLayout from '@/layouts/app-layout';
 import { confirmAction } from '@/lib/dialogs';
@@ -20,9 +26,26 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Laboratory Examination', href: '' },
 ];
 
+function readLabLayout(): 'tabs' | 'all' {
+    try {
+        return window.localStorage.getItem('lmic-lab-form-layout') === 'all'
+            ? 'all'
+            : 'tabs';
+    } catch {
+        return 'tabs';
+    }
+}
+
+function subscribeLabLayout(notify: () => void) {
+    window.addEventListener('storage', notify);
+    return () => window.removeEventListener('storage', notify);
+}
+
 type Field = {
     key: string;
     label: string;
+    heading?: string;
+    required?: boolean;
     type: 'text' | 'number' | 'select';
     unit?: string | null;
     normal?: string | null;
@@ -32,6 +55,7 @@ type Field = {
 };
 type Section = {
     label: string;
+    heading?: string;
     column: string;
     fields: Field[];
     requires_interpretation?: boolean;
@@ -91,6 +115,52 @@ export default function LaboratoryResultsForm({
     drugVerificationPending,
     submitUrl,
 }: Props) {
+    const { open: sidebarOpen, isMobile } = useSidebar();
+    const savedLayout = useSyncExternalStore(
+        subscribeLabLayout,
+        readLabLayout,
+        () => 'tabs' as const,
+    );
+    const [layoutOverride, setLayout] = useState<'tabs' | 'all' | null>(null);
+    const layout = layoutOverride ?? savedLayout;
+    const [activeSection, setActiveSection] = useState(
+        Object.keys(sections)[0] ?? '',
+    );
+    const compact = layout === 'tabs';
+    const actionBarRef = useRef<HTMLDivElement>(null);
+    const [actionBarHeight, setActionBarHeight] = useState(112);
+    const [remarksExpanded, setRemarksExpanded] = useState(
+        Boolean(labResult?.remarks),
+    );
+    const currentSection = sections[activeSection]
+        ? activeSection
+        : Object.keys(sections)[0];
+    useEffect(() => {
+        const bar = actionBarRef.current;
+        if (!compact || !bar) return;
+        const measure = () =>
+            setActionBarHeight(bar.getBoundingClientRect().height);
+        if (typeof ResizeObserver === 'undefined') {
+            const frame = window.requestAnimationFrame(measure);
+            window.addEventListener('resize', measure);
+            return () => {
+                window.cancelAnimationFrame(frame);
+                window.removeEventListener('resize', measure);
+            };
+        }
+        const observer = new ResizeObserver(measure);
+        observer.observe(bar);
+        return () => observer.disconnect();
+    }, [compact]);
+    const switchLayout = () => {
+        const next = compact ? 'all' : 'tabs';
+        setLayout(next);
+        try {
+            window.localStorage.setItem('lmic-lab-form-layout', next);
+        } catch {
+            // Saving this display preference is optional.
+        }
+    };
     const form = useForm({
         results: initialResults(sections, labResult),
         interpretations: Object.fromEntries(
@@ -113,7 +183,8 @@ export default function LaboratoryResultsForm({
         `laboratory-${appointment.id}`,
         form.data,
         form.isDirty,
-        (draft) =>
+        (draft) => {
+            if (draft.remarks) setRemarksExpanded(true);
             form.setData({
                 ...form.data,
                 results: Object.fromEntries(
@@ -136,11 +207,12 @@ export default function LaboratoryResultsForm({
                     ),
                 ),
                 remarks: draft.remarks ?? form.data.remarks,
-            }),
+            });
+        },
         !locked,
     );
     const inputClass =
-        'mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15 disabled:bg-slate-100';
+        'mt-1 min-h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-sm outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/15 disabled:bg-slate-100';
     const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
     const validateField = (field: Field, value: unknown, required = false) => {
         const text = String(value ?? '').trim();
@@ -196,7 +268,7 @@ export default function LaboratoryResultsForm({
                 const message = validateField(
                     field,
                     form.data.results[sectionKey]?.[field.key],
-                    finalize,
+                    finalize && field.required !== false,
                 );
                 if (message) nextErrors[key] = message;
             });
@@ -216,6 +288,15 @@ export default function LaboratoryResultsForm({
             }
         });
         setLocalErrors(nextErrors);
+        const firstInvalidSection = Object.keys(sections).find((key) =>
+            Object.entries(nextErrors).some(
+                ([field, message]) =>
+                    message &&
+                    (field.startsWith(`results.${key}.`) ||
+                        field.startsWith(`interpretations.${key}.`)),
+            ),
+        );
+        if (firstInvalidSection) setActiveSection(firstInvalidSection);
         return Object.keys(nextErrors).length === 0;
     };
     const blurField = (section: string, field: Field, value: unknown) => {
@@ -230,6 +311,10 @@ export default function LaboratoryResultsForm({
             current.form?.querySelectorAll<HTMLElement>(
                 '[data-lab-field]:not(:disabled)',
             ) ?? [],
+        ).filter(
+            (field) =>
+                !field.closest('[hidden]') &&
+                !field.closest('details:not([open])'),
         );
         const index = fields.indexOf(current);
         if (index >= 0) fields[index + 1]?.focus();
@@ -266,7 +351,19 @@ export default function LaboratoryResultsForm({
             finalize,
             drug_workflow_action: drugWorkflowAction,
         }));
-        form.post(submitUrl, { onSuccess: clearDraft });
+        form.post(submitUrl, {
+            onSuccess: clearDraft,
+            onError: (errors) => {
+                const firstInvalidSection = Object.keys(sections).find((key) =>
+                    Object.keys(errors).some(
+                        (field) =>
+                            field.startsWith(`results.${key}.`) ||
+                            field.startsWith(`interpretations.${key}.`),
+                    ),
+                );
+                if (firstInvalidSection) setActiveSection(firstInvalidSection);
+            },
+        });
     };
     const selectedServices = Object.values(sections).map(
         (section) => section.label,
@@ -294,22 +391,27 @@ export default function LaboratoryResultsForm({
     return (
         <>
             <Head title="Laboratory Results" />
-            <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+            <div
+                data-lab-workspace
+                className="w-full space-y-4 p-4 sm:p-5"
+                style={
+                    compact
+                        ? { paddingBottom: actionBarHeight + 24 }
+                        : undefined
+                }
+            >
                 <header className="overflow-hidden rounded-2xl bg-moss-700 text-white shadow-sm">
-                    <div className="grid gap-5 p-6 lg:grid-cols-[1fr_auto]">
-                        <div>
-                            <p className="text-xs font-bold tracking-[.16em] text-moss-100 uppercase">
-                                Living Myth Industrial Clinic
-                            </p>
-                            <h1 className="mt-1 text-2xl font-bold">
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <h1 className="text-lg font-bold whitespace-nowrap">
                                 Laboratory result entry
                             </h1>
-                            <p className="mt-2 text-sm text-moss-100">
+                            <p className="text-sm whitespace-nowrap text-moss-100">
                                 {appointment.reference_code} ·{' '}
                                 {patientSummary.date ?? 'Date unavailable'}
                             </p>
                         </div>
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm lg:ml-auto">
                             <Summary
                                 label="Patient"
                                 value={patientSummary.name}
@@ -359,386 +461,685 @@ export default function LaboratoryResultsForm({
                     </div>
                 )}
                 <form
-                    className="space-y-6"
+                    className="space-y-4"
                     onSubmit={(event) => event.preventDefault()}
                 >
-                    {Object.entries(sections).map(([sectionKey, section]) => (
-                        <section
-                            key={sectionKey}
-                            className="overflow-hidden rounded-2xl border border-moss-100 bg-white shadow-sm"
-                        >
-                            <div className="flex items-center gap-3 border-b border-moss-100 bg-moss-50 px-5 py-4">
-                                <FlaskConical className="h-5 w-5 text-moss-700" />
-                                <h2 className="font-bold text-slate-900">
-                                    {section.label}
-                                </h2>
-                            </div>
-                            <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3">
-                                {section.fields.map((field) => {
-                                    const value =
-                                        form.data.results[sectionKey]?.[
-                                            field.key
-                                        ] ?? '';
-                                    const error = (
-                                        form.errors as Record<string, string>
-                                    )[`results.${sectionKey}.${field.key}`];
-                                    const localError =
-                                        localErrors[
-                                            `results.${sectionKey}.${field.key}`
-                                        ];
-                                    const status = referenceStatus(
-                                        field,
-                                        value,
-                                    );
-                                    return (
-                                        <div key={field.key}>
-                                            <label
-                                                htmlFor={`${sectionKey}-${field.key}`}
-                                                className="text-sm font-semibold text-slate-700"
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-2">
+                        {compact ? (
+                            <div
+                                role="tablist"
+                                aria-label="Laboratory tests"
+                                className="flex flex-wrap gap-1"
+                            >
+                                {Object.entries(sections).map(
+                                    ([key, section]) => {
+                                        const errorCount = Object.entries({
+                                            ...form.errors,
+                                            ...localErrors,
+                                        }).filter(
+                                            ([field, message]) =>
+                                                message &&
+                                                (field.startsWith(
+                                                    `results.${key}.`,
+                                                ) ||
+                                                    field.startsWith(
+                                                        `interpretations.${key}.`,
+                                                    )),
+                                        ).length;
+                                        return (
+                                            <button
+                                                key={key}
+                                                type="button"
+                                                role="tab"
+                                                id={`lab-tab-${key}`}
+                                                aria-controls={`lab-panel-${key}`}
+                                                aria-selected={
+                                                    key === currentSection
+                                                }
+                                                tabIndex={
+                                                    key === currentSection
+                                                        ? 0
+                                                        : -1
+                                                }
+                                                onClick={() =>
+                                                    setActiveSection(key)
+                                                }
+                                                onKeyDown={(event) => {
+                                                    const keys =
+                                                        Object.keys(sections);
+                                                    const index =
+                                                        keys.indexOf(key);
+                                                    const next =
+                                                        event.key ===
+                                                        'ArrowRight'
+                                                            ? keys[
+                                                                  (index + 1) %
+                                                                      keys.length
+                                                              ]
+                                                            : event.key ===
+                                                                'ArrowLeft'
+                                                              ? keys[
+                                                                    (index -
+                                                                        1 +
+                                                                        keys.length) %
+                                                                        keys.length
+                                                                ]
+                                                              : event.key ===
+                                                                  'Home'
+                                                                ? keys[0]
+                                                                : event.key ===
+                                                                    'End'
+                                                                  ? keys[
+                                                                        keys.length -
+                                                                            1
+                                                                    ]
+                                                                  : null;
+                                                    if (next) {
+                                                        event.preventDefault();
+                                                        setActiveSection(next);
+                                                        document
+                                                            .getElementById(
+                                                                `lab-tab-${next}`,
+                                                            )
+                                                            ?.focus();
+                                                    }
+                                                }}
+                                                className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none ${key === currentSection ? 'bg-moss-700 text-white' : 'text-slate-600 hover:bg-moss-50'}`}
                                             >
-                                                {field.label}
-                                                <span className="ml-1 text-red-600">
-                                                    *
-                                                </span>
-                                            </label>
-                                            {field.normal && (
-                                                <p className="text-xs text-slate-500">
-                                                    Reference: {field.normal}
-                                                    {field.unit
-                                                        ? ` ${field.unit}`
-                                                        : ''}
-                                                </p>
-                                            )}
-                                            {field.type === 'select' ? (
-                                                <select
-                                                    id={`${sectionKey}-${field.key}`}
-                                                    data-lab-field
-                                                    disabled={
-                                                        locked ||
-                                                        (drugVerificationPending &&
-                                                            sectionKey !==
-                                                                'drug_test')
-                                                    }
-                                                    className={inputClass}
-                                                    value={value}
-                                                    onChange={(e) => {
-                                                        update(
-                                                            sectionKey,
-                                                            field,
-                                                            e.target.value,
-                                                        );
-                                                        if (e.target.value) {
-                                                            focusNextField(
-                                                                e.currentTarget,
-                                                            );
-                                                        }
-                                                    }}
-                                                    onBlur={(e) =>
-                                                        blurField(
-                                                            sectionKey,
-                                                            field,
-                                                            e.currentTarget
-                                                                .value,
-                                                        )
-                                                    }
-                                                >
-                                                    <option value="">
-                                                        Select result
-                                                    </option>
-                                                    {field.options.map(
-                                                        (option) => (
-                                                            <option
-                                                                key={option}
-                                                                value={option}
-                                                            >
-                                                                {option}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </select>
-                                            ) : (
-                                                <div className="relative">
-                                                    <input
-                                                        id={`${sectionKey}-${field.key}`}
-                                                        data-lab-field
-                                                        disabled={
-                                                            locked ||
-                                                            (drugVerificationPending &&
-                                                                sectionKey !==
-                                                                    'drug_test')
-                                                        }
-                                                        inputMode={
-                                                            field.type ===
-                                                            'number'
-                                                                ? 'decimal'
-                                                                : undefined
-                                                        }
-                                                        type="text"
-                                                        className={`${inputClass} ${field.unit ? 'pr-20' : ''}`}
-                                                        value={value}
-                                                        onChange={(e) =>
-                                                            update(
-                                                                sectionKey,
-                                                                field,
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                        onKeyDown={(e) => {
-                                                            if (
-                                                                e.key !==
-                                                                    'Enter' ||
-                                                                e.nativeEvent
-                                                                    .isComposing
-                                                            ) {
-                                                                return;
-                                                            }
-                                                            e.preventDefault();
-                                                            if (
-                                                                e.currentTarget.value.trim() &&
-                                                                !validateField(
-                                                                    field,
-                                                                    e
-                                                                        .currentTarget
-                                                                        .value,
-                                                                )
-                                                            ) {
-                                                                focusNextField(
-                                                                    e.currentTarget,
-                                                                );
-                                                            } else {
-                                                                blurField(
-                                                                    sectionKey,
-                                                                    field,
-                                                                    e
-                                                                        .currentTarget
-                                                                        .value,
-                                                                );
-                                                            }
-                                                        }}
-                                                        onBlur={(e) =>
-                                                            blurField(
-                                                                sectionKey,
-                                                                field,
-                                                                e.currentTarget
-                                                                    .value,
-                                                            )
-                                                        }
-                                                    />
-                                                    {field.unit && (
-                                                        <span className="absolute top-1/2 right-3 mt-0.5 -translate-y-1/2 text-xs text-slate-400">
-                                                            {field.unit}
+                                                {key === 'cbc'
+                                                    ? 'CBC'
+                                                    : section.label}
+                                                {errorCount > 0 && (
+                                                    <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-xs text-red-800">
+                                                        {errorCount}
+                                                        <span className="sr-only">
+                                                            {' '}
+                                                            errors
                                                         </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                            {status &&
-                                                !localError &&
-                                                !error && (
-                                                    <p
-                                                        className={`mt-1 text-xs font-semibold ${status === 'Within reference' ? 'text-emerald-700' : 'text-amber-700'}`}
-                                                    >
-                                                        {status} range
-                                                    </p>
+                                                    </span>
                                                 )}
-                                            <InputError
-                                                message={localError || error}
-                                            />
-                                        </div>
-                                    );
-                                })}
+                                            </button>
+                                        );
+                                    },
+                                )}
                             </div>
-                            {section.requires_interpretation && (
-                                <div className="border-t border-moss-100 bg-slate-50 p-5">
-                                    <label
-                                        htmlFor={`${sectionKey}-interpretation`}
-                                        className="text-sm font-bold text-slate-900"
-                                    >
-                                        Clinical interpretation
-                                        <span className="ml-1 text-red-600">
-                                            *
-                                        </span>
-                                    </label>
-                                    <p className="mt-1 text-xs text-slate-600">
-                                        Confirm the section-level interpretation
-                                        after reviewing all results and
-                                        reference ranges.
-                                    </p>
-                                    <select
-                                        id={`${sectionKey}-interpretation`}
-                                        data-lab-field
-                                        disabled={
-                                            locked || drugVerificationPending
+                        ) : (
+                            <p className="px-2 text-sm font-semibold text-slate-700">
+                                All laboratory tests
+                            </p>
+                        )}
+                        <button
+                            type="button"
+                            onClick={switchLayout}
+                            className="min-h-10 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:border-moss-400 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
+                        >
+                            {compact ? 'Original layout' : 'Tabbed layout'}
+                        </button>
+                    </div>
+                    <div
+                        className={
+                            compact ? '' : 'columns-1 gap-3 lg:columns-2'
+                        }
+                    >
+                        {Object.entries(sections).map(
+                            ([sectionKey, section]) => (
+                                <section
+                                    key={sectionKey}
+                                    id={`lab-panel-${sectionKey}`}
+                                    role={compact ? 'tabpanel' : undefined}
+                                    aria-labelledby={
+                                        compact
+                                            ? `lab-tab-${sectionKey}`
+                                            : undefined
+                                    }
+                                    hidden={
+                                        compact && sectionKey !== currentSection
+                                    }
+                                    className="mb-3 break-inside-avoid overflow-hidden rounded-xl border border-moss-100 bg-white shadow-sm"
+                                >
+                                    {section.heading && (
+                                        <h3 className="px-3 pt-3 text-sm font-bold text-moss-800">
+                                            {section.heading}
+                                        </h3>
+                                    )}
+                                    <div className="flex items-center gap-2 border-b border-moss-100 bg-moss-50 px-3 py-2">
+                                        <FlaskConical className="size-4 text-moss-700" />
+                                        <h2 className="text-sm font-bold text-slate-900">
+                                            {section.label}
+                                        </h2>
+                                    </div>
+                                    <div
+                                        className={
+                                            compact
+                                                ? 'grid gap-x-5 gap-y-1 p-3 md:grid-cols-2 xl:grid-cols-4'
+                                                : 'grid gap-x-3 gap-y-2 p-3 sm:grid-cols-2'
                                         }
-                                        className={`${inputClass} sm:max-w-sm`}
-                                        value={
-                                            form.data.interpretations[
-                                                sectionKey
-                                            ]?.interpretation ?? ''
-                                        }
-                                        onChange={(event) => {
-                                            const interpretation =
-                                                event.target.value;
-                                            form.setData('interpretations', {
-                                                ...form.data.interpretations,
-                                                [sectionKey]: {
-                                                    interpretation,
-                                                    findings:
-                                                        interpretation ===
-                                                        'with_findings'
-                                                            ? (form.data
-                                                                  .interpretations[
-                                                                  sectionKey
-                                                              ]?.findings ?? '')
-                                                            : '',
-                                                },
-                                            });
-                                            setLocalErrors((current) => ({
-                                                ...current,
-                                                [`interpretations.${sectionKey}.interpretation`]:
-                                                    '',
-                                            }));
-                                        }}
                                     >
-                                        <option value="">
-                                            Select interpretation
-                                        </option>
-                                        <option value="normal">Normal</option>
-                                        <option value="with_findings">
-                                            With findings
-                                        </option>
-                                    </select>
-                                    <InputError
-                                        message={
-                                            localErrors[
-                                                `interpretations.${sectionKey}.interpretation`
-                                            ] ||
-                                            (
+                                        {section.fields.map((field) => {
+                                            const value =
+                                                form.data.results[sectionKey]?.[
+                                                    field.key
+                                                ] ?? '';
+                                            const error = (
                                                 form.errors as Record<
                                                     string,
                                                     string
                                                 >
                                             )[
-                                                `interpretations.${sectionKey}.interpretation`
-                                            ]
-                                        }
-                                    />
-                                    {form.data.interpretations[sectionKey]
-                                        ?.interpretation ===
-                                        'with_findings' && (
-                                        <div className="mt-4">
-                                            <label
-                                                htmlFor={`${sectionKey}-findings`}
-                                                className="text-sm font-semibold text-slate-700"
+                                                `results.${sectionKey}.${field.key}`
+                                            ];
+                                            const localError =
+                                                localErrors[
+                                                    `results.${sectionKey}.${field.key}`
+                                                ];
+                                            const status = referenceStatus(
+                                                field,
+                                                value,
+                                            );
+                                            return (
+                                                <Fragment key={field.key}>
+                                                    {field.heading && (
+                                                        <h3
+                                                            className={`border-t border-moss-100 pt-3 text-sm font-bold text-moss-800 ${compact ? 'col-span-full' : 'sm:col-span-2'}`}
+                                                        >
+                                                            {field.heading}
+                                                        </h3>
+                                                    )}
+                                                    <div
+                                                        className={
+                                                            compact
+                                                                ? 'grid grid-cols-[minmax(0,1fr)_minmax(7rem,.8fr)] items-center gap-x-3 border-b border-slate-100 py-1.5'
+                                                                : ''
+                                                        }
+                                                    >
+                                                        <div>
+                                                            <label
+                                                                htmlFor={`${sectionKey}-${field.key}`}
+                                                                className="text-sm font-semibold text-slate-700"
+                                                            >
+                                                                {field.label}
+                                                                {field.required !==
+                                                                    false && (
+                                                                    <span className="ml-1 text-red-600">
+                                                                        *
+                                                                    </span>
+                                                                )}
+                                                            </label>
+                                                            {field.normal && (
+                                                                <p className="text-xs text-slate-500">
+                                                                    Reference:{' '}
+                                                                    {
+                                                                        field.normal
+                                                                    }
+                                                                    {field.unit
+                                                                        ? ` ${field.unit}`
+                                                                        : ''}
+                                                                </p>
+                                                            )}
+                                                            {compact &&
+                                                                field.unit &&
+                                                                !field.normal && (
+                                                                    <p className="text-xs text-slate-500">
+                                                                        Unit:{' '}
+                                                                        {
+                                                                            field.unit
+                                                                        }
+                                                                    </p>
+                                                                )}
+                                                        </div>
+                                                        {field.type ===
+                                                        'select' ? (
+                                                            <select
+                                                                id={`${sectionKey}-${field.key}`}
+                                                                data-lab-field
+                                                                disabled={
+                                                                    locked ||
+                                                                    (drugVerificationPending &&
+                                                                        sectionKey !==
+                                                                            'drug_test')
+                                                                }
+                                                                className={
+                                                                    inputClass
+                                                                }
+                                                                value={value}
+                                                                onChange={(
+                                                                    e,
+                                                                ) => {
+                                                                    update(
+                                                                        sectionKey,
+                                                                        field,
+                                                                        e.target
+                                                                            .value,
+                                                                    );
+                                                                    if (
+                                                                        e.target
+                                                                            .value
+                                                                    ) {
+                                                                        focusNextField(
+                                                                            e.currentTarget,
+                                                                        );
+                                                                    }
+                                                                }}
+                                                                onBlur={(e) =>
+                                                                    blurField(
+                                                                        sectionKey,
+                                                                        field,
+                                                                        e
+                                                                            .currentTarget
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <option value="">
+                                                                    Select
+                                                                    result
+                                                                </option>
+                                                                {field.options.map(
+                                                                    (
+                                                                        option,
+                                                                    ) => (
+                                                                        <option
+                                                                            key={
+                                                                                option
+                                                                            }
+                                                                            value={
+                                                                                option
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                option
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                        ) : (
+                                                            <div
+                                                                className={`relative ${!compact && field.type === 'number' ? (field.unit ? 'max-w-48' : 'max-w-28') : ''}`}
+                                                            >
+                                                                <input
+                                                                    id={`${sectionKey}-${field.key}`}
+                                                                    data-lab-field
+                                                                    disabled={
+                                                                        locked ||
+                                                                        (drugVerificationPending &&
+                                                                            sectionKey !==
+                                                                                'drug_test')
+                                                                    }
+                                                                    inputMode={
+                                                                        field.type ===
+                                                                        'number'
+                                                                            ? 'decimal'
+                                                                            : undefined
+                                                                    }
+                                                                    type="text"
+                                                                    className={`${inputClass} ${field.unit && !compact ? 'pr-20' : ''}`}
+                                                                    value={
+                                                                        value
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        update(
+                                                                            sectionKey,
+                                                                            field,
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        )
+                                                                    }
+                                                                    onKeyDown={(
+                                                                        e,
+                                                                    ) => {
+                                                                        if (
+                                                                            e.key !==
+                                                                                'Enter' ||
+                                                                            e
+                                                                                .nativeEvent
+                                                                                .isComposing
+                                                                        ) {
+                                                                            return;
+                                                                        }
+                                                                        e.preventDefault();
+                                                                        if (
+                                                                            e.currentTarget.value.trim() &&
+                                                                            !validateField(
+                                                                                field,
+                                                                                e
+                                                                                    .currentTarget
+                                                                                    .value,
+                                                                            )
+                                                                        ) {
+                                                                            focusNextField(
+                                                                                e.currentTarget,
+                                                                            );
+                                                                        } else {
+                                                                            blurField(
+                                                                                sectionKey,
+                                                                                field,
+                                                                                e
+                                                                                    .currentTarget
+                                                                                    .value,
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                    onBlur={(
+                                                                        e,
+                                                                    ) =>
+                                                                        blurField(
+                                                                            sectionKey,
+                                                                            field,
+                                                                            e
+                                                                                .currentTarget
+                                                                                .value,
+                                                                        )
+                                                                    }
+                                                                />
+                                                                {field.unit &&
+                                                                    !compact && (
+                                                                        <span className="absolute top-1/2 right-3 mt-0.5 -translate-y-1/2 text-xs text-slate-400">
+                                                                            {
+                                                                                field.unit
+                                                                            }
+                                                                        </span>
+                                                                    )}
+                                                            </div>
+                                                        )}
+                                                        {status &&
+                                                            !localError &&
+                                                            !error && (
+                                                                <p
+                                                                    className={`mt-1 text-xs font-semibold ${compact ? 'col-span-2' : ''} ${status === 'Within reference' ? 'text-emerald-700' : 'text-amber-700'}`}
+                                                                >
+                                                                    {status}{' '}
+                                                                    range
+                                                                </p>
+                                                            )}
+                                                        <div
+                                                            className={
+                                                                compact
+                                                                    ? 'col-span-2'
+                                                                    : ''
+                                                            }
+                                                        >
+                                                            <InputError
+                                                                message={
+                                                                    localError ||
+                                                                    error
+                                                                }
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </Fragment>
+                                            );
+                                        })}
+                                    </div>
+                                    {section.requires_interpretation && (
+                                        <div
+                                            className={
+                                                compact
+                                                    ? 'flex flex-wrap items-center gap-x-4 border-t border-moss-100 bg-slate-50 p-3'
+                                                    : 'border-t border-moss-100 bg-slate-50 p-3'
+                                            }
+                                        >
+                                            <div
+                                                className={
+                                                    compact
+                                                        ? 'min-w-0 flex-1'
+                                                        : ''
+                                                }
                                             >
-                                                Findings
-                                                <span className="ml-1 text-red-600">
-                                                    *
-                                                </span>
-                                            </label>
-                                            <textarea
-                                                id={`${sectionKey}-findings`}
+                                                <label
+                                                    htmlFor={`${sectionKey}-interpretation`}
+                                                    className="text-sm font-bold text-slate-900"
+                                                >
+                                                    Clinical interpretation
+                                                    <span className="ml-1 text-red-600">
+                                                        *
+                                                    </span>
+                                                </label>
+                                                <p className="mt-1 text-xs text-slate-600">
+                                                    Review results and reference
+                                                    ranges before selecting.
+                                                </p>
+                                            </div>
+                                            <select
+                                                id={`${sectionKey}-interpretation`}
                                                 data-lab-field
                                                 disabled={
                                                     locked ||
                                                     drugVerificationPending
                                                 }
-                                                rows={3}
-                                                className={inputClass}
+                                                className={`${inputClass} sm:max-w-sm`}
                                                 value={
                                                     form.data.interpretations[
                                                         sectionKey
-                                                    ]?.findings ?? ''
+                                                    ]?.interpretation ?? ''
                                                 }
                                                 onChange={(event) => {
+                                                    const interpretation =
+                                                        event.target.value;
                                                     form.setData(
                                                         'interpretations',
                                                         {
                                                             ...form.data
                                                                 .interpretations,
                                                             [sectionKey]: {
-                                                                ...form.data
-                                                                    .interpretations[
-                                                                    sectionKey
-                                                                ],
+                                                                interpretation,
                                                                 findings:
-                                                                    event.target
-                                                                        .value,
+                                                                    interpretation ===
+                                                                    'with_findings'
+                                                                        ? (form
+                                                                              .data
+                                                                              .interpretations[
+                                                                              sectionKey
+                                                                          ]
+                                                                              ?.findings ??
+                                                                          '')
+                                                                        : '',
                                                             },
                                                         },
                                                     );
                                                     setLocalErrors(
                                                         (current) => ({
                                                             ...current,
-                                                            [`interpretations.${sectionKey}.findings`]:
+                                                            [`interpretations.${sectionKey}.interpretation`]:
                                                                 '',
                                                         }),
                                                     );
                                                 }}
-                                                placeholder="Describe the clinically significant findings"
-                                            />
-                                            <InputError
-                                                message={
-                                                    localErrors[
-                                                        `interpretations.${sectionKey}.findings`
-                                                    ] ||
-                                                    (
-                                                        form.errors as Record<
-                                                            string,
-                                                            string
-                                                        >
-                                                    )[
-                                                        `interpretations.${sectionKey}.findings`
-                                                    ]
+                                            >
+                                                <option value="">
+                                                    Select interpretation
+                                                </option>
+                                                <option value="normal">
+                                                    Normal
+                                                </option>
+                                                <option value="with_findings">
+                                                    With findings
+                                                </option>
+                                            </select>
+                                            <div
+                                                className={
+                                                    compact ? 'w-full' : ''
                                                 }
-                                            />
+                                            >
+                                                <InputError
+                                                    message={
+                                                        localErrors[
+                                                            `interpretations.${sectionKey}.interpretation`
+                                                        ] ||
+                                                        (
+                                                            form.errors as Record<
+                                                                string,
+                                                                string
+                                                            >
+                                                        )[
+                                                            `interpretations.${sectionKey}.interpretation`
+                                                        ]
+                                                    }
+                                                />
+                                            </div>
+                                            {form.data.interpretations[
+                                                sectionKey
+                                            ]?.interpretation ===
+                                                'with_findings' && (
+                                                <div className="mt-2 w-full">
+                                                    <label
+                                                        htmlFor={`${sectionKey}-findings`}
+                                                        className="text-sm font-semibold text-slate-700"
+                                                    >
+                                                        Findings
+                                                        <span className="ml-1 text-red-600">
+                                                            *
+                                                        </span>
+                                                    </label>
+                                                    <textarea
+                                                        id={`${sectionKey}-findings`}
+                                                        data-lab-field
+                                                        disabled={
+                                                            locked ||
+                                                            drugVerificationPending
+                                                        }
+                                                        rows={2}
+                                                        className={inputClass}
+                                                        value={
+                                                            form.data
+                                                                .interpretations[
+                                                                sectionKey
+                                                            ]?.findings ?? ''
+                                                        }
+                                                        onChange={(event) => {
+                                                            form.setData(
+                                                                'interpretations',
+                                                                {
+                                                                    ...form.data
+                                                                        .interpretations,
+                                                                    [sectionKey]:
+                                                                        {
+                                                                            ...form
+                                                                                .data
+                                                                                .interpretations[
+                                                                                sectionKey
+                                                                            ],
+                                                                            findings:
+                                                                                event
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                },
+                                                            );
+                                                            setLocalErrors(
+                                                                (current) => ({
+                                                                    ...current,
+                                                                    [`interpretations.${sectionKey}.findings`]:
+                                                                        '',
+                                                                }),
+                                                            );
+                                                        }}
+                                                        placeholder="Describe the clinically significant findings"
+                                                    />
+                                                    <InputError
+                                                        message={
+                                                            localErrors[
+                                                                `interpretations.${sectionKey}.findings`
+                                                            ] ||
+                                                            (
+                                                                form.errors as Record<
+                                                                    string,
+                                                                    string
+                                                                >
+                                                            )[
+                                                                `interpretations.${sectionKey}.findings`
+                                                            ]
+                                                        }
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     )}
-                                </div>
-                            )}
-                        </section>
-                    ))}
-                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <label
-                            htmlFor="remarks"
-                            className="font-bold text-slate-900"
-                        >
-                            Laboratory remarks
-                        </label>
-                        <textarea
-                            id="remarks"
-                            data-lab-field
-                            disabled={locked}
-                            rows={4}
-                            className={inputClass}
-                            value={form.data.remarks}
-                            onChange={(e) =>
-                                form.setData('remarks', e.target.value)
+                                </section>
+                            ),
+                        )}
+                    </div>
+                    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <details
+                            open={
+                                !compact ||
+                                remarksExpanded ||
+                                !!form.errors.remarks
                             }
-                            placeholder="Optional technical notes or critical-value communication"
-                        />
-                        <InputError message={form.errors.remarks} />
+                            onToggle={(event) =>
+                                setRemarksExpanded(event.currentTarget.open)
+                            }
+                        >
+                            <summary
+                                className={
+                                    compact
+                                        ? 'cursor-pointer text-sm font-semibold text-slate-700'
+                                        : 'hidden'
+                                }
+                            >
+                                Laboratory remarks (optional)
+                            </summary>
+                            <label
+                                htmlFor="remarks"
+                                className={
+                                    compact
+                                        ? 'sr-only'
+                                        : 'font-bold text-slate-900'
+                                }
+                            >
+                                Laboratory remarks
+                            </label>
+                            <textarea
+                                id="remarks"
+                                data-lab-field
+                                disabled={locked}
+                                rows={compact ? 2 : 3}
+                                className={inputClass}
+                                value={form.data.remarks}
+                                onChange={(e) =>
+                                    form.setData('remarks', e.target.value)
+                                }
+                                placeholder="Optional technical notes or critical-value communication"
+                            />
+                            <InputError message={form.errors.remarks} />
+                        </details>
                         <InputError
                             message={
                                 (form.errors as Record<string, string>).form
                             }
                         />
                     </section>
-                    <div className="sticky bottom-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+                    <div
+                        ref={actionBarRef}
+                        role="region"
+                        aria-label="Laboratory actions"
+                        style={
+                            compact
+                                ? {
+                                      left: isMobile
+                                          ? 0
+                                          : sidebarOpen
+                                            ? 'var(--sidebar-width,16.25rem)'
+                                            : 'var(--sidebar-width-icon,5rem)',
+                                  }
+                                : undefined
+                        }
+                        className={
+                            compact
+                                ? 'fixed right-0 bottom-0 z-40 flex flex-wrap items-center justify-between gap-3 border-t border-moss-200 bg-white px-4 py-3 shadow-lg sm:px-5'
+                                : 'flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between'
+                        }
+                    >
                         <div className="flex items-center gap-2 text-sm text-slate-600">
                             <ShieldCheck className="h-5 w-5 text-moss-700" />
-                            Finalizing locks this report and advances the
-                            patient workflow.
+                            {compact
+                                ? 'Finalization applies to all requested tests.'
+                                : 'Finalizing locks this report and advances the patient workflow.'}
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            {!sections.drug_test && (
-                                <Link
-                                    href={`/clinical-forms/${appointment.id}/laboratory.pdf?preview=1`}
-                                    className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 font-semibold text-slate-700 transition-colors duration-200 hover:border-slate-400 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
-                                >
-                                    <Download className="h-4 w-4" />
-                                    Preview PDF
-                                </Link>
-                            )}
                             {!locked && (
                                 <>
                                     <button
@@ -817,11 +1218,9 @@ export default function LaboratoryResultsForm({
 
 function Summary({ label, value }: { label: string; value: string }) {
     return (
-        <div>
-            <p className="text-[10px] font-bold tracking-wide text-moss-200 uppercase">
-                {label}
-            </p>
-            <p className="max-w-48 truncate font-semibold">{value}</p>
+        <div className="flex items-baseline gap-1 whitespace-nowrap">
+            <span className="text-xs text-moss-200">{label}:</span>
+            <span className="font-semibold">{value}</span>
         </div>
     );
 }

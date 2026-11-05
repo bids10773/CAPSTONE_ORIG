@@ -663,12 +663,7 @@ export default function WalkIns({
                                                                       ...current.service_types,
                                                                   ]),
                                                               )
-                                                            : current.service_types.filter(
-                                                                  (service) =>
-                                                                      !basics.includes(
-                                                                          service,
-                                                                      ),
-                                                              ),
+                                                            : ['PE'],
                                                 }));
                                             }}
                                             className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-semibold ${selected ? 'border-moss-600 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-600'}`}
@@ -685,58 +680,72 @@ export default function WalkIns({
                             </div>
                         </div>
 
-                        <div className="mt-6">
-                            <p className="text-sm font-semibold text-slate-700">
-                                Assign services
-                            </p>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                                {Object.entries(serviceTypes).map(
-                                    ([value, label]) => {
-                                        const selected =
-                                            form.data.service_types.includes(
-                                                value,
-                                            );
-                                        const included =
-                                            form.data.examination_purpose ===
-                                                'pre_employment' &&
-                                            [
-                                                'PE',
-                                                'CBC',
-                                                'Urinalysis',
-                                                'Fecalysis',
-                                                'X-Ray',
-                                            ].includes(value);
-                                        return (
-                                            <button
-                                                type="button"
-                                                key={value}
-                                                disabled={included}
-                                                onClick={() =>
-                                                    form.setData(
-                                                        'service_types',
-                                                        selected
-                                                            ? form.data.service_types.filter(
-                                                                  (item) =>
-                                                                      item !==
-                                                                      value,
-                                                              )
-                                                            : [
-                                                                  ...form.data
-                                                                      .service_types,
-                                                                  value,
-                                                              ],
-                                                    )
-                                                }
-                                                className={`rounded-full border px-3 py-2 text-xs font-semibold ${selected ? 'border-moss-600 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-600'}`}
-                                            >
-                                                {label}
-                                                {included && ' · Included'}
-                                            </button>
-                                        );
-                                    },
-                                )}
+                        {form.data.examination_purpose ===
+                        'medical_clearance' ? (
+                            <div className="mt-6 rounded-xl border border-moss-200 bg-moss-50 p-4 text-sm text-moss-900">
+                                Consultation and examination are included. Your
+                                doctor will request additional services
+                                available in the clinic only if needed. A
+                                medical certificate is subject to the doctor's
+                                assessment and approval. Reception releases the
+                                issued certificate.
                             </div>
-                        </div>
+                        ) : (
+                            <div className="mt-6">
+                                <p className="text-sm font-semibold text-slate-700">
+                                    Assign services
+                                </p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {Object.entries(serviceTypes).map(
+                                        ([value, label]) => {
+                                            const selected =
+                                                form.data.service_types.includes(
+                                                    value,
+                                                );
+                                            const included =
+                                                form.data
+                                                    .examination_purpose ===
+                                                    'pre_employment' &&
+                                                [
+                                                    'PE',
+                                                    'CBC',
+                                                    'Urinalysis',
+                                                    'Fecalysis',
+                                                    'X-Ray',
+                                                ].includes(value);
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    key={value}
+                                                    disabled={included}
+                                                    onClick={() =>
+                                                        form.setData(
+                                                            'service_types',
+                                                            selected
+                                                                ? form.data.service_types.filter(
+                                                                      (item) =>
+                                                                          item !==
+                                                                          value,
+                                                                  )
+                                                                : [
+                                                                      ...form
+                                                                          .data
+                                                                          .service_types,
+                                                                      value,
+                                                                  ],
+                                                        )
+                                                    }
+                                                    className={`rounded-full border px-3 py-2 text-xs font-semibold ${selected ? 'border-moss-600 bg-moss-50 text-moss-800' : 'border-slate-200 text-slate-600'}`}
+                                                >
+                                                    {label}
+                                                    {included && ' · Included'}
+                                                </button>
+                                            );
+                                        },
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
                             <h3 className="text-sm font-semibold text-slate-800">
                                 Doctor and free slot today (optional)

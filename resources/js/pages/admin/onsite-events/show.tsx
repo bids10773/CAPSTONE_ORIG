@@ -9,7 +9,8 @@ import {
     UsersRound,
     X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { formatEventDateRange } from '@/lib/appointment-date-time';
@@ -106,6 +107,11 @@ export default function AdminOnsiteEvent({
     };
     staffOptions: Staff[];
 }) {
+    const canUseDocument = useSyncExternalStore(
+        () => () => {},
+        () => true,
+        () => false,
+    );
     const [mode, setMode] = useState<'manual' | 'recommended'>('manual');
     const [pendingStaff, setPendingStaff] = useState<Record<Role, Staff[]>>({
         doctor: [],
@@ -229,7 +235,9 @@ export default function AdminOnsiteEvent({
             );
     };
     return (
-        <div className="space-y-6 p-4 text-slate-900 sm:p-6 lg:p-8 dark:text-foreground">
+        <div
+            className={`space-y-6 p-4 text-slate-900 sm:p-6 lg:p-8 dark:text-foreground ${event.status === 'pending' ? 'pb-64 sm:pb-64 lg:pb-64' : ''}`}
+        >
             <Head title="Onsite Event Preparation" />
             <header>
                 <Link
@@ -311,50 +319,60 @@ export default function AdminOnsiteEvent({
                             </p>
                         )}
                     </div>
-                    {event.status === 'pending' && (
-                        <div className="min-w-60 space-y-2">
-                            <label className="block text-xs font-semibold text-slate-600">
-                                Clinic-approved event duration
-                                <select
-                                    value={eventDurationDays}
-                                    onChange={(event) =>
-                                        setEventDurationDays(
-                                            event.target.value as '1' | '2',
-                                        )
-                                    }
-                                    className="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
-                                >
-                                    <option value="1">
-                                        One full clinic day
-                                    </option>
-                                    <option value="2">
-                                        Two full clinic days
-                                    </option>
-                                </select>
-                            </label>
-                            <Button
-                                onClick={approve}
-                                disabled={
-                                    attendance.total === 0 ||
-                                    pendingMissingRoles.length > 0 ||
-                                    approving
-                                }
-                                className="w-full"
+                    {event.status === 'pending' &&
+                        canUseDocument &&
+                        createPortal(
+                            <div
+                                aria-label="Bulk appointment approval"
+                                role="region"
+                                className="fixed right-4 bottom-4 left-4 z-40 space-y-2 rounded-xl border border-border bg-card p-4 text-foreground shadow-xl sm:right-6 sm:bottom-6 sm:left-auto sm:w-80 lg:right-8"
                             >
-                                {approving ? (
-                                    <LoaderCircle className="size-4 animate-spin" />
-                                ) : (
-                                    <CheckCircle2 className="size-4" />
+                                <label className="block text-xs font-semibold text-muted-foreground">
+                                    Clinic-approved event duration
+                                    <select
+                                        value={eventDurationDays}
+                                        onChange={(event) =>
+                                            setEventDurationDays(
+                                                event.target.value as '1' | '2',
+                                            )
+                                        }
+                                        className="mt-1.5 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-moss-500 focus:ring-4 focus:ring-moss-500/10"
+                                    >
+                                        <option value="1">
+                                            One full clinic day
+                                        </option>
+                                        <option value="2">
+                                            Two full clinic days
+                                        </option>
+                                    </select>
+                                </label>
+                                <Button
+                                    onClick={approve}
+                                    disabled={
+                                        attendance.total === 0 ||
+                                        pendingMissingRoles.length > 0 ||
+                                        approving
+                                    }
+                                    className="w-full"
+                                >
+                                    {approving ? (
+                                        <LoaderCircle className="size-4 animate-spin" />
+                                    ) : (
+                                        <CheckCircle2 className="size-4" />
+                                    )}
+                                    Approve &amp; assign staff
+                                </Button>
+                                {approvalError && (
+                                    <p
+                                        role="alert"
+                                        className="text-xs text-red-600"
+                                    >
+                                        {approvalError}
+                                    </p>
                                 )}
-                                Approve &amp; assign staff
-                            </Button>
-                            {approvalError && (
-                                <p className="text-xs text-red-600">
-                                    {approvalError}
-                                </p>
-                            )}
-                        </div>
-                    )}
+                            </div>,
+                            document.body,
+                        )}
                 </div>
                 <div className="mt-4 overflow-x-auto rounded-lg border">
                     <table className="w-full min-w-[900px] text-left text-sm">

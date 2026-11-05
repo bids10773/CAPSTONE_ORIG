@@ -49,6 +49,7 @@
         <tr><th>Remarks</th><td>{{ $physical->remarks ?: 'Not recorded' }}</td></tr>
     </table>
 
+    @include('pdf.partials.unassessed-vital-signs')
     <div class="signature">
         @include('pdf.partials.electronic-signature', ['staff' => $physical->doctor,
             'role' => 'Examining Physician', 'verifiedAt' => $physical->finalized_at])

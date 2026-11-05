@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreVitalSignRequest;
 use App\Models\Appointment;
 use App\Models\ClinicalFormAudit;
+use App\Models\ClinicalFormDraft;
 use App\Models\VitalSign;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,6 +27,7 @@ class VitalSignController extends Controller
         return Inertia::render('receptionist/vital-signs', [
             'appointment' => $appointment,
             'latestVitalSign' => $appointment->latestVitalSign,
+            'savedDraft' => ClinicalFormDraft::forAuthor($appointment, $request->user(), 'vital_signs')->first()?->payload,
             'history' => $appointment->vitalSigns,
             'pendingRecheck' => $appointment->vitalSignRecheckRequests->first(),
             'limits' => config('physical_exam.vital_limits'),
@@ -36,10 +39,24 @@ class VitalSignController extends Controller
     {
         $created = false;
         DB::transaction(function () use ($request, $appointment, &$created): void {
+            $appointment = Appointment::query()->lockForUpdate()->findOrFail($appointment->id);
+            if ($appointment->medicalExamination?->finalized_at || $appointment->status === 'completed'
+                || $appointment->medicalCertificates()->whereIn('status', ['approved', 'issued'])->exists()) {
+                throw ValidationException::withMessages(['form' => 'This clinical record is finalized and locked.']);
+            }
+            if (! $appointment->arrived_at && in_array($appointment->status, ['pending', 'accepted'], true)) {
+                throw ValidationException::withMessages(['form' => 'Check the patient in before recording vital signs.']);
+            }
             $data = $request->validated();
             if (! empty($data['supersedes_id'])) {
                 abort_unless(VitalSign::whereKey($data['supersedes_id'])->where('appointment_id', $appointment->id)->exists(), 422);
             }
+            if ($request->input('save_action') === 'draft') {
+                ClinicalFormDraft::saveFor($appointment, $request, 'vital_signs', $data);
+
+                return;
+            }
+            unset($data['save_action']);
             $height = isset($data['height']) ? (float) $data['height'] : null;
             $weight = isset($data['weight']) ? (float) $data['weight'] : null;
             $bmi = $height && $weight ? round($weight / (($height / 100) ** 2), 1) : null;
@@ -61,6 +78,11 @@ class VitalSignController extends Controller
                     'ip_address' => $request->ip(), 'user_agent' => $request->userAgent()]);
             }
         });
+
+        if ($request->input('save_action') === 'draft') {
+            return back()->with('success', 'Vital signs draft saved. Intake has not been completed.');
+        }
+        ClinicalFormDraft::forAuthor($appointment, $request->user(), 'vital_signs')->delete();
 
         return redirect()->route('receptionist.queue.index')->with('success', $created
             ? 'Vital signs saved. The patient is ready for consultation.'

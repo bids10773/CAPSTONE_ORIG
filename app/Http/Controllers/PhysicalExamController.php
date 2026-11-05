@@ -6,6 +6,7 @@ use App\Http\Requests\FinalizeMedicalEvaluationRequest;
 use App\Http\Requests\SavePhysicalExamRequest;
 use App\Models\Appointment;
 use App\Models\ClinicalFormAudit;
+use App\Models\ClinicalFormDraft;
 use App\Models\MedicalHistory;
 use App\Models\PhysicalExam;
 use App\Notifications\MedicalReportReleased;
@@ -35,6 +36,7 @@ class PhysicalExamController extends Controller
         return Inertia::render('doctor/physical-exam-form', [
             'appointment' => $appointment,
             'physicalExam' => $appointment->physicalExam,
+            'savedDraft' => ClinicalFormDraft::forAuthor($appointment, request()->user(), 'physical_exam')->first()?->payload,
             'availableServices' => $appointment->examination_purpose === 'medical_clearance'
                 ? collect(Appointment::getBookableServiceTypeOptions())->except('PE')->all()
                 : [],
@@ -63,6 +65,17 @@ class PhysicalExamController extends Controller
         DB::transaction(function () use ($request, $appointment, $definitions, $examinations, $existing): void {
             $appointment = Appointment::query()->lockForUpdate()->findOrFail($appointment->id);
             $data = $request->validated();
+            if ($appointment->medicalExamination?->finalized_at
+                || $appointment->physicalExam?->finalized_at
+                || ($appointment->examination_purpose === 'medical_clearance'
+                    && $appointment->medicalCertificates()->whereIn('status', ['approved', 'issued'])->exists())) {
+                throw ValidationException::withMessages(['form' => 'This clinical record is finalized and locked.']);
+            }
+            if ($request->input('save_action') === 'draft') {
+                ClinicalFormDraft::saveFor($appointment, $request, 'physical_exam', $data);
+
+                return;
+            }
             if ($appointment->examination_purpose === 'medical_clearance') {
                 if ($appointment->medicalCertificates()->whereIn('status', ['approved', 'issued'])->exists()) {
                     throw ValidationException::withMessages(['form' => 'The certificate is already approved. The consultation can no longer be changed.']);
@@ -99,7 +112,12 @@ class PhysicalExamController extends Controller
             }
             $findings = [];
             foreach ($request->bodyParts() as $field) {
-                $findings[$field] = $data["{$field}_status"] === 'normal' ? null : $data[$field];
+                $findings[$field] = match ($data["{$field}_status"]) {
+                    'normal' => null,
+                    'not_assessed' => 'Not assessed: '.$data[$field],
+                    'not_applicable' => 'Not applicable: '.$data[$field],
+                    default => $data[$field],
+                };
             }
             $vital = $appointment->latestVitalSign()->lockForUpdate()->first();
             if (! $vital && blank($data['vital_signs_override_reason'] ?? null)) {
@@ -112,10 +130,14 @@ class PhysicalExamController extends Controller
                 'height' => $vital?->height, 'weight' => $vital?->weight,
                 'pulse_rate' => $vital?->heart_rate, 'respiration_rate' => $vital?->respiratory_rate,
                 'temperature' => $vital?->temperature,
-                'visual_acuity' => $vital?->visual_acuity ?? $existing?->visual_acuity,
-                'hearing' => $vital?->hearing ?? $existing?->hearing,
+                'visual_acuity' => array_key_exists('visual_acuity', $vital?->not_assessed ?? [])
+                    ? null : ($vital?->visual_acuity ?? $existing?->visual_acuity),
+                'hearing' => array_key_exists('hearing', $vital?->not_assessed ?? [])
+                    ? null : ($vital?->hearing ?? $existing?->hearing),
+                'vital_signs_not_assessed' => $vital?->not_assessed,
                 ...$request->safe()->only(['remarks']),
-                'blood_pressure' => $vital ? "{$vital->systolic_pressure}/{$vital->diastolic_pressure}" : null,
+                'blood_pressure' => $vital?->systolic_pressure !== null && $vital?->diastolic_pressure !== null
+                    ? "{$vital->systolic_pressure}/{$vital->diastolic_pressure}" : null,
                 ...$findings,
                 'classification' => 'Pending',
                 'is_completed' => true,
@@ -145,6 +167,11 @@ class PhysicalExamController extends Controller
                 ]);
             }
         });
+
+        if ($request->input('save_action') === 'draft') {
+            return back()->with('success', 'Examination draft saved. The examination has not been completed.');
+        }
+        ClinicalFormDraft::forAuthor($appointment, $request->user(), 'physical_exam')->delete();
 
         if ($appointment->examination_purpose === 'medical_clearance') {
             return redirect()->route('doctor.medical-certificates.prepare', $appointment)
@@ -184,9 +211,14 @@ class PhysicalExamController extends Controller
             'appointment' => $appointment,
             'selectedServices' => $appointment->service_types ?? [],
             'medicalExamination' => $medicalExamination,
+            'savedDraft' => ClinicalFormDraft::forAuthor($appointment, request()->user(), 'final_evaluation')->first()?->payload,
             'childSummaries' => $medicalExamination->childSummaries(),
             'readyForFinalEvaluation' => $medicalExamination->isReadyForFinalEvaluation(),
             'canFinalize' => $canFinalize,
+            'reportPhysicians' => [
+                'examining' => $appointment->physicalExam?->doctor?->name ?? $appointment->doctor?->name,
+                'classifying' => $medicalExamination->finalizedBy?->name,
+            ],
         ]);
     }
 
@@ -194,6 +226,14 @@ class PhysicalExamController extends Controller
     {
         $certificate = DB::transaction(function () use ($request, $appointment, $examinations, $certificates) {
             $appointment = Appointment::query()->lockForUpdate()->findOrFail($appointment->id);
+            if ($appointment->medicalExamination?->finalized_at) {
+                throw ValidationException::withMessages(['form' => 'This medical examination has already been finalized.']);
+            }
+            if ($request->input('save_action') === 'draft') {
+                ClinicalFormDraft::saveFor($appointment, $request, 'final_evaluation', $request->validated());
+
+                return null;
+            }
             $requested = collect($appointment->service_types ?? []);
             $medicalExamination = $examinations->forAppointment($appointment);
             if ($medicalExamination->finalized_at) {
@@ -238,6 +278,11 @@ class PhysicalExamController extends Controller
             return $certificates->generateForFinalizedAppointment($appointment, $request->user(), $request);
         });
 
+        if ($request->input('save_action') === 'draft') {
+            return back()->with('success', 'Final evaluation draft saved. The report has not been finalized.');
+        }
+        ClinicalFormDraft::forAuthor($appointment, $request->user(), 'final_evaluation')->delete();
+
         if ($certificate && $request->user()->can('view', $certificate)) {
             return redirect()->route('medical-certificates.show', $certificate)
                 ->with('success', 'Final medical evaluation completed. The linked medical certificate is ready for review; approval and issuance remain separate steps.');
@@ -257,7 +302,7 @@ class PhysicalExamController extends Controller
         DB::transaction(function () use ($request, $appointment): void {
             $examination = $appointment->medicalExamination()->lockForUpdate()->firstOrFail();
             if ($examination->released_at !== null) {
-                throw ValidationException::withMessages(['report' => 'This report has already been released.']);
+                throw ValidationException::withMessages(['report' => 'This finalized report has already been forwarded to clinic reception.']);
             }
 
             $examination->update([
@@ -266,6 +311,8 @@ class PhysicalExamController extends Controller
                 'released_at' => now(),
             ]);
             $this->audit($request, $appointment, 'medical_examination', 'report_released', [
+                'collection_method' => 'clinic_pickup',
+                'clinical_handoff' => true,
                 'released_by' => $request->user()->id,
                 'released_at' => $examination->released_at?->toIso8601String(),
             ]);
@@ -273,7 +320,7 @@ class PhysicalExamController extends Controller
             DB::afterCommit(fn () => $appointment->user?->notify(new MedicalReportReleased));
         });
 
-        return back()->with('success', 'Final medical examination report released to the patient.');
+        return to_route('doctor.appointments')->with('success', 'Medical Examination Report forwarded to clinic reception for in-person collection.');
     }
 
     private function audit(Request $request, Appointment $appointment, string $form, string $action, array $changes): void

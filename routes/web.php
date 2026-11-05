@@ -251,13 +251,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('/clinical-forms/{appointment}/laboratory.pdf', [LaboratoryController::class, 'pdf'])
+        ->middleware('role:admin,receptionist,doctor,medtech,radtech,company')
         ->name('clinical-forms.laboratory.pdf');
     Route::get('/clinical-forms/{appointment}/laboratory/{section}.pdf', [LaboratoryController::class, 'sectionPdf'])
+        ->middleware('role:admin,receptionist,doctor,medtech,radtech,company')
         ->where('section', '[a-z_]+')
         ->name('clinical-forms.laboratory.section.pdf');
     Route::get('/clinical-forms/{appointment}/physical-exam.pdf', [ClinicalDocumentController::class, 'physicalExam'])
+        ->middleware('role:admin,receptionist,doctor,medtech,radtech,company')
         ->name('clinical-forms.physical-exam.pdf');
     Route::get('/clinical-forms/{appointment}/xray.pdf', [ClinicalDocumentController::class, 'xray'])
+        ->middleware('role:admin,receptionist,doctor,medtech,radtech,company')
         ->name('clinical-forms.xray.pdf');
 
     Route::middleware('role:radtech')->prefix('radtech')->name('radtech.')->group(function () {

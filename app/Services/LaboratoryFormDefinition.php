@@ -12,13 +12,24 @@ class LaboratoryFormDefinition
         $requested = collect($appointment->service_types ?? []);
         $sections = $this->sections();
 
-        return collect($sections)->filter(function (array $section, string $key) use ($requested, $appointment): bool {
+        $selected = collect($sections)->filter(function (array $section, string $key) use ($requested, $appointment): bool {
             if ($key === 'pregnancy' && $appointment->user?->role === 'patient' && ! $this->isFemale($appointment)) {
                 return false;
             }
 
             return $requested->contains(fn (string $service): bool => in_array($service, $section['services'], true));
         })->all();
+
+        if (isset($selected['urinalysis'])) {
+            foreach (['serology', 'pregnancy'] as $key) {
+                if (isset($selected[$key])) {
+                    $selected[$key]['heading'] = 'Others';
+                    break;
+                }
+            }
+        }
+
+        return $selected;
     }
 
     private function isFemale(Appointment $appointment): bool
@@ -43,26 +54,25 @@ class LaboratoryFormDefinition
                 $this->numberField('basophils', 'Basophils', null, '0.00–0.02', 0, 1, 2, ['default' => [0, 0.02]]),
                 $this->numberField('stab', 'Stab', null, '0.02–0.06', 0, 1, 2, ['default' => [0.02, 0.06]]),
                 $this->numberField('meta', 'Meta', null, '0.00–0.01', 0, 1, 2, ['default' => [0, 0.01]]),
-                $this->field('differential_others', 'Differential Others'),
-                $this->numberField('platelet_count', 'Platelet Count', '×10⁹/L', '150–450', 0, 2000, 2, ['default' => [150, 450]]),
+                [...$this->numberField('platelet_count', 'Platelet Count', '×10⁹/L', '150–450', 0, 2000, 2, ['default' => [150, 450]]), 'heading' => 'Others'],
                 $this->field('verification_note', 'Note'),
             ]],
             'urinalysis' => ['label' => 'Urinalysis', 'column' => 'urinalysis_results', 'services' => ['Urinalysis'], 'requires_interpretation' => true, 'fields' => [
-                $this->field('color', 'Color', 'select', null, 'Straw–Amber', ['Straw', 'Yellow', 'Light Yellow', 'Dark Yellow', 'Amber', 'Reddish', 'Other']),
+                [...$this->field('color', 'Color', 'select', null, 'Straw–Amber', ['Straw', 'Yellow', 'Light Yellow', 'Dark Yellow', 'Amber', 'Reddish', 'Other']), 'heading' => 'Routine'],
                 $this->field('transparency', 'Transparency', 'select', null, 'Clear', ['Clear', 'Slightly Hazy', 'Hazy', 'Turbid']),
                 $this->numberField('ph', 'Reaction / pH', null, '4.5–8.0', 0, 14, 2, ['default' => [4.5, 8]]),
                 $this->numberField('specific_gravity', 'Specific Gravity', null, '1.005–1.025', 1, 1.1, 3, ['default' => [1.005, 1.025]]),
                 $this->field('glucose', 'Glucose / Sugar', 'select', null, 'Negative', $this->semiQuantitative()),
                 $this->field('albumin', 'Albumin / Protein', 'select', null, 'Negative', $this->semiQuantitative()),
-                $this->field('wbc', 'WBC', 'text', '/HPF', '0–2/HPF'),
+                [...$this->field('wbc', 'WBC', 'text', '/HPF', '0–2/HPF'), 'heading' => 'Microscopic'],
                 $this->field('rbc', 'RBC', 'text', '/HPF', '0–2/HPF'),
                 $this->field('bacteria', 'Bacteria', 'select', null, 'None', $this->quantityOptions()),
                 $this->field('epithelial_cells', 'Epithelial Cells', 'select', null, 'Few', $this->quantityOptions()),
                 $this->field('mucus_threads', 'Mucus Threads', 'select', null, 'Few', $this->quantityOptions()),
                 $this->field('amorphous_urates', 'Amorphous Urates', 'select', null, 'None', $this->quantityOptions()),
                 $this->field('yeast_cells', 'Yeast Cells'), $this->field('calcium_oxalate', 'Calcium Oxalate'),
-                $this->field('trichomonas', 'Trichomonas Vaginalis'), $this->field('casts', 'Casts'),
-                $this->field('crystals', 'Crystals'), $this->field('others', 'Others'),
+                $this->field('trichomonas', 'Trichomonas Vaginalis'), $this->field('crystals', 'Crystals'),
+                [...$this->field('casts', 'Cast findings'), 'heading' => 'Casts', 'required' => false],
             ]],
             'fecalysis' => ['label' => 'Fecalysis', 'column' => 'fecalysis_results', 'services' => ['Fecalysis'], 'requires_interpretation' => true, 'fields' => [
                 $this->field('color', 'Color'), $this->field('consistency', 'Consistency', 'select', null, null, ['Formed', 'Semi-formed', 'Watery', 'Other']),

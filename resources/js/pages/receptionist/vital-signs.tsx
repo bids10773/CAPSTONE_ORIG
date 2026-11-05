@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useSessionDraft } from '@/hooks/use-session-draft';
 import AppLayout from '@/layouts/app-layout';
 import { getBmiClassification } from '@/lib/bmi';
 import type { BreadcrumbItem } from '@/types';
@@ -27,6 +28,7 @@ type Vital = {
     measurement_type: string;
     measured_at: string;
     recorded_by?: { name: string };
+    not_assessed?: Record<string, string> | null;
 };
 type Props = {
     appointment: any;
@@ -34,6 +36,7 @@ type Props = {
     history: Vital[];
     pendingRecheck: { reason: string } | null;
     requiredFields: string[];
+    savedDraft?: Record<string, unknown> | null;
 };
 const fields = [
     ['systolic_pressure', 'Systolic pressure', 'mmHg'],
@@ -53,8 +56,13 @@ export default function VitalSigns({
     history,
     pendingRecheck,
     requiredFields,
+    savedDraft,
 }: Props) {
     const isRepeat = Boolean(latestVitalSign);
+    const draft =
+        (savedDraft?.supersedes_id ?? null) === (latestVitalSign?.id ?? null)
+            ? savedDraft
+            : null;
     const form = useForm({
         submission_key: crypto.randomUUID(),
         measurement_type: pendingRecheck
@@ -63,18 +71,32 @@ export default function VitalSigns({
               ? 'correction'
               : 'initial',
         supersedes_id: latestVitalSign?.id ?? null,
-        systolic_pressure: '',
-        diastolic_pressure: '',
-        heart_rate: '',
-        respiratory_rate: '',
-        temperature: '',
-        oxygen_saturation: '',
-        height: '',
-        weight: '',
-        visual_acuity: '',
-        hearing: '',
-        notes: '',
+        systolic_pressure: value(draft?.systolic_pressure),
+        diastolic_pressure: value(draft?.diastolic_pressure),
+        heart_rate: value(draft?.heart_rate),
+        respiratory_rate: value(draft?.respiratory_rate),
+        temperature: value(draft?.temperature),
+        oxygen_saturation: value(draft?.oxygen_saturation),
+        height: value(draft?.height),
+        weight: value(draft?.weight),
+        visual_acuity: value(draft?.visual_acuity),
+        hearing: value(draft?.hearing),
+        notes: value(draft?.notes),
+        not_assessed: (draft?.not_assessed ?? {}) as Record<string, string>,
     });
+    const { clearDraft } = useSessionDraft(
+        `vital-signs-${appointment.id}-${latestVitalSign?.id ?? 'initial'}`,
+        form.data,
+        form.isDirty,
+        (data) =>
+            form.setData((current) => ({
+                ...current,
+                ...data,
+                submission_key: current.submission_key,
+                measurement_type: current.measurement_type,
+                supersedes_id: current.supersedes_id,
+            })),
+    );
     const height = Number(form.data.height);
     const weight = Number(form.data.weight);
     const bmi =
@@ -83,9 +105,56 @@ export default function VitalSigns({
             : null;
     const submit = (event: FormEvent) => {
         event.preventDefault();
+        save('complete');
+    };
+    const save = (action: 'draft' | 'complete') => {
+        form.transform((values) => ({ ...values, save_action: action }));
         form.post(`/receptionist/appointments/${appointment.id}/vital-signs`, {
             preserveScroll: true,
+            onSuccess: action === 'complete' ? clearDraft : undefined,
         });
+    };
+    const assessmentException = (
+        key: (typeof fields)[number][0] | 'visual_acuity' | 'hearing',
+        label: string,
+    ) => {
+        const skipped = key in form.data.not_assessed;
+        return (
+            <div className="mt-2 space-y-2">
+                <label className="flex items-center gap-2 text-xs text-slate-600">
+                    <input
+                        type="checkbox"
+                        checked={skipped}
+                        onChange={(event) => {
+                            const reasons = { ...form.data.not_assessed };
+                            if (event.target.checked) reasons[key] = '';
+                            else delete reasons[key];
+                            form.setData((current) => ({
+                                ...current,
+                                [key]: event.target.checked ? '' : current[key],
+                                not_assessed: reasons,
+                            }));
+                        }}
+                    />
+                    Not assessed
+                    <span className="sr-only">: {label}</span>
+                </label>
+                {skipped && (
+                    <Textarea
+                        aria-label={`${label}: reason not assessed`}
+                        placeholder="Explain why this measurement was not assessed"
+                        value={form.data.not_assessed[key]}
+                        maxLength={1000}
+                        onChange={(event) =>
+                            form.setData('not_assessed', {
+                                ...form.data.not_assessed,
+                                [key]: event.target.value,
+                            })
+                        }
+                    />
+                )}
+            </div>
+        );
     };
     const name =
         appointment.user.name ||
@@ -153,6 +222,16 @@ export default function VitalSigns({
                     onSubmit={submit}
                     className="rounded-3xl border bg-white p-5 shadow-sm md:p-7"
                 >
+                    <p className="mb-5 text-sm text-slate-600">
+                        You can save a draft with missing measurements. Before
+                        completing intake, record each required measurement or
+                        select Not assessed and explain why.
+                    </p>
+                    {Object.values(form.errors).length > 0 && (
+                        <p role="alert" className="mb-4 text-sm text-red-600">
+                            {Object.values(form.errors).join(' ')}
+                        </p>
+                    )}
                     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                         {fields.map(([key, label, unit]) => (
                             <div key={key}>
@@ -167,6 +246,7 @@ export default function VitalSigns({
                                         id={key}
                                         value={form.data[key]}
                                         inputMode="decimal"
+                                        disabled={key in form.data.not_assessed}
                                         onChange={(e) =>
                                             form.setData(key, e.target.value)
                                         }
@@ -176,6 +256,7 @@ export default function VitalSigns({
                                         {unit}
                                     </span>
                                 </div>
+                                {assessmentException(key, label)}
                                 {form.errors[key] && (
                                     <p className="mt-1 text-xs font-semibold text-red-600">
                                         {form.errors[key]}
@@ -222,7 +303,10 @@ export default function VitalSigns({
                                             )
                                         }
                                         placeholder={placeholder}
-                                        required
+                                        required={
+                                            !(key in form.data.not_assessed)
+                                        }
+                                        disabled={key in form.data.not_assessed}
                                         maxLength={100}
                                         className="mt-2"
                                         aria-invalid={Boolean(form.errors[key])}
@@ -232,6 +316,7 @@ export default function VitalSigns({
                                                 : undefined
                                         }
                                     />
+                                    {assessmentException(key, label)}
                                     {form.errors[key] && (
                                         <p
                                             id={`${key}-error`}
@@ -277,6 +362,15 @@ export default function VitalSigns({
                         >
                             <ArrowLeft className="size-4" />
                             Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={form.processing}
+                            onClick={() => save('draft')}
+                        >
+                            <Save className="size-4" />
+                            Save draft
                         </Button>
                         <Button type="submit" disabled={form.processing}>
                             <Save className="size-4" />
@@ -335,6 +429,17 @@ export default function VitalSigns({
                                         {v.visual_acuity ?? 'Not recorded'} ·
                                         Hearing: {v.hearing ?? 'Not recorded'}
                                     </p>
+                                    {Object.entries(v.not_assessed ?? {}).map(
+                                        ([field, reason]) => (
+                                            <p
+                                                key={field}
+                                                className="mt-2 text-amber-800"
+                                            >
+                                                {field.replaceAll('_', ' ')} —
+                                                Not assessed: {reason}
+                                            </p>
+                                        ),
+                                    )}
                                     <p className="mt-1 text-xs text-slate-500">
                                         Recorded by{' '}
                                         {v.recorded_by?.name ??

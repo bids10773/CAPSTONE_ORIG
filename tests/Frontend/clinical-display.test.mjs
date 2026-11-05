@@ -93,6 +93,23 @@ test('normal findings use a compact status selector without an empty notes field
     assert.doesNotMatch(html, /<textarea|<button/);
 });
 
+test('report review preserves full clinical history and distinguishes missing findings from normal results', () => {
+    const { MedicalReportClinicalReview } = load('resources/js/components/medical-report-clinical-review.tsx');
+    const history = 'Full patient history. '.repeat(40);
+    const completed = renderToStaticMarkup(React.createElement(MedicalReportClinicalReview, {
+        history: { present_illness: history, allergies: 'Penicillin' },
+        physical: { is_completed: true, lungs: 'Wheezing', remarks: 'Review after laboratory results', height: 170 },
+    }));
+    assert.ok(completed.includes(history));
+    for (const value of ['Penicillin', 'Wheezing', 'Review after laboratory results', 'Normal', '170']) {
+        assert.ok(completed.includes(value), value);
+    }
+    assert.doesNotMatch(completed, /truncate|line-clamp|<details/);
+    const missing = renderToStaticMarkup(React.createElement(MedicalReportClinicalReview));
+    assert.match(missing, /Not recorded/);
+    assert.doesNotMatch(missing, /checked=""/);
+});
+
 test('abnormal findings display their editable note and validation error', () => {
     const { PhysicalFindingRow } = load('resources/js/components/physical-finding-row.tsx');
     const html = renderToStaticMarkup(React.createElement(PhysicalFindingRow, {
@@ -103,4 +120,40 @@ test('abnormal findings display their editable note and validation error', () =>
     assert.match(html, /Wheezing in both lungs/);
     assert.match(html, /Please document the finding/);
     assert.match(html, /aria-invalid="true"/);
+});
+
+test('report template shows verified interpretations without marking pending or unrequested services normal', () => {
+    const { MedicalReportDiagnosticSummary } = load('resources/js/components/medical-report-template.tsx');
+    const html = renderToStaticMarkup(React.createElement(MedicalReportDiagnosticSummary, {
+        services: ['CBC', 'Urinalysis', 'X-Ray'],
+        diagnostics: [
+            { service_key: 'cbc', status: 'verified', verified_at: '2026-11-03', interpretation: 'with_findings', findings: 'Review platelet count' },
+            { service_key: 'urinalysis', status: 'pending', interpretation: 'normal' },
+        ],
+        xray: { status: 'pending', is_completed: false, impression: 'Normal chest' },
+    }));
+    assert.match(html, /III\. Laboratory/);
+    assert.match(html, /IV\. Chest X-ray/);
+    assert.match(html, /V\. Electrocardiogram \/ audiometry/);
+    assert.match(html, /VI\. Others/);
+    assert.match(html, /Not requested/);
+    assert.match(html, /Review platelet count/);
+    const check = (label) => html.match(new RegExp(`<input[^>]*aria-label="${label}"[^>]*>`))?.[0];
+    assert.match(check('Complete Blood Count: Findings'), /checked=""/);
+    assert.doesNotMatch(check('Urinalysis: Normal'), /checked=""/);
+    assert.doesNotMatch(check('Chest X-ray: Normal chest'), /checked=""/);
+    assert.doesNotMatch(check('Fecalysis: Normal'), /checked=""/);
+    for (const [impression, expectedNormal] of [
+        ['Normal heart size. Pulmonary fibrosis.', false],
+        ['ESSENTIALLY NORMAL CHEST X-RAY.', true],
+    ]) {
+        const report = renderToStaticMarkup(React.createElement(MedicalReportDiagnosticSummary, {
+            services: ['X-Ray'],
+            xray: { status: 'completed', is_completed: true, verified_at: '2026-11-03', impression },
+        }));
+        const normal = report.match(/<input[^>]*aria-label="Chest X-ray: Normal chest"[^>]*>/)?.[0];
+        assert.ok(normal);
+        assert.equal(normal.includes('checked=""'), expectedNormal, impression);
+        assert.ok(report.includes(impression));
+    }
 });

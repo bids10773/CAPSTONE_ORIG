@@ -70,3 +70,46 @@ test('unverified clinicians can access their license settings and see why examin
     $this->actingAs($doctor)->get(route('profile.edit'))->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where('auth.requiresLicenseVerification', true));
 });
+
+test('blocked examination requests display an application error page', function (array $headers) {
+    if (isset($headers['X-Inertia'])) {
+        $headers['X-Inertia-Version'] = app(\App\Http\Middleware\HandleInertiaRequests::class)->version(request());
+    }
+
+    $doctor = User::factory()->create(['role' => 'doctor', 'license_no' => '1234567', 'license_verification_status' => 'pending']);
+    $appointment = licenseAuthorizationAppointment($doctor);
+
+    $response = $this->actingAs($doctor)->get(route('doctor.physical-exams.create', $appointment), $headers)
+        ->assertForbidden();
+
+    if (isset($headers['X-Inertia'])) {
+        $response->assertHeader('X-Inertia', 'true')
+            ->assertJsonPath('component', 'errors/forbidden')
+            ->assertJsonPath('props.auth.requiresLicenseVerification', true)
+            ->assertJsonPath('props.message', 'An administrator must verify your professional license before you can conduct medical examinations or release clinical documents.');
+    } else {
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('errors/forbidden')
+            ->where('message', 'An administrator must verify your professional license before you can conduct medical examinations or release clinical documents.')
+            ->where('auth.requiresLicenseVerification', true));
+    }
+})->with([
+    'direct browser visit' => [[]],
+    'inertia navigation' => [['X-Inertia' => 'true', 'X-Requested-With' => 'XMLHttpRequest']],
+]);
+
+test('blocked examination JSON requests retain their forbidden response', function () {
+    $doctor = User::factory()->create(['role' => 'doctor', 'license_no' => '1234567', 'license_verification_status' => 'pending']);
+    $appointment = licenseAuthorizationAppointment($doctor);
+
+    $this->actingAs($doctor)->postJson(route('doctor.physical-exams.store', $appointment), [])
+        ->assertForbidden()
+        ->assertJsonPath('message', 'This action is unauthorized.');
+    $this->assertDatabaseCount('physical_exams', 0);
+});
+
+test('unsigned public invitations do not render the authenticated error layout', function () {
+    $this->get(route('company-referrals.invitation', ['token' => 'invalid-token']))
+        ->assertForbidden()
+        ->assertDontSee('data-page=', false);
+});

@@ -7,7 +7,7 @@ Use staging accounts and synthetic records only. Record tester, date, browser/de
 - Registration, email verification, login, logout, reset, and 2FA
 - Profile completion and update
 - Appointment creation, validation, limits, history, and notifications
-- Access only to owned and released medical results
+- Track only owned document processing and clinic pickup status; patient accounts cannot download clinical result PDFs
 
 ## Company
 
@@ -26,8 +26,8 @@ Use staging accounts and synthetic records only. Record tester, date, browser/de
 ## Clinical staff
 
 - Doctor, MedTech, and RadTech dashboards and assigned queues
-- Pending, verification, finalization, locking, and release workflows
-- Access denied for unassigned staff and unreleased patient results
+- Verified-license prerequisites, pending results, verification, finalization, locking, and forwarding to clinic reception
+- Access denied for unassigned or unverified clinical staff; results are printed and collected through the clinic document workflow
 
 ## Administrator
 

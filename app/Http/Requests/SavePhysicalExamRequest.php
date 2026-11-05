@@ -36,6 +36,7 @@ class SavePhysicalExamRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
+            'save_action' => ['sometimes', 'in:draft,complete'],
             'remarks' => ['nullable', 'string', 'max:3000'],
             'vital_signs_override_reason' => ['nullable', 'string', 'max:1000'],
         ];
@@ -47,8 +48,12 @@ class SavePhysicalExamRequest extends FormRequest
         }
 
         foreach ($this->bodyParts() as $field) {
-            $rules["{$field}_status"] = ['required', 'in:normal,with_findings'];
-            $rules[$field] = ['nullable', 'required_if:'.$field.'_status,with_findings', 'string', 'max:1000'];
+            $draft = $this->input('save_action') === 'draft';
+            $rules["{$field}_status"] = [$draft ? 'nullable' : 'required', 'in:normal,with_findings,not_assessed,not_applicable'];
+            $rules[$field] = ['nullable', 'string', 'max:1000'];
+            if (! $draft) {
+                $rules[$field][] = 'required_if:'.$field.'_status,with_findings,not_assessed,not_applicable';
+            }
         }
         foreach (['present_illness', 'past_medical_history', 'operations_accidents', 'family_history', 'allergies', 'personal_social_history', 'ob_menstrual_history'] as $field) {
             $rules[$field] = ['nullable', 'string', 'max:3000'];
@@ -76,7 +81,7 @@ class SavePhysicalExamRequest extends FormRequest
             'diastolic_pressure.between' => 'Diastolic pressure must be between 30 and 200 mm Hg.',
             'systolic_pressure.gt' => 'Systolic pressure must be greater than diastolic pressure.',
             '*.required' => 'This field is required.',
-            '*.required_if' => 'Describe the abnormal finding before saving.',
+            '*.required_if' => 'Describe the finding or explain why this item was not assessed or is not applicable.',
         ];
     }
 

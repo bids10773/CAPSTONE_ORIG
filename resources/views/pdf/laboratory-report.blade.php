@@ -41,11 +41,17 @@
         $stored = is_array($stored) ? $stored : [];
     @endphp
     <div class="section">
+        @if(! empty($section['heading']))
+            <h3 class="green" style="margin:0;padding:3px 5px">{{ strtoupper($section['heading']) }}</h3>
+        @endif
         <h2>{{ strtoupper($section['label']) }}</h2>
         <table class="results">
             <thead><tr><th>Examination</th><th>Normal Values</th><th>Results</th></tr></thead>
             <tbody>
             @foreach($section['fields'] as $field)
+                @if(! empty($field['heading']))
+                    <tr><th colspan="3" style="text-align:left">{{ $field['heading'] }}</th></tr>
+                @endif
                 <tr>
                     <td>{{ $field['label'] }}</td>
                     <td class="normal">{{ $field['normal'] ?: '—' }} @if($field['normal'] && $field['unit']) {{ $field['unit'] }} @endif</td>

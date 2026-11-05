@@ -203,7 +203,6 @@ function Sidebar({
   const {
     isMobile,
     state,
-    isPinned,
     setHovered,
     setFocusWithin,
     openMobile,
@@ -264,8 +263,8 @@ function Sidebar({
         className={cn(
           "relative h-svh w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear",
           "group-data-[side=right]:rotate-180",
-          !isPinned && collapsible === "offcanvas" && "w-0",
-          !isPinned &&
+          state === "collapsed" && collapsible === "offcanvas" && "w-0",
+          state === "collapsed" &&
             collapsible === "icon" &&
             (variant === "floating" || variant === "inset"
               ? "w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
