@@ -3,6 +3,8 @@
 namespace App\Notifications;
 
 use App\Models\Appointment;
+use App\Models\User;
+use App\Support\NotificationWording;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -11,7 +13,12 @@ class AppointmentCancelled extends Notification
 {
     use Queueable;
 
-    public function __construct(public readonly Appointment $appointment) {}
+    private readonly string $message;
+
+    public function __construct(public readonly Appointment $appointment, User|int|null $actor = null)
+    {
+        $this->message = 'Your '.NotificationWording::appointment($appointment).' for '.NotificationWording::schedule($appointment).' was cancelled'.NotificationWording::by($actor).'.';
+    }
 
     /** @return list<string> */
     public function via(object $notifiable): array
@@ -23,8 +30,8 @@ class AppointmentCancelled extends Notification
     {
         return [
             'type' => 'appointment_cancelled',
-            'title' => 'Appointment Cancelled',
-            'message' => 'Your appointment for '.$this->appointment->appointment_date->format('M j, Y').' was cancelled by the clinic.'
+            'title' => 'Appointment cancelled',
+            'message' => $this->message
                 .(filled($this->appointment->cancellation_reason) ? ' Reason: '.$this->appointment->cancellation_reason : ''),
             'cancellation_reason' => $this->appointment->cancellation_reason,
             'appointment_id' => $this->appointment->id,
@@ -35,9 +42,9 @@ class AppointmentCancelled extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $message = (new MailMessage)
-            ->subject('Appointment Cancelled | Living Myth Industrial Clinic')
+            ->subject('Appointment cancelled | Living Myth Industrial Clinic')
             ->greeting('Hello '.$notifiable->first_name.',')
-            ->line('Your appointment on '.$this->appointment->appointment_date->format('F j, Y').' at '.$this->appointment->start_time?->format('g:i A').' was cancelled by the clinic.');
+            ->line($this->message);
 
         if (filled($this->appointment->cancellation_reason)) {
             $message->line('Reason: '.$this->appointment->cancellation_reason);
@@ -45,6 +52,6 @@ class AppointmentCancelled extends Notification
 
         return $message
             ->line('Please contact the clinic if you need assistance or book another available appointment.')
-            ->action('View Appointments', route('appointments.index'));
+            ->action('View appointments', route('appointments.index'));
     }
 }

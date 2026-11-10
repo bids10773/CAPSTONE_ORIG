@@ -77,7 +77,7 @@ class PatientProfileCompletionController extends Controller
             $user->unsetRelation('patientProfile');
             if (! $wasComplete && $user->hasCompletePatientProfile()) {
                 app(\App\Services\WorkflowNotificationService::class)->admins(
-                    'patient_profile_completed', 'Patient profile completed', 'A patient completed their account profile.',
+                    'patient_profile_completed', 'Patient profile completed', \App\Support\NotificationWording::actor($user).' completed their patient profile.',
                     route('admin.patients.show', $user, false),
                 );
             }

@@ -35,7 +35,7 @@ class CompanyReferralController extends Controller
     {
         $referral = $this->fromToken($token)->load('company:id,company_name');
         if ($referral->isExpired() && ! in_array($referral->status, ['scheduled', 'completed', 'cancelled'], true)) {
-            $referral->update(['status' => 'expired']);
+            $referral->updateAutomatically(['status' => 'expired']);
         } elseif (! $referral->viewed_at) {
             $referral->update(['viewed_at' => now(), 'status' => $referral->status === 'sent' ? 'viewed' : $referral->status]);
         }

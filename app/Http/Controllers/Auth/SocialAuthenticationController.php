@@ -159,7 +159,7 @@ class SocialAuthenticationController extends Controller
         PatientProfile::create(['user_id' => $user->id]);
 
         app(\App\Services\WorkflowNotificationService::class)->admins(
-            'patient_registered', 'Patient registered', 'A patient successfully registered an account.',
+            'patient_registered', 'Patient account registered', \App\Support\NotificationWording::actor($user).' registered a patient account.',
             route('admin.patients.show', $user, false),
         );
 

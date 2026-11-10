@@ -35,10 +35,10 @@ class StaffCredentialService
         return implode('', $characters);
     }
 
-    public function send(User $staff, string $temporaryPassword): void
+    public function send(User $staff, string $temporaryPassword, ?User $actor = null): void
     {
         Mail::to($staff->email)->send(
-            new StaffTemporaryCredentials($staff, $temporaryPassword),
+            new StaffTemporaryCredentials($staff, $temporaryPassword, $actor),
         );
     }
 }

@@ -620,7 +620,7 @@ class AppointmentController extends Controller
 
             if ($request->status === 'cancelled' && ! $wasCancelled) {
                 try {
-                    $appointment->user?->notify(new AppointmentCancelled($appointment->fresh()));
+                    $appointment->user?->notify(new AppointmentCancelled($appointment->fresh(), $request->user()));
                 } catch (\Throwable $exception) {
                     Log::warning('Patient appointment cancellation notification failed.', [
                         'appointment_id' => $appointment->id,
@@ -1255,14 +1255,16 @@ class AppointmentController extends Controller
 
         if ($appointment->type === 'individual') {
             $notifications = app(\App\Services\WorkflowNotificationService::class);
-            $notifications->admins('appointment_created', 'Appointment created', "{$appointment->reference_code} was registered by an administrator.", route('admin.appointments.show', $appointment, false));
+            $by = \App\Support\NotificationWording::by($request->user());
+            $name = \App\Support\NotificationWording::person($appointment->user, 'the patient');
+            $notifications->admins('appointment_created', 'Appointment registered', "Appointment {$appointment->reference_code} for {$name} was registered{$by}.", route('admin.appointments.show', $appointment, false));
             $notifications->users(User::query()->where('role', 'receptionist')->get(),
                 'appointment_review_requested', 'Appointment awaiting review',
-                'An administrator registered an individual appointment awaiting clinic coordination.',
+                "Appointment {$appointment->reference_code} for {$name} was registered{$by} and is awaiting review.",
                 route('receptionist.appointment-requests.index', ['status' => 'pending'], false));
             $notifications->users(User::query()->whereKey($appointment->user_id)->where('role', 'patient')->get(),
                 'appointment_registered', 'Appointment registered',
-                'The clinic registered an appointment for you on '.$appointment->appointment_date->format('M j, Y').'. It is awaiting clinic approval.',
+                "Your appointment {$appointment->reference_code} was registered{$by} for ".\App\Support\NotificationWording::schedule($appointment).'. It is awaiting clinic approval.',
                 route('appointments.index', absolute: false));
         }
 

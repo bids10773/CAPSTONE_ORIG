@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Appointment;
+use App\Support\NotificationWording;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -11,7 +12,15 @@ class AppointmentAutoCancelled extends Notification
 {
     use Queueable;
 
-    public function __construct(private readonly Appointment $appointment) {}
+    private readonly string $message;
+
+    public function __construct(private readonly Appointment $appointment)
+    {
+        $reason = $appointment->cancellation_reason === 'schedule_expired'
+            ? 'the appointment schedule expired before check-in'
+            : 'you were not checked in within 10 minutes of the scheduled time';
+        $this->message = 'The system cancelled your '.NotificationWording::appointment($appointment).' for '.NotificationWording::schedule($appointment).' because '.$reason.'.';
+    }
 
     /** @return list<string> */
     public function via(object $notifiable): array
@@ -23,8 +32,8 @@ class AppointmentAutoCancelled extends Notification
     {
         return [
             'type' => 'appointment_cancelled',
-            'title' => 'Appointment Cancelled',
-            'message' => 'Your appointment for '.$this->appointment->appointment_date->format('M j, Y').' was cancelled because the check-in grace period elapsed.',
+            'title' => 'Appointment automatically cancelled',
+            'message' => $this->message,
             'appointment_id' => $this->appointment->id,
             'url' => route('appointments.index', absolute: false),
         ];
@@ -33,9 +42,9 @@ class AppointmentAutoCancelled extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Appointment slot released')
+            ->subject('Appointment automatically cancelled')
             ->greeting('Hello '.$notifiable->first_name.',')
-            ->line('Your appointment on '.$this->appointment->appointment_date->format('F j, Y').' was cancelled because you were not checked in within 10 minutes of the scheduled time.')
+            ->line($this->message)
             ->line('Please contact the clinic or book the next available appointment.');
     }
 }

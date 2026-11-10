@@ -152,7 +152,7 @@ class StaffController extends Controller
                     'temporary_password_expires_at' => now()->addHours(48),
                 ]);
 
-                $credentials->send($staff, $temporaryPassword);
+                $credentials->send($staff, $temporaryPassword, $request->user());
 
                 SecurityAudit::create([
                     'actor_id' => $request->user()->id,
@@ -200,7 +200,7 @@ class StaffController extends Controller
                     'temporary_password_expires_at' => now()->addHours(48),
                 ]);
 
-                $credentials->send($staff, $temporaryPassword);
+                $credentials->send($staff, $temporaryPassword, $request->user());
 
                 SecurityAudit::create([
                     'actor_id' => $request->user()->id,
@@ -521,7 +521,7 @@ class StaffController extends Controller
             ]);
         });
 
-        return back()->with('success', $verified
+        return ($verified ? redirect()->route('admin.staff.index') : back())->with('success', $verified
             ? 'The professional license has been verified.'
             : 'The professional license submission has been rejected.');
     }

@@ -148,7 +148,7 @@ class IndividualAppointmentBookingService
             ->where('is_active', true)
             ->get();
         try {
-            Notification::send($reviewers, new \App\Notifications\NewAppointmentRequest($result));
+            Notification::send($reviewers, new \App\Notifications\NewAppointmentRequest($result, $user));
         } catch (\Throwable $exception) {
             Log::warning('Appointment reviewer request notification failed.', [
                 'appointment_id' => $result->id,
@@ -156,7 +156,7 @@ class IndividualAppointmentBookingService
             ]);
         }
         try {
-            $user->notify(new \App\Notifications\AppointmentSubmitted($result));
+            $user->notify(new \App\Notifications\AppointmentSubmitted($result, $user));
         } catch (\Throwable $exception) {
             Log::warning('Patient appointment submission notification failed.', [
                 'appointment_id' => $result->id,

@@ -209,7 +209,8 @@ class AdminPatientController extends Controller
             'employee_number' => ['nullable', 'string', 'max:80'],
         ]);
 
-        DB::transaction(function () use ($patient, $data): void {
+        $actorSuffix = \App\Support\NotificationWording::by(request()->user());
+        DB::transaction(function () use ($patient, $data, $actorSuffix): void {
             $patient->update([
                 'first_name' => $data['first_name'],
                 'middle_name' => $data['middle_name'] ?? null,
@@ -228,9 +229,9 @@ class AdminPatientController extends Controller
                 || $profile->wasRecentlyCreated
                 || $profile->wasChanged(['birthdate', 'sex', 'civil_status', 'address', 'employee_number'])) {
                 app(\App\Services\WorkflowNotificationService::class)->admins('patient_account_updated',
-                    'Patient account update', 'A patient account was updated.', '/admin/patients/'.$patient->id);
+                    'Patient account updated', "The patient account for {$patient->name} was updated{$actorSuffix}.", '/admin/patients/'.$patient->id);
                 app(\App\Services\WorkflowNotificationService::class)->users([$patient->id], 'patient_account_updated',
-                    'Account update', 'Your account was updated by the clinic. Review your profile for details.', '/settings/profile');
+                    'Account updated', "Your patient account was updated{$actorSuffix}. Review your profile for details.", '/settings/profile');
             }
         });
 
@@ -249,15 +250,16 @@ class AdminPatientController extends Controller
         }
 
         $name = $patient->name;
+        $actorSuffix = \App\Support\NotificationWording::by(request()->user());
 
         try {
-            DB::transaction(function () use ($patient): void {
+            DB::transaction(function () use ($patient, $name, $actorSuffix): void {
                 DB::table(config('session.table', 'sessions'))->where('user_id', $patient->id)->delete();
                 $patient->socialAccounts()->delete();
                 $patient->patientProfile()->delete();
                 $patient->delete();
                 app(\App\Services\WorkflowNotificationService::class)->admins('patient_account_deleted',
-                    'Patient account update', 'A patient account was deleted.', '/admin/patients');
+                    'Patient account deleted', "The patient account for {$name} was deleted{$actorSuffix}.", '/admin/patients');
             });
         } catch (QueryException) {
             return back()->with('error', 'This patient cannot be deleted because other records are linked to the account.');

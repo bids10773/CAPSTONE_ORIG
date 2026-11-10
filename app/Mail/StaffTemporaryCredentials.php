@@ -13,15 +13,20 @@ class StaffTemporaryCredentials extends Mailable
 {
     use Queueable, SerializesModels;
 
+    public readonly string $actorSuffix;
+
     public function __construct(
         public User $staff,
         public string $temporaryPassword,
-    ) {}
+        ?User $actor = null,
+    ) {
+        $this->actorSuffix = \App\Support\NotificationWording::by($actor);
+    }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Your Staff Account Has Been Created',
+            subject: 'Staff sign-in credentials | Living Myth Industrial Clinic',
         );
     }
 
@@ -31,9 +36,10 @@ class StaffTemporaryCredentials extends Mailable
             view: 'email.staff-temporary-credentials',
             with: [
                 'staffName' => $this->staff->name,
+                'actorSuffix' => $this->actorSuffix,
                 'loginEmail' => $this->staff->email,
                 'temporaryPassword' => $this->temporaryPassword,
-                'role' => $this->staff->role_label,
+                'role' => \App\Support\NotificationWording::role($this->staff->role),
                 'expiresAt' => $this->staff->temporary_password_expires_at,
                 'loginUrl' => route('login'),
                 'systemName' => config('app.name'),

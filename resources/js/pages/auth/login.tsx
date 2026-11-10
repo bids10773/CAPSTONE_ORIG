@@ -83,8 +83,7 @@ export default function Login({
                         Sign in to your account
                     </h1>
                     <p className="mt-2 text-sm leading-6 text-slate-500">
-                        Securely sign in to continue to the medical services
-                        portal.
+                        Enter credentials to access your account
                     </p>
                 </header>
 
@@ -163,22 +162,12 @@ export default function Login({
                                 )}
                             </div>
                             <div>
-                                <div className="mb-2 flex items-center justify-between">
-                                    <label
-                                        htmlFor="password"
-                                        className="text-sm font-medium text-slate-700"
-                                    >
-                                        Password
-                                    </label>
-                                    {canResetPassword && (
-                                        <TextLink
-                                            href={request()}
-                                            className="text-xs font-semibold text-moss-600 hover:text-moss-700"
-                                        >
-                                            Forgot password?
-                                        </TextLink>
-                                    )}
-                                </div>
+                                <label
+                                    htmlFor="password"
+                                    className="mb-2 block text-sm font-medium text-slate-700"
+                                >
+                                    Password
+                                </label>
                                 <div className="auth-input-wrap">
                                     <LockKeyhole
                                         className="auth-input-icon"
@@ -237,6 +226,16 @@ export default function Login({
                                     >
                                         {errors.password}
                                     </p>
+                                )}
+                                {canResetPassword && (
+                                    <div className="mt-2 text-right">
+                                        <TextLink
+                                            href={request()}
+                                            className="text-xs font-semibold text-moss-600 hover:text-moss-700"
+                                        >
+                                            Forgot password?
+                                        </TextLink>
+                                    </div>
                                 )}
                             </div>
                             <div className="flex items-center gap-3">
@@ -297,7 +296,7 @@ export default function Login({
 
                 {canRegister && (
                     <div className="mt-7 border-t border-slate-100 pt-6 text-center text-sm text-slate-500">
-                        New to the patient portal?{' '}
+                        Don&apos;t have an account?{' '}
                         <TextLink
                             href={register()}
                             className="font-semibold text-moss-600 hover:text-moss-700"

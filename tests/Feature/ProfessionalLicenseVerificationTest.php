@@ -64,9 +64,11 @@ test('an administrator can download and verify submitted license proof', functio
         ->assertDownload('prc-id-back.jpg');
 
     $this->actingAs($admin)
+        ->from(route('admin.staff.edit', $doctor))
         ->patch(route('admin.staff.license-verification.update', $doctor), [
             'status' => 'verified',
         ])
+        ->assertRedirect(route('admin.staff.index'))
         ->assertSessionHasNoErrors();
 
     expect($doctor->refresh()->license_verification_status)->toBe('verified')

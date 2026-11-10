@@ -432,16 +432,6 @@ export default function Welcome() {
                             }}
                             className="pt-8 lg:py-10"
                         >
-                            <motion.div
-                                variants={heroItem}
-                                transition={{
-                                    duration: reduceMotion ? 0 : 0.36,
-                                }}
-                                className="mb-7 inline-flex items-center gap-2 rounded-full border border-moss-200 bg-white px-3 py-1.5 text-xs font-bold text-moss-800 shadow-sm"
-                            >
-                                <ShieldCheck size={14} /> Occupational health,
-                                done right
-                            </motion.div>
                             <motion.h1
                                 variants={heroItem}
                                 transition={{

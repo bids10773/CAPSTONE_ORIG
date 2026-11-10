@@ -208,7 +208,7 @@ class ProfileController extends Controller
                 app(\App\Services\WorkflowNotificationService::class)->admins(
                     $completed ? 'patient_profile_completed' : 'profile_updated',
                     $completed ? 'Patient profile completed' : 'Profile updated',
-                    $completed ? 'A patient completed their account profile.' : 'An account holder updated their profile.',
+                    \App\Support\NotificationWording::actor($user).($completed ? ' completed their patient profile.' : ' updated their account profile.'),
                     $url,
                 );
             }

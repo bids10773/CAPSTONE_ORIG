@@ -100,9 +100,13 @@ class DoctorAvailabilityController extends Controller
 
         if ($doctor->wasChanged('availability')) {
             $notifications = app(\App\Services\WorkflowNotificationService::class);
-            $notifications->admins('doctor_availability_updated', 'Doctor availability updated', 'A doctor schedule was updated by an administrator.', route('admin.doctor-availability.index', absolute: false));
-            $notifications->users([$doctor], 'doctor_availability_updated', 'Availability updated', 'An administrator updated your availability.', route('doctor.doctor-availability.index', absolute: false));
-            $notifications->users(User::where('role', 'receptionist')->get(), 'doctor_availability_updated', 'Doctor availability updated', 'A doctor schedule was updated. Review clinic availability for coordination.', route('receptionist.dashboard', absolute: false));
+            $by = \App\Support\NotificationWording::by($request->user());
+            $name = \App\Support\NotificationWording::person($doctor);
+            $action = $periods->isEmpty() ? 'cleared' : 'updated';
+            $message = "{$name}'s availability was {$action}{$by}.";
+            $notifications->admins('doctor_availability_updated', 'Doctor availability '.$action, $message, route('admin.doctor-availability.index', absolute: false));
+            $notifications->users([$doctor], 'doctor_availability_updated', 'Availability '.$action, "Your availability was {$action}{$by}.", route('doctor.doctor-availability.index', absolute: false));
+            $notifications->users(User::where('role', 'receptionist')->get(), 'doctor_availability_updated', 'Doctor availability '.$action, $message.' Review clinic availability for coordination.', route('receptionist.dashboard', absolute: false));
         }
 
         return back()->with('success', $request->input('action') === 'clear' ? 'Doctor availability cleared successfully.' : "Dr. {$doctor->first_name} {$doctor->last_name}'s availability was updated successfully.");

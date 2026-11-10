@@ -3,6 +3,8 @@
 namespace App\Notifications;
 
 use App\Models\Appointment;
+use App\Models\User;
+use App\Support\NotificationWording;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -10,7 +12,12 @@ class AppointmentSubmitted extends Notification
 {
     use Queueable;
 
-    public function __construct(private readonly Appointment $appointment) {}
+    private readonly string $message;
+
+    public function __construct(private readonly Appointment $appointment, User|int|null $actor = null)
+    {
+        $this->message = 'Your appointment request '.$appointment->reference_code.' for '.NotificationWording::schedule($appointment).' was submitted'.NotificationWording::by($actor).' and is awaiting clinic approval.';
+    }
 
     public function via(object $notifiable): array
     {
@@ -21,8 +28,8 @@ class AppointmentSubmitted extends Notification
     {
         return [
             'type' => 'appointment_submitted',
-            'title' => 'Appointment Request Submitted',
-            'message' => 'Your appointment request for '.$this->appointment->appointment_date->format('M j, Y').' at '.$this->appointment->start_time?->format('g:i A').' is waiting for clinic approval.',
+            'title' => 'Appointment request submitted',
+            'message' => $this->message,
             'appointment_id' => $this->appointment->id,
             'url' => route('appointments.index', absolute: false),
         ];

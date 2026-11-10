@@ -13,11 +13,16 @@ class InquiryReply extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public function __construct(public Inquiry $inquiry) {}
+    public readonly string $responder;
+
+    public function __construct(public Inquiry $inquiry)
+    {
+        $this->responder = \App\Support\NotificationWording::actor($inquiry->responded_by) ?? 'Living Myth Industrial Clinic';
+    }
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Re: '.$this->inquiry->subject);
+        return new Envelope(subject: 'Inquiry reply | '.$this->inquiry->subject);
     }
 
     public function content(): Content
@@ -26,6 +31,7 @@ class InquiryReply extends Mailable
             view: 'email.inquiry-reply',
             with: [
                 'senderName' => $this->inquiry->sender_name,
+                'responder' => $this->responder,
                 'responseText' => $this->inquiry->response,
                 'reference' => 'INQ-'.str_pad((string) $this->inquiry->id, 6, '0', STR_PAD_LEFT),
             ],

@@ -218,6 +218,19 @@
         outline: 2px solid var(--ring) !important;
         outline-offset: 2px !important;
     }
+
+    :where([data-global-search-field]):focus-within {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+
+    :where([data-global-search-field]) input:focus-visible {
+        outline: none !important;
+    }
+
+    :where([data-global-search-field]) input:focus {
+        box-shadow: none !important;
+    }
 }
 
 @layer components {

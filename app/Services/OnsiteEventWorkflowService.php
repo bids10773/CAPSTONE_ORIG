@@ -125,10 +125,11 @@ class OnsiteEventWorkflowService
         SecurityAudit::create(['actor_id' => $actor?->id, 'target_user_id' => $staff->id, 'action' => 'onsite_staff_assigned', 'status' => 'success', 'metadata' => ['bulk_appointment_id' => $event->id, 'service_role' => $role, 'queue_capacity' => $capacity]]);
 
         if ($deployment->wasRecentlyCreated || $deployment->wasChanged('is_active')) {
-            DB::afterCommit(function () use ($staff, $event, $role): void {
+            $notification = new \App\Notifications\OnsiteStaffAssigned($event, $role, $actor);
+            DB::afterCommit(function () use ($staff, $role, $notification): void {
                 try {
                     User::whereKey($staff->id)->where('role', $role)->where('is_active', true)->first()
-                        ?->notify(new \App\Notifications\OnsiteStaffAssigned($event, $role));
+                        ?->notify($notification);
                 } catch (\Throwable $exception) {
                     report($exception);
                 }
@@ -175,7 +176,12 @@ class OnsiteEventWorkflowService
             if (! $queue) {
                 return null;
             }
-            $queue->update(['assigned_staff_id' => $available['deployment']->user_id, 'status' => 'assigned', 'assigned_at' => now()]);
+            $queue->notificationAutomaticallyAssigned = true;
+            try {
+                $queue->update(['assigned_staff_id' => $available['deployment']->user_id, 'status' => 'assigned', 'assigned_at' => now()]);
+            } finally {
+                $queue->notificationAutomaticallyAssigned = false;
+            }
 
             return $queue->refresh();
         }, 3);

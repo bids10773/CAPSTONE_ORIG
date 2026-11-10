@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\MedicalDocumentAudit;
 use App\Services\WorkflowNotificationService;
+use App\Support\NotificationWording as W;
 
 class MedicalDocumentActivityNotificationObserver
 {
@@ -17,8 +18,17 @@ class MedicalDocumentActivityNotificationObserver
             default => null,
         };
         if ($message !== null) {
+            $document = $audit->medicalDocument;
+            $reference = $document ? 'Medical document '.($document->document_number ?: '#'.$document->id) : 'A medical document';
+            $message = str_replace('A medical document', $reference, rtrim($message, '.')).W::by($audit->actor).'.';
+            $title = match ($audit->action) {
+                'reviewed' => 'Medical document reviewed',
+                'marked_ready' => 'Medical document ready for pickup',
+                'released' => 'Medical document released',
+                'release_reversed' => 'Medical document release reversed',
+            };
             app(WorkflowNotificationService::class)->admins('medical_document_'.$audit->action,
-                'Medical document update', $message, '/medical-documents');
+                $title, $message, '/medical-documents');
         }
     }
 }

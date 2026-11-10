@@ -236,12 +236,14 @@ test('admin cancellation notifies the patient exactly once', function () {
 
     $this->actingAs($admin)->patch(route('admin.appointments.update-status', $appointment), [
         'status' => 'cancelled',
+        'cancellation_reason' => 'Clinic scheduling change.',
     ])->assertSessionHasNoErrors();
 
     expect($patient->notifications()->where('data->type', 'appointment_cancelled')->count())->toBe(1);
 
     $this->patch(route('admin.appointments.update-status', $appointment), [
         'status' => 'cancelled',
+        'cancellation_reason' => 'Clinic scheduling change.',
     ])->assertSessionHasNoErrors();
 
     expect($patient->notifications()->where('data->type', 'appointment_cancelled')->count())->toBe(1);

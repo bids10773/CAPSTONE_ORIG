@@ -347,7 +347,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function TypeBadge({ type }: { type: string }) {
     return (
-        <span className="inline-flex rounded-full border border-moss-200 bg-moss-50 px-2.5 py-1 text-[11px] font-semibold text-moss-700">
+        <span className="text-[11px] font-semibold text-moss-700">
             {typeLabels[type] ?? type.replaceAll('_', ' ')}
         </span>
     );
@@ -1276,7 +1276,7 @@ export default function AdminAppointmentsIndex() {
                                                 type={appointment.type}
                                             />
                                             <span
-                                                className="inline-block max-w-44 truncate rounded-full border border-moss-200 bg-moss-50 px-2.5 py-1 text-xs font-semibold text-moss-700 dark:border-moss-800 dark:bg-moss-950/40 dark:text-moss-300"
+                                                className="inline-block max-w-44 truncate text-xs font-semibold text-moss-700 dark:text-moss-300"
                                                 title={examinationPurposeLabel(
                                                     appointment.examination_purpose,
                                                 )}
@@ -1918,13 +1918,13 @@ function ServiceBadges({ services }: { services: string[] }) {
             {services.slice(0, 3).map((service) => (
                 <span
                     key={service}
-                    className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-600"
+                    className="text-[10px] font-medium text-slate-600"
                 >
                     {service}
                 </span>
             ))}
             {services.length > 3 && (
-                <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500">
+                <span className="text-[10px] font-medium text-slate-500">
                     +{services.length - 3}
                 </span>
             )}

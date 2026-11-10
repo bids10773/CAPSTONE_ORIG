@@ -166,7 +166,7 @@ export function AdminPatientMedicalReports({
                                 <span className="font-semibold text-slate-950 dark:text-slate-100">
                                     {formatDate(visit.appointment_date)}
                                 </span>
-                                <span className="rounded-full bg-moss-100 px-2.5 py-1 text-[11px] font-semibold text-moss-700 dark:bg-moss-900 dark:text-moss-200">
+                                <span className="text-[11px] font-semibold text-moss-700 dark:text-moss-200">
                                     {visit.reference_code}
                                 </span>
                                 <StatusBadge

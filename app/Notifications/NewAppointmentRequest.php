@@ -3,6 +3,8 @@
 namespace App\Notifications;
 
 use App\Models\Appointment;
+use App\Models\User;
+use App\Support\NotificationWording;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -11,7 +13,13 @@ class NewAppointmentRequest extends Notification
 {
     use Queueable;
 
-    public function __construct(private readonly Appointment $appointment) {}
+    private readonly string $message;
+
+    public function __construct(private readonly Appointment $appointment, User|int|null $actor = null)
+    {
+        $label = NotificationWording::actor($actor ?? $appointment->user);
+        $this->message = ($label ? $label.' requested ' : 'A request was submitted for ').NotificationWording::appointment($appointment).' for '.NotificationWording::person($appointment->user, 'the patient').' on '.NotificationWording::schedule($appointment).'.';
+    }
 
     public function via(object $notifiable): array
     {
@@ -27,8 +35,8 @@ class NewAppointmentRequest extends Notification
 
         return [
             'type' => 'appointment_request',
-            'title' => 'New Appointment Request',
-            'message' => $appointment->user->name.' requested an appointment for '.$appointment->appointment_date->format('M j, Y').' at '.$appointment->start_time?->format('g:i A').'.',
+            'title' => 'Appointment request received',
+            'message' => $this->message,
             'appointment_id' => $appointment->id,
             'url' => $url,
         ];
@@ -44,7 +52,7 @@ class NewAppointmentRequest extends Notification
         return (new MailMessage)
             ->subject('New appointment request awaiting review')
             ->greeting('New individual appointment request')
-            ->line($appointment->user->name.' requested an appointment on '.$appointment->appointment_date->format('F j, Y').'.')
+            ->line($this->message)
             ->line('The requested slot is reserved until the request is approved or rejected.')
             ->action('Review request', $url);
     }

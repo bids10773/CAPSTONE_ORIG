@@ -70,7 +70,7 @@ class InquiryController extends Controller
 
     public function updateStatus(UpdateInquiryStatusRequest $request, Inquiry $inquiry, InquiryService $service): RedirectResponse
     {
-        $service->updateStatus($inquiry, InquiryStatus::from($request->validated('status')));
+        $service->updateStatus($inquiry, InquiryStatus::from($request->validated('status')), $request->user());
 
         return back()->with('success', 'Inquiry status updated.');
     }

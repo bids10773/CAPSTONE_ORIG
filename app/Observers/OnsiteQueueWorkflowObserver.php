@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\OnsiteServiceQueue;
 use App\Models\User;
 use App\Services\WorkflowNotificationService;
+use App\Support\NotificationWording as W;
 
 class OnsiteQueueWorkflowObserver
 {
@@ -27,7 +28,10 @@ class OnsiteQueueWorkflowObserver
 
     private function publish(OnsiteServiceQueue $queue): void
     {
-        $this->notifications->admins('onsite_queue_updated', 'Onsite queue updated', "An onsite service task is {$queue->status}.", route('admin.onsite-events.show', $queue->bulk_appointment_id, false));
+        $visit = $queue->appointment ? W::appointment($queue->appointment) : 'appointment #'.$queue->appointment_id;
+        $context = W::service($queue->service_role).' task for '.$visit;
+        $by = $queue->notificationAutomaticallyAssigned ? ' by the system' : W::by(auth()->user());
+        $this->notifications->admins('onsite_queue_updated', 'Onsite queue updated', $context.' was marked '.W::status($queue->status).$by.'.', route('admin.onsite-events.show', $queue->bulk_appointment_id, false));
         $role = match ($queue->service_role) {
             'doctor', 'drug_verification', 'final_evaluation' => 'doctor',
             'medtech' => 'medtech',
@@ -36,7 +40,7 @@ class OnsiteQueueWorkflowObserver
         };
         if ($queue->status === 'assigned' && $queue->assigned_staff_id && $role !== null) {
             $recipients = User::whereKey($queue->assigned_staff_id)->where('role', $role)->get();
-            $this->notifications->users($recipients, 'onsite_task_assigned', 'Onsite task assigned', 'A patient is ready in your onsite service queue.', route($role.'.onsite-events.show', $queue->bulk_appointment_id, false));
+            $this->notifications->users($recipients, 'onsite_task_assigned', 'Onsite task assigned', $context.' was assigned to your onsite queue'.$by.'.', route($role.'.onsite-events.show', $queue->bulk_appointment_id, false));
         }
     }
 }

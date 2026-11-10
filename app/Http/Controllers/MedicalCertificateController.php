@@ -135,7 +135,7 @@ class MedicalCertificateController extends Controller
                 $this->documents->synchronizeCertificate($certificate);
                 $certificate = $this->workflow->approve($certificate, $request->user(), null, $request);
             }
-            $this->documents->synchronizeCertificate($certificate, true);
+            $this->documents->synchronizeCertificate($certificate, true, $request->user());
 
             return $certificate;
         });
@@ -182,7 +182,7 @@ class MedicalCertificateController extends Controller
             if ($request->input('save_action') === 'approve') {
                 $certificate = $this->workflow->approve($certificate, $request->user(), null, $request);
             }
-            $this->documents->synchronizeCertificate($certificate, true);
+            $this->documents->synchronizeCertificate($certificate, true, $request->user());
 
             return $certificate;
         });
@@ -246,7 +246,7 @@ class MedicalCertificateController extends Controller
     {
         Gate::authorize('submit', $medicalCertificate);
         $this->workflow->submitForApproval($medicalCertificate, $request->user(), $request);
-        $this->documents->synchronizeCertificate($medicalCertificate->refresh(), true);
+        $this->documents->synchronizeCertificate($medicalCertificate->refresh(), true, $request->user());
 
         return back()->with('success', 'Medical certificate submitted to the attending physician.');
     }
@@ -264,7 +264,7 @@ class MedicalCertificateController extends Controller
             $validated['approval_notes'] ?? $validated['notes'] ?? null,
             $request,
         );
-        $this->documents->synchronizeCertificate($medicalCertificate->refresh(), true);
+        $this->documents->synchronizeCertificate($medicalCertificate->refresh(), true, $request->user());
 
         return back()->with('success', 'Medical certificate approved.');
     }
@@ -282,7 +282,7 @@ class MedicalCertificateController extends Controller
             $validated['reason'] ?? $validated['change_request_reason'],
             $request,
         );
-        $this->documents->synchronizeCertificate($medicalCertificate->refresh(), true);
+        $this->documents->synchronizeCertificate($medicalCertificate->refresh(), true, $request->user());
 
         return back()->with('success', 'The certificate was returned for correction.');
     }
@@ -299,7 +299,7 @@ class MedicalCertificateController extends Controller
             $validated['date_issued'] ?? null,
             $request,
         );
-        $this->documents->synchronizeCertificate($medicalCertificate->refresh(), true);
+        $this->documents->synchronizeCertificate($medicalCertificate->refresh(), true, $request->user());
 
         return back()->with('success', 'Medical certificate issued and locked.');
     }
@@ -317,7 +317,7 @@ class MedicalCertificateController extends Controller
             $validated['reason'] ?? $validated['void_reason'],
             $request,
         );
-        $this->documents->synchronizeCertificate($medicalCertificate->refresh(), true);
+        $this->documents->synchronizeCertificate($medicalCertificate->refresh(), true, $request->user());
 
         return back()->with('success', 'Medical certificate voided. The record and audit history were preserved.');
     }

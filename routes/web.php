@@ -133,6 +133,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/api/global-search', GlobalSearchController::class)
         ->middleware('throttle:30,1')
         ->name('api.global-search');
+    Route::post('/api/global-search/recent', [GlobalSearchController::class, 'storeRecent'])
+        ->middleware('throttle:30,1')
+        ->name('api.global-search.recent');
 
     Route::middleware('role:admin,receptionist,doctor')
         ->prefix('medical-certificates')

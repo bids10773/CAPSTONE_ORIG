@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\ClinicalFormAudit;
 use App\Models\User;
 use App\Services\WorkflowNotificationService;
+use App\Support\NotificationWording as W;
 
 class ClinicalActivityNotificationObserver
 {
@@ -19,22 +20,47 @@ class ClinicalActivityNotificationObserver
         }
         $service = app(WorkflowNotificationService::class);
         $type = 'clinical_'.$audit->form_type.'_'.$audit->action;
-        $message = match ($audit->action) {
-            'sent_for_verification' => 'A diagnostic procedure requires verification.',
-            'verification_updated' => 'A diagnostic verification update was recorded.',
-            'report_released' => 'A medical examination report was released.',
-            'urgent_override' => 'An urgent clinical workflow override was recorded.',
-            'recorded' => 'Vital signs were recorded for a consultation.',
-            'recheck_requested' => 'A vital signs recheck was requested.',
-            default => 'A clinical workflow step was completed or updated.',
-        };
         $appointment = $audit->appointment;
         if (! $appointment) {
             return;
         }
+        $form = match ($audit->form_type) {
+            'physical_exam' => 'Physical examination',
+            'laboratory' => 'Laboratory results',
+            'xray' => 'X-ray results',
+            'drug_test' => 'Drug test results',
+            'final_evaluation' => 'Final evaluation',
+            'medical_examination' => 'Medical examination',
+            'vital_signs' => 'Vital signs',
+        };
+        $plural = in_array($audit->form_type, ['laboratory', 'xray', 'drug_test', 'vital_signs'], true);
+        [$title, $description] = match ($audit->action) {
+            'created' => [$form.' draft saved', $form.' draft was saved'],
+            'updated' => [$form.' draft updated', $form.' draft was updated'],
+            'finalized' => [$form.' finalized', $form.($plural ? ' were finalized' : ' was finalized')],
+            'result_verified' => [$form.' verified', $form.($plural ? ' were verified' : ' was verified')],
+            'procedure_performed' => [($audit->form_type === 'xray' ? 'X-ray' : $form).' procedure performed', ($audit->form_type === 'xray' ? 'X-ray' : $form).' procedure was performed'],
+            'sent_for_verification' => [$form.' sent for verification', $form.($plural ? ' were sent' : ' was sent').' for verification'],
+            'verification_updated' => [$form.' verification updated', $form.' verification was updated'],
+            'report_released' => ['Medical report forwarded to reception', 'The medical report was forwarded to reception for collection preparation'],
+            'urgent_override' => ['Clinical workflow override recorded', 'An urgent clinical workflow override was recorded'],
+            'recorded' => [$form.' recorded', $form.($plural ? ' were recorded' : ' was recorded')],
+            'recheck_requested' => ['Vital signs recheck requested', 'A vital signs recheck was requested'],
+        };
+        if ($audit->form_type === 'physical_exam' && in_array($audit->action, ['created', 'updated'], true)) {
+            $verb = $audit->action === 'created' ? 'recorded' : 'updated';
+            $title = 'Physical examination '.$verb;
+            $description = 'Physical examination was '.$verb;
+        }
+        $laboratoryCreatedFinal = $audit->form_type === 'laboratory' && $audit->action === 'created' && $appointment->labResult?->isFinalized();
+        if ($laboratoryCreatedFinal) {
+            $title = 'Laboratory results finalized';
+            $description = 'Laboratory results were finalized';
+        }
+        $message = $description.' for '.W::appointment($appointment).W::by($audit->actor).'.';
         $laboratoryFinalized = $audit->form_type === 'laboratory'
             && ($audit->action === 'finalized' || ($audit->action === 'created' && $appointment->labResult?->isFinalized()));
-        $service->admins($type, 'Clinical workflow update', $message, '/admin/appointments/'.$appointment->id);
+        $service->admins($type, $title, $message, '/admin/appointments/'.$appointment->id);
         // Only staff already assigned to this visit receive clinical handoffs.
         $roles = match (true) {
             $audit->action === 'sent_for_verification', $audit->action === 'verification_updated' => ['drug_verification', 'medtech'],
@@ -52,11 +78,11 @@ class ClinicalActivityNotificationObserver
             $ids->push($appointment->labResult->encoded_by);
         }
         foreach (User::query()->whereIn('id', $ids->filter()->unique())->where('id', '!=', $audit->actor_id)->whereIn('role', ['doctor', 'medtech', 'radtech'])->get() as $staff) {
-            $service->users([$staff], $type, 'Clinical workflow update', $message, '/'.$staff->role.'/appointments');
+            $service->users([$staff], $type, $title, $message, '/'.$staff->role.'/appointments');
         }
         if ($audit->form_type === 'final_evaluation' && $audit->action === 'finalized') {
             $service->users(User::query()->where('role', 'receptionist')->where('id', '!=', $audit->actor_id)->get(), $type,
-                'Medical report preparation', 'A finalized medical examination is ready for document preparation.', '/medical-documents');
+                'Final evaluation finalized', 'The final evaluation for '.W::appointment($appointment).' was finalized'.W::by($audit->actor).'; document preparation can begin.', '/medical-documents');
         }
         if ($audit->form_type === 'vital_signs' && $audit->action === 'recheck_requested') {
             $service->users(User::query()->where('role', 'receptionist')->get(), $type,

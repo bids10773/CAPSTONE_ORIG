@@ -1,29 +1,23 @@
 import { router, usePage } from '@inertiajs/react';
 import axios from 'axios';
+import { Clock3, LoaderCircle, Search, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
-    Building2,
-    CalendarDays,
-    FileSearch,
-    LoaderCircle,
-    Search,
-    UserRound,
-    X,
-} from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+    SearchCategories,
+    SearchResultGroups,
+} from '@/components/global-search-results';
+import type {
+    SearchCategory,
+    SearchGroup,
+    SearchItem,
+} from '@/components/global-search-results';
 
-type SearchItem = {
-    id: string;
-    type: 'appointment' | 'person' | 'company';
-    title: string;
-    subtitle: string;
-    url: string;
-};
-type SearchGroup = { key: string; title: string; items: SearchItem[] };
-const icons = {
-    appointment: CalendarDays,
-    person: UserRound,
-    company: Building2,
+type RecentSearch = { query: string; category: string };
+type SearchResponse = {
+    categories: SearchCategory[];
+    groups: SearchGroup[];
+    recent?: RecentSearch[];
 };
 
 const roleSearchCopy: Record<
@@ -68,21 +62,102 @@ const roleSearchCopy: Record<
 };
 
 export function GlobalSearch() {
-    const { auth } = usePage().props as { auth?: { user?: { role?: string } } };
-    const copy =
-        roleSearchCopy[auth?.user?.role ?? 'patient'] ?? roleSearchCopy.patient;
+    const { auth } = usePage().props as {
+        auth?: {
+            user?: { id?: number; role?: string; company_id?: number | null };
+        };
+    };
+    return (
+        <GlobalSearchPopover
+            key={`${auth?.user?.id}:${auth?.user?.role}:${auth?.user?.company_id}`}
+            role={auth?.user?.role ?? ''}
+        />
+    );
+}
+
+function GlobalSearchPopover({ role }: { role: string }) {
+    const copy = roleSearchCopy[role] ?? roleSearchCopy.patient;
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
-    const [groups, setGroups] = useState<SearchGroup[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [category, setCategory] = useState('all');
+    const [response, setResponse] = useState<
+        (SearchResponse & { key: string }) | null
+    >(null);
+    const [failure, setFailure] = useState<{
+        key: string;
+        message: string;
+    } | null>(null);
     const [activeIndex, setActiveIndex] = useState(0);
+    const [position, setPosition] = useState({
+        left: 12,
+        top: 64,
+        width: 560,
+        maxHeight: 480,
+    });
+    const containerRef = useRef<HTMLDivElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-    const triggerRef = useRef<HTMLButtonElement | null>(null);
+    const term = query.trim();
+    const searching = term.length > 0;
+    const requestCategory = searching ? category : 'all';
+    const requestKey = JSON.stringify([term, requestCategory]);
+    const groups = useMemo(
+        () => (response?.key === requestKey ? response.groups : []),
+        [response, requestKey],
+    );
     const items = useMemo(
         () => groups.flatMap((group) => group.items),
         [groups],
     );
+    const recent = response?.key === requestKey ? (response.recent ?? []) : [];
+    const count = searching ? items.length : recent.length;
+    const error = failure?.key === requestKey ? failure.message : '';
+    const loading = open && !error && response?.key !== requestKey;
+
+    const updatePosition = useCallback(() => {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const width = Math.min(
+            Math.max(rect.width, 560),
+            window.innerWidth - 24,
+        );
+        const next = {
+            left: Math.max(
+                12,
+                Math.min(rect.left, window.innerWidth - width - 12),
+            ),
+            top: rect.bottom + 8,
+            width,
+            maxHeight: Math.max(
+                0,
+                Math.min(
+                    520,
+                    (window.visualViewport?.height ?? window.innerHeight) -
+                        rect.bottom -
+                        20,
+                ),
+            ),
+        };
+        setPosition((previous) =>
+            Object.keys(next).every(
+                (key) =>
+                    next[key as keyof typeof next] ===
+                    previous[key as keyof typeof previous],
+            )
+                ? previous
+                : next,
+        );
+    }, []);
+    const close = useCallback(() => {
+        setOpen(false);
+        setResponse(null);
+        setFailure(null);
+        setActiveIndex(0);
+    }, []);
+    const openSearch = useCallback(() => {
+        updatePosition();
+        setOpen(true);
+    }, [updatePosition]);
 
     useEffect(() => {
         const shortcut = (event: KeyboardEvent) => {
@@ -91,221 +166,363 @@ export function GlobalSearch() {
                 event.key.toLowerCase() === 'k'
             ) {
                 event.preventDefault();
-                triggerRef.current = null;
-                setOpen(true);
+                openSearch();
+                inputRef.current?.focus();
             }
         };
         window.addEventListener('keydown', shortcut);
         return () => window.removeEventListener('keydown', shortcut);
-    }, []);
+    }, [openSearch]);
 
     useEffect(() => {
-        if (!open || query.trim().length < 2) {
-            setGroups([]);
-            setError('');
-            return;
-        }
-        const controller = new AbortController();
-        const timeout = window.setTimeout(async () => {
-            setLoading(true);
-            setError('');
-            try {
-                const response = await axios.get<{ groups: SearchGroup[] }>(
-                    '/api/global-search',
-                    {
-                        params: { q: query.trim() },
-                        signal: controller.signal,
-                    },
-                );
-                setGroups(response.data.groups);
-                setActiveIndex(0);
-            } catch (requestError) {
-                if (!axios.isCancel(requestError)) {
-                    setGroups([]);
-                    setError(
-                        'Search is temporarily unavailable. Please try again.',
-                    );
-                }
-            } finally {
-                if (!controller.signal.aborted) setLoading(false);
+        if (!open) return;
+        const dismissOutside = (event: Event) => {
+            const target = event.target as Node;
+            if (
+                !containerRef.current?.contains(target) &&
+                !panelRef.current?.contains(target)
+            )
+                close();
+        };
+        const escape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                inputRef.current?.focus({ preventScroll: true });
+                close();
             }
-        }, 350);
+        };
+        document.addEventListener('pointerdown', dismissOutside, true);
+        document.addEventListener('focusin', dismissOutside);
+        document.addEventListener('keydown', escape);
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+        window.visualViewport?.addEventListener('resize', updatePosition);
+        window.visualViewport?.addEventListener('scroll', updatePosition);
+        const observer =
+            typeof ResizeObserver === 'undefined'
+                ? null
+                : new ResizeObserver(updatePosition);
+        if (containerRef.current) {
+            observer?.observe(containerRef.current);
+            if (containerRef.current.parentElement)
+                observer?.observe(containerRef.current.parentElement);
+        }
+        return () => {
+            document.removeEventListener('pointerdown', dismissOutside, true);
+            document.removeEventListener('focusin', dismissOutside);
+            document.removeEventListener('keydown', escape);
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+            window.visualViewport?.removeEventListener(
+                'resize',
+                updatePosition,
+            );
+            window.visualViewport?.removeEventListener(
+                'scroll',
+                updatePosition,
+            );
+            observer?.disconnect();
+        };
+    }, [open, close, updatePosition]);
+
+    useEffect(() => {
+        if (!open) return;
+        const controller = new AbortController();
+        const timeout = window.setTimeout(
+            async () => {
+                try {
+                    const result = await axios.get<SearchResponse>(
+                        '/api/global-search',
+                        {
+                            params: {
+                                ...(searching ? { q: term } : {}),
+                                category: requestCategory,
+                            },
+                            signal: controller.signal,
+                        },
+                    );
+                    if (!controller.signal.aborted) {
+                        setResponse({ ...result.data, key: requestKey });
+                        setFailure(null);
+                    }
+                } catch (requestError) {
+                    if (
+                        !controller.signal.aborted &&
+                        !axios.isCancel(requestError)
+                    ) {
+                        setFailure({
+                            key: requestKey,
+                            message:
+                                'Search is temporarily unavailable. Please try again.',
+                        });
+                    }
+                }
+            },
+            searching ? 300 : 0,
+        );
         return () => {
             window.clearTimeout(timeout);
             controller.abort();
         };
-    }, [open, query]);
+    }, [open, term, searching, requestCategory, requestKey]);
 
-    function close() {
-        setOpen(false);
-        setQuery('');
-        setGroups([]);
-        setError('');
+    useEffect(() => {
+        if (open && count)
+            document
+                .getElementById(`global-search-option-${activeIndex}`)
+                ?.scrollIntoView({ block: 'nearest' });
+    }, [activeIndex, count, open]);
+
+    function replay(entry: RecentSearch) {
+        setQuery(entry.query);
+        setCategory(entry.category);
+        setActiveIndex(0);
+        inputRef.current?.focus();
     }
-
     function navigate(item: SearchItem) {
+        void axios
+            .post('/api/global-search/recent', {
+                q: term,
+                category: requestCategory,
+            })
+            .catch(() => {});
         close();
+        setQuery('');
+        setCategory('all');
         router.visit(item.url);
     }
-
     function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-        if (event.key === 'Escape') close();
-        if (event.key === 'ArrowDown' && items.length) {
+        if (event.key === 'Escape') {
             event.preventDefault();
-            setActiveIndex((index) => (index + 1) % items.length);
+            close();
         }
-        if (event.key === 'ArrowUp' && items.length) {
-            event.preventDefault();
-            setActiveIndex(
-                (index) => (index - 1 + items.length) % items.length,
+        if (!open) {
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                openSearch();
+            }
+            return;
+        }
+        if (event.key === 'Tab' && !event.shiftKey) {
+            const first = panelRef.current?.querySelector<HTMLButtonElement>(
+                'button:not([disabled])',
             );
+            if (first) {
+                event.preventDefault();
+                first.focus();
+            }
         }
-        if (event.key === 'Enter' && items[activeIndex]) {
+        if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && count) {
             event.preventDefault();
-            navigate(items[activeIndex]);
+            const direction = event.key === 'ArrowDown' ? 1 : -1;
+            setActiveIndex((index) => (index + direction + count) % count);
+        }
+        if (event.key === 'Enter' && count) {
+            event.preventDefault();
+            if (searching && items[activeIndex]) navigate(items[activeIndex]);
+            else if (!searching && recent[activeIndex])
+                replay(recent[activeIndex]);
         }
     }
 
-    let itemIndex = -1;
-    return (
-        <Dialog
-            open={open}
-            onOpenChange={(nextOpen) => {
-                if (nextOpen) setOpen(true);
-                else close();
-            }}
-        >
-            <button
-                type="button"
-                onClick={(event) => {
-                    triggerRef.current = event.currentTarget;
-                    setOpen(true);
-                }}
-                className="mx-auto hidden h-10 max-w-md min-w-0 flex-1 touch-manipulation items-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-500 transition-[background-color,border-color,color,box-shadow,transform] hover:border-moss-300 hover:bg-white hover:text-slate-700 focus-visible:border-moss-500 focus-visible:ring-2 focus-visible:ring-moss-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-none active:scale-[0.99] motion-reduce:transition-none lg:flex dark:hover:bg-card dark:hover:text-foreground"
-                aria-label="Open global search"
-            >
-                <Search className="mr-2.5 size-4 shrink-0" />
-                <span className="truncate">{copy.button}</span>
-                <kbd className="ml-auto shrink-0 rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                    Ctrl K
-                </kbd>
-            </button>
-            <button
-                type="button"
-                onClick={(event) => {
-                    triggerRef.current = event.currentTarget;
-                    setOpen(true);
-                }}
-                className="topbar-icon ml-auto lg:hidden"
-                aria-label="Open global search"
-            >
-                <Search className="size-[18px]" />
-            </button>
+    function onPanelKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+        if (event.key !== 'Tab') return;
+        const buttons = panelRef.current?.querySelectorAll<HTMLButtonElement>(
+            'button:not([disabled])',
+        );
+        if (!buttons?.length) return;
+        if (event.shiftKey && event.target === buttons[0]) {
+            event.preventDefault();
+            inputRef.current?.focus();
+        } else if (
+            !event.shiftKey &&
+            event.target === buttons[buttons.length - 1]
+        ) {
+            const pageControls = Array.from(
+                document.querySelectorAll<HTMLElement>(
+                    'a[href], button:not([disabled]), input:not([disabled]), [tabindex="0"]',
+                ),
+            ).filter(
+                (element) =>
+                    element.tabIndex >= 0 &&
+                    element.getClientRects().length > 0 &&
+                    !panelRef.current?.contains(element),
+            );
+            const inputIndex = pageControls.findIndex(
+                (element) => element === inputRef.current,
+            );
+            const next =
+                inputIndex >= 0 ? pageControls[inputIndex + 1] : undefined;
+            if (next) {
+                event.preventDefault();
+                next.focus();
+            }
+            close();
+        }
+    }
 
-            <DialogContent
-                showCloseButton={false}
-                overlayClassName="z-[100] bg-slate-950/45 backdrop-blur-sm overscroll-contain"
-                onOpenAutoFocus={(event) => {
-                    event.preventDefault();
-                    inputRef.current?.focus();
-                }}
-                onCloseAutoFocus={(event) => {
-                    if (!triggerRef.current) return;
-                    event.preventDefault();
-                    triggerRef.current.focus();
-                }}
-                className="top-[10vh] z-[101] max-h-[80vh] max-w-2xl translate-y-0 gap-0 overflow-hidden rounded-2xl border border-border bg-card p-0 text-card-foreground shadow-2xl sm:max-w-2xl"
-                aria-label="Global search"
+    return (
+        <div
+            ref={containerRef}
+            className="relative mx-auto min-w-0 flex-1 lg:max-w-md"
+        >
+            <div
+                data-global-search-field
+                className="flex h-10 items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 text-muted-foreground transition-colors focus-within:border-moss-400 focus-within:bg-card"
             >
-                <DialogTitle className="sr-only">Global search</DialogTitle>
-                <div className="flex items-center border-b border-slate-200 px-4">
-                    {loading ? (
-                        <LoaderCircle className="size-5 animate-spin text-moss-700" />
-                    ) : (
-                        <Search className="size-5 text-slate-400" />
-                    )}
-                    <input
-                        ref={inputRef}
-                        value={query}
-                        onChange={(event) => setQuery(event.target.value)}
-                        onKeyDown={onKeyDown}
-                        type="search"
-                        placeholder={copy.input}
-                        aria-label="Global search query"
-                        aria-controls="global-search-results"
-                        className="h-14 min-w-0 flex-1 border-0 px-3 text-base outline-none"
+                {loading ? (
+                    <LoaderCircle
+                        className="size-4 shrink-0 animate-spin"
+                        aria-hidden="true"
                     />
+                ) : (
+                    <Search className="size-4 shrink-0" aria-hidden="true" />
+                )}
+                <input
+                    ref={inputRef}
+                    value={query}
+                    onFocus={openSearch}
+                    onClick={openSearch}
+                    onChange={(event) => {
+                        setQuery(event.target.value);
+                        setActiveIndex(0);
+                        openSearch();
+                    }}
+                    onKeyDown={onKeyDown}
+                    type="search"
+                    role="combobox"
+                    autoComplete="off"
+                    maxLength={100}
+                    aria-expanded={open}
+                    aria-autocomplete="list"
+                    aria-activedescendant={
+                        open && count
+                            ? `global-search-option-${activeIndex}`
+                            : undefined
+                    }
+                    aria-label="Global search query"
+                    aria-controls={open ? 'global-search-results' : undefined}
+                    placeholder={copy.button}
+                    className="h-full min-h-0 w-full min-w-0 border-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:appearance-none"
+                />
+                {query ? (
                     <button
                         type="button"
-                        onClick={close}
-                        className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none dark:hover:bg-accent"
-                        aria-label="Close search"
+                        onClick={() => {
+                            setQuery('');
+                            setCategory('all');
+                            setActiveIndex(0);
+                            inputRef.current?.focus();
+                        }}
+                        aria-label="Clear search"
+                        className="shrink-0 rounded p-1 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                     >
-                        <X className="size-5" />
+                        <X className="size-4" aria-hidden="true" />
                     </button>
-                </div>
-                <div
-                    id="global-search-results"
-                    className="max-h-[65vh] overflow-y-auto p-2"
-                    aria-live="polite"
-                >
-                    {query.trim().length < 2 && (
-                        <div className="p-8 text-center text-sm text-slate-500">
-                            <FileSearch className="mx-auto mb-3 size-8 text-moss-600" />
-                            Enter at least two characters. {copy.empty}
-                        </div>
-                    )}
-                    {error && (
-                        <p className="p-6 text-center text-sm font-semibold text-red-600">
-                            {error}
-                        </p>
-                    )}
-                    {!loading &&
-                        !error &&
-                        query.trim().length >= 2 &&
-                        groups.length === 0 && (
-                            <p className="p-8 text-center text-sm text-slate-500">
-                                No authorized records matched your search.
-                            </p>
+                ) : (
+                    <kbd className="hidden shrink-0 text-[10px] xl:block">
+                        Ctrl K
+                    </kbd>
+                )}
+            </div>
+            {open &&
+                typeof document !== 'undefined' &&
+                createPortal(
+                    <div
+                        ref={panelRef}
+                        onKeyDown={onPanelKeyDown}
+                        style={position}
+                        className="fixed z-[100] flex flex-col overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-lg"
+                        data-search-popover="true"
+                        aria-label="Global search dropdown"
+                    >
+                        {searching && response && (
+                            <SearchCategories
+                                categories={response.categories}
+                                selected={category}
+                                onSelect={(key) => {
+                                    setCategory(key);
+                                    setActiveIndex(0);
+                                    inputRef.current?.focus();
+                                }}
+                            />
                         )}
-                    {groups.map((group) => (
-                        <div key={group.key} className="mb-3 last:mb-0">
-                            <h2 className="px-3 py-2 text-xs font-bold tracking-wider text-slate-400 uppercase">
-                                {group.title}
-                            </h2>
-                            {group.items.map((item) => {
-                                itemIndex += 1;
-                                const index = itemIndex;
-                                const Icon = icons[item.type];
-                                return (
+                        <p className="sr-only" role="status">
+                            {loading
+                                ? 'Searching'
+                                : error ||
+                                  `${count} ${searching ? 'results' : 'recent searches'}`}
+                        </p>
+                        <div
+                            id="global-search-results"
+                            role="listbox"
+                            aria-label={
+                                searching ? 'Search results' : 'Recent searches'
+                            }
+                            aria-busy={loading}
+                            className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+                        >
+                            {!searching && (
+                                <h2 className="px-4 pt-4 pb-2 text-xs font-medium text-muted-foreground">
+                                    Recent searches
+                                </h2>
+                            )}
+                            {loading && (
+                                <p className="px-4 py-6 text-sm text-muted-foreground">
+                                    {searching
+                                        ? 'Searching?'
+                                        : 'Loading recent searches?'}
+                                </p>
+                            )}
+                            {error && (
+                                <p className="px-4 py-6 text-sm text-red-600">
+                                    {error}
+                                </p>
+                            )}
+                            {!loading && !error && !count && (
+                                <p className="px-4 py-6 text-sm text-muted-foreground">
+                                    {searching
+                                        ? 'No results found. Try another name, reference, or category.'
+                                        : 'No recent searches.'}
+                                </p>
+                            )}
+                            {searching ? (
+                                <SearchResultGroups
+                                    groups={groups}
+                                    query={query}
+                                    activeIndex={activeIndex}
+                                    onActivate={setActiveIndex}
+                                    onNavigate={navigate}
+                                />
+                            ) : (
+                                recent.map((entry, index) => (
                                     <button
-                                        key={item.id}
+                                        key={`${entry.category}:${entry.query}`}
+                                        id={`global-search-option-${index}`}
                                         type="button"
+                                        role="option"
+                                        aria-selected={activeIndex === index}
                                         onMouseEnter={() =>
                                             setActiveIndex(index)
                                         }
                                         onFocus={() => setActiveIndex(index)}
-                                        onClick={() => navigate(item)}
-                                        className={`flex w-full touch-manipulation items-center gap-3 rounded-xl p-3 text-left transition-[background-color,color,box-shadow,transform] focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-card focus-visible:outline-none active:scale-[0.99] motion-reduce:transition-none ${activeIndex === index ? 'bg-moss-50 ring-1 ring-moss-200 dark:bg-accent dark:ring-border' : 'hover:bg-slate-50 dark:hover:bg-muted'}`}
+                                        onClick={() => replay(entry)}
+                                        className={`flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset ${activeIndex === index ? 'bg-muted/80' : 'hover:bg-muted/50'}`}
                                     >
-                                        <span className="rounded-xl bg-card p-2 text-moss-700 shadow-sm dark:text-moss-200">
-                                            <Icon className="size-5" />
-                                        </span>
-                                        <span className="min-w-0">
-                                            <span className="block truncate font-semibold text-slate-900">
-                                                {item.title}
-                                            </span>
-                                            <span className="block truncate text-xs text-slate-500">
-                                                {item.subtitle}
-                                            </span>
+                                        <Clock3
+                                            className="size-4 shrink-0 text-muted-foreground"
+                                            aria-hidden="true"
+                                        />
+                                        <span className="min-w-0 flex-1 truncate">
+                                            {entry.query}
                                         </span>
                                     </button>
-                                );
-                            })}
+                                ))
+                            )}
                         </div>
-                    ))}
-                </div>
-            </DialogContent>
-        </Dialog>
+                    </div>,
+                    document.body,
+                )}
+        </div>
     );
 }

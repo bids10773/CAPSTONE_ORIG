@@ -17,11 +17,16 @@ class CompanyInvitation extends Mailable
     /**
      * Create a new message instance.
      */
+    public readonly string $actorSuffix;
+
     public function __construct(
         public Company $company,
         public User $representative,
-        public string $tempPassword
-    ) {}
+        public string $tempPassword,
+        ?User $actor = null,
+    ) {
+        $this->actorSuffix = \App\Support\NotificationWording::by($actor);
+    }
 
     /**
      * Get the message envelope.
@@ -29,7 +34,7 @@ class CompanyInvitation extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Invitation to Living Myth Industrial Clinic Partner Portal',
+            subject: 'Company portal sign-in credentials | Living Myth Industrial Clinic',
         );
     }
 
@@ -43,6 +48,7 @@ class CompanyInvitation extends Mailable
             with: [
                 'company' => $this->company,
                 'companyName' => $this->company->company_name,
+                'actorSuffix' => $this->actorSuffix,
                 'representativeName' => $this->representative->name,
                 'loginEmail' => $this->company->email,
                 'temporaryPassword' => $this->tempPassword,

@@ -6,7 +6,6 @@ import {
     CheckCircle2,
     HeartPulse,
     ShieldCheck,
-    Sparkles,
 } from 'lucide-react';
 import type { AuthLayoutProps } from '@/types';
 import logo from '/public/images/full_logo2-optimized.webp';
@@ -60,10 +59,6 @@ export default function AuthSplitLayout({
                             }}
                             className="mt-8 max-w-xl"
                         >
-                            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-medium text-primary shadow-sm">
-                                <Sparkles className="size-3.5 text-moss-300" />
-                                Connected care, clearer decisions
-                            </div>
                             <h1 className="max-w-lg text-4xl leading-[1.12] font-semibold tracking-[-0.04em] text-foreground xl:text-5xl">
                                 Healthcare operations, working in harmony.
                             </h1>
@@ -171,7 +166,10 @@ export default function AuthSplitLayout({
                         }}
                         className={`relative z-10 mx-auto w-full ${isRegister ? 'max-w-[720px]' : 'max-w-[480px]'}`}
                     >
-                        <div className="mb-7 flex items-center justify-center gap-3 lg:hidden">
+                        <Link
+                            href={dashboardRoute}
+                            className="mb-7 flex items-center justify-center gap-3 rounded-xl focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none lg:hidden"
+                        >
                             <span className="flex size-11 items-center justify-center rounded-xl border border-border bg-card shadow-sm">
                                 <img
                                     src={logo}
@@ -187,7 +185,7 @@ export default function AuthSplitLayout({
                                     INDUSTRIAL CLINIC
                                 </p>
                             </div>
-                        </div>
+                        </Link>
                         <div className="rounded-2xl border border-border bg-card p-6 shadow-[0_24px_70px_-30px_rgba(15,43,75,.3)] sm:p-9">
                             {(title || description) && (
                                 <header className="mb-7 text-center">

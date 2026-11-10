@@ -8,6 +8,7 @@ use App\Mail\InquiryReply;
 use App\Models\Inquiry;
 use App\Models\User;
 use App\Notifications\NewInquirySubmitted;
+use App\Support\NotificationWording;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
@@ -43,13 +44,13 @@ class InquiryService
         }
     }
 
-    public function updateStatus(Inquiry $inquiry, InquiryStatus $status): void
+    public function updateStatus(Inquiry $inquiry, InquiryStatus $status, ?User $actor = null): void
     {
         if ($inquiry->status === $status) {
             return;
         }
         $inquiry->update(['status' => $status]);
-        $this->notifyWorkflowUpdate($inquiry, 'inquiry_status_changed', 'Inquiry status updated');
+        $this->notifyWorkflowUpdate($inquiry, 'inquiry_status_changed', 'Inquiry status updated', $actor);
     }
 
     public function reply(Inquiry $inquiry, string $response, User $admin): bool
@@ -62,7 +63,7 @@ class InquiryService
                 'status' => InquiryStatus::Replied,
             ]);
             if ($inquiry->wasChanged(['response', 'status'])) {
-                $this->notifyWorkflowUpdate($inquiry, 'inquiry_replied', 'Inquiry response available');
+                $this->notifyWorkflowUpdate($inquiry, 'inquiry_replied', 'Inquiry response available', $admin);
             }
         });
 
@@ -77,14 +78,17 @@ class InquiryService
         }
     }
 
-    private function notifyWorkflowUpdate(Inquiry $inquiry, string $type, string $title): void
+    private function notifyWorkflowUpdate(Inquiry $inquiry, string $type, string $title, ?User $actor = null): void
     {
         $notifications = app(WorkflowNotificationService::class);
-        $notifications->admins($type, $title, 'An inquiry was updated. Status: '.$inquiry->status->label().'.',
+        $reference = 'INQ-'.str_pad((string) $inquiry->id, 6, '0', STR_PAD_LEFT);
+        $by = NotificationWording::by($actor);
+        $action = $type === 'inquiry_replied' ? 'replied to' : 'marked as '.strtolower($inquiry->status->label());
+        $notifications->admins($type, $title, "Inquiry {$reference} from {$inquiry->sender_name} was {$action}{$by}.",
             route('admin.inquiries.show', $inquiry, false));
         if ($inquiry->user_id) {
             $notifications->users([$inquiry->user_id], $type, $title,
-                'Your inquiry was updated. Status: '.$inquiry->status->label().'.', route('inquiries.index', absolute: false));
+                "Your inquiry {$reference} was {$action}{$by}.".($type === 'inquiry_replied' ? ' Open your inquiry to read the response.' : ''), route('inquiries.index', absolute: false));
         }
     }
 

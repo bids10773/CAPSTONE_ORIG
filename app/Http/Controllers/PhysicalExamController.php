@@ -317,7 +317,8 @@ class PhysicalExamController extends Controller
                 'released_at' => $examination->released_at?->toIso8601String(),
             ]);
 
-            DB::afterCommit(fn () => $appointment->user?->notify(new MedicalReportReleased));
+            $notification = new MedicalReportReleased($appointment, $request->user());
+            DB::afterCommit(fn () => $appointment->user?->notify($notification));
         });
 
         return to_route('doctor.appointments')->with('success', 'Medical Examination Report forwarded to clinic reception for in-person collection.');

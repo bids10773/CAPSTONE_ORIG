@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class OnsiteServiceQueue extends Model
 {
+    public bool $notificationAutomaticallyAssigned = false;
+
     protected $fillable = ['bulk_appointment_id', 'appointment_id', 'service_role', 'assigned_staff_id', 'status', 'assigned_at', 'started_at', 'completed_at', 'hold_reason'];
 
     protected function casts(): array

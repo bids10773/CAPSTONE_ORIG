@@ -334,7 +334,7 @@ function PatientChip({
     label: string;
 }) {
     return (
-        <span className="inline-flex max-w-full items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/15 backdrop-blur-sm">
+        <span className="inline-flex max-w-full items-center gap-2 text-xs font-semibold text-white">
             {icon && <span className="[&>svg]:size-3.5">{icon}</span>}
             <span className="truncate">{label}</span>
         </span>

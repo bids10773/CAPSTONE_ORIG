@@ -549,7 +549,7 @@ export default function AdminDashboard() {
                                                 (company) => (
                                                     <span
                                                         key={company.id}
-                                                        className="rounded-md bg-moss-100 px-2 py-1 text-[11px] font-semibold text-moss-800 dark:bg-moss-900 dark:text-moss-200"
+                                                        className="text-[11px] font-semibold text-moss-800 dark:text-moss-200"
                                                     >
                                                         {company.company_name}
                                                     </span>
@@ -1263,7 +1263,7 @@ export default function AdminDashboard() {
                                 </p>
                             </div>
                         </div>
-                        <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
+                        <span className="inline-flex items-center gap-2 text-xs text-slate-600">
                             Bulk events
                             <strong className="text-slate-900">
                                 {bulkSummary.events.toLocaleString()}

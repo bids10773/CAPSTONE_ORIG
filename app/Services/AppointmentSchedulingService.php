@@ -146,7 +146,7 @@ class AppointmentSchedulingService
     {
         $isBulkEvent = $appointment->type === 'company_bulk'
             && $appointment->bulk_appointment_id === null;
-        $appointment->update([
+        $this->updateAutomatically($appointment, [
             'status' => 'rejected',
             'rejection_reason' => 'schedule_expired',
             'rejection_details' => $isBulkEvent
@@ -211,10 +211,21 @@ class AppointmentSchedulingService
             && $at->greaterThan($graceEndsAt);
     }
 
+    private function updateAutomatically(Appointment $appointment, array $attributes): void
+    {
+        $previous = $appointment->notificationAutomaticallyUpdated;
+        $appointment->notificationAutomaticallyUpdated = true;
+        try {
+            $appointment->update($attributes);
+        } finally {
+            $appointment->notificationAutomaticallyUpdated = $previous;
+        }
+    }
+
     private function cancelAndRelease(Appointment $appointment, CarbonInterface $at): void
     {
         $reason = 'Automatically cancelled after the 10-minute arrival grace period.';
-        $appointment->update([
+        $this->updateAutomatically($appointment, [
             'status' => 'cancelled',
             'auto_cancelled_at' => $at,
             'cancellation_reason' => $reason,
@@ -233,7 +244,7 @@ class AppointmentSchedulingService
             ->first();
 
         if ($walkIn !== null) {
-            $walkIn->update([
+            $this->updateAutomatically($walkIn, [
                 'doctor_id' => $appointment->doctor_id,
                 'start_time' => $appointment->start_time,
                 'end_time' => $appointment->end_time,

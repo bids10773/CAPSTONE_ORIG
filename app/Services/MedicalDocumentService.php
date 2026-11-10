@@ -63,7 +63,7 @@ class MedicalDocumentService
         }
     }
 
-    public function synchronizeCertificate(MedicalCertificate $certificate, bool $notify = false): MedicalDocument
+    public function synchronizeCertificate(MedicalCertificate $certificate, bool $notify = false, ?User $actor = null): MedicalDocument
     {
         $status = match ($certificate->status) {
             'pending_approval' => 'for_review',
@@ -71,6 +71,13 @@ class MedicalDocumentService
             'void' => 'voided',
             default => 'pending',
         };
+
+        $actor ??= User::find(match ($certificate->status) {
+            'approved' => $certificate->approved_by,
+            'issued' => $certificate->issued_by,
+            'void' => $certificate->voided_by,
+            default => null,
+        });
 
         return $this->saveSource([
             'source_key' => "certificate:{$certificate->id}",
@@ -86,7 +93,7 @@ class MedicalDocumentService
             'related_service' => 'Medical Consultation',
             'requested_at' => $certificate->created_at,
             'approved_at' => $certificate->approved_at,
-        ], $status, $notify);
+        ], $status, $notify, $actor, $certificate->status);
     }
 
     public function markReady(MedicalDocument $document, User $actor, Request $request): MedicalDocument
@@ -109,7 +116,7 @@ class MedicalDocumentService
                 'recipient_type' => $data['recipient_type'], 'recipient_name' => $data['recipient_name'] ?? null,
                 'release_method' => $data['release_method'],
             ]);
-            $this->notify($locked);
+            $this->notify($locked, $actor);
 
             return $locked->refresh();
         });
@@ -124,7 +131,7 @@ class MedicalDocumentService
             $release->update(['reversed_by' => $actor->id, 'reversed_at' => now(), 'reversal_reason' => $reason]);
             $locked->update(['status' => 'ready_for_pickup', 'released_at' => null, 'released_by' => null]);
             $this->audit($locked, $actor, 'release_reversed', 'released', 'ready_for_pickup', $request, ['reason' => $reason]);
-            $this->notify($locked);
+            $this->notify($locked, $actor, 'release_reversed');
 
             return $locked->refresh();
         });
@@ -143,7 +150,7 @@ class MedicalDocumentService
         ], $status);
     }
 
-    private function saveSource(array $values, string $status, bool $notify = false): MedicalDocument
+    private function saveSource(array $values, string $status, bool $notify = false, ?User $actor = null, ?string $action = null): MedicalDocument
     {
         $document = MedicalDocument::firstOrNew(['source_key' => $values['source_key']]);
         $isNew = ! $document->exists;
@@ -161,7 +168,7 @@ class MedicalDocumentService
         if ($isNew || $old !== $document->status) {
             $document->audits()->create(['action' => $isNew ? 'registered' : 'status_synchronized', 'old_status' => $old, 'new_status' => $document->status]);
             if ($notify && ! $isNew) {
-                $this->notify($document);
+                $this->notify($document, $actor, $action);
             }
         }
 
@@ -176,7 +183,7 @@ class MedicalDocumentService
             $old = $locked->status;
             $locked->update([...$attributes, 'status' => $status]);
             $this->audit($locked, $actor, $action, $old, $status, $request);
-            $this->notify($locked);
+            $this->notify($locked, $actor);
 
             return $locked->refresh();
         });
@@ -189,10 +196,10 @@ class MedicalDocumentService
             'user_agent' => Str::limit((string) $request->userAgent(), 1000)]);
     }
 
-    private function notify(MedicalDocument $document): void
+    private function notify(MedicalDocument $document, ?User $actor = null, ?string $action = null): void
     {
         try {
-            $document->patient?->notify(new MedicalDocumentStatusChanged($document));
+            $document->patient?->notify(new MedicalDocumentStatusChanged($document, $actor, $action));
         } catch (\Throwable $e) {
             Log::warning('Medical document notification failed', ['document_id' => $document->id, 'error' => $e->getMessage()]);
         }

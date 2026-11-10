@@ -213,11 +213,7 @@ export default function TodayAppointments({
                     <div className="absolute -bottom-28 left-1/3 size-56 rounded-full bg-moss-400/20 blur-3xl" />
                     <div className="relative flex flex-col justify-between gap-8 md:flex-row md:items-end">
                         <div>
-                            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold tracking-[0.14em] text-moss-100 uppercase">
-                                <CalendarClock className="size-4" /> Live clinic
-                                overview
-                            </span>
-                            <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl">
+                            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
                                 Today&apos;s Clinic Overview
                             </h1>
                             <p className="mt-2 max-w-2xl text-sm text-moss-100/80 sm:text-base">
@@ -628,7 +624,7 @@ function StatusBadge({ status }: { status: string }) {
 
 function TypeBadge({ type }: { type: string }) {
     return (
-        <span className="inline-flex rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-accent dark:text-slate-200">
+        <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
             {typeLabels[type] ?? type}
         </span>
     );

@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class CompanyReferral extends Model
 {
+    public bool $notificationAutomaticallyUpdated = false;
+
     protected $fillable = [
         'company_id', 'patient_id', 'created_by', 'referral_number',
         'invitation_token_hash', 'employee_email', 'employee_contact', 'first_name',
@@ -31,6 +33,17 @@ class CompanyReferral extends Model
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
+    }
+
+    public function updateAutomatically(array $attributes): bool
+    {
+        $previous = $this->notificationAutomaticallyUpdated;
+        $this->notificationAutomaticallyUpdated = true;
+        try {
+            return $this->update($attributes);
+        } finally {
+            $this->notificationAutomaticallyUpdated = $previous;
+        }
     }
 
     public function company(): BelongsTo

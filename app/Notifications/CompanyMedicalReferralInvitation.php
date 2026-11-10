@@ -3,13 +3,19 @@
 namespace App\Notifications;
 
 use App\Models\CompanyReferral;
+use App\Support\NotificationWording;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\URL;
 
 class CompanyMedicalReferralInvitation extends Notification
 {
-    public function __construct(public readonly CompanyReferral $referral, private readonly string $token) {}
+    private readonly ?string $referrer;
+
+    public function __construct(public readonly CompanyReferral $referral, private readonly string $token)
+    {
+        $this->referrer = NotificationWording::actor($referral->creator);
+    }
 
     public function via(object $notifiable): array
     {
@@ -25,10 +31,11 @@ class CompanyMedicalReferralInvitation extends Notification
         );
 
         return (new MailMessage)
-            ->subject('Medical Examination Referral')
+            ->subject('Medical examination referral')
             ->view('email.company-referral-invitation', [
                 'employeeName' => $this->referral->first_name,
-                'companyName' => $this->referral->company->company_name,
+                'companyName' => ($this->referral->company?->company_name ?? 'your company'),
+                'referrer' => $this->referrer,
                 'referralNumber' => $this->referral->referral_number,
                 'examinationPurpose' => match ($this->referral->examination_purpose) {
                     'pre_employment' => 'Pre-employment',

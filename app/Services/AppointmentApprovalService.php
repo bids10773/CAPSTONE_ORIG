@@ -93,10 +93,12 @@ class AppointmentApprovalService
                 'rejection_details' => null,
             ]);
             $this->audit($locked, $actor, 'pending', 'accepted', $administrativeReason);
-            DB::afterCommit(function () use ($locked): void {
+            $confirmation = new AppointmentConfirmed($locked->fresh(['doctor', 'user']), $actor);
+            $assignment = new AppointmentAssigned($locked->fresh(['doctor', 'user']), $actor);
+            DB::afterCommit(function () use ($locked, $confirmation, $assignment): void {
                 $confirmed = $locked->fresh(['doctor', 'user']);
                 try {
-                    $confirmed->user?->notify(new AppointmentConfirmed($confirmed));
+                    $confirmed->user?->notify($confirmation);
                 } catch (\Throwable $exception) {
                     Log::warning('Patient appointment confirmation notification failed.', [
                         'appointment_id' => $confirmed->id,
@@ -104,7 +106,7 @@ class AppointmentApprovalService
                     ]);
                 }
                 try {
-                    $confirmed->doctor?->notify(new AppointmentAssigned($confirmed));
+                    $confirmed->doctor?->notify($assignment);
                 } catch (\Throwable $exception) {
                     Log::warning('Doctor appointment assignment notification failed.', [
                         'appointment_id' => $confirmed->id,
@@ -130,9 +132,10 @@ class AppointmentApprovalService
                 'processed_at' => now(),
             ]);
             $this->audit($locked, $actor, 'pending', 'rejected');
-            DB::afterCommit(function () use ($locked): void {
+            $rejection = new AppointmentRejected($locked->fresh(), $actor);
+            DB::afterCommit(function () use ($locked, $rejection): void {
                 try {
-                    $locked->user?->notify(new AppointmentRejected($locked->fresh()));
+                    $locked->user?->notify($rejection);
                 } catch (\Throwable $exception) {
                     Log::warning('Patient appointment rejection notification failed.', [
                         'appointment_id' => $locked->id,

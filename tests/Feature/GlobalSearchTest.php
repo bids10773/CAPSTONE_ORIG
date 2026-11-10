@@ -75,14 +75,13 @@ test('doctor global search is restricted to assigned appointments', function () 
         ->assertJsonMissing(['id' => 'appointment-'.$unassigned->id]);
 });
 
-test('global search validates short queries and requires authentication', function () {
+test('global search accepts single character queries and requires authentication', function () {
     $this->getJson(route('api.global-search', ['q' => 'patient']))->assertUnauthorized();
 
     $user = User::factory()->create(['role' => 'admin']);
     $this->actingAs($user)
         ->getJson(route('api.global-search', ['q' => 'x']))
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('q');
+        ->assertOk();
 });
 
 test('global search rejects whitespace and treats sql wildcards literally', function () {
@@ -211,3 +210,59 @@ test('global search accepts the displayed appointment reference code', function 
             'title' => $walkIn->reference_code.' · '.$patient->name,
         ]);
 });
+
+test('search categories are supplied by the server for each role without exposing records', function (string $role, array $keys) {
+    $user = User::factory()->create(['role' => $role]);
+    $this->actingAs($user)->getJson(route('api.global-search'))
+        ->assertOk()->assertJsonPath('categories', fn ($categories) => array_column($categories, 'key') === $keys)
+        ->assertJsonCount(0, 'groups');
+})->with([
+    ['admin', ['appointments', 'patients', 'companies', 'certificates', 'documents', 'staff']],
+    ['receptionist', ['appointments', 'patients', 'certificates', 'documents']],
+    ['company', ['appointments', 'patients']],
+    ['doctor', ['appointments', 'certificates', 'documents']],
+    ['medtech', ['appointments', 'documents']],
+    ['radtech', ['appointments', 'documents']],
+    ['patient', ['appointments', 'documents']],
+]);
+
+test('users cannot request a forbidden search category directly', function (string $role, string $category) {
+    $user = User::factory()->create(['role' => $role]);
+    $this->actingAs($user)->getJson(route('api.global-search', ['q' => 'Searchable', 'category' => $category]))
+        ->assertForbidden();
+})->with([
+    ['patient', 'patients'], ['doctor', 'patients'], ['medtech', 'patients'], ['radtech', 'patients'],
+    ['receptionist', 'companies'], ['company', 'companies'],
+]);
+
+test('category filtering returns only the selected authorized group', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $patient = User::factory()->create(['role' => 'patient', 'first_name' => 'FilteredSearch']);
+    searchableAppointment($patient);
+    $this->actingAs($admin)->getJson(route('api.global-search', ['q' => 'FilteredSearch', 'category' => 'patients']))
+        ->assertOk()->assertJsonCount(1, 'groups')->assertJsonPath('groups.0.key', 'patients')
+        ->assertJsonFragment(['id' => 'person-'.$patient->id]);
+});
+
+test('search sends view-only diagnostic records to records rather than unauthorized editing screens', function (string $role, string $status, string $service) {
+    $staff = User::factory()->licensed()->create(['role' => $role]);
+    $patient = User::factory()->create(['role' => 'patient', 'first_name' => 'ViewOnlySearch']);
+    $appointment = searchableAppointment($patient, ['type' => 'walk_in', 'status' => $status, 'service_types' => [$service]]);
+    $this->actingAs($staff)->getJson(route('api.global-search', ['q' => 'ViewOnlySearch']))
+        ->assertOk()->assertJsonFragment([
+            'id' => 'appointment-'.$appointment->id,
+            'url' => route($role.'.patient-records.index', ['search' => $patient->name]),
+        ]);
+})->with([['medtech', 'for_diagnostics', 'PE'], ['radtech', 'for_xray', 'CBC']]);
+
+test('search uses complete patient context when checking laboratory editing permission', function (string $sex, bool $editable) {
+    $staff = User::factory()->licensed()->create(['role' => 'medtech']);
+    $patient = User::factory()->create(['role' => 'patient', 'first_name' => 'PregnancySearch', 'sex' => $sex]);
+    $appointment = searchableAppointment($patient, ['type' => 'walk_in', 'status' => 'for_diagnostics', 'service_types' => ['Pregnancy Test']]);
+    $expectedUrl = $editable
+        ? route('medtech.lab-results.create', $appointment)
+        : route('medtech.patient-records.index', ['search' => $patient->name]);
+
+    $this->actingAs($staff)->getJson(route('api.global-search', ['q' => 'PregnancySearch']))
+        ->assertOk()->assertJsonFragment(['id' => 'appointment-'.$appointment->id, 'url' => $expectedUrl]);
+})->with([['male', false], ['female', true]]);

@@ -15,7 +15,7 @@ use App\Services\WorkflowNotificationService;
 test('license audit notifications use safe messages and notify the affected professional', function () {
     $doctor = User::factory()->create(['role' => 'doctor']);
     $service = Mockery::mock(WorkflowNotificationService::class);
-    $service->shouldReceive('admins')->once()->with('professional_license_rejected', 'Professional license update', 'A professional license submission was rejected.', '/admin/staff/'.$doctor->id.'/edit');
+    $service->shouldReceive('admins')->once()->with('professional_license_rejected', 'Professional license rejected', $doctor->name."'s professional license was rejected.", '/admin/staff/'.$doctor->id.'/edit');
     $service->shouldReceive('users')->once()->withArgs(fn ($users, $type, $title, $message, $url) => collect($users)->contains($doctor->id) && $type === 'professional_license_rejected'
         && ! str_contains($message, 'SECRET') && $url === '/settings/profile');
     $this->app->instance(WorkflowNotificationService::class, $service);
@@ -44,7 +44,7 @@ test('document synchronization and clinical downloads never generate operational
 
 test('document release operational messages omit representative and reversal details', function () {
     $service = Mockery::mock(WorkflowNotificationService::class);
-    $service->shouldReceive('admins')->once()->with('medical_document_release_reversed', 'Medical document update', 'A medical document release was reversed.', '/medical-documents');
+    $service->shouldReceive('admins')->once()->with('medical_document_release_reversed', 'Medical document release reversed', 'A medical document release was reversed.', '/medical-documents');
     $service->shouldNotReceive('users');
     $this->app->instance(WorkflowNotificationService::class, $service);
     (new MedicalDocumentActivityNotificationObserver)->created(new MedicalDocumentAudit(['action' => 'release_reversed', 'metadata' => ['reason' => 'SECRET']]));
@@ -65,7 +65,7 @@ test('clinical handoffs go only to assigned professionals and omit medical findi
     $patient = User::factory()->create(['role' => 'patient']);
     $appointment = Appointment::create(['user_id' => $patient->id, 'doctor_id' => $doctor->id, 'appointment_date' => now()->addDay(), 'type' => 'individual', 'status' => 'for_final_evaluation', 'service_types' => ['CBC']]);
     $service = Mockery::mock(WorkflowNotificationService::class);
-    $service->shouldReceive('admins')->once()->with('clinical_laboratory_finalized', 'Clinical workflow update', 'A clinical workflow step was completed or updated.', '/admin/appointments/'.$appointment->id);
+    $service->shouldReceive('admins')->once()->with('clinical_laboratory_finalized', 'Laboratory results finalized', 'Laboratory results were finalized for appointment '.$appointment->reference_code.' by '.$actor->name.' (Medical Technologist).', '/admin/appointments/'.$appointment->id);
     $service->shouldReceive('users')->once()->withArgs(fn ($users, $type, $title, $message, $url) => collect($users)->pluck('id')->all() === [$doctor->id] && ! str_contains($message, 'SECRET') && $url === '/doctor/appointments');
     $this->app->instance(WorkflowNotificationService::class, $service);
     (new ClinicalActivityNotificationObserver)->created(new ClinicalFormAudit(['appointment_id' => $appointment->id, 'actor_id' => $actor->id, 'form_type' => 'laboratory', 'action' => 'finalized', 'changes' => ['results' => 'SECRET']]));

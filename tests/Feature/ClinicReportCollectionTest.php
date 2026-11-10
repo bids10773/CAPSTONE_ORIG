@@ -35,7 +35,7 @@ test('report handoff notifications direct patients to clinic collection tracking
         ->not->toContain('patient portal');
     expect($mail->attachments)->toBeEmpty();
     expect($mail->actionUrl)->toBe(route('medical-documents.patient'));
-    expect($notification->toDatabase($patient)['message'])->toContain('clinic');
+    expect($notification->toDatabase($patient)['message'])->toContain('forwarded to reception', 'collection preparation');
 });
 
 test('forwarding a finalized report redirects the doctor to the queue', function () {

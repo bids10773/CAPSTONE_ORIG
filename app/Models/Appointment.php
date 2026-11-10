@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Appointment extends Model
 {
+    public bool $notificationAutomaticallyUpdated = false;
+
     protected $appends = ['reference_code'];
 
     public const ACTIVE_RESERVATION_STATUSES = ['pending', 'accepted'];
@@ -40,9 +42,11 @@ class Appointment extends Model
             if ($appointment->wasChanged('status') && $appointment->company_referral_id !== null) {
                 $referral = $appointment->companyReferral;
                 if ($appointment->status === 'completed') {
-                    $referral?->update(['status' => 'completed', 'completed_at' => now()]);
+                    $attributes = ['status' => 'completed', 'completed_at' => now()];
+                    $appointment->notificationAutomaticallyUpdated ? $referral?->updateAutomatically($attributes) : $referral?->update($attributes);
                 } elseif ($appointment->status === 'cancelled') {
-                    $referral?->update(['status' => 'cancelled', 'cancelled_at' => now()]);
+                    $attributes = ['status' => 'cancelled', 'cancelled_at' => now()];
+                    $appointment->notificationAutomaticallyUpdated ? $referral?->updateAutomatically($attributes) : $referral?->update($attributes);
                 }
             }
         });

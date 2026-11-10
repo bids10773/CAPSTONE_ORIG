@@ -48,7 +48,7 @@ class CompanyReferralService
             Notification::route('mail', $referral->employee_email)
                 ->notify(new CompanyMedicalReferralInvitation($referral->load('company'), $token));
         } catch (\Throwable $exception) {
-            $referral->update(['status' => 'pending', 'sent_at' => null]);
+            $referral->updateAutomatically(['status' => 'pending', 'sent_at' => null]);
             Log::error('Company referral invitation could not be sent.', [
                 'referral_id' => $referral->id,
                 'exception' => $exception,

@@ -16,6 +16,7 @@ import { SearchFilterToolbar } from '@/components/search-filter-toolbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
+import { formatAppointmentTime } from '@/lib/appointment-date-time';
 import { confirmAction } from '@/lib/dialogs';
 
 type Period = { day: string; start: string; end: string };
@@ -681,8 +682,13 @@ function AvailabilityRequestReview({
                                                 ).toLocaleDateString('en-PH')}
                                             </td>
                                             <td className="px-4 py-3">
-                                                {appointment.start_time}–
-                                                {appointment.end_time}
+                                                {formatAvailabilityTime(
+                                                    appointment.start_time,
+                                                )}
+                                                –
+                                                {formatAvailabilityTime(
+                                                    appointment.end_time,
+                                                )}
                                             </td>
                                             <td className="px-4 py-3 capitalize">
                                                 {appointment.status.replaceAll(
@@ -705,6 +711,13 @@ function AvailabilityRequestReview({
             </div>
         </section>
     );
+}
+
+function formatAvailabilityTime(value: string): string {
+    return formatAppointmentTime(value)
+        .replace(':00', '')
+        .replace(/\s/g, '')
+        .toLowerCase();
 }
 
 function SchedulePreview({
@@ -740,7 +753,7 @@ function SchedulePreview({
                                 {dayPeriods
                                     .map(
                                         (period) =>
-                                            `${period.start}–${period.end}`,
+                                            `${formatAvailabilityTime(period.start)}–${formatAvailabilityTime(period.end)}`,
                                     )
                                     .join(', ')}
                             </span>

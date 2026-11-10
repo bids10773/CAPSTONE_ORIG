@@ -128,8 +128,10 @@ class BulkAppointmentEnrollmentService
 
     private function notifyQuietTransition(Appointment $parent): void
     {
-        app(WorkflowNotificationService::class)->admins('appointment_updated', 'Company event updated', "{$parent->reference_code} is {$parent->status}.", route('admin.onsite-events.show', $parent, false));
-        app(\App\Observers\AppointmentWorkflowObserver::class)->bulkUpdated($parent);
+        $status = \App\Support\NotificationWording::status($parent->status);
+        $company = $parent->company?->company_name ?? 'the company';
+        app(WorkflowNotificationService::class)->admins('appointment_updated', 'Company event status updated', "The system marked {$company}'s bulk appointment {$parent->reference_code} as {$status} based on employee progress.", route('admin.onsite-events.show', $parent, false));
+        app(\App\Observers\AppointmentWorkflowObserver::class)->bulkUpdated($parent, true);
     }
 
     private function employeeStatus(string $parentStatus): string

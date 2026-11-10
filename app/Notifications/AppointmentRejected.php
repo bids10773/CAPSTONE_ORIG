@@ -3,6 +3,8 @@
 namespace App\Notifications;
 
 use App\Models\Appointment;
+use App\Models\User;
+use App\Support\NotificationWording;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -11,7 +13,12 @@ class AppointmentRejected extends Notification
 {
     use Queueable;
 
-    public function __construct(public readonly Appointment $appointment) {}
+    private readonly string $message;
+
+    public function __construct(public readonly Appointment $appointment, User|int|null $actor = null)
+    {
+        $this->message = ($appointment->rejection_reason === 'schedule_expired' ? 'The system rejected your appointment request '.$appointment->reference_code.' for '.NotificationWording::schedule($appointment).' because the requested schedule expired before clinic approval.' : 'Your appointment request '.$appointment->reference_code.' for '.NotificationWording::schedule($appointment).' was rejected'.NotificationWording::by($actor ?? ($appointment->status === 'rejected' && $appointment->rejection_reason !== 'schedule_expired' ? $appointment->processed_by : null)).'.');
+    }
 
     public function via(object $notifiable): array
     {
@@ -26,8 +33,8 @@ class AppointmentRejected extends Notification
 
         return [
             'type' => 'appointment_rejected',
-            'title' => 'Appointment Request Rejected',
-            'message' => 'Your appointment request for '.$this->appointment->appointment_date->format('M j, Y').' was not approved. Reason: '.$reason.'.',
+            'title' => 'Appointment request rejected',
+            'message' => $this->message.(filled((string) $reason) && $this->appointment->rejection_reason !== 'schedule_expired' ? ' Reason: '.$reason.'.' : ''),
             'appointment_id' => $this->appointment->id,
             'url' => route('appointments.index', absolute: false),
         ];
@@ -41,10 +48,10 @@ class AppointmentRejected extends Notification
             : str($appointment->rejection_reason)->replace('_', ' ')->title();
 
         return (new MailMessage)
-            ->subject('Appointment Request Rejected | Living Myth Industrial Clinic')
-            ->greeting('Appointment Request Rejected')
-            ->line('Your appointment request for '.$appointment->appointment_date->format('F j, Y').' at '.$appointment->start_time?->format('g:i A').' was not approved.')
-            ->line('Reason: '.$reason)
-            ->action('Book Another Appointment', route('appointment.create'));
+            ->subject('Appointment request rejected | Living Myth Industrial Clinic')
+            ->greeting('Appointment request rejected')
+            ->line($this->message)
+            ->when(filled((string) $reason) && $appointment->rejection_reason !== 'schedule_expired', fn (MailMessage $mail) => $mail->line('Reason: '.$reason))
+            ->action('Book another appointment', route('appointment.create'));
     }
 }

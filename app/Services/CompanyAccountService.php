@@ -68,7 +68,7 @@ class CompanyAccountService
                     'metadata' => $sourceInquiryId ? ['source_inquiry_id' => $sourceInquiryId] : null,
                 ]);
 
-                Mail::to($company->email)->send(new CompanyInvitation($company, $account, $temporaryPassword));
+                Mail::to($company->email)->send(new CompanyInvitation($company, $account, $temporaryPassword, $actor));
 
                 return $company;
             });
@@ -135,7 +135,7 @@ class CompanyAccountService
                 'action' => 'company_temporary_credentials_resent',
                 'status' => 'success',
             ]);
-            Mail::to($company->email)->send(new CompanyInvitation($company, $account, $temporaryPassword));
+            Mail::to($company->email)->send(new CompanyInvitation($company, $account, $temporaryPassword, $actor));
         });
     }
 

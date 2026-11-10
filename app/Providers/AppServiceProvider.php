@@ -107,7 +107,7 @@ class AppServiceProvider extends ServiceProvider
         // 1. CUSTOM EMAIL VERIFICATION LOGIC
         VerifyEmail::toMailUsing(function (object $notifiable, string $url) {
             return (new MailMessage)
-                ->subject('Verify Your Email Address | Living Myth Industrial Clinic')
+                ->subject('Verify your email address | Living Myth Industrial Clinic')
                 ->view('email.custom-verify', [
                     'url' => $url,
                     'name' => $notifiable->name,
@@ -123,7 +123,7 @@ class AppServiceProvider extends ServiceProvider
             ], false));
 
             return (new MailMessage)
-                ->subject('Reset Your Password | Living Myth Industrial Clinic')
+                ->subject('Reset your password | Living Myth Industrial Clinic')
                 ->view('email.custom-reset', [
                     'url' => $url,
                     'name' => $notifiable->name,

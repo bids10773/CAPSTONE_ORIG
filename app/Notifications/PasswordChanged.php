@@ -19,7 +19,7 @@ class PasswordChanged extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Password Successfully Changed | Living Myth Industrial Clinic')
+            ->subject('Password changed | Living Myth Industrial Clinic')
             ->view('email.password-changed', [
                 'name' => $notifiable->name,
             ]);

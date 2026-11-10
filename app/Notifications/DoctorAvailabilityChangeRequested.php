@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\DoctorAvailabilityChangeRequest;
+use App\Support\NotificationWording;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
@@ -10,7 +11,12 @@ class DoctorAvailabilityChangeRequested extends Notification
 {
     use Queueable;
 
-    public function __construct(private readonly DoctorAvailabilityChangeRequest $changeRequest) {}
+    private readonly string $doctorLabel;
+
+    public function __construct(private readonly DoctorAvailabilityChangeRequest $changeRequest)
+    {
+        $this->doctorLabel = NotificationWording::actor($changeRequest->doctor) ?? 'The doctor';
+    }
 
     public function via(object $notifiable): array
     {
@@ -24,10 +30,10 @@ class DoctorAvailabilityChangeRequested extends Notification
         return [
             'type' => 'doctor_availability_change_requested',
             'title' => 'Availability change requested',
-            'message' => "Dr. {$doctor->name} requested to change their availability.",
+            'message' => "{$this->doctorLabel} requested an availability change (request #{$this->changeRequest->id}).",
             'availability_change_request_id' => $this->changeRequest->id,
             'url' => route('admin.doctor-availability.index', [
-                'doctor_id' => $doctor->id,
+                'doctor_id' => $this->changeRequest->doctor_id,
                 'request_id' => $this->changeRequest->id,
             ], false),
         ];

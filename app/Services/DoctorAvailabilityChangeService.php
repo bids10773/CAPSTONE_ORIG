@@ -142,7 +142,9 @@ class DoctorAvailabilityChangeService
             ]);
         }, 3);
         foreach ($affected as $appointment) {
-            app(WorkflowNotificationService::class)->users(User::whereKey($appointment->user_id)->where('role', 'patient')->get(), 'doctor_schedule_change_declined', 'Appointment schedule unchanged', 'The proposed doctor schedule change was declined. Your existing appointment schedule remains active.', route('appointments.index', absolute: false));
+            $by = \App\Support\NotificationWording::by($admin);
+            $doctor = \App\Support\NotificationWording::person($changeRequest->doctor, 'your doctor');
+            app(WorkflowNotificationService::class)->users(User::whereKey($appointment->user_id)->where('role', 'patient')->get(), 'doctor_schedule_change_declined', 'Appointment schedule unchanged', "{$doctor}'s availability change request was rejected{$by}. Your appointment {$appointment->reference_code} remains scheduled for ".\App\Support\NotificationWording::schedule($appointment).'.', route('appointments.index', absolute: false));
         }
     }
 

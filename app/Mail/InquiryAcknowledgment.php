@@ -17,7 +17,7 @@ class InquiryAcknowledgment extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'LMIC Inquiry Received');
+        return new Envelope(subject: 'Inquiry received | Living Myth Industrial Clinic');
     }
 
     public function content(): Content
