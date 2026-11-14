@@ -189,8 +189,8 @@ function Sidebar({
   collapsible = "offcanvas",
   className,
   children,
-  onMouseEnter,
-  onMouseLeave,
+  onPointerEnter,
+  onPointerLeave,
   onPointerDownCapture,
   onFocusCapture,
   onBlurCapture,
@@ -227,15 +227,11 @@ function Sidebar({
   if (isMobile) {
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-        <SheetHeader className="sr-only">
-          <SheetTitle>Sidebar</SheetTitle>
-          <SheetDescription>Displays the mobile sidebar.</SheetDescription>
-        </SheetHeader>
         <SheetContent
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
+          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) max-w-[calc(100vw-2rem)] p-0"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -243,6 +239,10 @@ function Sidebar({
           }
           side={side}
         >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Navigation</SheetTitle>
+            <SheetDescription>Choose a page from the navigation menu.</SheetDescription>
+          </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
       </Sheet>
@@ -283,13 +283,13 @@ function Sidebar({
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
           className
         )}
-        onMouseEnter={(event) => {
-          setHovered(true)
-          onMouseEnter?.(event)
+        onPointerEnter={(event) => {
+          if (event.pointerType === "mouse") setHovered(true)
+          onPointerEnter?.(event)
         }}
-        onMouseLeave={(event) => {
-          setHovered(false)
-          onMouseLeave?.(event)
+        onPointerLeave={(event) => {
+          if (event.pointerType === "mouse") setHovered(false)
+          onPointerLeave?.(event)
         }}
         onPointerDownCapture={(event) => {
           setFocusWithin(false)
@@ -325,7 +325,7 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar, isMobile, state } = useSidebar()
+  const { toggleSidebar, isMobile, state, openMobile } = useSidebar()
 
   return (
     <Button
@@ -333,7 +333,8 @@ function SidebarTrigger({
       data-slot="sidebar-trigger"
       variant="ghost"
       size="icon"
-      className={cn("h-7 w-7", className)}
+      aria-expanded={isMobile ? openMobile : state === "expanded"}
+      className={cn("size-11 touch-manipulation", className)}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -584,6 +585,7 @@ function SidebarMenuButton({
       data-sidebar="menu-button"
       data-size={size}
       data-active={isActive}
+      aria-label={typeof tooltip === "string" ? tooltip : undefined}
       className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
       {...props}
     />

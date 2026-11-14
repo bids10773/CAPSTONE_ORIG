@@ -57,15 +57,15 @@ export default function ClinicDashboardLayout({
             <SidebarInset className="min-w-0 bg-background">
                 <header className="sticky top-0 z-30 flex h-[72px] shrink-0 items-center border-b border-border bg-card/95 px-4 backdrop-blur-xl sm:px-6">
                     <div className="flex w-full items-center gap-3">
-                        <SidebarTrigger className="size-10 rounded-xl text-slate-500 hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card md:hidden" />
-                        <div className="hidden max-w-[45%] min-w-0 shrink-0 sm:block lg:max-w-[30%]">
+                        <SidebarTrigger className="size-11 shrink-0 rounded-xl text-slate-500 hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card" />
+                        <div className="hidden max-w-[30%] min-w-0 shrink-0 xl:block">
                             <Breadcrumbs breadcrumbs={breadcrumbs} />
                         </div>
 
                         <GlobalSearch />
 
                         <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                            <LiveDateTime className="mr-1 hidden lg:flex" />
+                            <LiveDateTime className="mr-1 hidden 2xl:flex" />
                             <ThemeToggle />
                             <NotificationBell />
                             <DropdownMenu>
@@ -93,7 +93,7 @@ export default function ClinicDashboardLayout({
                                                 title="Online"
                                             />
                                         </span>
-                                        <div className="hidden max-w-36 md:block">
+                                        <div className="hidden max-w-36 xl:block">
                                             <p className="truncate text-xs font-semibold text-slate-800">
                                                 {fullName}
                                             </p>
@@ -101,7 +101,7 @@ export default function ClinicDashboardLayout({
                                                 {user?.role || 'patient'}
                                             </p>
                                         </div>
-                                        <ChevronDown className="hidden size-4 text-slate-400 md:block" />
+                                        <ChevronDown className="hidden size-4 text-slate-400 xl:block" />
                                     </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent

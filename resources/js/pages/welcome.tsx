@@ -28,9 +28,15 @@ import {
     UsersRound,
     X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Reveal, StaggerGroup, StaggerItem } from '@/components/motion';
 import { ThemeToggle } from '@/components/theme-toggle';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useClinicHours } from '@/lib/clinic-hours';
 import type { ClinicHoursSettings } from '@/lib/clinic-hours';
 import logo from '/public/images/full_logo2-optimized.webp';
@@ -171,6 +177,7 @@ function Navbar() {
     const [open, setOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [mobileDropdown, setMobileDropdown] = useState<string | null>(null);
+    const navigationToggle = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         const updateNavbar = () => setScrolled(window.scrollY > 24);
@@ -210,7 +217,16 @@ function Navbar() {
         },
     ];
     return (
-        <header className="sticky inset-x-0 top-0 z-50">
+        <header
+            className="sticky inset-x-0 top-0 z-40"
+            onKeyDown={(event) => {
+                if (event.key === 'Escape' && open) {
+                    setOpen(false);
+                    setMobileDropdown(null);
+                    navigationToggle.current?.focus();
+                }
+            }}
+        >
             <div className="mx-auto max-w-7xl px-5 py-3 sm:px-7">
                 <nav className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-[0_14px_45px_rgba(15,38,60,0.10)] sm:px-5">
                     <Link
@@ -232,7 +248,7 @@ function Navbar() {
                                 opacity: scrolled ? 0 : 1,
                             }}
                             transition={{ duration: 0.22, ease: 'easeOut' }}
-                            className="overflow-hidden leading-tight whitespace-nowrap"
+                            className="hidden overflow-hidden leading-tight whitespace-nowrap sm:block"
                             aria-hidden={scrolled}
                         >
                             <span className="block text-sm font-extrabold tracking-[-0.03em] text-slate-950">
@@ -245,34 +261,40 @@ function Navbar() {
                     </Link>
                     <div className="hidden items-center gap-1 lg:flex">
                         {navigation.map(({ name, icon: Icon, items }) => (
-                            <div key={name} className="group relative">
-                                <button
-                                    type="button"
-                                    aria-haspopup="menu"
-                                    className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition-all hover:bg-moss-50 hover:text-moss-800 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
-                                >
-                                    <Icon className="size-4 text-slate-400 transition-colors group-hover:text-moss-600" />
-                                    {name}
-                                    <ChevronDown className="size-3.5 transition-transform duration-200 group-focus-within:rotate-180 group-hover:rotate-180" />
-                                </button>
-                                <div className="invisible absolute top-full left-1/2 w-64 -translate-x-1/2 pt-2 opacity-0 transition duration-200 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-                                    <div
-                                        role="menu"
-                                        className="rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10"
+                            <DropdownMenu key={name}>
+                                <DropdownMenuTrigger asChild>
+                                    <button
+                                        type="button"
+                                        className="group inline-flex min-h-11 touch-manipulation items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-moss-50 hover:text-moss-800 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none"
                                     >
-                                        {items.map((item) => (
+                                        <Icon className="size-4 text-slate-400 transition-colors group-hover:text-moss-600" />
+                                        {name}
+                                        <ChevronDown
+                                            aria-hidden="true"
+                                            className="size-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180"
+                                        />
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    align="center"
+                                    sideOffset={8}
+                                    className="w-64 rounded-2xl p-2"
+                                >
+                                    {items.map((item) => (
+                                        <DropdownMenuItem
+                                            key={item.name}
+                                            asChild
+                                        >
                                             <a
-                                                key={item.name}
                                                 href={item.href}
-                                                role="menuitem"
                                                 className="block rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-moss-50 hover:text-moss-800 focus:bg-moss-50 focus:text-moss-800 focus:outline-none"
                                             >
                                                 {item.name}
                                             </a>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         ))}
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
@@ -295,13 +317,15 @@ function Navbar() {
                         </div>
                         <button
                             type="button"
+                            ref={navigationToggle}
                             onClick={() => {
                                 setOpen((current) => !current);
                                 setMobileDropdown(null);
                             }}
-                            className="motion-press grid h-10 w-10 place-items-center rounded-xl text-slate-800 transition-colors hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none lg:hidden"
+                            className="motion-press grid size-11 shrink-0 touch-manipulation place-items-center rounded-xl text-slate-800 transition-colors hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500 focus-visible:outline-none lg:hidden"
                             aria-label="Toggle navigation"
                             aria-expanded={open}
+                            aria-controls="public-mobile-navigation"
                         >
                             {open ? <X size={21} /> : <Menu size={21} />}
                         </button>
@@ -310,10 +334,11 @@ function Navbar() {
                 <AnimatePresence>
                     {open && (
                         <motion.div
+                            id="public-mobile-navigation"
                             initial={{ opacity: 0, y: -8 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -8 }}
-                            className="mt-2 rounded-2xl border border-slate-100 bg-white p-3 shadow-xl lg:hidden"
+                            className="mt-2 max-h-[calc(100dvh-7rem)] overflow-y-auto overscroll-contain rounded-2xl border border-slate-100 bg-white p-3 shadow-xl lg:hidden"
                         >
                             {navigation.map(({ name, icon: Icon, items }) => (
                                 <div key={name}>

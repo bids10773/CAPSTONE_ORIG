@@ -329,11 +329,12 @@ const roleLabels: Record<string, string> = {
 
 export function AppSidebar({ className }: { auth?: any; className?: string }) {
     const { props, url } = usePage();
-    const { isMobile, isPinned, setPinned, setOpenMobile } = useSidebar();
+    const { isMobile, isPinned, setPinned, setOpenMobile, state, setOpen } =
+        useSidebar();
     const role = (props.auth as any)?.user?.role || 'patient';
     const items = navigation[role] || navigation.patient;
     const currentPath = url.split(/[?#]/)[0];
-    const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
+    const [openMenu, setOpenMenu] = useState<string | null>(null);
     const home = items[0].href;
     const closeMobileSidebar = () => {
         if (isMobile) setOpenMobile(false);
@@ -420,36 +421,22 @@ export function AppSidebar({ className }: { auth?: any; className?: string }) {
                                     <Collapsible
                                         key={item.href}
                                         asChild
-                                        open={hoveredMenu === item.href}
+                                        open={openMenu === item.href}
                                         onOpenChange={(open) => {
-                                            if (isMobile) {
-                                                setHoveredMenu(
-                                                    open ? item.href : null,
-                                                );
+                                            setOpenMenu(
+                                                open ? item.href : null,
+                                            );
+                                            if (
+                                                open &&
+                                                !isMobile &&
+                                                state === 'collapsed'
+                                            ) {
+                                                setOpen(true);
                                             }
                                         }}
                                         className="group/collapsible"
                                     >
-                                        <SidebarMenuItem
-                                            onMouseEnter={() =>
-                                                setHoveredMenu(item.href)
-                                            }
-                                            onMouseLeave={() =>
-                                                setHoveredMenu(null)
-                                            }
-                                            onFocus={() =>
-                                                setHoveredMenu(item.href)
-                                            }
-                                            onBlur={(event) => {
-                                                if (
-                                                    !event.currentTarget.contains(
-                                                        event.relatedTarget as Node | null,
-                                                    )
-                                                ) {
-                                                    setHoveredMenu(null);
-                                                }
-                                            }}
-                                        >
+                                        <SidebarMenuItem>
                                             <CollapsibleTrigger asChild>
                                                 <SidebarMenuButton
                                                     tooltip={item.title}

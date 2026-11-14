@@ -13,7 +13,14 @@ class SecurityHeaders
      */
     public function handle(Request $request, Closure $next): Response
     {
+        $wasAuthenticated = $request->user() !== null;
         $response = $next($request);
+
+        if ($wasAuthenticated || $request->user() !== null) {
+            $response->headers->set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+            $response->headers->set('Pragma', 'no-cache');
+            $response->headers->set('Expires', '0');
+        }
 
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'DENY');

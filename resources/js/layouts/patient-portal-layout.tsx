@@ -1,6 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { CalendarDays, ChevronDown, Home, Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ClinicStatusLogo } from '@/components/clinic-status-logo';
 import { LiveDateTime } from '@/components/live-date-time';
 import { NotificationBell } from '@/components/notification-bell';
@@ -26,6 +26,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
     const { auth } = page.props as any;
     const user = auth?.user;
     const [mobileOpen, setMobileOpen] = useState(false);
+    const navigationToggle = useRef<HTMLButtonElement>(null);
     const [currentPath] = page.url.split('?');
     const isLinkActive = (href: string) => {
         if (href === '/dashboard') return currentPath === '/dashboard';
@@ -54,7 +55,15 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
             >
                 Skip to content
             </a>
-            <header className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl">
+            <header
+                className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-xl"
+                onKeyDown={(event) => {
+                    if (event.key === 'Escape' && mobileOpen) {
+                        setMobileOpen(false);
+                        navigationToggle.current?.focus();
+                    }
+                }}
+            >
                 <div className="mx-auto flex h-[72px] max-w-[1500px] items-center gap-3 px-4 sm:px-6 lg:px-8">
                     <Link
                         href="/dashboard"
@@ -105,10 +114,12 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
 
                     <button
                         type="button"
+                        ref={navigationToggle}
                         onClick={() => setMobileOpen((open) => !open)}
-                        className="rounded-xl p-2 text-slate-600 hover:bg-moss-50 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none lg:hidden dark:text-moss-200"
+                        className="flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-xl text-slate-600 hover:bg-moss-50 focus-visible:ring-4 focus-visible:ring-moss-500/20 focus-visible:outline-none lg:hidden dark:text-moss-200"
                         aria-label="Toggle patient navigation"
                         aria-expanded={mobileOpen}
+                        aria-controls="patient-mobile-navigation"
                     >
                         {mobileOpen ? (
                             <X className="size-5" />
@@ -118,7 +129,7 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
                     </button>
 
                     <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                        <LiveDateTime className="hidden lg:flex" />
+                        <LiveDateTime className="hidden 2xl:flex" />
                         <ThemeToggle />
                         <NotificationBell />
 
@@ -168,7 +179,8 @@ export default function PatientPortalLayout({ children }: AppLayoutProps) {
 
                 {mobileOpen && (
                     <nav
-                        className="border-t border-slate-100 bg-white p-3 lg:hidden"
+                        id="patient-mobile-navigation"
+                        className="max-h-[calc(100dvh-72px)] overflow-y-auto overscroll-contain border-t border-border bg-card p-3 lg:hidden"
                         aria-label="Mobile patient navigation"
                     >
                         <div className="mx-auto grid max-w-[1500px] gap-1 sm:grid-cols-2">

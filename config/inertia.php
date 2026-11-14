@@ -2,6 +2,11 @@
 
 return [
 
+    // Saved account pages become unreadable when a guest response clears the key.
+    'history' => [
+        'encrypt' => true,
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Server Side Rendering

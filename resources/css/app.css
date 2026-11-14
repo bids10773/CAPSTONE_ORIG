@@ -297,7 +297,7 @@
     }
 
     .topbar-icon {
-        @apply flex size-10 touch-manipulation items-center justify-center rounded-xl text-slate-500 transition-[background-color,color,box-shadow,transform] hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-none active:scale-95 active:bg-moss-100 motion-reduce:transition-none;
+        @apply flex size-11 shrink-0 touch-manipulation items-center justify-center rounded-xl text-slate-500 transition-[background-color,color,box-shadow,transform] hover:bg-moss-50 hover:text-moss-700 focus-visible:ring-2 focus-visible:ring-moss-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-card focus-visible:outline-none active:scale-95 active:bg-moss-100 motion-reduce:transition-none;
     }
 
     .dark .topbar-icon:hover {

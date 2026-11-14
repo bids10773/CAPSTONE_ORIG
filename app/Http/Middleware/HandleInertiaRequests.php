@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Support\ClinicHours;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -18,6 +19,11 @@ class HandleInertiaRequests extends Middleware
 
     public function share(Request $request): array
     {
+        // Also covers expired sessions and accounts invalidated by middleware.
+        if (! $request->user()) {
+            Inertia::clearHistory();
+        }
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
